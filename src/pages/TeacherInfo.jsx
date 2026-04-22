@@ -29,7 +29,7 @@ export default function TeacherInfo() {
 
   const handleNext = () => {
     // Navigate to signup or next step
-    navigate('/signup?role=teacher');
+    navigate('/teacher-dashboard');
   };
 
   return (

@@ -27,7 +27,7 @@ export default function SchoolInfo() {
   });
 
   const handleNext = () => {
-    navigate('/signup?role=admin');
+    navigate('/admin-dashboard');
   };
 
   return (

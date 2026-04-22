@@ -13,6 +13,8 @@ import SignUp from './pages/SignUp';
 import UserType from './pages/UserType';
 import TeacherInfo from './pages/TeacherInfo';
 import SchoolInfo from './pages/SchoolInfo';
+import TeacherDashboard from './pages/TeacherDashboard';
+import AdminDashboard from './pages/AdminDashboard';
 
 function LandingPage() {
   return (
@@ -38,6 +40,8 @@ function App() {
         <Route path="/user-type" element={<UserType />} />
         <Route path="/teacher-info" element={<TeacherInfo />} />
         <Route path="/sch-info" element={<SchoolInfo />} />
+        <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
+        <Route path="/admin-dashboard" element={<AdminDashboard />} />
       </Routes>
     </BrowserRouter>
   );
