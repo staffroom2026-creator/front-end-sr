@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
 
 export default function SignIn() {
@@ -15,7 +16,12 @@ export default function SignIn() {
   };
 
   return (
-    <div className="auth-layout">
+    <motion.div 
+      className="auth-layout"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+    >
       {/* ── Background Image Layer ── */}
       <div className="auth-bg-layer">
         <img src={authHero} alt="Teacher working at laptop" />
@@ -464,6 +470,6 @@ export default function SignIn() {
           }
         }
       `}</style>
-    </div>
+    </motion.div>
   );
 }

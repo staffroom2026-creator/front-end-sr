@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
 
 export default function SignUp() {
@@ -23,7 +24,12 @@ export default function SignUp() {
   };
 
   return (
-    <div className="auth-layout">
+    <motion.div 
+      className="auth-layout"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, ease: "easeOut" }}
+    >
       {/* ── Background Image Layer ── */}
       <div className="auth-bg-layer">
         <img
@@ -60,25 +66,6 @@ export default function SignUp() {
           <h1 className="auth-heading">Create an account</h1>
 
           <div className="auth-glass-box">
-            
-            {/* Teachers / Schools toggle */}
-            <div className="role-toggle-container">
-              {[
-                { id: 'teacher', label: 'Teachers' },
-                { id: 'school', label: 'Schools' },
-              ].map((r) => (
-                <button
-                  key={r.id}
-                  id={`role-${r.id}`}
-                  type="button"
-                  onClick={() => setRole(r.id)}
-                  className={`role-toggle-btn ${role === r.id ? 'active' : ''}`}
-                >
-                  {r.label}
-                </button>
-              ))}
-            </div>
-
             <form onSubmit={handleSubmit} className="auth-form">
               {/* First name */}
               <input
@@ -512,7 +499,7 @@ export default function SignUp() {
           }
         }
       `}</style>
-    </div>
+    </motion.div>
   );
 }
 
