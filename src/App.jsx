@@ -10,6 +10,9 @@ import FooterCTA from './components/FooterCTA';
 import ScrollReveal from './components/ScrollReveal';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import UserType from './pages/UserType';
+import TeacherInfo from './pages/TeacherInfo';
+import SchoolInfo from './pages/SchoolInfo';
 
 function LandingPage() {
   return (
@@ -32,6 +35,9 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/user-type" element={<UserType />} />
+        <Route path="/teacher-info" element={<TeacherInfo />} />
+        <Route path="/sch-info" element={<SchoolInfo />} />
       </Routes>
     </BrowserRouter>
   );
