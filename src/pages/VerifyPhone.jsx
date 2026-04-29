@@ -3,34 +3,95 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
 
-export default function AddPhoneNumber() {
-  const [phone, setPhone] = useState('');
+export default function VerifyPhone() {
+  const [code, setCode] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
-  const phoneRef = useRef(null);
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+  const inputRefs = useRef([]);
   const navigate = useNavigate();
 
+  // Placeholder phone — in a real app, pass via route state
+  const phoneNumber = '+2348123456​78';
+
+  // Countdown timer for resend
   useEffect(() => {
-    if (phoneRef.current) {
-      phoneRef.current.focus();
+    if (resendTimer > 0) {
+      const interval = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else {
+      setCanResend(true);
+    }
+  }, [resendTimer]);
+
+  // Auto-focus first input on mount
+  useEffect(() => {
+    if (inputRefs.current[0]) {
+      inputRefs.current[0].focus();
     }
   }, []);
 
-  const handlePhoneChange = (e) => {
-    // Only allow digits, max 11 chars
-    const val = e.target.value.replace(/\D/g, '').slice(0, 11);
-    setPhone(val);
+  const handleChange = (index, value) => {
+    if (value && !/^\d$/.test(value)) return;
+
+    const newCode = [...code];
+    newCode[index] = value;
+    setCode(newCode);
+
+    // Auto-advance to next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
   };
 
-  const isValid = phone.length >= 10;
+  const handleKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !code[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowLeft' && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+    if (e.key === 'ArrowRight' && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e) => {
+    e.preventDefault();
+    const pasteData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pasteData.length > 0) {
+      const newCode = [...code];
+      for (let i = 0; i < pasteData.length; i++) {
+        newCode[i] = pasteData[i];
+      }
+      setCode(newCode);
+      const nextEmpty = newCode.findIndex((c) => c === '');
+      inputRefs.current[nextEmpty !== -1 ? nextEmpty : 5]?.focus();
+    }
+  };
+
+  const isCodeComplete = code.every((d) => d !== '');
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!isValid) return;
+    if (!isCodeComplete) return;
     setLoading(true);
+
+    // Simulate verification
     setTimeout(() => {
       setLoading(false);
-      navigate('/verify-phone');
-    }, 1800);
+      navigate('/user-type');
+    }, 2000);
+  };
+
+  const handleResend = () => {
+    if (!canResend) return;
+    setCanResend(false);
+    setResendTimer(60);
+    setCode(['', '', '', '', '', '']);
+    inputRefs.current[0]?.focus();
   };
 
   return (
@@ -45,7 +106,7 @@ export default function AddPhoneNumber() {
         <img src={authHero} alt="Teacher working at laptop" />
         <div className="auth-overlay" />
 
-        {/* Desktop-only Logo */}
+        {/* Desktop-only Logo & Quote */}
         <Link className="desktop-logo" to="/">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
@@ -53,7 +114,7 @@ export default function AddPhoneNumber() {
           <span>Staffroom</span>
         </Link>
         <div className="desktop-quote">
-          <h2>Almost there.<br />Let's secure your account.</h2>
+          <h2>One more step to<br />secure your account.</h2>
         </div>
       </div>
 
@@ -70,9 +131,9 @@ export default function AddPhoneNumber() {
         </div>
 
         <div className="auth-inner-content">
-          {/* Back Button */}
+          {/* Back Button — desktop only */}
           <button
-            id="add-phone-back-btn"
+            id="verify-phone-back-btn"
             type="button"
             onClick={() => navigate(-1)}
             className="back-arrow-btn"
@@ -82,53 +143,54 @@ export default function AddPhoneNumber() {
             </svg>
           </button>
 
-          <h1 className="auth-heading">Add Your Phone Number</h1>
-          <p className="phone-subtitle text-adaptive">
-            We'll send a verification code to this number
+          <h1 className="auth-heading">Verify your Phone number</h1>
+          <p className="verify-phone-subtitle text-adaptive">
+            We sent a 6-digit code to: <strong className="phone-highlight">{phoneNumber}</strong>
           </p>
 
           <div className="auth-glass-box">
             <form onSubmit={handleSubmit} className="auth-form">
-              {/* Phone Input Row */}
-              <div className="phone-row">
-                {/* Country Code Prefix */}
-                <div className="country-prefix">
-                  <span className="flag-icon-ng">
-                    <span className="flag-stripe flag-green" />
-                    <span className="flag-stripe flag-white" />
-                    <span className="flag-stripe flag-green" />
-                  </span>
-                  <span className="country-code">+234</span>
-                </div>
+              {/* Enter code label + Edit link */}
+              <div className="code-header-row">
+                <span className="code-label text-adaptive">Enter code</span>
+                <Link to="/add-phone-number" className="edit-link" id="verify-phone-edit-link">
+                  Edit
+                </Link>
+              </div>
 
-                {/* Phone Input */}
-                <input
-                  id="add-phone-input"
-                  ref={phoneRef}
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="8012345678"
-                  value={phone}
-                  onChange={handlePhoneChange}
-                  className="phone-input-field"
-                  autoComplete="tel-national"
-                  disabled={loading}
-                />
+              {/* OTP Input Row */}
+              <div className="otp-container" onPaste={handlePaste}>
+                {code.map((digit, index) => (
+                  <input
+                    key={index}
+                    id={`verify-phone-code-${index}`}
+                    ref={(el) => (inputRefs.current[index] = el)}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    className={`otp-input ${digit ? 'filled' : ''}`}
+                    disabled={loading}
+                    autoComplete="one-time-code"
+                  />
+                ))}
               </div>
 
               {/* Next Button */}
               <button
-                id="add-phone-next-btn"
+                id="verify-phone-next-btn"
                 type="submit"
-                disabled={loading || !isValid}
+                disabled={loading || !isCodeComplete}
                 className="submit-btn next-btn"
                 style={{
                   backgroundColor: loading
                     ? '#a8e6b8'
-                    : isValid
+                    : isCodeComplete
                     ? '#1CCB43'
                     : 'rgba(28, 203, 67, 0.25)',
-                  color: isValid || loading ? '#111' : 'rgba(17,17,17,0.4)',
+                  color: isCodeComplete || loading ? '#111' : 'rgba(17,17,17,0.4)',
                 }}
               >
                 {loading ? (
@@ -137,13 +199,32 @@ export default function AddPhoneNumber() {
                       <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
-                    Sending code…
+                    Verifying…
                   </>
                 ) : (
                   'Next'
                 )}
               </button>
             </form>
+
+            {/* Resend link */}
+            <p className="resend-footer text-adaptive">
+              Didn't get the email?{' '}
+              {canResend ? (
+                <button
+                  id="verify-phone-resend-btn"
+                  type="button"
+                  onClick={handleResend}
+                  className="resend-link"
+                >
+                  Resend code.
+                </button>
+              ) : (
+                <span className="resend-link resend-link--disabled">
+                  Resend code.
+                </span>
+              )}
+            </p>
           </div>
         </div>
       </div>
@@ -242,11 +323,16 @@ export default function AddPhoneNumber() {
           line-height: 1.15;
         }
 
-        .phone-subtitle {
+        .verify-phone-subtitle {
           font-size: 15px;
           margin: 0 0 28px 0;
           line-height: 1.5;
           color: rgba(255, 255, 255, 0.75);
+        }
+
+        .phone-highlight {
+          font-weight: 700;
+          color: #fff;
         }
 
         .auth-glass-box {
@@ -256,9 +342,6 @@ export default function AddPhoneNumber() {
           border: 1px solid rgba(255, 255, 255, 0.2);
           border-radius: 20px;
           padding: 24px;
-          box-sizing: border-box;
-          overflow: hidden;
-          width: 100%;
         }
 
         .auth-form {
@@ -267,89 +350,70 @@ export default function AddPhoneNumber() {
           gap: 18px;
         }
 
-        /* ── Phone Row ── */
-        .phone-row {
-          display: flex;
-          gap: 10px;
-          width: 100%;
-          box-sizing: border-box;
-        }
-
-        .country-prefix {
+        /* ── Code Header Row ── */
+        .code-header-row {
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 0 14px;
-          background-color: rgba(255,255,255,0.85);
-          border-radius: 14px;
-          border: 1.5px solid rgba(255,255,255,0.3);
-          white-space: nowrap;
-          flex-shrink: 0;
-          min-height: 52px;
-          transition: border-color 0.2s;
-          box-sizing: border-box;
+          justify-content: space-between;
+          margin-bottom: -4px;
         }
 
-        .flag-icon-ng {
-          display: flex;
-          gap: 0;
-          width: 22px;
-          height: 15px;
-          overflow: hidden;
-          border-radius: 2px;
-          flex-shrink: 0;
-          border: 0.5px solid rgba(0,0,0,0.08);
+        .code-label {
+          font-size: 15px;
+          font-weight: 500;
+          color: #fff;
         }
 
-        .flag-stripe {
-          flex: 1;
-          height: 100%;
-        }
-
-        .flag-green {
-          background-color: #008751;
-        }
-
-        .flag-white {
-          background-color: #ffffff;
-        }
-
-        .country-code {
+        .edit-link {
           font-size: 15px;
           font-weight: 600;
-          color: #333;
-          letter-spacing: 0.2px;
+          color: #1a5c3a;
+          text-decoration: none;
+          transition: opacity 0.2s;
         }
 
-        .phone-input-field {
-          flex: 1;
-          min-width: 0;
-          padding: 14px 16px;
+        .edit-link:hover {
+          opacity: 0.75;
+          text-decoration: underline;
+        }
+
+        /* ── OTP Inputs ── */
+        .otp-container {
+          display: flex;
+          gap: 10px;
+          justify-content: center;
+        }
+
+        .otp-input {
+          width: 50px;
+          height: 54px;
+          text-align: center;
+          font-size: 22px;
+          font-weight: 700;
           border-radius: 14px;
-          border: 1.5px solid rgba(255,255,255,0.3);
-          background-color: rgba(255,255,255,0.85);
-          font-size: 16px;
-          font-weight: 500;
-          color: #222;
-          box-sizing: border-box;
+          border: 2px solid rgba(255, 255, 255, 0.2);
+          background: rgba(255, 255, 255, 0.12);
+          color: #fff;
           outline: none;
-          transition: border-color 0.25s, box-shadow 0.25s;
-          min-height: 52px;
+          transition: all 0.25s ease;
+          caret-color: #1CCB43;
           font-family: 'Inter', sans-serif;
-          letter-spacing: 0.8px;
-          width: 100%;
+          letter-spacing: 2px;
         }
 
-        .phone-input-field::placeholder {
-          color: #aaa;
-          font-weight: 400;
-          letter-spacing: 0.3px;
+        .otp-input::placeholder {
+          color: rgba(255, 255, 255, 0.25);
         }
 
-        .phone-input-field:focus {
+        .otp-input:focus {
           border-color: #1CCB43;
-          box-shadow: 0 0 0 3px rgba(28, 203, 67, 0.15);
-          background-color: #fff;
+          box-shadow: 0 0 0 3px rgba(28, 203, 67, 0.2);
+          background: rgba(255, 255, 255, 0.18);
+        }
+
+        .otp-input.filled {
+          border-color: rgba(28, 203, 67, 0.5);
+          background: rgba(255, 255, 255, 0.18);
         }
 
         /* ── Submit Button ── */
@@ -369,7 +433,6 @@ export default function AddPhoneNumber() {
           transition: all 0.25s ease;
           letter-spacing: 0.3px;
           margin-top: 4px;
-          box-sizing: border-box;
         }
 
         .submit-btn:disabled {
@@ -386,6 +449,41 @@ export default function AddPhoneNumber() {
         }
         .spin-icon circle { opacity: 0.25; }
         .spin-icon path { opacity: 0.75; }
+
+        /* ── Resend Footer ── */
+        .resend-footer {
+          text-align: center;
+          font-size: 14px;
+          margin: 22px 0 0 0;
+          color: rgba(255, 255, 255, 0.75);
+        }
+
+        .resend-link {
+          background: none;
+          border: none;
+          color: #1a5c3a;
+          font-weight: 600;
+          font-size: 14px;
+          cursor: pointer;
+          text-decoration: none;
+          font-family: 'Inter', sans-serif;
+          padding: 0;
+          transition: opacity 0.2s;
+        }
+
+        .resend-link:hover {
+          opacity: 0.8;
+          text-decoration: underline;
+        }
+
+        .resend-link--disabled {
+          cursor: default;
+          opacity: 0.4;
+        }
+        .resend-link--disabled:hover {
+          opacity: 0.4;
+          text-decoration: none;
+        }
 
         .text-adaptive {
           color: #fff;
@@ -489,47 +587,67 @@ export default function AddPhoneNumber() {
             letter-spacing: -1px;
           }
 
-          .phone-subtitle {
+          .verify-phone-subtitle {
             color: #888;
+          }
+
+          .phone-highlight {
+            color: #111;
           }
 
           .text-adaptive {
             color: #555;
           }
 
-          /* Desktop phone inputs */
-          .country-prefix {
-            background-color: #f3f4f6;
-            border-color: #e5e5e5;
+          .code-label {
+            color: #333;
           }
 
-          .phone-input-field {
-            background-color: #f3f4f6;
-            border-color: #e5e5e5;
+          .edit-link {
+            color: #1a5c3a;
           }
 
-          .phone-input-field:focus {
+          /* Desktop OTP style */
+          .otp-input {
+            width: 54px;
+            height: 58px;
+            border: 2px solid #e0e0e0;
+            background: #f3f4f6;
+            color: #111;
+            font-size: 24px;
+          }
+
+          .otp-input:focus {
             border-color: #1CCB43;
-            box-shadow: 0 0 0 3px rgba(28, 203, 67, 0.1);
-            background-color: #fff;
+            box-shadow: 0 0 0 3px rgba(28, 203, 67, 0.12);
+            background: #fff;
+          }
+
+          .otp-input.filled {
+            border-color: rgba(28, 203, 67, 0.4);
+            background: #fff;
+          }
+
+          .resend-footer {
+            color: #888;
+            text-align: left;
+          }
+
+          .resend-link {
+            color: #1a5c3a;
           }
         }
 
         /* ── Small screens ── */
         @media (max-width: 380px) {
-          .phone-row {
-            gap: 8px;
-          }
-          .country-prefix {
-            padding: 0 12px;
+          .otp-container {
             gap: 6px;
           }
-          .country-code {
-            font-size: 14px;
-          }
-          .phone-input-field {
-            padding: 12px 14px;
-            font-size: 15px;
+          .otp-input {
+            width: 42px;
+            height: 48px;
+            font-size: 18px;
+            border-radius: 10px;
           }
         }
       `}</style>

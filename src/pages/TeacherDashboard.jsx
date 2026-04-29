@@ -981,18 +981,22 @@ export default function TeacherDashboard() {
 
           /* Bottom Nav */
           .td-mobile-bottomnav {
-            position: fixed;
-            bottom: 0;
-            left: 0; right: 0;
-            background: #fff;
-            border-top: 1px solid #F1F3F5;
-            display: flex;
-            align-items: center;
-            justify-content: space-around;
-            padding: 10px 0 18px;
-            z-index: 200;
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
-          }
+  position: fixed;
+  bottom: 12px;
+  left: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.3);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 8px 0;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
           .td-bottomnav-tab {
             background: none;
             border: none;
