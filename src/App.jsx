@@ -11,6 +11,7 @@ import ScrollReveal from './components/ScrollReveal';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import VerifyEmail from './pages/VerifyEmail';
+import AddPhoneNumber from './pages/AddPhoneNumber';
 import UserType from './pages/UserType';
 import TeacherInfo from './pages/TeacherInfo';
 import SchoolInfo from './pages/SchoolInfo';
@@ -39,6 +40,7 @@ function App() {
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/add-phone-number" element={<AddPhoneNumber />} />
         <Route path="/user-type" element={<UserType />} />
         <Route path="/teacher-info" element={<TeacherInfo />} />
         <Route path="/sch-info" element={<SchoolInfo />} />

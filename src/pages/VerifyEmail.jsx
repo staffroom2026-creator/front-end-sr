@@ -150,6 +150,18 @@ export default function VerifyEmail() {
         </div>
 
         <div className="auth-inner-content">
+          {/* Back Button — desktop only */}
+          <button
+            id="verify-email-back-btn"
+            type="button"
+            onClick={() => navigate(-1)}
+            className="back-arrow-btn"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+
           <h1 className="auth-heading">Verify your email</h1>
 
           <div className="auth-glass-box">
@@ -374,6 +386,11 @@ export default function VerifyEmail() {
           width: 100%;
           max-width: 420px;
           margin: auto;
+        }
+
+        /* ── Back Arrow (hidden on mobile) ── */
+        .back-arrow-btn {
+          display: none;
         }
 
         .auth-heading {
@@ -668,6 +685,29 @@ export default function VerifyEmail() {
             -webkit-backdrop-filter: none;
             border: none;
             padding: 0;
+          }
+
+          /* Desktop back arrow — visible */
+          .back-arrow-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            border: 1.5px solid #ddd;
+            background: transparent;
+            cursor: pointer;
+            color: #555;
+            margin-bottom: 28px;
+            transition: all 0.2s ease;
+            padding: 0;
+          }
+
+          .back-arrow-btn:hover {
+            background: #f0f0f0;
+            border-color: #ccc;
+            color: #333;
           }
 
           .auth-heading {
