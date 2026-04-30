@@ -16,9 +16,147 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
 };
 
+const DUMMY_JOBS = [
+  {
+    id: 1,
+    title: 'Mathematics Tutor – SS2/SS3',
+    school: 'British International School',
+    location: 'Lekki, Lagos State',
+    type: 'Full-time',
+    timePosted: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    timeLabel: '2 hours ago',
+    salaryStr: '₦350,000 / month',
+    salaryMonthly: 350000,
+    featured: true,
+    hot: false,
+    color: 'td-bg-gray',
+    education: 'Secondary (SS1-SS3)',
+    tags: [],
+    mobileOnly: false
+  },
+  {
+    id: 2,
+    title: 'English Language & Literature Teacher',
+    school: 'Grace Academy',
+    location: 'Benin City, Edo State',
+    type: 'Contract',
+    timePosted: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+    timeLabel: '1 day ago',
+    salaryStr: '₦180,000 / month',
+    salaryMonthly: 180000,
+    featured: false,
+    hot: false,
+    color: 'td-bg-gold',
+    education: 'Secondary (SS1-SS3)',
+    tags: [],
+    mobileOnly: false
+  },
+  {
+    id: 3,
+    title: 'Vice Principal (Academic)',
+    school: 'Atlantic Hall School',
+    location: 'Epe, Lagos',
+    type: 'Full-time',
+    timePosted: new Date(Date.now() - 2.5 * 60 * 60 * 1000),
+    timeLabel: 'Posted 2h ago',
+    salaryStr: '₦650k - ₦800k',
+    salaryMonthly: 650000,
+    featured: false,
+    hot: true,
+    color: '',
+    education: 'Tertiary Institution',
+    tags: [],
+    mobileOnly: true
+  },
+  {
+    id: 4,
+    title: 'Physics & Further Maths Expert',
+    school: 'Home-Schooling Premium',
+    location: 'Maitama, Abuja',
+    type: 'Online',
+    timePosted: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
+    timeLabel: '2 days ago',
+    salaryStr: '₦15k / hour',
+    salaryMonthly: 2400000,
+    featured: false,
+    hot: false,
+    color: 'td-bg-purple',
+    education: 'Secondary (SS1-SS3)',
+    tags: [],
+    mobileOnly: false
+  },
+  {
+    id: 5,
+    title: 'Computer Science Tutor',
+    school: 'Grange School',
+    location: 'Ikeja GRA',
+    type: 'Part-time',
+    timePosted: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+    timeLabel: '1 day ago',
+    salaryStr: '₦180,000 / month',
+    salaryMonthly: 180000,
+    featured: false,
+    hot: false,
+    color: 'td-bg-gray',
+    education: 'Primary School',
+    tags: ['STEM'],
+    mobileOnly: true
+  }
+];
+
 export default function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [salaryRange, setSalaryRange] = useState(250000);
+  
+  // Job Feeds Filters State
+  const [subjectSearch, setSubjectSearch] = useState('');
+  const [locationSearch, setLocationSearch] = useState('');
+  const [keywordSearch, setKeywordSearch] = useState('');
+  
+  const [selectedEducation, setSelectedEducation] = useState([]);
+  const [selectedJobTypes, setSelectedJobTypes] = useState([]);
+  const [salaryRange, setSalaryRange] = useState(50000);
+  const [sortBy, setSortBy] = useState('Newest First');
+  const [showSortDropdown, setShowSortDropdown] = useState(false);
+
+  // Filter Helpers
+  const toggleEducation = (level) => {
+    setSelectedEducation(prev => prev.includes(level) ? prev.filter(l => l !== level) : [...prev, level]);
+  };
+
+  const toggleJobType = (type) => {
+    setSelectedJobTypes(prev => prev.includes(type) ? prev.filter(t => t !== type) : [...prev, type]);
+  };
+
+  const clearFilters = () => {
+    setSelectedEducation([]);
+    setSelectedJobTypes([]);
+    setSalaryRange(50000);
+    setSubjectSearch('');
+    setLocationSearch('');
+    setKeywordSearch('');
+  };
+
+  const filteredJobs = DUMMY_JOBS.filter(job => {
+    const matchesSubject = job.title.toLowerCase().includes(subjectSearch.toLowerCase()) || job.school.toLowerCase().includes(subjectSearch.toLowerCase());
+    const matchesLocation = job.location.toLowerCase().includes(locationSearch.toLowerCase());
+    const matchesKeyword = job.title.toLowerCase().includes(keywordSearch.toLowerCase()) || job.school.toLowerCase().includes(keywordSearch.toLowerCase());
+
+    if (subjectSearch && !matchesSubject) return false;
+    if (locationSearch && !matchesLocation) return false;
+    if (keywordSearch && !matchesKeyword) return false;
+
+    if (selectedEducation.length > 0 && !selectedEducation.includes(job.education)) return false;
+    if (selectedJobTypes.length > 0 && !selectedJobTypes.some(type => job.type.includes(type))) return false;
+    if (job.salaryMonthly < salaryRange) return false;
+
+    return true;
+  }).sort((a, b) => {
+    if (sortBy === 'Newest First') return b.timePosted - a.timePosted;
+    if (sortBy === 'Oldest First') return a.timePosted - b.timePosted;
+    if (sortBy === 'Highest Salary') return b.salaryMonthly - a.salaryMonthly;
+    if (sortBy === 'Lowest Salary') return a.salaryMonthly - b.salaryMonthly;
+    return 0;
+  });
 
   return (
     <motion.div
@@ -331,11 +469,11 @@ export default function TeacherDashboard() {
                 <div className="td-jobs-search-bar td-desktop-search">
                   <motion.div whileHover={{ scale: 1.02 }} className="td-search-input-group">
                     <FiBriefcase className="td-search-icon" />
-                    <input type="text" placeholder="Subject (e.g., Physics, English)" className="td-interactive-input" />
+                    <input type="text" placeholder="Subject (e.g., Physics, English)" className="td-interactive-input" value={subjectSearch} onChange={e => setSubjectSearch(e.target.value)} />
                   </motion.div>
                   <motion.div whileHover={{ scale: 1.02 }} className="td-search-input-group">
                     <FiMapPin className="td-search-icon" />
-                    <input type="text" placeholder="Benin City, Lagos..." className="td-interactive-input" />
+                    <input type="text" placeholder="Benin City, Lagos..." className="td-interactive-input" value={locationSearch} onChange={e => setLocationSearch(e.target.value)} />
                   </motion.div>
                   <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-btn-primary"><FiSearch /> Find Jobs</motion.button>
                 </div>
@@ -343,7 +481,7 @@ export default function TeacherDashboard() {
                 <div className="td-mobile-jobs-search">
                   <motion.div whileHover={{ scale: 1.02 }} className="td-search-box-mobile">
                     <FiSearch className="td-search-icon" />
-                    <input type="text" placeholder="Role, subject or keyword" className="td-interactive-input" />
+                    <input type="text" placeholder="Role, subject or keyword" className="td-interactive-input" value={keywordSearch} onChange={e => setKeywordSearch(e.target.value)} />
                   </motion.div>
                   <div className="td-mobile-filter-chips">
                     <div className="td-filter-chip td-chip-green"><FiMapPin size={14} /> Lagos</div>
@@ -357,32 +495,35 @@ export default function TeacherDashboard() {
                 <div className="td-jobs-filters td-desktop-only">
                   <div className="td-filter-header">
                     <h3>Filters</h3>
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="td-clear-btn">Clear all</motion.button>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="td-clear-btn" onClick={clearFilters}>Clear all</motion.button>
                   </div>
                   
                   <div className="td-filter-group">
                     <h4>EDUCATION LEVEL</h4>
-                    <label className="td-checkbox-label">
-                      <div className="td-checkbox-custom td-checked"><FiCheck size={12}/></div>
-                      Secondary (SS1-SS3)
-                    </label>
-                    <label className="td-checkbox-label">
-                      <div className="td-checkbox-custom"></div>
-                      Primary School
-                    </label>
-                    <label className="td-checkbox-label">
-                      <div className="td-checkbox-custom"></div>
-                      Tertiary Institution
-                    </label>
+                    {['Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'].map(level => (
+                      <label key={level} className="td-checkbox-label" onClick={() => toggleEducation(level)}>
+                        <div className={`td-checkbox-custom ${selectedEducation.includes(level) ? 'td-checked' : ''}`}>
+                          {selectedEducation.includes(level) && <FiCheck size={12}/>}
+                        </div>
+                        {level}
+                      </label>
+                    ))}
                   </div>
 
                   <div className="td-filter-group">
                     <h4>JOB TYPE</h4>
                     <div className="td-filter-tags">
-                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag td-tag-active">Full-time</motion.span>
-                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag">Part-time</motion.span>
-                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag">Online</motion.span>
-                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag">Contract</motion.span>
+                      {['Full-time', 'Part-time', 'Online', 'Contract'].map(type => (
+                        <motion.span 
+                          key={type}
+                          whileHover={{ scale: 1.05 }} 
+                          whileTap={{ scale: 0.95 }} 
+                          onClick={() => toggleJobType(type)}
+                          className={`td-tag ${selectedJobTypes.includes(type) ? 'td-tag-active' : ''}`}
+                        >
+                          {type}
+                        </motion.span>
+                      ))}
                     </div>
                   </div>
 
@@ -408,139 +549,96 @@ export default function TeacherDashboard() {
 
                 <div className="td-jobs-list-container">
                   <div className="td-jobs-list-header">
-                    <div className="td-desktop-showing">Showing <strong>124 jobs</strong> in Nigeria</div>
+                    <div className="td-desktop-showing">Showing <strong>{filteredJobs.length} jobs</strong> in Nigeria</div>
                     <div className="td-mobile-showing">
                       <h3>Recommended for you</h3>
-                      <span>124 JOBS FOUND</span>
+                      <span>{filteredJobs.length} JOBS FOUND</span>
                     </div>
-                    <div className="td-sort-by td-desktop-only">
-                      Sort by: <strong>Newest First</strong> <FiChevronDown />
+                    <div className="td-sort-by td-desktop-only" style={{ position: 'relative' }}>
+                      Sort by: 
+                      <strong 
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }} 
+                        onClick={() => setShowSortDropdown(!showSortDropdown)}
+                      >
+                        {sortBy} <FiChevronDown />
+                      </strong>
+                      {showSortDropdown && (
+                        <div style={{ position: 'absolute', top: '30px', right: 0, background: '#fff', border: '1px solid #E9ECEF', borderRadius: '8px', padding: '8px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', width: '160px' }}>
+                          {['Newest First', 'Oldest First', 'Highest Salary', 'Lowest Salary'].map(s => (
+                            <div 
+                              key={s} 
+                              onClick={() => { setSortBy(s); setShowSortDropdown(false); }} 
+                              style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '13px', borderRadius: '4px', background: sortBy === s ? '#F1F3F5' : 'transparent', fontWeight: sortBy === s ? '700' : '500', color: sortBy === s ? '#111' : '#495057' }}
+                            >
+                              {s}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
                   <div className="td-feed-list">
-                    <motion.div variants={cardVariants} className="td-feed-card">
-                      <div className="td-fc-header">
-                        <div className="td-fc-icon-wrapper">
-                          <div className="td-fc-icon td-bg-gray">
-                            <FiBriefcase size={20} color="#495057"/>
-                          </div>
-                        </div>
-                        <div className="td-fc-main-info">
-                          <div className="td-fc-title-row">
-                            <h3>Mathematics Tutor – SS2/SS3</h3>
-                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
-                          </div>
-                          <p className="td-fc-school">British International School <span className="td-dot">•</span> Lekki, Lagos State</p>
-                        </div>
-                        <div className="td-fc-badge-desktop"><span className="td-badge-featured"><FiCheck size={12}/> Featured</span></div>
-                      </div>
-                      <div className="td-fc-meta">
-                        <div className="td-fc-meta-item"><FiBriefcase /> Full-time</div>
-                        <div className="td-fc-meta-item"><FiClock /> 2 hours ago</div>
-                      </div>
-                      <div className="td-fc-footer">
-                        <div className="td-fc-salary">₦350,000 <span>/ month</span></div>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
-                      </div>
-                    </motion.div>
+                    {filteredJobs.length > 0 ? filteredJobs.map(job => {
+                      if (job.hot) {
+                        return (
+                          <motion.div key={job.id} variants={cardVariants} className={`td-feed-card td-feed-card-hot ${job.mobileOnly ? 'td-mobile-only' : ''}`}>
+                            <div className="td-hot-header">
+                              <span className="td-hot-badge">HOT VACANCY</span>
+                              <span className="td-hot-time">{job.timeLabel}</span>
+                            </div>
+                            <h3>{job.title}</h3>
+                            <p>{job.school} <span className="td-dot">•</span> {job.location}</p>
+                            <div className="td-hot-salary-range">SALARY RANGE</div>
+                            <div className="td-hot-footer">
+                              <div className="td-hot-salary-value">{job.salaryStr.split(' - ')[0]}</div>
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action">Apply Fast</motion.button>
+                            </div>
+                          </motion.div>
+                        );
+                      }
 
-                    <motion.div variants={cardVariants} className="td-feed-card">
-                      <div className="td-fc-header">
-                        <div className="td-fc-icon-wrapper">
-                          <div className="td-fc-icon td-bg-gold">
-                            <FiBriefcase size={20} color="#947600"/>
+                      return (
+                        <motion.div key={job.id} variants={cardVariants} className={`td-feed-card ${job.mobileOnly ? 'td-mobile-only' : ''}`}>
+                          <div className="td-fc-header">
+                            <div className="td-fc-icon-wrapper">
+                              <div className={`td-fc-icon ${job.color}`}>
+                                <FiBriefcase size={20} color={job.color === 'td-bg-gold' ? '#947600' : job.color === 'td-bg-purple' ? '#5F3DC4' : '#495057'}/>
+                              </div>
+                            </div>
+                            <div className="td-fc-main-info">
+                              <div className="td-fc-title-row">
+                                <h3>{job.title}</h3>
+                                <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
+                              </div>
+                              <p className="td-fc-school">{job.school} <span className="td-dot">•</span> {job.location}</p>
+                            </div>
+                            {job.featured && <div className="td-fc-badge-desktop"><span className="td-badge-featured"><FiCheck size={12}/> Featured</span></div>}
                           </div>
-                        </div>
-                        <div className="td-fc-main-info">
-                          <div className="td-fc-title-row">
-                            <h3>English Language & Literature Teacher</h3>
-                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
+                          <div className="td-fc-meta">
+                            <div className="td-fc-meta-item"><FiBriefcase /> {job.type}</div>
+                            <div className="td-fc-meta-item"><FiClock /> {job.timeLabel}</div>
+                            {job.tags.map(tag => <div key={tag} className="td-fc-meta-tag td-tag-stem">{tag}</div>)}
                           </div>
-                          <p className="td-fc-school">Grace Academy <span className="td-dot">•</span> Benin City, Edo State</p>
-                        </div>
-                      </div>
-                      <div className="td-fc-meta">
-                        <div className="td-fc-meta-item"><FiBriefcase /> Contract</div>
-                        <div className="td-fc-meta-item"><FiClock /> 1 day ago</div>
-                      </div>
-                      <div className="td-fc-footer">
-                        <div className="td-fc-salary">₦180,000 <span>/ month</span></div>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
-                      </div>
-                    </motion.div>
-
-                    <motion.div variants={cardVariants} className="td-feed-card td-feed-card-hot td-mobile-only">
-                      <div className="td-hot-header">
-                        <span className="td-hot-badge">HOT VACANCY</span>
-                        <span className="td-hot-time">Posted 2h ago</span>
-                      </div>
-                      <h3>Vice Principal (Academic)</h3>
-                      <p>Atlantic Hall School <span className="td-dot">•</span> Epe, Lagos</p>
-                      <div className="td-hot-salary-range">SALARY RANGE</div>
-                      <div className="td-hot-footer">
-                        <div className="td-hot-salary-value">₦650k - ₦800k</div>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action">Apply Fast</motion.button>
-                      </div>
-                    </motion.div>
-
-                    <motion.div variants={cardVariants} className="td-feed-card">
-                      <div className="td-fc-header">
-                        <div className="td-fc-icon-wrapper">
-                          <div className="td-fc-icon td-bg-purple">
-                            <FiBriefcase size={20} color="#5F3DC4"/>
+                          <div className="td-fc-footer">
+                            <div className="td-fc-salary">{job.salaryStr.split(' / ')[0]} {job.salaryStr.includes(' / ') && <span>/ {job.salaryStr.split(' / ')[1]}</span>}</div>
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
                           </div>
-                        </div>
-                        <div className="td-fc-main-info">
-                          <div className="td-fc-title-row">
-                            <h3>Physics & Further Maths Expert</h3>
-                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
-                          </div>
-                          <p className="td-fc-school">Home-Schooling Premium <span className="td-dot">•</span> Maitama, Abuja</p>
-                        </div>
+                        </motion.div>
+                      );
+                    }) : (
+                      <div style={{ textAlign: 'center', padding: '40px', color: '#6C757D' }}>
+                        <p>No jobs found matching your criteria.</p>
                       </div>
-                      <div className="td-fc-meta">
-                        <div className="td-fc-meta-item"><FiBriefcase /> Online/Remote</div>
-                        <div className="td-fc-meta-item"><FiClock /> 2 days ago</div>
-                      </div>
-                      <div className="td-fc-footer">
-                        <div className="td-fc-salary">₦15k <span>/ hour</span></div>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
-                      </div>
-                    </motion.div>
-                    
-                    <motion.div variants={cardVariants} className="td-feed-card td-mobile-only">
-                      <div className="td-fc-header">
-                        <div className="td-fc-icon-wrapper">
-                          <div className="td-fc-icon td-bg-gray">
-                            <FiBriefcase size={20} color="#495057"/>
-                          </div>
-                        </div>
-                        <div className="td-fc-main-info">
-                          <div className="td-fc-title-row">
-                            <h3>Computer Science Tutor</h3>
-                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
-                          </div>
-                          <p className="td-fc-school">Grange School <span className="td-dot">•</span> Ikeja GRA</p>
-                        </div>
-                      </div>
-                      <div className="td-fc-meta">
-                        <div className="td-fc-meta-item"><FiBriefcase /> Part time</div>
-                        <div className="td-fc-meta-item"><FiClock /> 1 day ago</div>
-                        <div className="td-fc-meta-tag td-tag-stem">STEM</div>
-                      </div>
-                      <div className="td-fc-footer">
-                        <div className="td-fc-salary">₦180,000 <span>/ month</span></div>
-                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
-                      </div>
-                    </motion.div>
-
+                    )}
                   </div>
                   
-                  <div className="td-load-more-container">
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn">Load More Jobs</motion.button>
-                    <p>Showing 3 of 124 results</p>
-                  </div>
+                  {filteredJobs.length > 0 && (
+                    <div className="td-load-more-container">
+                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn">Load More Jobs</motion.button>
+                      <p>Showing {filteredJobs.length > 3 ? 3 : filteredJobs.length} of {filteredJobs.length} results</p>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>
