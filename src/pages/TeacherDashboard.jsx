@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import schoolCampus from '../assets/school campus.jpg';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
-  FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock
+  FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
+  FiBook, FiShare2, FiLink, FiArrowLeft, FiCheckCircle, FiDollarSign
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -19,20 +21,44 @@ const cardVariants = {
 const DUMMY_JOBS = [
   {
     id: 1,
-    title: 'Mathematics Tutor – SS2/SS3',
+    title: 'Senior Mathematics Lead',
     school: 'British International School',
-    location: 'Lekki, Lagos State',
+    location: 'Lekki, Lagos',
     type: 'Full-time',
     timePosted: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
     timeLabel: '2 hours ago',
-    salaryStr: '₦350,000 / month',
+    salaryStr: '₦350k',
     salaryMonthly: 350000,
     featured: true,
     hot: false,
     color: 'td-bg-gray',
-    education: 'Secondary (SS1-SS3)',
+    education: 'Senior Sec.',
+    subject: 'Mathematics',
     tags: [],
-    mobileOnly: false
+    mobileOnly: false,
+    about: "We are seeking a visionary Mathematics educator to lead our Senior Secondary department. This isn't just a teaching role; it's an opportunity to shape the pedagogical approach of one of Nigeria's most historic institutions.\n\nAs the Senior Mathematics Lead, you will be responsible for driving academic excellence, mentoring junior faculty, and ensuring our students are prepared for both national and international examinations with absolute confidence.",
+    responsibilities: [
+      "Design and implement a dynamic curriculum that bridges the gap between WAEC and IGCSE standards.",
+      "Lead weekly departmental strategy sessions to review student performance data and pedagogical shifts.",
+      "Spearhead the 'Maths for All' initiative, providing remedial support for struggling students and advanced tracks for high achievers.",
+      "Maintain regular communication with parents regarding student progress and holistic development."
+    ],
+    requirements: {
+      essential: [
+        "B.Ed or B.Sc in Mathematics with PGDE.",
+        "TRCN Registration is mandatory.",
+        "Minimum 7 years teaching experience."
+      ],
+      desirable: [
+        "Master's degree in Education.",
+        "Experience with Google Classroom.",
+        "Previous leadership experience."
+      ]
+    },
+    employerInfo: "\"Providing a tradition of excellence since 1928, St. Gregory's College is dedicated to the holistic development of the Nigerian child through discipline and hard work.\"\n\nLocated in the heart of Ikoyi, our campus provides a serene and technologically advanced environment for both students and staff. We pride ourselves on our community of educators who are more than teachers—they are mentors.",
+    employerImage: schoolCampus,
+    deadline: "October 24th, 2024",
+    verifiedRecruiter: true
   },
   {
     id: 2,
@@ -106,6 +132,7 @@ const DUMMY_JOBS = [
 
 export default function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [selectedJob, setSelectedJob] = useState(null);
   
   // Job Feeds Filters State
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -460,7 +487,7 @@ export default function TeacherDashboard() {
             </>
           )}
 
-          {activeTab === 'jobs' && (
+          {activeTab === 'jobs' && !selectedJob && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-jobs-tab">
               <div className="td-jobs-hero">
                 <h1>Find your next <span className="td-highlight">teaching milestone.</span></h1>
@@ -484,9 +511,29 @@ export default function TeacherDashboard() {
                     <input type="text" placeholder="Role, subject or keyword" className="td-interactive-input" value={keywordSearch} onChange={e => setKeywordSearch(e.target.value)} />
                   </motion.div>
                   <div className="td-mobile-filter-chips">
-                    <div className="td-filter-chip td-chip-green"><FiMapPin size={14} /> Lagos</div>
-                    <div className="td-filter-chip td-chip-lightgreen"><FiClock size={14} /> Full-time</div>
-                    <div className="td-filter-chip td-chip-gray"><FiBriefcase size={14} /> ₦250k+</div>
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                      className={`td-filter-chip ${locationSearch.toLowerCase().includes('lagos') ? 'td-chip-green' : 'td-chip-gray'}`}
+                      onClick={() => setLocationSearch(locationSearch.toLowerCase().includes('lagos') ? '' : 'Lagos')}
+                    >
+                      <FiMapPin size={14} /> Lagos
+                    </motion.button>
+                    
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                      className={`td-filter-chip ${selectedJobTypes.includes('Full-time') ? 'td-chip-lightgreen' : 'td-chip-gray'}`}
+                      onClick={() => toggleJobType('Full-time')}
+                    >
+                      <FiClock size={14} /> Full-time
+                    </motion.button>
+                    
+                    <motion.button 
+                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                      className={`td-filter-chip ${salaryRange >= 250000 ? 'td-chip-green' : 'td-chip-gray'}`}
+                      onClick={() => setSalaryRange(salaryRange >= 250000 ? 50000 : 250000)}
+                    >
+                      <FiBriefcase size={14} /> ₦250k+
+                    </motion.button>
                   </div>
                 </div>
               </div>
@@ -592,7 +639,7 @@ export default function TeacherDashboard() {
                             <div className="td-hot-salary-range">SALARY RANGE</div>
                             <div className="td-hot-footer">
                               <div className="td-hot-salary-value">{job.salaryStr.split(' - ')[0]}</div>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action">Apply Fast</motion.button>
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={() => setSelectedJob(job)}>View Details</motion.button>
                             </div>
                           </motion.div>
                         );
@@ -622,7 +669,7 @@ export default function TeacherDashboard() {
                           </div>
                           <div className="td-fc-footer">
                             <div className="td-fc-salary">{job.salaryStr.split(' / ')[0]} {job.salaryStr.includes(' / ') && <span>/ {job.salaryStr.split(' / ')[1]}</span>}</div>
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
+                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => setSelectedJob(job)}>View Details</motion.button>
                           </div>
                         </motion.div>
                       );
@@ -639,6 +686,152 @@ export default function TeacherDashboard() {
                       <p>Showing {filteredJobs.length > 3 ? 3 : filteredJobs.length} of {filteredJobs.length} results</p>
                     </div>
                   )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'jobs' && selectedJob && (
+            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-job-details-page">
+              <div className="td-jd-back-nav" onClick={() => setSelectedJob(null)}>
+                <FiArrowLeft /> Go Back to Job Feeds
+              </div>
+
+              <div className="td-jd-content-wrapper">
+                {/* Main Content */}
+                <div className="td-jd-main">
+                  {selectedJob.featured && <div className="td-jd-featured-badge">FEATURED ROLE</div>}
+                  
+                  <div className="td-jd-header-block">
+                    <div className="td-jd-logo-placeholder"><span>{selectedJob.school.charAt(0)}</span></div>
+                    <div className="td-jd-header-text">
+                      <h1>{selectedJob.title}</h1>
+                      <p>{selectedJob.school}</p>
+                    </div>
+                  </div>
+
+                  <div className="td-jd-info-pills">
+                    <div className="td-jd-pill">
+                      <div className="td-jd-pill-icon"><FiMapPin /></div>
+                      <div className="td-jd-pill-text">
+                        <span>LOCATION</span>
+                        <strong>{selectedJob.location}</strong>
+                      </div>
+                    </div>
+                    <div className="td-jd-pill">
+                      <div className="td-jd-pill-icon"><FiDollarSign /></div>
+                      <div className="td-jd-pill-text">
+                        <span>SALARY</span>
+                        <strong>{selectedJob.salaryStr}</strong>
+                      </div>
+                    </div>
+                    <div className="td-jd-pill">
+                      <div className="td-jd-pill-icon"><FiClock /></div>
+                      <div className="td-jd-pill-text">
+                        <span>TYPE</span>
+                        <strong>{selectedJob.type}</strong>
+                      </div>
+                    </div>
+                    <div className="td-jd-pill">
+                      <div className="td-jd-pill-icon"><FiCheckCircle /></div>
+                      <div className="td-jd-pill-text">
+                        <span>LEVEL</span>
+                        <strong>{selectedJob.education}</strong>
+                      </div>
+                    </div>
+                    <div className="td-jd-pill">
+                      <div className="td-jd-pill-icon"><FiBook /></div>
+                      <div className="td-jd-pill-text">
+                        <span>SUBJECT</span>
+                        <strong>{selectedJob.subject || 'General'}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="td-jd-section">
+                    <h2 className="td-jd-section-title"><span></span> About the job</h2>
+                    <div className="td-jd-text-content">
+                      {selectedJob.about ? selectedJob.about.split('\n\n').map((p, i) => <p key={i}>{p}</p>) : <p>Details coming soon.</p>}
+                    </div>
+                  </div>
+
+                  <div className="td-jd-card-section">
+                    <h2>Responsibilities</h2>
+                    <ul className="td-jd-check-list">
+                      {selectedJob.responsibilities ? selectedJob.responsibilities.map((r, i) => (
+                        <li key={i}><FiCheckCircle className="td-jd-check-icon" /> {r}</li>
+                      )) : <li>General teaching responsibilities.</li>}
+                    </ul>
+                  </div>
+
+                  <div className="td-jd-section">
+                    <h2>Requirements / Qualifications</h2>
+                    <div className="td-jd-req-grid">
+                      <div className="td-jd-req-card">
+                        <h3 className="td-jd-req-essential">Essential</h3>
+                        <ul>
+                          {selectedJob.requirements?.essential ? selectedJob.requirements.essential.map((r, i) => (
+                            <li key={i}>• {r}</li>
+                          )) : <li>• Standard teaching degree</li>}
+                        </ul>
+                      </div>
+                      <div className="td-jd-req-card">
+                        <h3 className="td-jd-req-desirable">Desirable</h3>
+                        <ul>
+                          {selectedJob.requirements?.desirable ? selectedJob.requirements.desirable.map((r, i) => (
+                            <li key={i}>• {r}</li>
+                          )) : <li>• Additional certifications</li>}
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="td-jd-section">
+                    <h2>About the employer</h2>
+                    <div className="td-jd-employer-block">
+                      <div className="td-jd-employer-text">
+                        {selectedJob.employerInfo ? selectedJob.employerInfo.split('\n\n').map((p, i) => <p key={i}>{p}</p>) : <p>School information not provided.</p>}
+                      </div>
+                      <div className="td-jd-employer-img">
+                        <img src={selectedJob.employerImage || schoolCampus} alt="School Campus" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Sidebar */}
+                <div className="td-jd-sidebar">
+                  <div className="td-jd-apply-card">
+                    <div className="td-jd-deadline">
+                      <span>APPLICATION DEADLINE</span>
+                      <strong>{selectedJob.deadline || 'Ongoing'}</strong>
+                    </div>
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-jd-apply-btn">Apply Now</motion.button>
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-jd-save-btn"><FiBookmark /> Save Job</motion.button>
+                    
+                    <div className="td-jd-share">
+                      <span>Share this role with your network:</span>
+                      <div className="td-jd-share-icons">
+                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><FiShare2 /></motion.button>
+                        <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}><FiLink /></motion.button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {selectedJob.verifiedRecruiter && (
+                    <div className="td-jd-verified-card">
+                      <div className="td-jd-vc-header">
+                        <FiCheckCircle className="td-jd-vc-icon" />
+                        <strong>Verified Recruiter</strong>
+                      </div>
+                      <p>This school has a 94% response rate for applicants via Staffroom in the last 30 days.</p>
+                    </div>
+                  )}
+
+                  <div className="td-jd-help-card">
+                    <strong>Need help recruiting?</strong>
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-jd-post-btn">Post a Job</motion.button>
+                  </div>
                 </div>
               </div>
             </motion.div>
@@ -1253,9 +1446,9 @@ export default function TeacherDashboard() {
           .td-search-box-mobile { background: #E9ECEF; border-radius: 24px; display: flex; align-items: center; padding: 12px 16px; margin-bottom: 16px; }
           .td-search-box-mobile input { border: none; background: transparent; outline: none; margin-left: 12px; width: 100%; font-size: 14px; }
           .td-mobile-filter-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
-          .td-filter-chip { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
-          .td-chip-green { background: #277a16; color: white; }
-          .td-chip-lightgreen { background: #B5F0A5; color: #111; }
+          .td-filter-chip { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0; cursor: pointer; border: none; outline: none; }
+          .td-chip-green { background: #277a16; color: white; border: 1px solid #277a16; }
+          .td-chip-lightgreen { background: #B5F0A5; color: #111; border: 1px solid #B5F0A5; }
           .td-chip-gray { background: #F8F9FA; color: #111; border: 1px solid #E9ECEF; }
 
           .td-jobs-filters { display: none; }
@@ -1515,6 +1708,389 @@ export default function TeacherDashboard() {
           }
         }
 
+        /* ═══════════════════════════════════════
+           JOB DETAILS PAGE
+        ═══════════════════════════════════════ */
+        .td-job-details-page {
+          padding: 32px 48px;
+          max-width: 1200px;
+          margin: 0 auto;
+        }
+
+        .td-jd-back-nav {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #495057;
+          font-weight: 600;
+          font-size: 14px;
+          cursor: pointer;
+          margin-bottom: 24px;
+          transition: 0.2s;
+        }
+        .td-jd-back-nav:hover { color: #1CCB43; }
+
+        .td-jd-content-wrapper {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          gap: 40px;
+          align-items: start;
+        }
+
+        .td-jd-main {
+          display: flex;
+          flex-direction: column;
+          gap: 32px;
+        }
+
+        .td-jd-featured-badge {
+          display: inline-block;
+          background: #B5F0A5;
+          color: #111;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 6px 12px;
+          border-radius: 4px;
+          letter-spacing: 0.5px;
+          margin-bottom: 16px;
+        }
+
+        .td-jd-header-block {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+        }
+        .td-jd-logo-placeholder {
+          width: 64px;
+          height: 64px;
+          border-radius: 50%;
+          background: #F1F3F5;
+          border: 1px solid #E9ECEF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 24px;
+          font-weight: 800;
+          color: #ADB5BD;
+        }
+        .td-jd-header-text h1 {
+          font-size: 32px;
+          font-weight: 800;
+          color: #212529;
+          margin-bottom: 8px;
+          line-height: 1.2;
+        }
+        .td-jd-header-text p {
+          font-size: 16px;
+          color: #495057;
+          font-weight: 500;
+        }
+
+        .td-jd-info-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+        .td-jd-pill {
+          background: #F8F9FA;
+          border-radius: 16px;
+          padding: 12px 20px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .td-jd-pill-icon {
+          color: #277A16;
+          font-size: 18px;
+        }
+        .td-jd-pill-text {
+          display: flex;
+          flex-direction: column;
+        }
+        .td-jd-pill-text span {
+          font-size: 10px;
+          color: #868E96;
+          text-transform: uppercase;
+          font-weight: 700;
+          margin-bottom: 2px;
+        }
+        .td-jd-pill-text strong {
+          font-size: 14px;
+          color: #212529;
+          font-weight: 700;
+        }
+
+        .td-jd-section h2 {
+          font-size: 20px;
+          font-weight: 800;
+          color: #212529;
+          margin-bottom: 16px;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+        .td-jd-section-title span {
+          display: inline-block;
+          width: 24px;
+          height: 3px;
+          background: #277A16;
+          border-radius: 2px;
+        }
+        .td-jd-text-content {
+          font-size: 15px;
+          color: #495057;
+          line-height: 1.7;
+        }
+        .td-jd-text-content p {
+          margin-bottom: 16px;
+        }
+
+        .td-jd-card-section {
+          background: #fff;
+          border-radius: 24px;
+          padding: 32px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+        }
+        .td-jd-card-section h2 {
+          font-size: 20px;
+          font-weight: 800;
+          color: #212529;
+          margin-bottom: 24px;
+        }
+        .td-jd-check-list {
+          list-style: none;
+        }
+        .td-jd-check-list li {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          font-size: 14px;
+          color: #495057;
+          line-height: 1.6;
+          margin-bottom: 16px;
+        }
+        .td-jd-check-icon {
+          color: #1CCB43;
+          font-size: 18px;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+
+        .td-jd-req-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+        }
+        .td-jd-req-card {
+          background: #fff;
+          border-radius: 24px;
+          padding: 24px;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+          border: 1px solid #E9ECEF;
+        }
+        .td-jd-req-essential {
+          color: #277A16;
+          font-weight: 800;
+          font-size: 16px;
+          margin-bottom: 16px;
+        }
+        .td-jd-req-desirable {
+          color: #6C757D;
+          font-weight: 800;
+          font-size: 16px;
+          margin-bottom: 16px;
+        }
+        .td-jd-req-card ul {
+          list-style: none;
+        }
+        .td-jd-req-card li {
+          font-size: 13px;
+          color: #495057;
+          line-height: 1.6;
+          margin-bottom: 12px;
+        }
+
+        .td-jd-employer-block {
+          display: flex;
+          gap: 32px;
+          align-items: center;
+        }
+        .td-jd-employer-text {
+          flex: 1;
+          font-size: 14px;
+          color: #495057;
+          line-height: 1.7;
+        }
+        .td-jd-employer-text p {
+          margin-bottom: 16px;
+        }
+        .td-jd-employer-text p:first-child {
+          font-style: italic;
+          color: #212529;
+          font-weight: 500;
+        }
+        .td-jd-employer-img {
+          flex-shrink: 0;
+          width: 240px;
+          height: 160px;
+          border-radius: 16px;
+          overflow: hidden;
+        }
+        .td-jd-employer-img img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        /* Right Sidebar */
+        .td-jd-apply-card {
+          background: #fff;
+          border-radius: 32px;
+          padding: 32px;
+          box-shadow: 0 10px 40px rgba(0,0,0,0.05);
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-bottom: 24px;
+          text-align: center;
+        }
+        .td-jd-deadline {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-bottom: 8px;
+        }
+        .td-jd-deadline span {
+          font-size: 10px;
+          color: #868E96;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+        .td-jd-deadline strong {
+          color: #D93025;
+          font-weight: 800;
+          font-size: 16px;
+        }
+        .td-jd-apply-btn {
+          background: #1CCB43;
+          color: white;
+          border: none;
+          padding: 16px;
+          border-radius: 24px;
+          font-weight: 800;
+          font-size: 16px;
+          cursor: pointer;
+        }
+        .td-jd-save-btn {
+          background: #F1F3F5;
+          color: #212529;
+          border: none;
+          padding: 16px;
+          border-radius: 24px;
+          font-weight: 700;
+          font-size: 15px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+        }
+        .td-jd-share {
+          margin-top: 16px;
+        }
+        .td-jd-share span {
+          display: block;
+          font-size: 12px;
+          color: #6C757D;
+          margin-bottom: 12px;
+        }
+        .td-jd-share-icons {
+          display: flex;
+          justify-content: center;
+          gap: 12px;
+        }
+        .td-jd-share-icons button {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #F8F9FA;
+          border: 1px solid #E9ECEF;
+          color: #495057;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+        }
+
+        .td-jd-verified-card {
+          background: #E8F5E9;
+          border-radius: 24px;
+          padding: 24px;
+          margin-bottom: 24px;
+        }
+        .td-jd-vc-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #277A16;
+          font-weight: 800;
+          margin-bottom: 8px;
+        }
+        .td-jd-vc-icon {
+          font-size: 18px;
+        }
+        .td-jd-verified-card p {
+          font-size: 12px;
+          color: #495057;
+          line-height: 1.5;
+        }
+
+        .td-jd-help-card {
+          background: #DDF3E4;
+          border-radius: 16px;
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          align-items: flex-start;
+        }
+        .td-jd-help-card strong {
+          font-size: 13px;
+          color: #111;
+        }
+        .td-jd-post-btn {
+          background: #1CCB43;
+          color: white;
+          border: none;
+          padding: 8px 16px;
+          border-radius: 16px;
+          font-weight: 700;
+          font-size: 12px;
+          cursor: pointer;
+        }
+
+        @media (max-width: 900px) {
+          .td-jd-content-wrapper {
+            grid-template-columns: 1fr;
+          }
+          .td-jd-employer-block {
+            flex-direction: column;
+          }
+          .td-jd-employer-img {
+            width: 100%;
+          }
+          .td-jd-req-grid {
+            grid-template-columns: 1fr;
+          }
+          .td-job-details-page {
+            padding: 24px 16px;
+          }
+          .td-jd-header-block {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 16px;
+          }
+        }
       `}</style>
     </motion.div>
   );
