@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
-  FiMapPin, FiEye, FiZap, FiHome, FiCpu
+  FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -17,7 +17,8 @@ const cardVariants = {
 };
 
 export default function TeacherDashboard() {
-  const [mobileTab, setMobileTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [salaryRange, setSalaryRange] = useState(250000);
 
   return (
     <motion.div
@@ -36,22 +37,22 @@ export default function TeacherDashboard() {
         </div>
 
         <nav className="td-nav">
-          <div className="td-nav-item td-nav-item--active">
+          <div className={`td-nav-item ${activeTab === 'dashboard' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('dashboard')}>
             <FiGrid /> <span>Dashboard</span>
           </div>
-          <div className="td-nav-item">
+          <div className={`td-nav-item ${activeTab === 'jobs' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('jobs')}>
             <FiBriefcase /> <span>Job Feeds</span>
           </div>
-          <div className="td-nav-item">
+          <div className={`td-nav-item ${activeTab === 'notifications' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('notifications')}>
             <FiBell /> <span>Notifications</span>
           </div>
-          <div className="td-nav-item">
+          <div className={`td-nav-item ${activeTab === 'applications' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('applications')}>
             <FiFileText /> <span>Applications</span>
           </div>
-          <div className="td-nav-item">
+          <div className={`td-nav-item ${activeTab === 'messages' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('messages')}>
             <FiMessageSquare /> <span>Messages</span>
           </div>
-          <div className="td-nav-item">
+          <div className={`td-nav-item ${activeTab === 'settings' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('settings')}>
             <FiSettings /> <span>Settings</span>
           </div>
         </nav>
@@ -101,6 +102,8 @@ export default function TeacherDashboard() {
 
         <div className="td-content">
 
+          {activeTab === 'dashboard' && (
+            <>
           {/* ── Welcome Area ── */}
           <div className="td-welcome-header">
             <div>
@@ -316,6 +319,232 @@ export default function TeacherDashboard() {
               </motion.div>
             </div>
           </div>
+            </>
+          )}
+
+          {activeTab === 'jobs' && (
+            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-jobs-tab">
+              <div className="td-jobs-hero">
+                <h1>Find your next <span className="td-highlight">teaching milestone.</span></h1>
+                <p>Connecting Nigeria's finest educators with prestigious academic institutions.</p>
+                
+                <div className="td-jobs-search-bar td-desktop-search">
+                  <motion.div whileHover={{ scale: 1.02 }} className="td-search-input-group">
+                    <FiBriefcase className="td-search-icon" />
+                    <input type="text" placeholder="Subject (e.g., Physics, English)" className="td-interactive-input" />
+                  </motion.div>
+                  <motion.div whileHover={{ scale: 1.02 }} className="td-search-input-group">
+                    <FiMapPin className="td-search-icon" />
+                    <input type="text" placeholder="Benin City, Lagos..." className="td-interactive-input" />
+                  </motion.div>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-btn-primary"><FiSearch /> Find Jobs</motion.button>
+                </div>
+
+                <div className="td-mobile-jobs-search">
+                  <motion.div whileHover={{ scale: 1.02 }} className="td-search-box-mobile">
+                    <FiSearch className="td-search-icon" />
+                    <input type="text" placeholder="Role, subject or keyword" className="td-interactive-input" />
+                  </motion.div>
+                  <div className="td-mobile-filter-chips">
+                    <div className="td-filter-chip td-chip-green"><FiMapPin size={14} /> Lagos</div>
+                    <div className="td-filter-chip td-chip-lightgreen"><FiClock size={14} /> Full-time</div>
+                    <div className="td-filter-chip td-chip-gray"><FiBriefcase size={14} /> ₦250k+</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="td-jobs-layout">
+                <div className="td-jobs-filters td-desktop-only">
+                  <div className="td-filter-header">
+                    <h3>Filters</h3>
+                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="td-clear-btn">Clear all</motion.button>
+                  </div>
+                  
+                  <div className="td-filter-group">
+                    <h4>EDUCATION LEVEL</h4>
+                    <label className="td-checkbox-label">
+                      <div className="td-checkbox-custom td-checked"><FiCheck size={12}/></div>
+                      Secondary (SS1-SS3)
+                    </label>
+                    <label className="td-checkbox-label">
+                      <div className="td-checkbox-custom"></div>
+                      Primary School
+                    </label>
+                    <label className="td-checkbox-label">
+                      <div className="td-checkbox-custom"></div>
+                      Tertiary Institution
+                    </label>
+                  </div>
+
+                  <div className="td-filter-group">
+                    <h4>JOB TYPE</h4>
+                    <div className="td-filter-tags">
+                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag td-tag-active">Full-time</motion.span>
+                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag">Part-time</motion.span>
+                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag">Online</motion.span>
+                      <motion.span whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-tag">Contract</motion.span>
+                    </div>
+                  </div>
+
+                  <div className="td-filter-group">
+                    <h4>MONTHLY SALARY (₦): ₦{salaryRange.toLocaleString()}</h4>
+                    <div className="td-progress-scroll-wrapper">
+                      <input 
+                        type="range" 
+                        min="50000" 
+                        max="1000000" 
+                        step="10000"
+                        value={salaryRange} 
+                        onChange={(e) => setSalaryRange(e.target.value)}
+                        className="td-progress-scroll-input" 
+                      />
+                      <div className="td-range-labels">
+                        <span>₦50k</span>
+                        <span>₦1M+</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="td-jobs-list-container">
+                  <div className="td-jobs-list-header">
+                    <div className="td-desktop-showing">Showing <strong>124 jobs</strong> in Nigeria</div>
+                    <div className="td-mobile-showing">
+                      <h3>Recommended for you</h3>
+                      <span>124 JOBS FOUND</span>
+                    </div>
+                    <div className="td-sort-by td-desktop-only">
+                      Sort by: <strong>Newest First</strong> <FiChevronDown />
+                    </div>
+                  </div>
+
+                  <div className="td-feed-list">
+                    <motion.div variants={cardVariants} className="td-feed-card">
+                      <div className="td-fc-header">
+                        <div className="td-fc-icon-wrapper">
+                          <div className="td-fc-icon td-bg-gray">
+                            <FiBriefcase size={20} color="#495057"/>
+                          </div>
+                        </div>
+                        <div className="td-fc-main-info">
+                          <div className="td-fc-title-row">
+                            <h3>Mathematics Tutor – SS2/SS3</h3>
+                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
+                          </div>
+                          <p className="td-fc-school">British International School <span className="td-dot">•</span> Lekki, Lagos State</p>
+                        </div>
+                        <div className="td-fc-badge-desktop"><span className="td-badge-featured"><FiCheck size={12}/> Featured</span></div>
+                      </div>
+                      <div className="td-fc-meta">
+                        <div className="td-fc-meta-item"><FiBriefcase /> Full-time</div>
+                        <div className="td-fc-meta-item"><FiClock /> 2 hours ago</div>
+                      </div>
+                      <div className="td-fc-footer">
+                        <div className="td-fc-salary">₦350,000 <span>/ month</span></div>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
+                      </div>
+                    </motion.div>
+
+                    <motion.div variants={cardVariants} className="td-feed-card">
+                      <div className="td-fc-header">
+                        <div className="td-fc-icon-wrapper">
+                          <div className="td-fc-icon td-bg-gold">
+                            <FiBriefcase size={20} color="#947600"/>
+                          </div>
+                        </div>
+                        <div className="td-fc-main-info">
+                          <div className="td-fc-title-row">
+                            <h3>English Language & Literature Teacher</h3>
+                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
+                          </div>
+                          <p className="td-fc-school">Grace Academy <span className="td-dot">•</span> Benin City, Edo State</p>
+                        </div>
+                      </div>
+                      <div className="td-fc-meta">
+                        <div className="td-fc-meta-item"><FiBriefcase /> Contract</div>
+                        <div className="td-fc-meta-item"><FiClock /> 1 day ago</div>
+                      </div>
+                      <div className="td-fc-footer">
+                        <div className="td-fc-salary">₦180,000 <span>/ month</span></div>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
+                      </div>
+                    </motion.div>
+
+                    <motion.div variants={cardVariants} className="td-feed-card td-feed-card-hot td-mobile-only">
+                      <div className="td-hot-header">
+                        <span className="td-hot-badge">HOT VACANCY</span>
+                        <span className="td-hot-time">Posted 2h ago</span>
+                      </div>
+                      <h3>Vice Principal (Academic)</h3>
+                      <p>Atlantic Hall School <span className="td-dot">•</span> Epe, Lagos</p>
+                      <div className="td-hot-salary-range">SALARY RANGE</div>
+                      <div className="td-hot-footer">
+                        <div className="td-hot-salary-value">₦650k - ₦800k</div>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action">Apply Fast</motion.button>
+                      </div>
+                    </motion.div>
+
+                    <motion.div variants={cardVariants} className="td-feed-card">
+                      <div className="td-fc-header">
+                        <div className="td-fc-icon-wrapper">
+                          <div className="td-fc-icon td-bg-purple">
+                            <FiBriefcase size={20} color="#5F3DC4"/>
+                          </div>
+                        </div>
+                        <div className="td-fc-main-info">
+                          <div className="td-fc-title-row">
+                            <h3>Physics & Further Maths Expert</h3>
+                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
+                          </div>
+                          <p className="td-fc-school">Home-Schooling Premium <span className="td-dot">•</span> Maitama, Abuja</p>
+                        </div>
+                      </div>
+                      <div className="td-fc-meta">
+                        <div className="td-fc-meta-item"><FiBriefcase /> Online/Remote</div>
+                        <div className="td-fc-meta-item"><FiClock /> 2 days ago</div>
+                      </div>
+                      <div className="td-fc-footer">
+                        <div className="td-fc-salary">₦15k <span>/ hour</span></div>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
+                      </div>
+                    </motion.div>
+                    
+                    <motion.div variants={cardVariants} className="td-feed-card td-mobile-only">
+                      <div className="td-fc-header">
+                        <div className="td-fc-icon-wrapper">
+                          <div className="td-fc-icon td-bg-gray">
+                            <FiBriefcase size={20} color="#495057"/>
+                          </div>
+                        </div>
+                        <div className="td-fc-main-info">
+                          <div className="td-fc-title-row">
+                            <h3>Computer Science Tutor</h3>
+                            <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
+                          </div>
+                          <p className="td-fc-school">Grange School <span className="td-dot">•</span> Ikeja GRA</p>
+                        </div>
+                      </div>
+                      <div className="td-fc-meta">
+                        <div className="td-fc-meta-item"><FiBriefcase /> Part time</div>
+                        <div className="td-fc-meta-item"><FiClock /> 1 day ago</div>
+                        <div className="td-fc-meta-tag td-tag-stem">STEM</div>
+                      </div>
+                      <div className="td-fc-footer">
+                        <div className="td-fc-salary">₦180,000 <span>/ month</span></div>
+                        <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action">View Details</motion.button>
+                      </div>
+                    </motion.div>
+
+                  </div>
+                  
+                  <div className="td-load-more-container">
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn">Load More Jobs</motion.button>
+                    <p>Showing 3 of 124 results</p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 
@@ -325,7 +554,7 @@ export default function TeacherDashboard() {
       {/* ── Mobile Bottom Nav ── */}
       <nav className="td-mobile-bottomnav">
         {[
-          { id: 'home', icon: <FiHome />, label: 'HOME' },
+          { id: 'dashboard', icon: <FiHome />, label: 'HOME' },
           { id: 'jobs', icon: <FiBriefcase />, label: 'JOBS' },
           { id: 'application', icon: <FiFileText />, label: 'APPLICATIONS' },
           { id: 'profile', icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>, label: 'PROFILE' },
@@ -333,8 +562,8 @@ export default function TeacherDashboard() {
         ].map(tab => (
           <button
             key={tab.id}
-            className={`td-bottomnav-tab ${mobileTab === tab.id ? 'td-bottomnav-tab--active' : ''}`}
-            onClick={() => setMobileTab(tab.id)}
+            className={`td-bottomnav-tab ${activeTab === tab.id ? 'td-bottomnav-tab--active' : ''}`}
+            onClick={() => setActiveTab(tab.id)}
           >
             <span className="td-bottomnav-icon">{tab.icon}</span>
             <span className="td-bottomnav-label">{tab.label}</span>
@@ -778,6 +1007,121 @@ export default function TeacherDashboard() {
         .td-mobile-bottomnav { display: none; }
 
         /* ═══════════════════════════════════════
+           JOB FEEDS TAB
+        ═══════════════════════════════════════ */
+        .td-jobs-tab { display: flex; flex-direction: column; }
+        .td-jobs-hero { margin-bottom: 32px; }
+        .td-jobs-hero h1 { font-size: 36px; font-weight: 800; color: #111; margin-bottom: 8px; }
+        .td-highlight { color: #1CCB43; }
+        .td-jobs-hero p { color: #6C757D; font-size: 15px; margin-bottom: 24px; max-width: 500px; }
+        
+        .td-desktop-search { display: flex; gap: 16px; background: #fff; padding: 12px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
+        .td-search-input-group { flex: 1; display: flex; align-items: center; background: #F8F9FA; padding: 12px 16px; border-radius: 12px; gap: 12px; }
+        .td-search-input-group input { border: none; background: transparent; outline: none; width: 100%; font-size: 14px; }
+        .td-btn-primary { background: #0b7a24; color: white; border: none; padding: 0 24px; border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; }
+        .td-btn-primary:hover { background: #09611c; }
+        
+        .td-mobile-jobs-search { display: none; }
+
+        .td-jobs-layout { display: flex; gap: 32px; align-items: flex-start; }
+        .td-jobs-filters { width: 260px; flex-shrink: 0; }
+        .td-filter-header { display: flex; justify-content: space-between; margin-bottom: 24px; align-items: center; }
+        .td-filter-header h3 { font-size: 16px; font-weight: 800; }
+        .td-clear-btn { background: none; border: none; color: #1CCB43; font-size: 12px; font-weight: 600; cursor: pointer; }
+        
+        .td-filter-group { margin-bottom: 32px; }
+        .td-filter-group h4 { font-size: 12px; color: #6C757D; font-weight: 800; margin-bottom: 16px; letter-spacing: 0.5px; }
+        .td-checkbox-label { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #495057; margin-bottom: 12px; cursor: pointer; }
+        .td-checkbox-custom { width: 20px; height: 20px; border-radius: 6px; border: 2px solid #DEE2E6; display: flex; align-items: center; justify-content: center; }
+        .td-checkbox-custom.td-checked { background: #1CCB43; border-color: #1CCB43; color: white; }
+        
+        .td-filter-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+        .td-tag { padding: 8px 16px; border-radius: 20px; background: #E9ECEF; color: #495057; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .td-tag-active { background: #B5F0A5; color: #111; }
+        
+        .td-progress-scroll-wrapper { position: relative; padding-top: 10px; }
+        .td-progress-scroll-input {
+          -webkit-appearance: none;
+          width: 100%;
+          height: 6px;
+          background: #DEE2E6;
+          border-radius: 3px;
+          outline: none;
+          margin-bottom: 12px;
+        }
+        .td-progress-scroll-input::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 20px;
+          height: 20px;
+          background: white;
+          border: 3px solid #1CCB43;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .td-progress-scroll-input::-webkit-slider-thumb:hover {
+          transform: scale(1.2);
+          box-shadow: 0 0 10px rgba(28,203,67,0.4);
+        }
+        .td-progress-scroll-input::-moz-range-thumb {
+          width: 20px;
+          height: 20px;
+          background: white;
+          border: 3px solid #1CCB43;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: 0.2s;
+        }
+        .td-progress-scroll-input::-moz-range-thumb:hover {
+          transform: scale(1.2);
+        }
+        .td-range-labels { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #111; }
+        
+        .td-interactive-input { border: none; background: transparent; outline: none; width: 100%; font-size: 14px; transition: 0.3s; }
+        .td-interactive-input:focus { color: #1CCB43; }
+        .td-search-input-group { border: 2px solid transparent; transition: 0.3s; }
+        .td-search-input-group:focus-within { border-color: #1CCB43; background: #fff; box-shadow: 0 4px 12px rgba(28,203,67,0.1); }
+
+        .td-jobs-list-container { flex: 1; }
+        .td-jobs-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .td-desktop-showing { font-size: 14px; color: #6C757D; }
+        .td-sort-by { font-size: 14px; color: #6C757D; display: flex; align-items: center; gap: 8px; }
+        .td-mobile-showing { display: none; }
+        
+        .td-feed-list { display: flex; flex-direction: column; gap: 16px; }
+        .td-feed-card { background: white; border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 16px; border: 1px solid #E9ECEF; }
+        .td-fc-header { display: flex; gap: 16px; }
+        .td-fc-icon-wrapper { flex-shrink: 0; }
+        .td-fc-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .td-bg-gray { background: #E9ECEF; }
+        .td-bg-gold { background: #E5D59F; }
+        .td-bg-purple { background: #D0C6F5; }
+        .td-fc-main-info { flex: 1; }
+        .td-fc-title-row { display: flex; justify-content: space-between; align-items: flex-start; }
+        .td-fc-title-row h3 { font-size: 18px; font-weight: 700; color: #111; margin-bottom: 4px; }
+        .td-bookmark-btn { background: none; border: none; color: #ADB5BD; font-size: 20px; cursor: pointer; }
+        .td-fc-school { font-size: 13px; color: #6C757D; font-weight: 500; }
+        .td-dot { margin: 0 6px; color: #DEE2E6; }
+        .td-fc-badge-desktop { display: flex; align-items: flex-start; }
+        .td-badge-featured { background: #B5F0A5; color: #111; font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
+        
+        .td-fc-meta { display: flex; gap: 24px; align-items: center; margin-left: 64px; }
+        .td-fc-meta-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6C757D; font-weight: 600; }
+        
+        .td-fc-footer { display: flex; justify-content: space-between; align-items: center; margin-left: 64px; }
+        .td-fc-salary { font-size: 18px; font-weight: 800; color: #111; }
+        .td-fc-salary span { font-size: 13px; color: #6C757D; font-weight: 500; }
+        .td-fc-action { background: #0b7a24; color: white; border: none; padding: 10px 24px; border-radius: 24px; font-weight: 700; cursor: pointer; transition: 0.2s; }
+        .td-fc-action:hover { background: #09611c; }
+
+        .td-load-more-container { text-align: center; margin-top: 32px; }
+        .td-load-more-btn { background: transparent; border: 2px solid #0b7a24; color: #0b7a24; padding: 12px 32px; border-radius: 24px; font-weight: 700; font-size: 14px; cursor: pointer; margin-bottom: 12px; }
+        .td-load-more-container p { font-size: 13px; color: #6C757D; }
+
+        .td-mobile-only { display: none; }
+
+        /* ═══════════════════════════════════════
            MOBILE BREAKPOINT ≤ 768px
         ═══════════════════════════════════════ */
         @media (max-width: 768px) {
@@ -803,6 +1147,47 @@ export default function TeacherDashboard() {
           .td-mobile-label { display: inline; }
           .td-mobile-cta-card { display: flex; }
           .td-mobile-bottomnav { display: flex; }
+
+          /* Job Feeds Mobile */
+          .td-jobs-hero h1 { font-size: 28px; }
+          .td-desktop-search { display: none; }
+          .td-mobile-jobs-search { display: block; }
+          .td-search-box-mobile { background: #E9ECEF; border-radius: 24px; display: flex; align-items: center; padding: 12px 16px; margin-bottom: 16px; }
+          .td-search-box-mobile input { border: none; background: transparent; outline: none; margin-left: 12px; width: 100%; font-size: 14px; }
+          .td-mobile-filter-chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; }
+          .td-filter-chip { display: flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+          .td-chip-green { background: #277a16; color: white; }
+          .td-chip-lightgreen { background: #B5F0A5; color: #111; }
+          .td-chip-gray { background: #F8F9FA; color: #111; border: 1px solid #E9ECEF; }
+
+          .td-jobs-filters { display: none; }
+          .td-desktop-showing { display: none; }
+          .td-sort-by { display: none; }
+          
+          .td-mobile-showing { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 16px; margin-top: 8px; }
+          .td-mobile-showing h3 { font-size: 16px; font-weight: 800; color: #111; }
+          .td-mobile-showing span { font-size: 11px; font-weight: 800; color: #1CCB43; letter-spacing: 0.5px; text-transform: uppercase; }
+
+          .td-fc-meta, .td-fc-footer { margin-left: 0; margin-top: 16px; }
+          .td-fc-badge-desktop { display: none; }
+          .td-fc-title-row h3 { font-size: 16px; max-width: 85%; }
+          .td-fc-salary { font-size: 20px; color: #1CCB43; }
+          
+          .td-feed-card-hot { background: #277a16; color: white; border: none; box-shadow: 0 10px 20px rgba(39, 122, 22, 0.2); }
+          .td-hot-header { display: flex; justify-content: space-between; margin-bottom: 16px; align-items: center; }
+          .td-hot-badge { background: rgba(255,255,255,0.2); font-size: 10px; font-weight: 800; padding: 4px 10px; border-radius: 12px; letter-spacing: 0.5px; }
+          .td-hot-time { font-size: 11px; opacity: 0.8; }
+          .td-feed-card-hot h3 { font-size: 20px; color: white; margin-bottom: 8px; font-weight: 800; }
+          .td-feed-card-hot p { color: rgba(255,255,255,0.8); font-size: 13px; }
+          .td-feed-card-hot .td-dot { color: rgba(255,255,255,0.4); }
+          .td-hot-salary-range { font-size: 10px; opacity: 0.7; font-weight: 800; margin-top: 24px; margin-bottom: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+          .td-hot-footer { display: flex; justify-content: space-between; align-items: center; }
+          .td-hot-salary-value { font-size: 22px; font-weight: 800; }
+          .td-hot-action { background: white; color: #277a16; border: none; padding: 12px 24px; border-radius: 24px; font-weight: 800; font-size: 13px; cursor: pointer; }
+
+          .td-mobile-only { display: flex; }
+          
+          .td-fc-meta-tag { margin-left: auto; background: #E8F9ED; color: #1CCB43; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; letter-spacing: 0.5px; }
 
           /* Profile card: show mobile variant, hide desktop variant */
           .td-mobile-profile-strength { display: block; }
