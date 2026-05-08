@@ -209,7 +209,7 @@ export default function VerifyPhone() {
 
             {/* Resend link */}
             <p className="resend-footer text-adaptive">
-              Didn't get the email?{' '}
+              Didn't get the SMS?{' '}
               {canResend ? (
                 <button
                   id="verify-phone-resend-btn"
