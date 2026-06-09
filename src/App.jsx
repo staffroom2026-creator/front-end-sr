@@ -19,6 +19,7 @@ import SchoolInfo from './pages/SchoolInfo';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import PageExplorer from './pages/PageExplorer';
+import About from './pages/About';
 
 function LandingPage() {
   return (
@@ -49,6 +50,7 @@ function App() {
         <Route path="/sch-info" element={<SchoolInfo />} />
         <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route path="/about" element={<About />} />
         <Route path="/sitemap" element={<PageExplorer />} />
       </Routes>
     </BrowserRouter>
