@@ -836,6 +836,38 @@ export default function TeacherDashboard() {
               </div>
             </motion.div>
           )}
+          {['notifications', 'applications', 'application', 'messages', 'profile', 'settings'].includes(activeTab) && (
+            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="flex flex-col items-center justify-center h-full px-6 py-20 text-center" style={{ minHeight: '60vh' }}>
+              <div className="inline-flex items-center gap-2 bg-[#1CCB43]/10 border border-[#1CCB43]/20 text-[#1CCB43] font-semibold text-sm px-4 py-2 rounded-full mb-8">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1CCB43] opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#1CCB43]"></span>
+                </span>
+                Page in progress
+              </div>
+              
+              <div className="mb-10">
+                <div className="relative mx-auto w-48 h-48">
+                  <div className="absolute inset-0 rounded-full border-4 border-dashed border-[#1CCB43]/20 animate-spin" style={{ animationDuration: '20s' }}></div>
+                  <div className="absolute inset-6 rounded-full border-4 border-dashed border-[#1CCB43]/10 animate-spin" style={{ animationDuration: '15s', animationDirection: 'reverse' }}></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
+                      <FiSettings className="w-16 h-16 text-[#1CCB43]" strokeWidth="1.5" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="max-w-xl mx-auto">
+                <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900 mb-4 capitalize">
+                  {activeTab === 'application' ? 'applications' : activeTab} <span className="text-[#1CCB43]">Coming Soon</span>
+                </h1>
+                <p className="text-gray-500 text-base md:text-lg leading-relaxed">
+                  We're putting the final touches on this section of the dashboard. Check back soon!
+                </p>
+              </div>
+            </motion.div>
+          )}
         </div>
       </div>
 
