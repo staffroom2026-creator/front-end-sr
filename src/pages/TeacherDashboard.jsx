@@ -954,7 +954,8 @@ export default function TeacherDashboard() {
           border-bottom: 1px solid #E9ECEF;
           display: flex;
           align-items: center;
-          justify-content: space-between;
+          justify-content: flex-end;
+          gap: 32px;
           padding: 0 32px;
         }
         .td-search-box {
