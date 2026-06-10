@@ -18,14 +18,24 @@ export default function Navbar() {
 
         {/* Desktop Links */}
         <div className="hidden md:flex items-center gap-8 text-sm font-medium animate-fade-in-up animation-delay-100">
-          <a href="#" className="text-gray-700 hover:text-primary transition-colors">Pricing</a>
+          <Link 
+            to="/pricing" 
+            className={`hover:text-primary transition-colors pb-1 border-b-2 ${isActive('/pricing') ? 'text-gray-900 font-bold border-primary' : 'text-gray-700 border-transparent'}`}
+          >
+            Pricing
+          </Link>
           <Link 
             to="/about" 
             className={`hover:text-primary transition-colors pb-1 border-b-2 ${isActive('/about') ? 'text-gray-900 font-bold border-primary' : 'text-gray-700 border-transparent'}`}
           >
             About
           </Link>
-          <a href="#" className="text-gray-700 hover:text-primary transition-colors">Contact</a>
+          <Link 
+            to="/contact" 
+            className={`hover:text-primary transition-colors pb-1 border-b-2 ${isActive('/contact') ? 'text-gray-900 font-bold border-primary' : 'text-gray-700 border-transparent'}`}
+          >
+            Contact
+          </Link>
           <Link 
             to="/for-schools" 
             className={`hover:text-primary transition-colors pb-1 border-b-2 ${isActive('/for-schools') ? 'text-gray-900 font-bold border-primary' : 'text-gray-700 border-transparent'}`}
@@ -33,8 +43,8 @@ export default function Navbar() {
             For schools
           </Link>
           <Link 
-            to="/teacher-info" 
-            className={`hover:text-primary transition-colors pb-1 border-b-2 ${isActive('/teacher-info') ? 'text-gray-900 font-bold border-primary' : 'text-gray-700 border-transparent'}`}
+            to="/for-teachers" 
+            className={`hover:text-primary transition-colors pb-1 border-b-2 ${isActive('/for-teachers') ? 'text-gray-900 font-bold border-primary' : 'text-gray-700 border-transparent'}`}
           >
             For teachers
           </Link>
@@ -61,11 +71,11 @@ export default function Navbar() {
       {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-white shadow-lg border-t border-gray-100 z-50 px-6 py-6 flex flex-col gap-4">
-          <a href="#" className="text-gray-700 font-medium py-2 hover:text-primary transition-colors">Pricing</a>
+          <Link to="/pricing" className={`font-medium py-2 hover:text-primary transition-colors ${isActive('/pricing') ? 'text-primary font-bold' : 'text-gray-700'}`} onClick={() => setMobileMenuOpen(false)}>Pricing</Link>
           <Link to="/about" className={`font-medium py-2 hover:text-primary transition-colors ${isActive('/about') ? 'text-primary font-bold' : 'text-gray-700'}`} onClick={() => setMobileMenuOpen(false)}>About</Link>
-          <a href="#" className="text-gray-700 font-medium py-2 hover:text-primary transition-colors">Contact</a>
+          <Link to="/contact" className={`font-medium py-2 hover:text-primary transition-colors ${isActive('/contact') ? 'text-primary font-bold' : 'text-gray-700'}`} onClick={() => setMobileMenuOpen(false)}>Contact</Link>
           <Link to="/for-schools" className={`font-medium py-2 hover:text-primary transition-colors ${isActive('/for-schools') ? 'text-primary font-bold' : 'text-gray-700'}`} onClick={() => setMobileMenuOpen(false)}>For schools</Link>
-          <Link to="/teacher-info" className={`font-medium py-2 hover:text-primary transition-colors ${isActive('/teacher-info') ? 'text-primary font-bold' : 'text-gray-700'}`} onClick={() => setMobileMenuOpen(false)}>For teachers</Link>
+          <Link to="/for-teachers" className={`font-medium py-2 hover:text-primary transition-colors ${isActive('/for-teachers') ? 'text-primary font-bold' : 'text-gray-700'}`} onClick={() => setMobileMenuOpen(false)}>For teachers</Link>
           <Link to="/signup" className="block text-center bg-primary hover:bg-primary-dark text-white px-8 py-2.5 rounded-xl font-semibold transition-colors mt-2 w-full" onClick={() => setMobileMenuOpen(false)}>
             Sign Up
           </Link>

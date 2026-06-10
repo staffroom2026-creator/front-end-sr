@@ -2,17 +2,29 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 const pages = [
-  { name: 'Landing Page', path: '/', description: 'The main landing page with hero, features, and FAQs.', icon: '🏠' },
-  { name: 'Sign In', path: '/signin', description: 'User login page with authentication.', icon: '🔑' },
-  { name: 'Sign Up', path: '/signup', description: 'New user registration page.', icon: '📝' },
-  { name: 'Verify Email', path: '/verify-email', description: 'Email verification screen.', icon: '📧' },
-  { name: 'Add Phone', path: '/add-phone-number', description: 'Step to add phone number for MFA.', icon: '📱' },
-  { name: 'Verify Phone', path: '/verify-phone', description: 'Phone number verification screen.', icon: '✅' },
-  { name: 'User Type', path: '/user-type', description: 'Selection for Teacher or School Admin roles.', icon: '👥' },
-  { name: 'Teacher Info', path: '/teacher-info', description: 'Onboarding form for teacher details.', icon: '🎓' },
-  { name: 'School Info', path: '/sch-info', description: 'Onboarding form for school details.', icon: '🏫' },
-  { name: 'Teacher Dashboard', path: '/teacher-dashboard', description: 'Main interface for teachers.', icon: '📊' },
-  { name: 'Admin Dashboard', path: '/admin-dashboard', description: 'Management interface for admins.', icon: '⚙️' },
+  // ── Public / Marketing Pages ──────────────────────────────────
+  { name: 'Landing Page',    path: '/',            description: 'The main landing page with hero, features, how it works, and FAQs.', icon: '🏠' },
+  { name: 'About',           path: '/about',       description: 'Story behind Staffroom — mission, vision, and what the platform provides.', icon: '💡' },
+  { name: 'For Schools',     path: '/for-schools', description: 'Marketing page for school administrators: hire qualified teachers without the stress.', icon: '🏫' },
+  { name: 'For Teachers',    path: '/for-teachers',description: 'Marketing page for educators: more opportunities, less stress.', icon: '🎓' },
+  { name: 'Pricing',         path: '/pricing',     description: 'Pricing plans page — currently showing a coming-soon waitlist state.', icon: '💳' },
+  { name: 'Contact',         path: '/contact',     description: 'Contact page with inquiry form, email, phone, location, and social links.', icon: '✉️' },
+
+  // ── Auth Flow ─────────────────────────────────────────────────
+  { name: 'Sign In',         path: '/signin',           description: 'User login page with email/password authentication.', icon: '🔑' },
+  { name: 'Sign Up',         path: '/signup',           description: 'New user registration page.', icon: '📝' },
+  { name: 'Verify Email',    path: '/verify-email',     description: 'Email verification screen sent after sign-up.', icon: '📧' },
+  { name: 'Add Phone',       path: '/add-phone-number', description: 'Step to add phone number for multi-factor authentication.', icon: '📱' },
+  { name: 'Verify Phone',    path: '/verify-phone',     description: 'Phone number OTP verification screen.', icon: '✅' },
+
+  // ── Onboarding Flow ───────────────────────────────────────────
+  { name: 'User Type',       path: '/user-type',        description: 'Role selection — choose between Teacher or School Admin.', icon: '👥' },
+  { name: 'Teacher Info',    path: '/teacher-info',     description: 'Onboarding form to capture teacher profile details.', icon: '🧑‍🏫' },
+  { name: 'School Info',     path: '/sch-info',         description: 'Onboarding form to capture school profile details.', icon: '🏛️' },
+
+  // ── Dashboards ────────────────────────────────────────────────
+  { name: 'Teacher Dashboard', path: '/teacher-dashboard', description: 'Main interface for teachers — jobs, profile, and applications.', icon: '📊' },
+  { name: 'Admin Dashboard',   path: '/admin-dashboard',   description: 'Management interface for school administrators.', icon: '⚙️' },
 ];
 
 const PageExplorer = () => {

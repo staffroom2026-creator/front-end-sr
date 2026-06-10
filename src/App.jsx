@@ -8,6 +8,7 @@ import HowItWorks from './components/HowItWorks';
 import FAQs from './components/FAQs';
 import FooterCTA from './components/FooterCTA';
 import ScrollReveal from './components/ScrollReveal';
+import ScrollToTop from './components/ScrollToTop';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import VerifyEmail from './pages/VerifyEmail';
@@ -21,6 +22,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import PageExplorer from './pages/PageExplorer';
 import About from './pages/About';
 import ForSchools from './pages/ForSchools';
+import ForTeachers from './pages/ForTeachers';
+import Pricing from './pages/Pricing';
+import Contact from './pages/Contact';
 
 function LandingPage() {
   return (
@@ -39,6 +43,7 @@ function LandingPage() {
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<SignIn />} />
@@ -53,6 +58,9 @@ function App() {
         <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/about" element={<About />} />
         <Route path="/for-schools" element={<ForSchools />} />
+        <Route path="/for-teachers" element={<ForTeachers />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/contact" element={<Contact />} />
         <Route path="/sitemap" element={<PageExplorer />} />
       </Routes>
     </BrowserRouter>
