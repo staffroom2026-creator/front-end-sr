@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import schoolCampus from '../assets/school campus.jpg';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
-  FiBook, FiShare2, FiLink, FiArrowLeft, FiCheckCircle, FiDollarSign
+  FiBook, FiShare2, FiLink, FiArrowLeft, FiCheckCircle, FiDollarSign, FiSend
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -131,8 +131,16 @@ const DUMMY_JOBS = [
 ];
 
 export default function TeacherDashboard() {
+  const contentRef = useRef(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedJob, setSelectedJob] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    if (contentRef.current) {
+      contentRef.current.scrollTo({ top: 0, behavior: 'instant' });
+    }
+  }, [activeTab]);
   
   // Job Feeds Filters State
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -265,7 +273,7 @@ export default function TeacherDashboard() {
           </div>
         </header>
 
-        <div className="td-content">
+        <div className="td-content" ref={contentRef}>
 
           {activeTab === 'dashboard' && (
             <>
@@ -335,19 +343,18 @@ export default function TeacherDashboard() {
                       <span className="td-mini-value">1,284</span>
                       <span className="td-mini-growth">+12%</span>
                     </div>
-                    <span className="td-mini-sub">this week</span>
                   </motion.div>
 
-                  {/* Active Feeds */}
+                  {/* Jobs Applied */}
                   <motion.div variants={cardVariants} className="td-stat-card td-mini-card">
                     <div className="td-mini-icon-circle green">
-                      <FiBriefcase />
+                      <FiSend />
                     </div>
-                    <p className="td-mini-label">ACTIVE FEEDS</p>
+                    <p className="td-mini-label">JOBS APPLIED</p>
                     <div className="td-mini-value-row">
-                      <span className="td-mini-value">14</span>
+                      <span className="td-mini-value">42</span>
+                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#111', marginLeft: '6px' }}>Total</span>
                     </div>
-                    <span className="td-mini-sub">3 new today</span>
                   </motion.div>
 
                   {/* Pending Review (desktop only) */}
@@ -369,7 +376,7 @@ export default function TeacherDashboard() {
                     <span className="td-desktop-label">Active Job Feeds</span>
                     <span className="td-mobile-label">Priority Job Feeds</span>
                   </h2>
-                  <a href="#">View All</a>
+                  <a href="#">View All Vacancies</a>
                 </div>
 
                 <div className="td-job-list">
@@ -377,10 +384,13 @@ export default function TeacherDashboard() {
                     <div className="td-job-icon td-job-icon--math">Σ</div>
                     <div className="td-job-details">
                       <div className="td-job-title-row">
-                        <h3>Mathematics Teacher (IGCSE)</h3>
-                        <span className="td-job-type-badge">FULL-TIME</span>
+                        <h3>HOD Mathematics</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                          <span className="td-job-type-badge">FULL-TIME</span>
+                          <span style={{ fontSize: '11px', color: '#6C757D', fontWeight: '500' }}>3 days ago</span>
+                        </div>
                       </div>
-                      <p className="td-job-school">Lekki British School • Ikoyi, Lagos</p>
+                      <p className="td-job-school">St. Gregory's College • Ikoyi, Lagos</p>
                       <div className="td-job-tags">
                         <span>LAGOS</span>
                         <span>3 DAYS AGO</span>
@@ -393,7 +403,6 @@ export default function TeacherDashboard() {
                       </div>
                       <div className="td-job-footer">
                         <span className="td-job-salary">₦450k - ₦600k Monthly</span>
-                        <span className="td-job-time">3 days ago</span>
                         <a href="#" className="td-quick-apply">Quick Apply →</a>
                       </div>
                     </div>
@@ -407,17 +416,19 @@ export default function TeacherDashboard() {
                     </div>
                     <div className="td-job-details">
                       <div className="td-job-title-row">
-                        <h3>Head of Primary Studies</h3>
-                        <span className="td-job-type-badge td-job-type-badge--exec">EXECUTIVE</span>
+                        <h3>Physics Instructor</h3>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                          <span className="td-job-type-badge">RESIDENTIAL</span>
+                          <span style={{ fontSize: '11px', color: '#6C757D', fontWeight: '500' }}>1 week ago</span>
+                        </div>
                       </div>
-                      <p className="td-job-school">Corona Schools Trust • Executive</p>
+                      <p className="td-job-school">Atlantic Hall School • Epe, Lagos</p>
                       <div className="td-job-tags">
-                        <span>IKOYI</span>
-                        <span>JUST NOW</span>
+                        <span>EPE</span>
+                        <span>1 WEEK AGO</span>
                       </div>
                       <div className="td-job-footer">
                         <span className="td-job-salary">₦350k - ₦480k Monthly</span>
-                        <span className="td-job-time">1 week ago</span>
                         <a href="#" className="td-quick-apply">Quick Apply →</a>
                       </div>
                     </div>
@@ -974,7 +985,6 @@ export default function TeacherDashboard() {
           flex: 1;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
         }
 
         /* ═══════════════════════════════════════
@@ -989,6 +999,9 @@ export default function TeacherDashboard() {
           justify-content: flex-end;
           gap: 32px;
           padding: 0 32px;
+          position: sticky;
+          top: 0;
+          z-index: 99;
         }
         .td-search-box {
           background: #E9ECEF;
