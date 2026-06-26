@@ -25,6 +25,8 @@ import ForSchools from './pages/ForSchools';
 import ForTeachers from './pages/ForTeachers';
 import Pricing from './pages/Pricing';
 import Contact from './pages/Contact';
+import Waitlist from './pages/Waitlist';
+import JoinWaitlist from './pages/JoinWaitlist';
 
 function LandingPage() {
   return (
@@ -61,6 +63,8 @@ function App() {
         <Route path="/for-teachers" element={<ForTeachers />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/waitlist" element={<Waitlist />} />
+        <Route path="/join-waitlist" element={<JoinWaitlist />} />
         <Route path="/sitemap" element={<PageExplorer />} />
       </Routes>
     </BrowserRouter>
