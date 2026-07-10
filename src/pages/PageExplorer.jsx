@@ -9,6 +9,10 @@ const pages = [
   { name: 'For Teachers',    path: '/for-teachers',description: 'Marketing page for educators: more opportunities, less stress.', icon: '🎓' },
   { name: 'Pricing',         path: '/pricing',     description: 'Pricing plans page — currently showing a coming-soon waitlist state.', icon: '💳' },
   { name: 'Contact',         path: '/contact',     description: 'Contact page with inquiry form, email, phone, location, and social links.', icon: '✉️' },
+  { name: 'Waitlist',        path: '/waitlist',    description: 'Waitlist page for users waiting for product updates and early access.', icon: '⏳' },
+  { name: 'Join Waitlist',   path: '/join-waitlist', description: 'Sign-up form for joining the Staffroom waitlist.', icon: '🧾' },
+  { name: 'Application Submitted', path: '/application-submitted', description: 'Confirmation page shown after a job application is submitted.', icon: '✅' },
+  { name: 'Site Map',        path: '/sitemap',     description: 'Interactive sitemap page for navigating the app structure.', icon: '🗺️' },
 
   // ── Auth Flow ─────────────────────────────────────────────────
   { name: 'Sign In',         path: '/signin',           description: 'User login page with email/password authentication.', icon: '🔑' },
