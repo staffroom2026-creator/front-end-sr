@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import schoolCampus from '../assets/school campus.jpg';
 import {
@@ -132,8 +133,29 @@ const DUMMY_JOBS = [
 
 export default function TeacherDashboard() {
   const contentRef = useRef(null);
+  const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [selectedJob, setSelectedJob] = useState(null);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applicationStep, setApplicationStep] = useState(1);
+  const [applicationForm, setApplicationForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    yearsExperience: '',
+    resumeFile: null,
+    motivation: ''
+  });
+  const [applicationNote, setApplicationNote] = useState('');
+
+  useEffect(() => {
+    if (location.pathname === '/application-submitted') {
+      setActiveTab('application-submitted');
+    } else if (location.pathname === '/teacher-dashboard') {
+      setActiveTab('dashboard');
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -142,6 +164,44 @@ export default function TeacherDashboard() {
     }
   }, [activeTab]);
   
+  const openApplyModal = () => {
+    setApplicationStep(1);
+    setShowApplyModal(true);
+  };
+
+  const closeApplyModal = () => {
+    setShowApplyModal(false);
+  };
+
+  const handleApplicationInput = (e) => {
+    const { name, value } = e.target;
+    setApplicationForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleFileInput = (e) => {
+    const file = e.target.files?.[0] || null;
+    setApplicationForm(prev => ({ ...prev, resumeFile: file }));
+  };
+
+  const goToNextStep = () => {
+    setApplicationStep(prev => Math.min(prev + 1, 3));
+  };
+
+  const goToPrevStep = () => {
+    setApplicationStep(prev => Math.max(prev - 1, 1));
+  };
+
+  const handleSubmitApplication = (e) => {
+    e.preventDefault();
+    setShowApplyModal(false);
+    setActiveTab('application-submitted');
+    navigate('/application-submitted');
+  };
+
+  const handleNoteChange = (e) => {
+    setApplicationNote(e.target.value);
+  };
+
   // Job Feeds Filters State
   const [subjectSearch, setSubjectSearch] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
@@ -817,7 +877,7 @@ export default function TeacherDashboard() {
                       <span>APPLICATION DEADLINE</span>
                       <strong>{selectedJob.deadline || 'Ongoing'}</strong>
                     </div>
-                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-jd-apply-btn">Apply Now</motion.button>
+                    <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-jd-apply-btn" onClick={openApplyModal}>Apply Now</motion.button>
                     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-jd-save-btn"><FiBookmark /> Save Job</motion.button>
                     
                     <div className="td-jd-share">
@@ -844,6 +904,48 @@ export default function TeacherDashboard() {
                     <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-jd-post-btn">Post a Job</motion.button>
                   </div>
                 </div>
+              </div>
+            </motion.div>
+          )}
+          {activeTab === 'application-submitted' && (
+            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-application-submitted-page">
+              <div className="td-application-submitted-card">
+                <div className="td-success-badge">
+                  <FiCheckCircle />
+                </div>
+                <h1>Application Submitted Successfully!</h1>
+                <p className="td-submitted-description">Your professional profile has been delivered to the hiring committee in Lagos.</p>
+
+                <div className="td-application-summary-card">
+                  <div className="td-application-summary-left">
+                    <div className="td-application-role-badge">POSITION APPLIED</div>
+                    <h2>{selectedJob?.title || 'Teaching Role'}</h2>
+                    <p className="td-application-company">{selectedJob?.school || 'Selected school'} · {selectedJob?.location || 'Location'}</p>
+                  </div>
+                  <div className="td-application-summary-icon">
+                    <span>{selectedJob?.school?.charAt(0) || 'M'}</span>
+                  </div>
+                </div>
+
+                <div className="td-application-note-section">
+                  <label htmlFor="application-note">Add a short note to the recruiter (Optional)</label>
+                  <textarea
+                    id="application-note"
+                    value={applicationNote}
+                    onChange={handleNoteChange}
+                    placeholder="Highlight a specific teaching achievement or personal motivation for BrightMind..."
+                  />
+                  <div className="td-note-counter">{applicationNote.length}/300</div>
+                </div>
+
+                <div className="td-application-actions">
+                  <button className="td-application-btn td-application-btn--primary">Update Application Note</button>
+                  <button className="td-application-btn td-application-btn--secondary">View Application Status</button>
+                </div>
+
+                <button className="td-link-button" onClick={() => { setActiveTab('jobs'); navigate('/teacher-dashboard'); }}>
+                  Browse More Jobs in Nigeria →
+                </button>
               </div>
             </motion.div>
           )}
@@ -883,6 +985,106 @@ export default function TeacherDashboard() {
       </div>
 
       {/* ── Desktop FAB ── */}
+      {showApplyModal && (
+        <div className="td-modal-overlay">
+          <div className="td-modal">
+            <div className="td-modal-header">
+              <div>
+                <h2>Apply for {selectedJob?.title || 'this job'}</h2>
+                <p>Complete the application steps below to proceed.</p>
+              </div>
+              <button className="td-modal-close" onClick={closeApplyModal}>&times;</button>
+            </div>
+
+            <div className="td-modal-step-indicator">
+              <span className={applicationStep === 1 ? 'active' : ''}>1</span>
+              <span className={applicationStep === 2 ? 'active' : ''}>2</span>
+              <span className={applicationStep === 3 ? 'active' : ''}>3</span>
+            </div>
+
+            <form className="td-modal-form" onSubmit={handleSubmitApplication}>
+              {applicationStep === 1 && (
+                <div className="td-modal-step">
+                  <h3>Personal details</h3>
+                  <label>
+                    Full name
+                    <input name="name" type="text" value={applicationForm.name} onChange={handleApplicationInput} required placeholder="Jane Doe" />
+                  </label>
+                  <label>
+                    Email address
+                    <input name="email" type="email" value={applicationForm.email} onChange={handleApplicationInput} required placeholder="jane@example.com" />
+                  </label>
+                  <label>
+                    Phone number
+                    <input name="phone" type="tel" value={applicationForm.phone} onChange={handleApplicationInput} required placeholder="+234 800 000 0000" />
+                  </label>
+                </div>
+              )}
+
+              {applicationStep === 2 && (
+                <div className="td-modal-step">
+                  <h3>Qualifications</h3>
+                  <label>
+                    Years of teaching experience
+                    <input name="yearsExperience" type="text" value={applicationForm.yearsExperience} onChange={handleApplicationInput} required placeholder="e.g. 5 years" />
+                  </label>
+                  <label className="td-upload-label">
+                    Resume or CV upload
+                    <div className="td-upload-input-wrapper">
+                      <input
+                        name="resumeFile"
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        onChange={handleFileInput}
+                        required
+                      />
+                      <div className="td-upload-placeholder">
+                        <span>Choose a file or drag it here</span>
+                        <small>Accepted: PDF, DOC, DOCX</small>
+                      </div>
+                    </div>
+                    {applicationForm.resumeFile && (
+                      <div className="td-upload-preview">
+                        <strong>Selected file:</strong> {applicationForm.resumeFile.name}
+                      </div>
+                    )}
+                  </label>
+                </div>
+              )}
+
+              {applicationStep === 3 && (
+                <div className="td-modal-step">
+                  <h3>Why you</h3>
+                  <label>
+                    Why should this school hire you?
+                    <textarea name="motivation" value={applicationForm.motivation} onChange={handleApplicationInput} required placeholder="Tell them why you're the best fit."></textarea>
+                  </label>
+                  <div className="td-modal-job-summary">
+                    <strong>Role:</strong> {selectedJob?.title}
+                    <strong>School:</strong> {selectedJob?.school}
+                    <strong>Location:</strong> {selectedJob?.location}
+                  </div>
+                </div>
+              )}
+
+              <div className="td-modal-actions">
+                {applicationStep > 1 ? (
+                  <button type="button" className="td-modal-secondary-btn" onClick={goToPrevStep}>Back</button>
+                ) : (
+                  <div />
+                )}
+
+                {applicationStep < 3 ? (
+                  <button type="button" className="td-modal-primary-btn" onClick={goToNextStep}>Next step</button>
+                ) : (
+                  <button type="submit" className="td-modal-primary-btn">Submit application</button>
+                )}
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <button className="td-fab"><FiPlus /></button>
 
       {/* ── Mobile Bottom Nav ── */}
@@ -1084,6 +1286,355 @@ export default function TeacherDashboard() {
            CONTENT AREA
         ═══════════════════════════════════════ */
         .td-content { padding: 32px; }
+
+        .td-application-submitted-page {
+          width: 100%;
+          max-width: 1150px;
+          margin: 0 auto;
+          display: flex;
+          justify-content: center;
+          padding-bottom: 32px;
+        }
+
+        .td-application-submitted-card {
+          width: 100%;
+          background: #fff;
+          border-radius: 38px;
+          padding: 42px 42px 38px;
+          box-shadow: 0 32px 100px rgba(15, 23, 42, 0.08);
+          display: grid;
+          gap: 32px;
+        }
+
+        .td-success-badge {
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          background: #1CCB43;
+          color: #fff;
+          font-size: 28px;
+          margin: 0 auto;
+        }
+
+        .td-application-submitted-card h1 {
+          font-size: 2.5rem;
+          margin: 0;
+          color: #111827;
+          text-align: center;
+          line-height: 1.05;
+        }
+
+        .td-application-submitted-card .td-submitted-description {
+          color: #6b7280;
+          line-height: 1.8;
+          max-width: 760px;
+          margin: 0 auto;
+          text-align: center;
+        }
+
+        .td-application-summary-card {
+          background: #f8fafc;
+          border-radius: 28px;
+          padding: 24px 24px 24px 28px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 18px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .td-application-summary-left {
+          display: grid;
+          gap: 10px;
+        }
+
+        .td-application-role-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #d1fae5;
+          color: #16a34a;
+          font-size: 12px;
+          font-weight: 800;
+          letter-spacing: 0.14em;
+          text-transform: uppercase;
+          padding: 10px 16px;
+          border-radius: 999px;
+          width: fit-content;
+        }
+
+        .td-application-summary-card h2 {
+          font-size: 1.5rem;
+          margin: 0;
+          color: #111827;
+        }
+
+        .td-application-company {
+          margin: 0;
+          color: #6b7280;
+          font-size: 0.95rem;
+        }
+
+        .td-application-summary-icon {
+          width: 72px;
+          height: 72px;
+          border-radius: 22px;
+          background: #111827;
+          display: grid;
+          place-items: center;
+          color: #ffffff;
+          font-weight: 800;
+          font-size: 1.4rem;
+        }
+
+        .td-application-note-section {
+          width: 100%;
+          background: #f8fafc;
+          border-radius: 28px;
+          padding: 24px;
+          display: grid;
+          gap: 14px;
+          border: 1px solid #e5e7eb;
+        }
+
+        .td-application-note-section label {
+          color: #111827;
+          font-size: 0.95rem;
+          font-weight: 700;
+        }
+
+        .td-application-note-section textarea {
+          width: 100%;
+          min-height: 140px;
+          border-radius: 24px;
+          border: 1px solid #e5e7eb;
+          background: #fff;
+          padding: 18px;
+          font-size: 0.95rem;
+          color: #111827;
+          outline: none;
+          resize: vertical;
+        }
+
+        .td-note-counter {
+          text-align: right;
+          color: #6b7280;
+          font-size: 0.85rem;
+        }
+
+        .td-application-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 18px;
+          justify-content: center;
+        }
+
+        .td-application-btn {
+          flex: 1 1 220px;
+          border-radius: 999px;
+          font-weight: 700;
+          font-size: 0.95rem;
+          padding: 16px 24px;
+          cursor: pointer;
+          border: 1px solid transparent;
+          transition: transform 0.2s ease, background 0.2s ease;
+        }
+
+        .td-application-btn--primary {
+          background: #1CCB43;
+          color: #fff;
+        }
+
+        .td-application-btn--secondary {
+          background: #e5e7eb;
+          color: #111827;
+        }
+
+        .td-link-button {
+          justify-self: center;
+          background: transparent;
+          color: #16a34a;
+          font-weight: 700;
+          border: none;
+          cursor: pointer;
+          padding: 0;
+          font-size: 0.95rem;
+        }
+
+        .td-link-button:hover {
+          text-decoration: underline;
+        }
+
+        .td-application-submitted-page .td-application-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 16px;
+        }
+
+        .td-application-submitted-page .td-link-button {
+          background: transparent;
+          color: #16a34a;
+          border: none;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 0;
+          text-align: left;
+        }
+
+        .td-application-submitted-page .td-success-icon {
+          width: 72px;
+          height: 72px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          background: #dcfce7;
+          color: #16a34a;
+          font-size: 28px;
+          box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.1);
+        }
+
+        .td-application-submitted-page .td-section-label {
+          font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.18em;
+          color: #16a34a;
+          font-weight: 700;
+          margin-bottom: 8px;
+        }
+
+        .td-application-submitted-page h1 {
+          font-size: 2.25rem;
+          margin: 0;
+          color: #111827;
+        }
+
+        .td-application-submitted-page .td-section-description {
+          color: #6b7280;
+          line-height: 1.8;
+          max-width: 700px;
+        }
+
+        .td-application-submitted-page .td-application-card {
+          background: #fff;
+          border-radius: 28px;
+          padding: 28px;
+          box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          gap: 24px;
+          grid-template-columns: 1fr auto;
+        }
+
+        .td-application-submitted-page .td-application-card-main {
+          display: grid;
+          gap: 10px;
+        }
+
+        .td-application-submitted-page .td-application-role-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #ecfdf5;
+          color: #16a34a;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          padding: 10px 14px;
+          border-radius: 999px;
+          width: fit-content;
+        }
+
+        .td-application-submitted-page .td-application-card h2 {
+          font-size: 1.75rem;
+          margin: 0;
+          color: #111827;
+        }
+
+        .td-application-submitted-page .td-application-card p {
+          margin: 0;
+          color: #6b7280;
+          font-size: 0.95rem;
+        }
+
+        .td-application-submitted-page .td-application-note-section {
+          background: #fff;
+          border-radius: 28px;
+          padding: 28px;
+          box-shadow: 0 24px 70px rgba(15, 23, 42, 0.06);
+          display: grid;
+          gap: 18px;
+        }
+
+        .td-application-submitted-page .td-application-note-section label {
+          font-size: 0.95rem;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .td-application-submitted-page .td-application-note-section textarea {
+          width: 100%;
+          min-height: 160px;
+          border-radius: 24px;
+          border: 1px solid #e5e7eb;
+          background: #f8fafc;
+          padding: 20px;
+          font-size: 0.95rem;
+          color: #111827;
+          outline: none;
+          resize: vertical;
+        }
+
+        .td-application-submitted-page .td-note-counter {
+          text-align: right;
+          color: #6b7280;
+          font-size: 0.85rem;
+        }
+
+        .td-application-submitted-page .td-application-actions {
+          display: flex;
+          gap: 16px;
+          flex-wrap: wrap;
+          justify-content: flex-start;
+        }
+
+        .td-application-submitted-page .td-application-btn {
+          border-radius: 24px;
+          font-weight: 700;
+          font-size: 0.95rem;
+          padding: 16px 24px;
+          border: 1px solid transparent;
+          cursor: pointer;
+          transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .td-application-submitted-page .td-application-btn--primary {
+          background: #1ccB43;
+          color: #ffffff;
+        }
+
+        .td-application-submitted-page .td-application-btn--secondary {
+          background: #f3f4f6;
+          color: #111827;
+        }
+
+        .td-application-submitted-page .td-link-button {
+          background: transparent;
+          color: #16a34a;
+          border: none;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 0;
+          text-decoration: none;
+          align-self: start;
+        }
+
+        .td-application-submitted-page .td-link-button:hover {
+          text-decoration: underline;
+        }
 
         /* Welcome Header */
         .td-welcome-header {
@@ -2026,6 +2577,175 @@ export default function TeacherDashboard() {
           font-weight: 800;
           font-size: 16px;
           cursor: pointer;
+        }
+        .td-modal-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(15, 23, 42, 0.65);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 24px;
+        }
+        .td-modal {
+          width: min(720px, 100%);
+          max-height: min(90vh, 880px);
+          overflow-y: auto;
+          background: #fff;
+          border-radius: 28px;
+          box-shadow: 0 32px 80px rgba(15, 23, 42, 0.18);
+          padding: 32px;
+          position: relative;
+        }
+        .td-modal-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 20px;
+          margin-bottom: 24px;
+        }
+        .td-modal-header h2 {
+          font-size: 24px;
+          margin-bottom: 8px;
+        }
+        .td-modal-header p {
+          color: #57606A;
+          line-height: 1.6;
+        }
+        .td-modal-close {
+          background: transparent;
+          border: none;
+          font-size: 28px;
+          line-height: 1;
+          color: #495057;
+          cursor: pointer;
+          padding: 4px 8px;
+        }
+        .td-modal-step-indicator {
+          display: flex;
+          gap: 12px;
+          justify-content: center;
+          margin-bottom: 24px;
+        }
+        .td-modal-step-indicator span {
+          width: 38px;
+          height: 38px;
+          display: grid;
+          place-items: center;
+          border-radius: 50%;
+          background: #F1F3F5;
+          color: #495057;
+          font-weight: 700;
+        }
+        .td-modal-step-indicator span.active {
+          background: #1CCB43;
+          color: white;
+        }
+        .td-modal-form label {
+          display: block;
+          margin-bottom: 18px;
+          font-weight: 600;
+          color: #343A40;
+        }
+        .td-modal-form input,
+        .td-modal-form textarea {
+          width: 100%;
+          margin-top: 8px;
+          padding: 14px 16px;
+          border-radius: 16px;
+          border: 1px solid #E9ECEF;
+          background: #F8F9FA;
+          font-size: 14px;
+          color: #212529;
+          outline: none;
+        }
+        .td-modal-form textarea {
+          min-height: 120px;
+          resize: vertical;
+        }
+        .td-upload-label {
+          padding: 0;
+        }
+        .td-upload-input-wrapper {
+          position: relative;
+          border: 1px dashed #CED4DA;
+          border-radius: 18px;
+          background: #F8F9FA;
+          padding: 28px 18px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 140px;
+          gap: 10px;
+        }
+        .td-upload-input-wrapper input[type="file"] {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          opacity: 0;
+          cursor: pointer;
+        }
+        .td-upload-placeholder {
+          pointer-events: none;
+          text-align: center;
+          color: #6C757D;
+          font-size: 14px;
+        }
+        .td-upload-placeholder small {
+          display: block;
+          margin-top: 6px;
+          color: #ADB5BD;
+        }
+        .td-upload-preview {
+          margin-top: 12px;
+          padding: 12px 14px;
+          border-radius: 14px;
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          font-size: 14px;
+          color: #212529;
+        }
+        .td-modal-actions {
+          display: flex;
+          justify-content: space-between;
+          gap: 16px;
+          margin-top: 12px;
+          flex-wrap: wrap;
+        }
+        .td-modal-primary-btn,
+        .td-modal-secondary-btn {
+          min-width: 180px;
+          border: none;
+          border-radius: 16px;
+          padding: 14px 20px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .td-modal-primary-btn {
+          background: #1CCB43;
+          color: #fff;
+        }
+        .td-modal-secondary-btn {
+          background: #F1F3F5;
+          color: #212529;
+        }
+        .td-modal-job-summary {
+          margin-top: 18px;
+          padding: 18px;
+          border-radius: 18px;
+          background: #F8F9FA;
+          display: grid;
+          gap: 12px;
+          font-size: 14px;
+          color: #495057;
+        }
+        .td-modal-job-summary strong {
+          display: inline-block;
+          min-width: 110px;
+          color: #212529;
         }
         .td-jd-save-btn {
           background: #F1F3F5;
