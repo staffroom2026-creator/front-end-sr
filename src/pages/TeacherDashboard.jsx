@@ -613,12 +613,12 @@ export default function TeacherDashboard() {
                     <div className="td-mobile-ps-top">
                       <div className="td-mobile-ps-left">
                         <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
-                        <span className="td-mobile-ps-value">85%</span>
+                        <span className="td-mobile-ps-value">75%</span>
                       </div>
                       <div className="td-mobile-ps-icon"><FiZap size={20} /></div>
                     </div>
                     <div className="td-progress-bar">
-                      <div className="td-progress-fill" style={{ width: '85%' }}></div>
+                      <div className="td-progress-fill" style={{ width: '75%' }}></div>
                     </div>
                     <p className="td-card-hint">Almost there! Add a certification to reach 100%.</p>
                   </div>
@@ -641,7 +641,7 @@ export default function TeacherDashboard() {
                     <div className="td-mini-icon-circle">
                       <FiEye size={18} />
                     </div>
-                    <span className="td-mobile-stat-number">1,240</span>
+                    <span className="td-mobile-stat-number">1,284</span>
                     <p className="td-mini-label">PROFILE VIEWS</p>
                     <div className="td-mini-value-row">
                       <span className="td-mini-value td-desktop-stat-val">1,284</span>
@@ -650,22 +650,21 @@ export default function TeacherDashboard() {
                     <span className="td-mobile-subtext">+12% this week</span>
                   </motion.div>
 
-                  {/* Jobs Applied / Active Feeds */}
+                  {/* Jobs Applied */}
                   <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--applied">
                     <div className="td-mini-icon-circle">
                       <FiSend size={18} className="td-desktop-icon" />
                       <FiBriefcase size={18} className="td-mobile-icon" />
                     </div>
-                    <span className="td-mobile-stat-number">14</span>
+                    <span className="td-mobile-stat-number">42</span>
                     <p className="td-mini-label">
-                      <span className="td-desktop-text">JOBS APPLIED</span>
-                      <span className="td-mobile-text">ACTIVE FEEDS</span>
+                      <span>JOBS APPLIED</span>
                     </p>
                     <div className="td-mini-value-row td-desktop-val-row">
                       <span className="td-mini-value">42</span>
                       <span className="td-mini-unit">Total</span>
                     </div>
-                    <span className="td-mobile-subtext td-mobile-subtext--gray">3 new today</span>
+                    <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
                   </motion.div>
 
                   {/* Pending Review (desktop only) */}
@@ -696,7 +695,7 @@ export default function TeacherDashboard() {
                 </div>
 
                 <div className="td-job-list">
-                  {/* Job 1: Mathematics Teacher */}
+                  {/* Job 1: HOD Mathematics */}
                   <motion.div variants={cardVariants} className="td-job-item">
                     <div className="td-job-header-row">
                       <div className="td-job-avatar td-job-avatar--math">
@@ -708,19 +707,13 @@ export default function TeacherDashboard() {
                       </div>
                       <div className="td-job-info-main">
                         <div className="td-job-title-line">
-                          <h3>
-                            <span className="td-desktop-text">HOD Mathematics</span>
-                            <span className="td-mobile-text">Mathematics Teacher<br />(IGCSE)</span>
-                          </h3>
+                          <h3>HOD Mathematics</h3>
                           <div className="td-job-badge-col td-desktop-badge-col">
                             <span className="td-job-type-badge td-job-type-badge--full">FULL-TIME</span>
                             <span className="td-job-time-ago">3 days ago</span>
                           </div>
                         </div>
-                        <p className="td-job-school">
-                          <span className="td-desktop-text">St. Gregory's College <span className="td-job-bullet">•</span> Ikoyi, Lagos</span>
-                          <span className="td-mobile-text">Lekki British School • Full-time</span>
-                        </p>
+                        <p className="td-job-school">St. Gregory's College <span className="td-job-bullet">•</span> Ikoyi, Lagos</p>
                         
                         {/* Mobile tags */}
                         <div className="td-job-tags td-mobile-only-tags">
@@ -743,7 +736,7 @@ export default function TeacherDashboard() {
                     </div>
                   </motion.div>
 
-                  {/* Job 2: Head of Primary Studies / Physics Instructor */}
+                  {/* Job 2: Physics Instructor */}
                   <motion.div variants={cardVariants} className="td-job-item">
                     <div className="td-job-header-row">
                       <div className="td-job-avatar td-job-avatar--school">
@@ -755,24 +748,18 @@ export default function TeacherDashboard() {
                       </div>
                       <div className="td-job-info-main">
                         <div className="td-job-title-line">
-                          <h3>
-                            <span className="td-desktop-text">Physics Instructor</span>
-                            <span className="td-mobile-text">Head of Primary Studies</span>
-                          </h3>
+                          <h3>Physics Instructor</h3>
                           <div className="td-job-badge-col td-desktop-badge-col">
                             <span className="td-job-type-badge td-job-type-badge--res">RESIDENTIAL</span>
                             <span className="td-job-time-ago">1 week ago</span>
                           </div>
                         </div>
-                        <p className="td-job-school">
-                          <span className="td-desktop-text">Atlantic Hall School <span className="td-job-bullet">•</span> Epe, Lagos</span>
-                          <span className="td-mobile-text">Corona Schools Trust • Executive</span>
-                        </p>
+                        <p className="td-job-school">Atlantic Hall School <span className="td-job-bullet">•</span> Epe, Lagos</p>
                         
                         {/* Mobile tags */}
                         <div className="td-job-tags td-mobile-only-tags">
-                          <span className="td-mobile-tag--green">IKOYI</span>
-                          <span className="td-mobile-tag--gray">JUST NOW</span>
+                          <span className="td-mobile-tag--green">EPE</span>
+                          <span className="td-mobile-tag--gray">1 WEEK AGO</span>
                         </div>
                       </div>
                     </div>
