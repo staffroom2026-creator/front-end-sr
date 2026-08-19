@@ -62,7 +62,7 @@ export default function Hero() {
       </div>
 
       {/* Left Content */}
-      <div className="flex-1 max-w-xl w-full relative z-10 flex flex-col justify-end md:justify-center min-h-[60vh] md:min-h-0 pt-32 md:pt-0">
+      <div className="flex-1 max-w-xl w-full relative z-10 flex flex-col justify-end md:justify-center min-h-[60vh] md:min-h-0 pt-20 md:pt-0 md:-translate-y-10">
         <h1 className="text-[2.75rem] md:text-6xl font-extrabold leading-[1.15] tracking-tight mb-4 md:mb-6 text-gray-900 animate-fade-in-up">
           <span className="text-primary">Connecting</span><br />
           Teachers,<br className="md:hidden" /><span className="hidden md:inline"> </span>Schools,<br />
