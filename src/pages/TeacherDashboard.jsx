@@ -6,7 +6,8 @@ import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
-  FiBook, FiShare2, FiLink, FiArrowLeft, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle
+  FiBook, FiShare2, FiLink, FiArrowLeft, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle,
+  FiUser
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -476,29 +477,46 @@ export default function TeacherDashboard() {
 
         <nav className="td-nav">
           <div className={`td-nav-item ${activeTab === 'dashboard' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('dashboard')}>
-            <FiGrid /> <span>Dashboard</span>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="td-nav-icon">
+              <rect x="3" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="3" width="7" height="7" rx="1.5" />
+              <rect x="14" y="14" width="7" height="7" rx="1.5" />
+              <rect x="3" y="14" width="7" height="7" rx="1.5" />
+            </svg>
+            <span>Dashboard</span>
           </div>
+
           <div className={`td-nav-item ${activeTab === 'jobs' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('jobs')}>
-            <FiBriefcase /> <span>Job Feeds</span>
+            <FiBriefcase size={18} className="td-nav-icon" />
+            <span>Job Listing</span>
           </div>
-          <div className={`td-nav-item ${activeTab === 'notifications' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('notifications')}>
-            <FiBell /> <span>Notifications</span>
-          </div>
+
           <div className={`td-nav-item ${activeTab === 'applications' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('applications')}>
-            <FiFileText /> <span>Applications</span>
+            <FiFileText size={18} className="td-nav-icon" />
+            <span>Applications</span>
           </div>
-          <div className={`td-nav-item ${activeTab === 'messages' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('messages')}>
-            <FiMessageSquare /> <span>Messages</span>
+
+          <div className={`td-nav-item ${activeTab === 'notifications' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('notifications')}>
+            <FiBell size={18} className="td-nav-icon" />
+            <span>Notifications</span>
           </div>
+
+          <div className={`td-nav-item ${activeTab === 'profile' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('settings')}>
+            <FiUser size={18} className="td-nav-icon" />
+            <span>Profile</span>
+          </div>
+
           <div className={`td-nav-item ${activeTab === 'settings' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('settings')}>
-            <FiSettings /> <span>Settings</span>
+            <FiSettings size={18} className="td-nav-icon" />
+            <span>Settings</span>
           </div>
         </nav>
 
         <div className="td-sidebar-footer">
-          <div className="td-recruiting-card">
-            <p>Need help recruiting?</p>
-            <button className="td-post-job-btn">Post a Job</button>
+          <div className="td-logout-container">
+            <button className="td-logout-btn" onClick={() => navigate('/login')}>
+              Log out
+            </button>
           </div>
         </div>
       </aside>
@@ -568,7 +586,7 @@ export default function TeacherDashboard() {
               <p className="td-subtitle">Your academic career overview for today.</p>
               {/* Mobile location */}
               <div className="td-mobile-location">
-                <FiMapPin size={12} color="#1CCB43" />
+                <FiMapPin size={13} color="#4A5568" />
                 <span>Victoria Island, Lagos</span>
               </div>
             </div>
@@ -592,10 +610,12 @@ export default function TeacherDashboard() {
                   </div>
                   {/* Mobile profile strength layout */}
                   <div className="td-mobile-profile-strength">
-                    <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
-                    <div className="td-mobile-ps-row">
-                      <span className="td-mobile-ps-value">85%</span>
-                      <div className="td-mobile-ps-icon"><FiZap size={18} /></div>
+                    <div className="td-mobile-ps-top">
+                      <div className="td-mobile-ps-left">
+                        <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
+                        <span className="td-mobile-ps-value">85%</span>
+                      </div>
+                      <div className="td-mobile-ps-icon"><FiZap size={20} /></div>
                     </div>
                     <div className="td-progress-bar">
                       <div className="td-progress-fill" style={{ width: '85%' }}></div>
@@ -621,23 +641,31 @@ export default function TeacherDashboard() {
                     <div className="td-mini-icon-circle">
                       <FiEye size={18} />
                     </div>
+                    <span className="td-mobile-stat-number">1,240</span>
                     <p className="td-mini-label">PROFILE VIEWS</p>
                     <div className="td-mini-value-row">
-                      <span className="td-mini-value">1,284</span>
+                      <span className="td-mini-value td-desktop-stat-val">1,284</span>
                       <span className="td-mini-growth">+12%</span>
                     </div>
+                    <span className="td-mobile-subtext">+12% this week</span>
                   </motion.div>
 
-                  {/* Jobs Applied */}
+                  {/* Jobs Applied / Active Feeds */}
                   <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--applied">
                     <div className="td-mini-icon-circle">
-                      <FiSend size={18} />
+                      <FiSend size={18} className="td-desktop-icon" />
+                      <FiBriefcase size={18} className="td-mobile-icon" />
                     </div>
-                    <p className="td-mini-label">JOBS APPLIED</p>
-                    <div className="td-mini-value-row">
+                    <span className="td-mobile-stat-number">14</span>
+                    <p className="td-mini-label">
+                      <span className="td-desktop-text">JOBS APPLIED</span>
+                      <span className="td-mobile-text">ACTIVE FEEDS</span>
+                    </p>
+                    <div className="td-mini-value-row td-desktop-val-row">
                       <span className="td-mini-value">42</span>
                       <span className="td-mini-unit">Total</span>
                     </div>
+                    <span className="td-mobile-subtext td-mobile-subtext--gray">3 new today</span>
                   </motion.div>
 
                   {/* Pending Review (desktop only) */}
@@ -654,18 +682,21 @@ export default function TeacherDashboard() {
                 </div>
               </div>
 
-              {/* ── Active Job Feeds ── */}
+              {/* ── Active / Priority Job Feeds ── */}
               <div className="td-jobs-section">
                 <div className="td-section-header">
                   <h2>
                     <span className="td-desktop-label">Active Job Feeds</span>
                     <span className="td-mobile-label">Priority Job Feeds</span>
                   </h2>
-                  <a href="#" className="td-view-all-link">View All Vacancies</a>
+                  <a href="#" className="td-view-all-link">
+                    <span className="td-desktop-text">View All Vacancies</span>
+                    <span className="td-mobile-text">View All</span>
+                  </a>
                 </div>
 
                 <div className="td-job-list">
-                  {/* Job 1: HOD Mathematics */}
+                  {/* Job 1: Mathematics Teacher */}
                   <motion.div variants={cardVariants} className="td-job-item">
                     <div className="td-job-header-row">
                       <div className="td-job-avatar td-job-avatar--math">
@@ -677,18 +708,24 @@ export default function TeacherDashboard() {
                       </div>
                       <div className="td-job-info-main">
                         <div className="td-job-title-line">
-                          <h3>HOD Mathematics</h3>
-                          <div className="td-job-badge-col">
+                          <h3>
+                            <span className="td-desktop-text">HOD Mathematics</span>
+                            <span className="td-mobile-text">Mathematics Teacher<br />(IGCSE)</span>
+                          </h3>
+                          <div className="td-job-badge-col td-desktop-badge-col">
                             <span className="td-job-type-badge td-job-type-badge--full">FULL-TIME</span>
                             <span className="td-job-time-ago">3 days ago</span>
                           </div>
                         </div>
-                        <p className="td-job-school">St. Gregory's College <span className="td-job-bullet">•</span> Ikoyi, Lagos</p>
+                        <p className="td-job-school">
+                          <span className="td-desktop-text">St. Gregory's College <span className="td-job-bullet">•</span> Ikoyi, Lagos</span>
+                          <span className="td-mobile-text">Lekki British School • Full-time</span>
+                        </p>
                         
                         {/* Mobile tags */}
                         <div className="td-job-tags td-mobile-only-tags">
-                          <span>LAGOS</span>
-                          <span>3 DAYS AGO</span>
+                          <span className="td-mobile-tag--green">LAGOS</span>
+                          <span className="td-mobile-tag--gray">3 DAYS AGO</span>
                         </div>
                         
                         {/* Desktop tags */}
@@ -706,7 +743,7 @@ export default function TeacherDashboard() {
                     </div>
                   </motion.div>
 
-                  {/* Job 2: Physics Instructor */}
+                  {/* Job 2: Head of Primary Studies / Physics Instructor */}
                   <motion.div variants={cardVariants} className="td-job-item">
                     <div className="td-job-header-row">
                       <div className="td-job-avatar td-job-avatar--school">
@@ -718,18 +755,24 @@ export default function TeacherDashboard() {
                       </div>
                       <div className="td-job-info-main">
                         <div className="td-job-title-line">
-                          <h3>Physics Instructor</h3>
-                          <div className="td-job-badge-col">
+                          <h3>
+                            <span className="td-desktop-text">Physics Instructor</span>
+                            <span className="td-mobile-text">Head of Primary Studies</span>
+                          </h3>
+                          <div className="td-job-badge-col td-desktop-badge-col">
                             <span className="td-job-type-badge td-job-type-badge--res">RESIDENTIAL</span>
                             <span className="td-job-time-ago">1 week ago</span>
                           </div>
                         </div>
-                        <p className="td-job-school">Atlantic Hall School <span className="td-job-bullet">•</span> Epe, Lagos</p>
+                        <p className="td-job-school">
+                          <span className="td-desktop-text">Atlantic Hall School <span className="td-job-bullet">•</span> Epe, Lagos</span>
+                          <span className="td-mobile-text">Corona Schools Trust • Executive</span>
+                        </p>
                         
                         {/* Mobile tags */}
                         <div className="td-job-tags td-mobile-only-tags">
-                          <span>EPE</span>
-                          <span>1 WEEK AGO</span>
+                          <span className="td-mobile-tag--green">IKOYI</span>
+                          <span className="td-mobile-tag--gray">JUST NOW</span>
                         </div>
                       </div>
                     </div>
@@ -745,7 +788,7 @@ export default function TeacherDashboard() {
               {/* ── Mobile CTA Card ── */}
               <motion.div variants={cardVariants} className="td-mobile-cta-card">
                 <div className="td-mobile-cta-text">
-                  <h3>Enhance Your Visibility</h3>
+                  <h3>Enhance Your<br />Visibility</h3>
                   <p>Schools in Victoria Island are looking for certified teachers.</p>
                 </div>
                 <button className="td-mobile-cta-btn">UPDATE CV</button>
@@ -1755,10 +1798,10 @@ export default function TeacherDashboard() {
         .td-sidebar {
           width: 240px;
           background: #fff;
-          border-right: 1px solid #E9ECEF;
+          border-right: 1px solid #EEF2F6;
           display: flex;
           flex-direction: column;
-          padding: 24px 0;
+          padding: 28px 0;
           position: sticky;
           top: 0;
           height: 100vh;
@@ -1768,48 +1811,91 @@ export default function TeacherDashboard() {
           display: flex;
           align-items: center;
           gap: 10px;
-          padding: 0 24px 40px;
-          font-weight: 700;
-          font-size: 18px;
+          padding: 0 20px 36px;
+          font-weight: 800;
+          font-size: 19px;
+          color: #1E293B;
         }
 
-        .td-nav { display: flex; flex-direction: column; gap: 4px; }
+        .td-nav {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 0 16px;
+        }
 
         .td-nav-item {
           display: flex;
           align-items: center;
-          gap: 12px;
-          padding: 12px 24px;
-          color: #6C757D;
+          gap: 16px;
+          padding: 14px 18px;
+          color: #334155;
           cursor: pointer;
-          transition: 0.2s;
+          transition: 0.2s ease;
           font-size: 14px;
-        }
-        .td-nav-item:hover { color: #111; }
-        .td-nav-item--active {
-          color: #1CCB43;
-          background: #E8F9ED;
-          border-right: 3px solid #1CCB43;
           font-weight: 600;
+          border-radius: 18px;
+          position: relative;
+        }
+        .td-nav-item:hover {
+          color: #0F172A;
+          background: #F8FAFC;
+        }
+        .td-nav-item--active {
+          color: #2E7D32;
+          background: #E8F5E9;
+          font-weight: 700;
+        }
+        .td-nav-item--active::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 6px;
+          bottom: 6px;
+          width: 4px;
+          background: #1B5E20;
+          border-radius: 4px;
+        }
+        .td-nav-item--active .td-nav-icon {
+          color: #2E7D32;
+          stroke: #2E7D32;
+        }
+        .td-nav-icon {
+          color: #475569;
+          stroke: #475569;
+          flex-shrink: 0;
         }
 
-        .td-sidebar-footer { margin-top: auto; padding: 0 16px; }
-        .td-recruiting-card {
-          background: #E8F9ED;
-          border-radius: 12px;
-          padding: 16px;
-          text-align: center;
+        .td-sidebar-footer {
+          margin-top: auto;
+          padding: 0 16px 16px;
         }
-        .td-recruiting-card p { font-size: 12px; font-weight: 600; margin-bottom: 12px; }
-        .td-post-job-btn {
+        .td-logout-container {
+          background: #FFE8E5;
+          border-radius: 20px;
+          padding: 12px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .td-logout-btn {
           width: 100%;
-          background: #1CCB43;
-          color: #fff;
+          background: #FF5E3A;
+          color: #ffffff;
           border: none;
-          padding: 8px;
-          border-radius: 8px;
-          font-weight: 600;
+          padding: 12px;
+          border-radius: 14px;
+          font-weight: 700;
+          font-size: 13px;
           cursor: pointer;
+          transition: background 0.2s ease, transform 0.1s ease;
+          box-shadow: 0 2px 8px rgba(255, 94, 58, 0.25);
+        }
+        .td-logout-btn:hover {
+          background: #F44E28;
+        }
+        .td-logout-btn:active {
+          transform: scale(0.98);
         }
 
         /* ═══════════════════════════════════════
@@ -2557,6 +2643,16 @@ export default function TeacherDashboard() {
         .td-mobile-label { display: none; }
         .td-desktop-label { display: inline; }
 
+        .td-mobile-stat-number { display: none; }
+        .td-mobile-subtext { display: none; }
+        .td-mobile-icon { display: none; }
+        .td-desktop-icon { display: block; }
+        .td-mobile-text { display: none; }
+        .td-desktop-text { display: inline; }
+        .td-desktop-stat-val { display: inline; }
+        .td-desktop-val-row { display: flex; }
+        .td-desktop-badge-col { display: flex; }
+
         .td-job-list {
           display: flex;
           flex-direction: column;
@@ -2954,6 +3050,18 @@ export default function TeacherDashboard() {
           
           .td-fc-meta-tag { margin-left: auto; background: #E8F9ED; color: #1CCB43; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 12px; letter-spacing: 0.5px; }
 
+          /* Mobile helper classes & visibility */
+          .td-mobile-stat-number { display: block; font-size: 26px; font-weight: 800; color: #1E293B; margin-bottom: 4px; line-height: 1; }
+          .td-mobile-subtext { display: block; font-size: 11px; font-weight: 700; color: #22C55E; margin-top: 4px; }
+          .td-mobile-subtext--gray { color: #64748B; }
+          .td-mobile-icon { display: block; }
+          .td-desktop-icon { display: none; }
+          .td-desktop-stat-val { display: none; }
+          .td-desktop-val-row { display: none; }
+          .td-desktop-badge-col { display: none; }
+          .td-mobile-text { display: inline; }
+          .td-desktop-text { display: none; }
+
           /* Profile card: show mobile variant, hide desktop variant */
           .td-mobile-profile-strength { display: block; }
           .td-desktop-profile-strength { display: none; }
@@ -2963,15 +3071,23 @@ export default function TeacherDashboard() {
           .td-main-wrapper { overflow: visible; }
 
           /* Content padding */
-          .td-content { padding: 20px 16px; }
+          .td-content { padding: 24px 20px; }
 
           /* Welcome */
           .td-welcome-header {
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             flex-direction: column;
             align-items: flex-start;
           }
-          .td-welcome-header h1 { font-size: 26px; font-weight: 800; }
+          .td-welcome-header h1 { font-size: 28px; font-weight: 800; color: #1E293B; letter-spacing: -0.5px; margin-bottom: 4px; }
+          .td-mobile-location {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #64748B;
+            font-weight: 500;
+          }
 
           /* Grid: single column on mobile */
           .td-grid-main {
@@ -2982,151 +3098,207 @@ export default function TeacherDashboard() {
 
           /* Stats Row */
           .td-stats-row {
+            display: flex;
             flex-direction: column;
-            gap: 12px;
-            margin-bottom: 28px;
+            gap: 16px;
+            margin-bottom: 32px;
           }
-          .td-stats-row .td-profile-card { flex: none; }
+          .td-stats-row .td-profile-card {
+            width: 100%;
+          }
           .td-stats-mini-wrapper {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 12px;
+            gap: 14px;
+            width: 100%;
           }
-          .td-stats-mini-wrapper .td-mini-card { flex: none; }
           .td-profile-card {
-            border-radius: 20px;
-            padding: 20px;
-            border: none;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            border-radius: 28px;
+            padding: 24px 22px;
+            background: #fff;
+            border: 1px solid #EEF2F6;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+          }
+          .td-mobile-ps-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
           }
           .td-mobile-ps-label {
             font-size: 11px;
             font-weight: 700;
-            color: #6C757D;
-            letter-spacing: 0.5px;
-            margin-bottom: 8px;
-          }
-          .td-mobile-ps-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
+            color: #64748B;
+            letter-spacing: 0.6px;
+            margin-bottom: 4px;
           }
           .td-mobile-ps-value {
-            font-size: 40px;
+            font-size: 38px;
             font-weight: 800;
-            color: #1CCB43;
+            color: #166534;
             line-height: 1;
           }
           .td-mobile-ps-icon {
-            width: 48px; height: 48px;
-            background: #E8F9ED;
+            width: 44px;
+            height: 44px;
+            background: #DCFCE7;
             border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            color: #1CCB43;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #15803D;
           }
           .td-profile-card .td-progress-bar {
-            height: 10px;
-            border-radius: 6px;
+            height: 8px;
+            border-radius: 9999px;
+            background: #F1F5F9;
             margin-bottom: 14px;
           }
+          .td-profile-card .td-progress-fill {
+            background: #22C55E;
+            border-radius: 9999px;
+          }
           .td-profile-card .td-card-hint {
-            font-size: 13px;
-            color: #6C757D;
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.4;
+            margin-bottom: 0;
+            font-weight: 500;
+          }
+
+          /* Mini cards on mobile */
+          .td-mini-card {
+            border-radius: 28px;
+            padding: 20px 18px;
+            background: #F8FAFC;
+            border: none;
+            box-shadow: none;
+          }
+          .td-mini-card--views::before,
+          .td-mini-card--applied::before,
+          .td-mini-card--pending::before {
+            display: none;
+          }
+          .td-mini-icon-circle {
+            width: 32px;
+            height: 32px;
+            background: transparent;
+            box-shadow: none;
+            margin-bottom: 12px;
+            color: #166534;
+          }
+          .td-mini-card .td-mini-label {
+            font-size: 10px;
+            font-weight: 700;
+            color: #64748B;
+            letter-spacing: 0.5px;
             margin-bottom: 0;
           }
 
-          /* Mini cards: 2-column side by side */
-          .td-stats-row .td-mini-card {
-            display: none; /* hide individually, then show pair */
-          }
-          /* Show mini cards in a 2-col row using a wrapper trick via nth-child */
-          .td-stats-row .td-mini-card:nth-child(2),
-          .td-stats-row .td-mini-card:nth-child(3) {
-            display: flex;
-          }
-          /* Force them into a row using CSS grid on parent */
-          .td-stats-row {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-          }
-          /* Profile card spans full */
-          .td-stats-row .td-profile-card {
-            grid-column: 1 / -1;
-          }
-          /* 2 mini cards in a row */
-          .td-mini-cards-row-mobile {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-          }
-
-          .td-mini-card {
-            border-radius: 20px;
-            padding: 18px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-          }
-          .td-mini-icon-circle { margin-bottom: 12px; }
-          .td-mini-value { font-size: 28px; }
-
           /* Job Section */
-          .td-jobs-section { margin-bottom: 20px; }
-          .td-jobs-section h2 { font-size: 20px; font-weight: 800; }
+          .td-jobs-section { margin-bottom: 24px; }
+          .td-jobs-section h2 { font-size: 20px; font-weight: 800; color: #1E293B; letter-spacing: -0.3px; }
+          .td-view-all-link { font-size: 12px; color: #166534; font-weight: 700; }
 
           /* Job cards: left green border accent */
           .td-job-item {
-            border-radius: 16px;
-            padding: 16px;
-            gap: 14px;
+            border-radius: 20px;
+            padding: 18px 16px;
+            background: #fff;
             border: none;
-            border-left: 4px solid #1CCB43;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+            border-left: 3.5px solid #22C55E;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.03);
+            display: flex;
+            flex-direction: column;
           }
           .td-job-header-row {
+            display: flex;
             gap: 14px;
+            align-items: center;
           }
           .td-job-avatar {
-            width: 44px; height: 44px;
+            width: 48px;
+            height: 48px;
             border-radius: 50%;
-            font-size: 18px;
+            background: #F8F3E6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 0;
           }
-          .td-job-title-line h3 { font-size: 15px; }
+          .td-job-avatar--school {
+            background: #F1F5F9;
+          }
+          .td-job-title-line h3 {
+            font-size: 14px;
+            font-weight: 800;
+            color: #1E293B;
+            line-height: 1.3;
+            margin-bottom: 2px;
+          }
+          .td-job-school {
+            font-size: 12px;
+            color: #64748B;
+            margin-bottom: 8px;
+            font-weight: 500;
+          }
           .td-job-tags.td-desktop-tags { display: none; }
-          .td-job-tags.td-mobile-only-tags { display: flex; }
+          .td-job-tags.td-mobile-only-tags {
+            display: flex;
+            gap: 6px;
+          }
+          .td-mobile-tag--green {
+            background: #DCFCE7 !important;
+            color: #166534 !important;
+            font-size: 9px !important;
+            font-weight: 800 !important;
+            padding: 4px 8px !important;
+            border-radius: 6px !important;
+          }
+          .td-mobile-tag--gray {
+            background: #F1F5F9 !important;
+            color: #475569 !important;
+            font-size: 9px !important;
+            font-weight: 800 !important;
+            padding: 4px 8px !important;
+            border-radius: 6px !important;
+          }
           .td-job-footer { display: none; }
 
           /* Mobile CTA Card */
           .td-mobile-cta-card {
-            background: #B5F0A5;
-            border-radius: 20px;
-            padding: 22px 20px;
+            background: #86EFAC;
+            border-radius: 24px;
+            padding: 24px 20px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-top: 8px;
+            margin-top: 12px;
           }
           .td-mobile-cta-text h3 {
             font-size: 16px;
             font-weight: 800;
-            color: #111;
+            color: #0F172A;
             margin-bottom: 6px;
+            line-height: 1.25;
           }
           .td-mobile-cta-text p {
-            font-size: 12px;
-            color: #2D5016;
-            line-height: 1.4;
+            font-size: 11px;
+            color: #166534;
+            line-height: 1.35;
+            font-weight: 500;
           }
           .td-mobile-cta-btn {
-            background: #111;
+            background: #1E1B4B;
             color: #fff;
             border: none;
-            padding: 12px 16px;
+            padding: 10px 16px;
             border-radius: 12px;
             font-size: 11px;
             font-weight: 800;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.4px;
             cursor: pointer;
             white-space: nowrap;
           }
