@@ -563,7 +563,7 @@ export default function TeacherDashboard() {
           {/* ── Welcome Area ── */}
           <div className="td-welcome-header">
             <div>
-              <h1>Welcome, Mrs Adeloa</h1>
+              <h1 className="td-welcome-title">Welcome, Mrs Adeloa</h1>
               {/* Desktop subtitle */}
               <p className="td-subtitle">Your academic career overview for today.</p>
               {/* Mobile location */}
@@ -573,15 +573,13 @@ export default function TeacherDashboard() {
               </div>
             </div>
             <div className="td-location-badge">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="#1CCB43">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" />
-              </svg>
+              <FiMapPin size={14} color="#1CCB43" />
               <span>Victoria Island, Lagos</span>
             </div>
           </div>
 
           <div className="td-grid-main">
-            {/* Left Content */}
+            {/* Left Content / Main Feed */}
             <div className="td-left-col">
 
               {/* ── Stats Overview ── */}
@@ -589,7 +587,7 @@ export default function TeacherDashboard() {
                 {/* Profile Strength Card */}
                 <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
                   <div className="td-card-header">
-                    <span>Profile Strength</span>
+                    <span className="td-profile-title">Profile Strength</span>
                     <span className="td-percent-badge">75%</span>
                   </div>
                   {/* Mobile profile strength layout */}
@@ -609,17 +607,19 @@ export default function TeacherDashboard() {
                     <div className="td-progress-bar">
                       <div className="td-progress-fill" style={{ width: '75%' }}></div>
                     </div>
-                    <p className="td-card-hint">Your profile is missing some vital academic certifications popular with Tier-1 schools.</p>
+                    <p className="td-card-hint">
+                      Your profile is missing some vital<br />to enable you apply for jobs.
+                    </p>
                     <button className="td-complete-profile-btn">Complete Profile →</button>
                   </div>
                 </motion.div>
 
-                {/* Mini cards row — 2-col on mobile, inline on desktop */}
+                {/* Mini cards wrapper */}
                 <div className="td-stats-mini-wrapper">
                   {/* Profile Views */}
-                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card">
+                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--views">
                     <div className="td-mini-icon-circle">
-                      <FiEye />
+                      <FiEye size={18} />
                     </div>
                     <p className="td-mini-label">PROFILE VIEWS</p>
                     <div className="td-mini-value-row">
@@ -629,20 +629,22 @@ export default function TeacherDashboard() {
                   </motion.div>
 
                   {/* Jobs Applied */}
-                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card">
-                    <div className="td-mini-icon-circle green">
-                      <FiSend />
+                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--applied">
+                    <div className="td-mini-icon-circle">
+                      <FiSend size={18} />
                     </div>
                     <p className="td-mini-label">JOBS APPLIED</p>
                     <div className="td-mini-value-row">
                       <span className="td-mini-value">42</span>
-                      <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#111', marginLeft: '6px' }}>Total</span>
+                      <span className="td-mini-unit">Total</span>
                     </div>
                   </motion.div>
 
                   {/* Pending Review (desktop only) */}
-                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-desktop-only-card">
-                    <div className="td-mini-icon-circle red"><FiFileText /></div>
+                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
+                    <div className="td-mini-icon-circle">
+                      <FiFileText size={18} />
+                    </div>
                     <p className="td-mini-label">PENDING REVIEW</p>
                     <div className="td-mini-value-row">
                       <span className="td-mini-value">08</span>
@@ -659,61 +661,82 @@ export default function TeacherDashboard() {
                     <span className="td-desktop-label">Active Job Feeds</span>
                     <span className="td-mobile-label">Priority Job Feeds</span>
                   </h2>
-                  <a href="#">View All Vacancies</a>
+                  <a href="#" className="td-view-all-link">View All Vacancies</a>
                 </div>
 
                 <div className="td-job-list">
+                  {/* Job 1: HOD Mathematics */}
                   <motion.div variants={cardVariants} className="td-job-item">
-                    <div className="td-job-icon td-job-icon--math">Σ</div>
-                    <div className="td-job-details">
-                      <div className="td-job-title-row">
-                        <h3>HOD Mathematics</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          <span className="td-job-type-badge">FULL-TIME</span>
-                          <span style={{ fontSize: '11px', color: '#6C757D', fontWeight: '500' }}>3 days ago</span>
+                    <div className="td-job-header-row">
+                      <div className="td-job-avatar td-job-avatar--math">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
+                          <path d="M9 12h6" />
+                          <path d="M12 9v6" />
+                        </svg>
+                      </div>
+                      <div className="td-job-info-main">
+                        <div className="td-job-title-line">
+                          <h3>HOD Mathematics</h3>
+                          <div className="td-job-badge-col">
+                            <span className="td-job-type-badge td-job-type-badge--full">FULL-TIME</span>
+                            <span className="td-job-time-ago">3 days ago</span>
+                          </div>
+                        </div>
+                        <p className="td-job-school">St. Gregory's College <span className="td-job-bullet">•</span> Ikoyi, Lagos</p>
+                        
+                        {/* Mobile tags */}
+                        <div className="td-job-tags td-mobile-only-tags">
+                          <span>LAGOS</span>
+                          <span>3 DAYS AGO</span>
+                        </div>
+                        
+                        {/* Desktop tags */}
+                        <div className="td-job-tags td-desktop-tags">
+                          <span>POSTGRADUATE DEGREE</span>
+                          <span>8+ YEARS EXPERIENCE</span>
+                          <span>LEADERSHIP</span>
                         </div>
                       </div>
-                      <p className="td-job-school">St. Gregory's College • Ikoyi, Lagos</p>
-                      <div className="td-job-tags">
-                        <span>LAGOS</span>
-                        <span>3 DAYS AGO</span>
-                      </div>
-                      {/* Desktop extra tags */}
-                      <div className="td-job-tags td-desktop-tags">
-                        <span>POSTGRADUATE DEGREE</span>
-                        <span>8+ YEARS EXPERIENCE</span>
-                        <span>LEADERSHIP</span>
-                      </div>
-                      <div className="td-job-footer">
-                        <span className="td-job-salary">₦450k - ₦600k Monthly</span>
-                        <a href="#" className="td-quick-apply">Quick Apply →</a>
-                      </div>
+                    </div>
+
+                    <div className="td-job-footer">
+                      <span className="td-job-salary">₦450k – ₦600k Monthly</span>
+                      <a href="#" className="td-quick-apply">Quick Apply →</a>
                     </div>
                   </motion.div>
 
+                  {/* Job 2: Physics Instructor */}
                   <motion.div variants={cardVariants} className="td-job-item">
-                    <div className="td-job-icon td-job-icon--school">
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="#9ca3af">
-                        <path d="M12 3L1 9l4 2.18V15l7 3.82L19 15v-3.82L21 10V17h2V9L12 3zm5 11.99l-5 2.73-5-2.73v-3.06L12 15l5-3.07v3.06z"/>
-                      </svg>
-                    </div>
-                    <div className="td-job-details">
-                      <div className="td-job-title-row">
-                        <h3>Physics Instructor</h3>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                          <span className="td-job-type-badge">RESIDENTIAL</span>
-                          <span style={{ fontSize: '11px', color: '#6C757D', fontWeight: '500' }}>1 week ago</span>
+                    <div className="td-job-header-row">
+                      <div className="td-job-avatar td-job-avatar--school">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="4" y="4" width="16" height="16" rx="3" />
+                          <circle cx="12" cy="10" r="3" />
+                          <path d="M8 18h8" />
+                        </svg>
+                      </div>
+                      <div className="td-job-info-main">
+                        <div className="td-job-title-line">
+                          <h3>Physics Instructor</h3>
+                          <div className="td-job-badge-col">
+                            <span className="td-job-type-badge td-job-type-badge--res">RESIDENTIAL</span>
+                            <span className="td-job-time-ago">1 week ago</span>
+                          </div>
+                        </div>
+                        <p className="td-job-school">Atlantic Hall School <span className="td-job-bullet">•</span> Epe, Lagos</p>
+                        
+                        {/* Mobile tags */}
+                        <div className="td-job-tags td-mobile-only-tags">
+                          <span>EPE</span>
+                          <span>1 WEEK AGO</span>
                         </div>
                       </div>
-                      <p className="td-job-school">Atlantic Hall School • Epe, Lagos</p>
-                      <div className="td-job-tags">
-                        <span>EPE</span>
-                        <span>1 WEEK AGO</span>
-                      </div>
-                      <div className="td-job-footer">
-                        <span className="td-job-salary">₦350k - ₦480k Monthly</span>
-                        <a href="#" className="td-quick-apply">Quick Apply →</a>
-                      </div>
+                    </div>
+
+                    <div className="td-job-footer">
+                      <span className="td-job-salary">₦350k – ₦480k Monthly</span>
+                      <a href="#" className="td-quick-apply">Quick Apply →</a>
                     </div>
                   </motion.div>
                 </div>
@@ -730,7 +753,7 @@ export default function TeacherDashboard() {
 
             </div>
 
-            {/* ── Right Sidebar (Desktop Only) ── */}
+            {/* ── Right Sidebar (Desktop Only - hidden in clean single column layout or kept empty) ── */}
             <div className="td-right-col">
               <motion.div variants={cardVariants} className="td-side-section">
                 <h3>Upcoming Interviews</h3>
@@ -2249,11 +2272,21 @@ export default function TeacherDashboard() {
         .td-welcome-header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
-          margin-bottom: 32px;
+          align-items: flex-start;
+          margin-bottom: 36px;
         }
-        .td-welcome-header h1 { font-size: 28px; font-weight: 700; color: #111; margin-bottom: 4px; }
-        .td-subtitle { color: #6C757D; font-size: 15px; }
+        .td-welcome-title {
+          font-size: 32px;
+          font-weight: 800;
+          color: #2D3748;
+          margin-bottom: 8px;
+          letter-spacing: -0.5px;
+        }
+        .td-subtitle {
+          color: #718096;
+          font-size: 15px;
+          font-weight: 400;
+        }
 
         .td-mobile-location {
           display: none;
@@ -2266,92 +2299,229 @@ export default function TeacherDashboard() {
 
         .td-location-badge {
           background: #fff;
-          border: 1px solid #E9ECEF;
-          padding: 8px 12px;
-          border-radius: 20px;
+          border: 1px solid #E2E8F0;
+          padding: 8px 16px;
+          border-radius: 9999px;
           display: flex;
           align-items: center;
           gap: 8px;
           font-size: 13px;
           font-weight: 600;
+          color: #2D3748;
           white-space: nowrap;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
         }
 
         /* Grid */
         .td-grid-main {
-          display: grid;
-          grid-template-columns: 1fr 300px;
-          gap: 32px;
+          display: block;
+          width: 100%;
+        }
+        .td-left-col {
+          width: 100%;
+        }
+        .td-right-col {
+          display: none;
         }
 
         /* ═══════════════════════════════════════
            STATS ROW
         ═══════════════════════════════════════ */
         .td-stats-row {
-          display: flex;
-          gap: 20px;
-          margin-bottom: 40px;
+          display: grid;
+          grid-template-columns: 1.35fr 1fr 1fr 1fr;
+          gap: 24px;
+          margin-bottom: 48px;
           align-items: stretch;
         }
-        .td-stats-row .td-profile-card { flex: 1.5; }
-        .td-stats-mini-wrapper {
-          display: contents; /* on desktop, children participate in parent flex directly */
+        .td-stats-row .td-profile-card {
+          width: 100%;
         }
-        .td-stats-mini-wrapper .td-mini-card { flex: 1; }
+        .td-stats-mini-wrapper {
+          display: contents; /* on desktop, children participate in parent grid directly */
+        }
 
         .td-stat-card {
           background: #fff;
-          border-radius: 24px;
-          padding: 24px;
+          border-radius: 32px;
+          padding: 28px 24px;
           box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+          position: relative;
         }
-        .td-profile-card { border: 1px solid #E9ECEF; }
+        
+        .td-profile-card {
+          border: none;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+        }
 
         /* Desktop profile card internals */
         .td-mobile-profile-strength { display: none; }
-        .td-desktop-profile-strength { display: block; }
+        .td-desktop-profile-strength {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          justify-content: space-between;
+        }
 
-        .td-card-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 16px; }
-        .td-percent-badge { background: #E8F9ED; color: #1CCB43; padding: 4px 8px; border-radius: 12px; font-size: 12px; }
+        .td-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 20px;
+        }
+        .td-profile-title {
+          font-size: 16px;
+          font-weight: 700;
+          color: #1A202C;
+        }
+        .td-percent-badge {
+          background: #68D391;
+          color: #fff;
+          padding: 4px 10px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 700;
+        }
 
-        .td-progress-bar { height: 8px; background: #F1F3F5; border-radius: 4px; margin-bottom: 16px; }
-        .td-progress-fill { height: 100%; background: #1CCB43; border-radius: 4px; transition: width 0.8s ease; }
+        .td-progress-bar {
+          height: 8px;
+          background: #EDF2F7;
+          border-radius: 9999px;
+          margin-bottom: 20px;
+          overflow: hidden;
+        }
+        .td-progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #22C55E 0%, #4ADE80 100%);
+          border-radius: 9999px;
+          transition: width 0.8s ease;
+        }
 
-        .td-card-hint { font-size: 12px; color: #6C757D; line-height: 1.5; margin-bottom: 20px; }
+        .td-card-hint {
+          font-size: 13px;
+          color: #718096;
+          line-height: 1.4;
+          margin-bottom: 24px;
+        }
 
         .td-complete-profile-btn {
           width: 100%;
-          background: #1CCB43;
+          background: #22C55E;
           color: #fff;
           border: none;
-          padding: 12px;
-          border-radius: 12px;
+          padding: 14px 20px;
+          border-radius: 14px;
           font-weight: 700;
+          font-size: 14px;
           cursor: pointer;
+          transition: 0.2s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25);
+        }
+        .td-complete-profile-btn:hover {
+          background: #16A34A;
         }
 
+        /* 3 Mini Cards on Desktop */
         .td-mini-card {
+          background: #F8FAFC;
+          border-radius: 32px;
+          padding: 28px 24px;
           display: flex;
           flex-direction: column;
           position: relative;
-          overflow: hidden;
+          border: none;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.015);
         }
-        .td-mini-icon-circle {
-          width: 32px; height: 32px; border-radius: 50%;
-          background: #E9ECEF;
-          display: flex; align-items: center; justify-content: center;
-          color: #6C757D;
-          margin-bottom: 16px;
+        
+        .td-mini-card--views::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 24px;
+          bottom: 24px;
+          width: 3px;
+          background: #22C55E;
+          border-radius: 0 4px 4px 0;
         }
-        .td-mini-icon-circle.green { background: #E8F9ED; color: #1CCB43; }
-        .td-mini-icon-circle.red { background: #FFE8E8; color: #FA5252; }
+        
+        .td-mini-card--applied::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 24px;
+          bottom: 24px;
+          width: 3px;
+          background: #22C55E;
+          border-radius: 0 4px 4px 0;
+        }
 
-        .td-mini-label { font-size: 11px; font-weight: 700; color: #6C757D; margin-bottom: 8px; }
-        .td-mini-value-row { display: flex; align-items: baseline; gap: 8px; }
-        .td-mini-value { font-size: 24px; font-weight: 800; color: #111; }
-        .td-mini-growth { color: #1CCB43; font-size: 12px; font-weight: 600; }
-        .td-mini-sub { font-size: 11px; color: #1CCB43; font-weight: 600; margin-top: 4px; }
-        .td-mini-total, .td-mini-action { font-size: 12px; color: #6C757D; }
+        .td-mini-card--pending::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 24px;
+          bottom: 24px;
+          width: 3px;
+          background: #DC2626;
+          border-radius: 0 4px 4px 0;
+        }
+
+        .td-mini-icon-circle {
+          width: 42px;
+          height: 42px;
+          border-radius: 50%;
+          background: #fff;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #22C55E;
+          margin-bottom: 28px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        
+        .td-mini-card--pending .td-mini-icon-circle {
+          color: #DC2626;
+        }
+
+        .td-mini-label {
+          font-size: 12px;
+          font-weight: 800;
+          color: #1A202C;
+          letter-spacing: 0.6px;
+          margin-bottom: 8px;
+        }
+        .td-mini-value-row {
+          display: flex;
+          align-items: baseline;
+          gap: 6px;
+        }
+        .td-mini-value {
+          font-size: 32px;
+          font-weight: 800;
+          color: #1A202C;
+          line-height: 1;
+        }
+        .td-mini-growth {
+          color: #22C55E;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .td-mini-unit {
+          font-size: 13px;
+          font-weight: 600;
+          color: #4A5568;
+        }
+        .td-mini-action {
+          font-size: 12px;
+          font-weight: 700;
+          color: #DC2626;
+        }
 
         /* Desktop-only card hidden on mobile */
         .td-desktop-only-card { display: flex; }
@@ -2359,69 +2529,167 @@ export default function TeacherDashboard() {
         /* ═══════════════════════════════════════
            JOBS SECTION
         ═══════════════════════════════════════ */
-        .td-jobs-section h2 { font-size: 22px; font-weight: 700; }
-        .td-section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .td-section-header a { font-size: 13px; color: #1CCB43; font-weight: 600; text-decoration: none; }
+        .td-jobs-section {
+          margin-top: 16px;
+        }
+        .td-jobs-section h2 {
+          font-size: 26px;
+          font-weight: 800;
+          color: #2D3748;
+          letter-spacing: -0.3px;
+        }
+        .td-section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 24px;
+        }
+        .td-view-all-link {
+          font-size: 13px;
+          color: #22C55E;
+          font-weight: 700;
+          text-decoration: none;
+        }
+        .td-view-all-link:hover {
+          text-decoration: underline;
+        }
 
         .td-mobile-label { display: none; }
         .td-desktop-label { display: inline; }
 
-        .td-job-list { display: flex; flex-direction: column; gap: 16px; }
+        .td-job-list {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
 
         .td-job-item {
           background: #fff;
-          border-radius: 20px;
-          padding: 24px;
+          border-radius: 28px;
+          padding: 28px 32px;
+          display: flex;
+          flex-direction: column;
+          border: 1px solid #F1F5F9;
+          box-shadow: 0 4px 20px rgba(0,0,0,0.015);
+        }
+
+        .td-job-header-row {
           display: flex;
           gap: 20px;
-          border: 1px solid #E9ECEF;
+          align-items: flex-start;
         }
 
-        .td-job-icon {
-          width: 50px; height: 50px;
-          background: #F1F3F5;
-          border-radius: 12px;
-          display: flex; align-items: center; justify-content: center;
-          font-weight: 700;
-          color: #6C757D;
-          font-size: 20px;
+        .td-job-avatar {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: #E2E8F0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           flex-shrink: 0;
+          margin-top: 2px;
         }
-        .td-job-icon--math { background: #F8F0FF; color: #7C3AED; }
-        .td-job-icon--school { background: #F1F3F5; }
+        .td-job-avatar--school {
+          background: #E2E8F0;
+        }
 
-        .td-job-details { flex: 1; }
-        .td-job-title-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 4px; gap: 8px; }
-        .td-job-title-row h3 { font-size: 16px; font-weight: 700; }
+        .td-job-info-main {
+          flex: 1;
+        }
+        .td-job-title-line {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 4px;
+        }
+        .td-job-title-line h3 {
+          font-size: 17px;
+          font-weight: 800;
+          color: #1A202C;
+        }
 
-        .td-job-type-badge { background: #E8F9ED; color: #1CCB43; font-size: 10px; font-weight: 800; padding: 4px 8px; border-radius: 6px; white-space: nowrap; }
-        .td-job-type-badge--exec { background: #FFF9DB; color: #F59F00; }
+        .td-job-badge-col {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 6px;
+        }
 
-        .td-job-school { font-size: 13px; color: #6C757D; margin-bottom: 12px; }
-
-        .td-job-tags { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-        .td-job-tags span {
-          background: #F1F3F5;
-          color: #495057;
+        .td-job-type-badge {
           font-size: 10px;
-          font-weight: 700;
+          font-weight: 800;
           padding: 4px 10px;
-          border-radius: 20px;
+          border-radius: 9999px;
+          letter-spacing: 0.5px;
+        }
+        .td-job-type-badge--full {
+          background: #E8F9ED;
+          color: #22C55E;
+        }
+        .td-job-type-badge--res {
+          background: #E8F9ED;
+          color: #22C55E;
+        }
+
+        .td-job-time-ago {
+          font-size: 11px;
+          color: #718096;
+          font-weight: 500;
+        }
+
+        .td-job-school {
+          font-size: 13px;
+          color: #718096;
+          margin-bottom: 14px;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .td-job-bullet {
+          color: #CBD5E0;
+          font-size: 10px;
+        }
+
+        .td-job-tags {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .td-job-tags span {
+          background: #F1F5F9;
+          color: #475569;
+          font-size: 9px;
+          font-weight: 800;
+          letter-spacing: 0.6px;
+          padding: 6px 14px;
+          border-radius: 9999px;
         }
         .td-desktop-tags { display: flex; }
+        .td-mobile-only-tags { display: none; }
 
         .td-job-footer {
           display: flex;
+          justify-content: space-between;
           align-items: center;
-          gap: 16px;
-          border-top: 1px solid #F1F3F5;
-          margin-top: 16px;
-          padding-top: 16px;
-          flex-wrap: wrap;
+          border-top: 1px solid #F1F5F9;
+          margin-top: 20px;
+          padding-top: 20px;
         }
-        .td-job-salary { font-size: 13px; font-weight: 700; color: #1CCB43; }
-        .td-job-time { font-size: 12px; color: #ADB5BD; flex: 1; }
-        .td-quick-apply { font-size: 13px; font-weight: 700; color: #1CCB43; text-decoration: none; }
+        .td-job-salary {
+          font-size: 14px;
+          font-weight: 800;
+          color: #22C55E;
+        }
+        .td-quick-apply {
+          font-size: 13px;
+          font-weight: 700;
+          color: #22C55E;
+          text-decoration: none;
+        }
+        .td-quick-apply:hover {
+          text-decoration: underline;
+        }
 
         /* Mobile CTA Card */
         .td-mobile-cta-card { display: none; }
@@ -2815,15 +3083,17 @@ export default function TeacherDashboard() {
             border-left: 4px solid #1CCB43;
             box-shadow: 0 2px 12px rgba(0,0,0,0.05);
           }
-          .td-job-icon {
+          .td-job-header-row {
+            gap: 14px;
+          }
+          .td-job-avatar {
             width: 44px; height: 44px;
             border-radius: 50%;
             font-size: 18px;
           }
-          .td-job-icon--math { background: #F8F0FF; }
-          .td-job-icon--school { background: #F1F3F5; }
-
-          .td-job-title-row h3 { font-size: 15px; }
+          .td-job-title-line h3 { font-size: 15px; }
+          .td-job-tags.td-desktop-tags { display: none; }
+          .td-job-tags.td-mobile-only-tags { display: flex; }
           .td-job-footer { display: none; }
 
           /* Mobile CTA Card */
