@@ -231,6 +231,7 @@ export default function TeacherDashboard() {
   const [availEmpType, setAvailEmpType] = useState('full-time');
   const [availLocation, setAvailLocation] = useState('Benin City, Edo State');
   const [availStartOption, setAvailStartOption] = useState('immediately');
+  const [showProfileUpdatedModal, setShowProfileUpdatedModal] = useState(false);
 
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Senior Mathematics Educator');
@@ -2031,7 +2032,7 @@ export default function TeacherDashboard() {
                           <button
                             type="button"
                             className="td-pers-save-btn"
-                            onClick={() => alert('Personal Information updated successfully!')}
+                            onClick={() => setProfileSubTab('update-success')}
                           >
                             Save Changes
                           </button>
@@ -2043,262 +2044,222 @@ export default function TeacherDashboard() {
                   {/* 2. Professional Info Tab */}
                   {profileSubTab === 'professional-info' && (
                     <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-info-page">
-                      {/* Top Breadcrumb Header */}
+                      {/* Top Breadcrumb */}
                       <div className="td-prof-breadcrumb" onClick={() => setProfileSubTab('overview')}>
                         <FiArrowLeft size={16} className="td-prof-back-icon" />
-                        <span>Profile/ Professional information</span>
+                        <span>Settings/ ...Professional information</span>
                       </div>
 
-                      {/* Main Title & Description */}
-                      <div className="td-prof-header-section">
-                        <h1 className="td-prof-page-title">Professional Information</h1>
-                        <p className="td-prof-page-desc">
-                          Define your professional identity. This information will be visible to schools and administrators viewing your profile.
-                        </p>
+                      {/* Back to Profile & Edit Profile Row */}
+                      <div className="td-prof-nav-bar">
+                        <button
+                          type="button"
+                          className="td-prof-back-btn"
+                          onClick={() => setProfileSubTab('overview')}
+                        >
+                          <FiArrowLeft size={16} />
+                          <span>Back to Profile</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="td-prof-edit-profile-btn"
+                          onClick={() => setProfileSubTab('personal-info')}
+                        >
+                          <FiEdit2 size={14} />
+                          <span>Edit Profile</span>
+                        </button>
                       </div>
 
-                      {/* 2-Column Content Layout */}
-                      <div className="td-prof-grid-layout">
-                        {/* LEFT COLUMN */}
-                        <div className="td-prof-left-col">
-                          {/* Card 1: Identity & Experience */}
-                          <div className="td-prof-card">
-                            <div className="td-prof-card-title-row">
-                              <div className="td-prof-title-icon-wrap">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
-                                  <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+                      {/* Hero Header Card */}
+                      <div className="td-prof-hero-card">
+                        <div className="td-prof-hero-decor" />
+                        <div className="td-prof-hero-content">
+                          <img
+                            src={estherProfileImg}
+                            alt="Esther Egharevba"
+                            className="td-prof-hero-avatar"
+                          />
+                          <div className="td-prof-hero-details">
+                            <div className="td-prof-hero-name-row">
+                              <h1 className="td-prof-hero-name">Esther Egharevba</h1>
+                              <span className="td-prof-trcn-verified-badge">
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
                                 </svg>
-                              </div>
-                              <h2>Identity & Experience</h2>
+                                <span>TRCN Verified</span>
+                              </span>
                             </div>
-                            <div className="td-prof-divider" />
-
-                            <div className="td-prof-fields">
-                              <div className="td-prof-field-group">
-                                <label className="td-prof-label">Professional Title</label>
-                                <input
-                                  type="text"
-                                  className="td-prof-input"
-                                  value={profTitle}
-                                  onChange={(e) => setProfTitle(e.target.value)}
-                                />
+                            <p className="td-prof-hero-role">Mathematics Teacher</p>
+                            <div className="td-prof-hero-meta-row">
+                              <div className="td-prof-hero-meta-item">
+                                <FiMapPin size={15} />
+                                <span>Benin City, Edo State</span>
                               </div>
-
-                              <div className="td-prof-field-group">
-                                <label className="td-prof-label">Professional Summary</label>
-                                <textarea
-                                  className="td-prof-textarea"
-                                  rows={4}
-                                  value={profSummary}
-                                  onChange={(e) => setProfSummary(e.target.value)}
-                                />
-                              </div>
-
-                              <div className="td-prof-field-group">
-                                <label className="td-prof-label">Years of Experience</label>
-                                <div className="td-prof-select-wrap td-prof-select-half">
-                                  <select
-                                    className="td-prof-select"
-                                    value={profYearsExp}
-                                    onChange={(e) => setProfYearsExp(e.target.value)}
-                                  >
-                                    <option value="1-3 years">1-3 years</option>
-                                    <option value="4-7 years">4-7 years</option>
-                                    <option value="8+ years">8+ years</option>
-                                    <option value="10+ years">10+ years</option>
-                                  </select>
-                                  <FiChevronDown className="td-prof-select-arrow" size={16} />
-                                </div>
+                              <div className="td-prof-hero-meta-item">
+                                <FiBriefcase size={15} />
+                                <span>8+ Years Experience</span>
                               </div>
                             </div>
                           </div>
+                        </div>
+                      </div>
 
-                          {/* Card 2: Preferences */}
-                          <div className="td-prof-card td-prof-pref-card">
-                            <div className="td-prof-card-title-row">
-                              <div className="td-prof-title-icon-wrap">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <line x1="4" y1="21" x2="4" y2="14"/>
-                                  <line x1="4" y1="10" x2="4" y2="3"/>
-                                  <line x1="12" y1="21" x2="12" y2="12"/>
-                                  <line x1="12" y1="8" x2="12" y2="3"/>
-                                  <line x1="20" y1="21" x2="20" y2="16"/>
-                                  <line x1="20" y1="12" x2="20" y2="3"/>
-                                  <line x1="1" y1="14" x2="7" y2="14"/>
-                                  <line x1="9" y1="8" x2="15" y2="8"/>
-                                  <line x1="17" y1="16" x2="23" y2="16"/>
+                      {/* 2-Column Main Content Grid */}
+                      <div className="td-prof-view-grid">
+                        {/* Upper Left: Professional Summary */}
+                        <div className="td-prof-card">
+                          <div className="td-prof-card-head">
+                            <div className="td-prof-card-icon-wrap">
+                              <FiFileText size={18} color="#15803D" />
+                            </div>
+                            <h2>Professional Summary</h2>
+                          </div>
+                          <p className="td-prof-summary-text">
+                            Dedicated and results–driven Mathematics Educator with over 8 years of experience fostering academic excellence in diverse classroom settings. Proven ability to translate complex mathematical concepts into accessible, engaging lessons that improve student comprehension and standardized test scores. Committed to creating an inclusive learning environment and integrating modern pedagogical technologies to enhance the learning experience.
+                          </p>
+                        </div>
+
+                        {/* Upper Right: Subjects & Teaching Levels */}
+                        <div className="td-prof-card">
+                          <div className="td-prof-card-head">
+                            <div className="td-prof-card-icon-wrap">
+                              <FiBook size={18} color="#15803D" />
+                            </div>
+                            <h2>Subjects</h2>
+                          </div>
+                          <div className="td-prof-subject-pills-row">
+                            <span className="td-prof-sub-pill">Mathematics</span>
+                            <span className="td-prof-sub-pill">Further Mathematics</span>
+                            <span className="td-prof-sub-pill">Basic Science</span>
+                          </div>
+
+                          <div className="td-prof-card-head" style={{ marginTop: '24px' }}>
+                            <div className="td-prof-card-icon-wrap">
+                              <FiCheckCircle size={18} color="#15803D" />
+                            </div>
+                            <h2>Teaching Levels</h2>
+                          </div>
+                          <div className="td-prof-levels-col">
+                            <span className="td-prof-level-pill">Senior Secondary (SS1–SS3)</span>
+                            <span className="td-prof-level-pill">Junior Secondary (JSS1–JSS3)</span>
+                          </div>
+                        </div>
+
+                        {/* Lower Left: Experience */}
+                        <div className="td-prof-card">
+                          <div className="td-prof-card-head">
+                            <div className="td-prof-card-icon-wrap">
+                              <FiBriefcase size={18} color="#15803D" />
+                            </div>
+                            <h2>Experience</h2>
+                          </div>
+
+                          <div className="td-prof-exp-items-list">
+                            <div className="td-prof-exp-item-card">
+                              <div className="td-prof-exp-item-left">
+                                <span className="td-prof-exp-date td-prof-exp-date--present">2018 - Present</span>
+                                <h3 className="td-prof-exp-title">Senior Mathematics Teacher</h3>
+                                <p className="td-prof-exp-school">Word of Faith Group of Schools, Benin City</p>
+                              </div>
+                              <div className="td-prof-exp-cap-badge">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
                                 </svg>
                               </div>
-                              <h2>Preferences</h2>
                             </div>
 
-                            <div className="td-prof-fields">
-                              <div className="td-prof-field-group">
-                                <label className="td-prof-label">Employment Preference</label>
-                                <div className="td-prof-select-wrap">
-                                  <select
-                                    className="td-prof-select"
-                                    value={profEmpPref}
-                                    onChange={(e) => setProfEmpPref(e.target.value)}
-                                  >
-                                    <option value="Full Time">Full Time</option>
-                                    <option value="Part Time">Part Time</option>
-                                    <option value="Contract">Contract</option>
-                                  </select>
-                                  <FiChevronDown className="td-prof-select-arrow" size={16} />
-                                </div>
+                            <div className="td-prof-exp-item-card">
+                              <div className="td-prof-exp-item-left">
+                                <span className="td-prof-exp-date">2015 - 2018</span>
+                                <h3 className="td-prof-exp-title">Subject Teacher (Mathematics)</h3>
+                                <p className="td-prof-exp-school">Nosakhare Model Education Centre</p>
                               </div>
-
-                              <div className="td-prof-field-group">
-                                <label className="td-prof-label">Teaching Mode</label>
-                                <div className="td-prof-select-wrap">
-                                  <select
-                                    className="td-prof-select"
-                                    value={profTeachMode}
-                                    onChange={(e) => setProfTeachMode(e.target.value)}
-                                  >
-                                    <option value="Hydrid">Hydrid</option>
-                                    <option value="On-site">On-site</option>
-                                    <option value="Remote">Remote</option>
-                                  </select>
-                                  <FiChevronDown className="td-prof-select-arrow" size={16} />
-                                </div>
+                              <div className="td-prof-exp-cap-badge">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                </svg>
                               </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* RIGHT COLUMN */}
-                        <div className="td-prof-right-col">
-                          {/* Card: Expertise */}
-                          <div className="td-prof-card td-prof-expertise-card">
-                            <div className="td-prof-card-title-row">
-                              <div className="td-prof-title-icon-wrap">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="5" r="2.5"/>
-                                  <circle cx="6" cy="19" r="2.5"/>
-                                  <circle cx="18" cy="19" r="2.5"/>
-                                  <path d="M10 7.5L7.5 16.5"/>
-                                  <path d="M14 7.5L16.5 16.5"/>
-                                  <path d="M8.5 19h7"/>
+                        {/* Lower Right: Education + Certification & Documents */}
+                        <div className="td-prof-right-col-stack">
+                          {/* Education Box */}
+                          <div className="td-prof-card">
+                            <div className="td-prof-card-head">
+                              <div className="td-prof-card-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
                                 </svg>
                               </div>
-                              <h2>Expertise</h2>
+                              <h2>Education</h2>
                             </div>
-                            <div className="td-prof-divider td-prof-divider-green" />
 
-                            <div className="td-prof-section-block">
-                              <label className="td-prof-section-label">Subjects</label>
-                              <div className="td-prof-subject-tags">
-                                {profSubjects.map((subj, idx) => (
-                                  <div key={idx} className="td-prof-subject-pill">
-                                    <span>{subj}</span>
-                                    <button
-                                      type="button"
-                                      className="td-prof-remove-subj-btn"
-                                      onClick={() => setProfSubjects(profSubjects.filter((_, i) => i !== idx))}
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                ))}
-
-                                {showAddSubject ? (
-                                  <div className="td-prof-add-subject-input-wrap">
-                                    <input
-                                      type="text"
-                                      placeholder="Subject name..."
-                                      value={newSubjectInput}
-                                      onChange={(e) => setNewSubjectInput(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter' && newSubjectInput.trim()) {
-                                          setProfSubjects([...profSubjects, newSubjectInput.trim()]);
-                                          setNewSubjectInput('');
-                                          setShowAddSubject(false);
-                                        }
-                                      }}
-                                      autoFocus
-                                      className="td-prof-add-input"
-                                    />
-                                    <button
-                                      type="button"
-                                      className="td-prof-add-confirm-btn"
-                                      onClick={() => {
-                                        if (newSubjectInput.trim()) {
-                                          setProfSubjects([...profSubjects, newSubjectInput.trim()]);
-                                          setNewSubjectInput('');
-                                          setShowAddSubject(false);
-                                        }
-                                      }}
-                                    >
-                                      Add
-                                    </button>
-                                    <button
-                                      type="button"
-                                      className="td-prof-add-cancel-btn"
-                                      onClick={() => setShowAddSubject(false)}
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    className="td-prof-add-subject-btn"
-                                    onClick={() => setShowAddSubject(true)}
-                                  >
-                                    + Add Subject
-                                  </button>
-                                )}
+                            <div className="td-prof-edu-item">
+                              <div className="td-prof-edu-icon-box">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z"/>
+                                </svg>
                               </div>
-                            </div>
-
-                            <div className="td-prof-divider-light" />
-
-                            <div className="td-prof-section-block">
-                              <label className="td-prof-section-label">Teaching Levels</label>
-                              <div className="td-prof-checkbox-list">
-                                {['JSS (Junior Secondary)', 'Senior Secondary', 'Primary'].map((level) => {
-                                  const isChecked = profTeachingLevels.includes(level);
-                                  return (
-                                    <label key={level} className="td-prof-checkbox-row">
-                                      <input
-                                        type="checkbox"
-                                        checked={isChecked}
-                                        onChange={() => {
-                                          if (isChecked) {
-                                            setProfTeachingLevels(profTeachingLevels.filter((l) => l !== level));
-                                          } else {
-                                            setProfTeachingLevels([...profTeachingLevels, level]);
-                                          }
-                                        }}
-                                        className="td-prof-hidden-checkbox"
-                                      />
-                                      <span className={`td-prof-custom-checkbox ${isChecked ? 'td-prof-custom-checkbox--checked' : ''}`}>
-                                        {isChecked && (
-                                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="20 6 9 17 4 12" />
-                                          </svg>
-                                        )}
-                                      </span>
-                                      <span className="td-prof-checkbox-label">{level}</span>
-                                    </label>
-                                  );
-                                })}
+                              <div className="td-prof-edu-info">
+                                <h3>B.Sc. Ed. Mathematics</h3>
+                                <p className="td-prof-edu-inst">University of Benin (UNIBEN)</p>
+                                <span className="td-prof-edu-period">2010 - 2014</span>
                               </div>
                             </div>
                           </div>
 
-                          {/* Save Changes Button */}
-                          <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="td-prof-save-btn"
-                            onClick={() => alert('Professional Information updated successfully!')}
-                          >
-                            Save Changes
-                          </motion.button>
+                          {/* Certification & Documents Box */}
+                          <div className="td-prof-card">
+                            <div className="td-prof-card-head">
+                              <div className="td-prof-card-icon-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="8" r="7"/>
+                                  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                                </svg>
+                              </div>
+                              <h2>Certification & Documents</h2>
+                            </div>
+
+                            {/* TRCN Status Box */}
+                            <div className="td-prof-trcn-box">
+                              <div className="td-prof-trcn-left">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                                  <path d="m9 12 2 2 4-4"/>
+                                </svg>
+                                <div>
+                                  <h4>TRCN Registered Educator</h4>
+                                  <p>Registration No: ED/12345/2015</p>
+                                </div>
+                              </div>
+                              <span className="td-prof-active-badge">ACTIVE</span>
+                            </div>
+
+                            {/* Download Buttons */}
+                            <div className="td-prof-downloads-col">
+                              <button
+                                type="button"
+                                className="td-prof-download-btn"
+                                onClick={() => alert('Downloading Esther_Egharevba_CV.pdf')}
+                              >
+                                <FiDownload size={14} />
+                                <span>Download CV (PDF)</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="td-prof-download-btn"
+                                onClick={() => alert('Downloading Esther_Egharevba_Cover_Letter.pdf')}
+                              >
+                                <FiDownload size={14} />
+                                <span>Download Cover Letter (PDF)</span>
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -3177,9 +3138,86 @@ export default function TeacherDashboard() {
                           <button
                             type="button"
                             className="td-pers-save-btn"
-                            onClick={() => alert('Availability settings saved successfully!')}
+                            onClick={() => setProfileSubTab('update-success')}
                           >
                             Save Changes
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* 8. Profile Updated Successfully Full Screen Overlay Modal */}
+                  {(profileSubTab === 'update-success' || showProfileUpdatedModal) && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="td-profile-success-overlay"
+                    >
+                      {/* Back Arrow */}
+                      <button
+                        type="button"
+                        className="td-success-overlay-back-btn"
+                        onClick={() => {
+                          setShowProfileUpdatedModal(false);
+                          if (profileSubTab === 'update-success') {
+                            setProfileSubTab('overview');
+                          }
+                        }}
+                        title="Back to profile"
+                      >
+                        <FiArrowLeft size={24} />
+                      </button>
+
+                      {/* Centered Modal Card */}
+                      <div className="td-success-card">
+                        {/* Success Icon */}
+                        <div className="td-success-icon-outer">
+                          <div className="td-success-icon-inner">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          </div>
+                        </div>
+
+                        {/* Title */}
+                        <h1 className="td-success-title">
+                          Profile Updated<br />Successfully
+                        </h1>
+
+                        {/* Subtitle */}
+                        <p className="td-success-desc">
+                          Your professional profile has been updated successfully and is ready for schools to discover.
+                        </p>
+
+                        {/* Progress Status */}
+                        <div className="td-success-progress-section">
+                          <div className="td-success-progress-bar" />
+                          <span className="td-success-progress-text">Completion Status: 100%</span>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="td-success-actions-row">
+                          <button
+                            type="button"
+                            className="td-success-view-profile-btn"
+                            onClick={() => {
+                              setShowProfileUpdatedModal(false);
+                              setProfileSubTab('professional-info');
+                            }}
+                          >
+                            View My Profile
+                          </button>
+                          <button
+                            type="button"
+                            className="td-success-dashboard-btn"
+                            onClick={() => {
+                              setShowProfileUpdatedModal(false);
+                              setActiveTab('overview');
+                            }}
+                          >
+                            Go to Dashboard
                           </button>
                         </div>
                       </div>
@@ -7597,333 +7635,437 @@ export default function TeacherDashboard() {
           align-items: start;
         }
 
-        .td-prof-left-col {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
+        /* ═══════════════════════════════════════
+           EXACT PROFESSIONAL INFORMATION TAB DESIGN
+        ═══════════════════════════════════════ */
+        .td-prof-info-page {
+          max-width: 1050px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 8px 16px 60px;
         }
 
-        .td-prof-right-col {
+        .td-prof-breadcrumb {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #1E293B;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 16px;
+          transition: color 0.15s ease;
+        }
+
+        .td-prof-breadcrumb:hover {
+          color: #16A34A;
+        }
+
+        .td-prof-back-icon {
+          color: #0F172A;
+        }
+
+        .td-prof-nav-bar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 24px;
+          gap: 16px;
+        }
+
+        .td-prof-back-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: none;
+          border: none;
+          color: #15803D;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 0;
+          font-family: inherit;
+        }
+
+        .td-prof-edit-profile-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          background: #FFFFFF;
+          border: 1.5px solid #CBD5E1;
+          border-radius: 8px;
+          padding: 8px 16px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #334155;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-prof-edit-profile-btn:hover {
+          background: #F8FAFC;
+          border-color: #94A3B8;
+        }
+
+        .td-prof-hero-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 24px 28px;
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 28px;
+        }
+
+        .td-prof-hero-decor {
+          position: absolute;
+          top: -40px;
+          right: -40px;
+          width: 160px;
+          height: 160px;
+          border-radius: 50%;
+          background: #F0FDF4;
+          z-index: 0;
+          pointer-events: none;
+        }
+
+        .td-prof-hero-content {
+          display: flex;
+          align-items: center;
+          gap: 22px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .td-prof-hero-avatar {
+          width: 74px;
+          height: 74px;
+          border-radius: 50%;
+          object-fit: cover;
+          border: 2px solid #FFFFFF;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+          flex-shrink: 0;
+        }
+
+        .td-prof-hero-details {
           display: flex;
           flex-direction: column;
-          gap: 20px;
+          gap: 4px;
+        }
+
+        .td-prof-hero-name-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          flex-wrap: wrap;
+        }
+
+        .td-prof-hero-name {
+          font-size: 22px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.4px;
+        }
+
+        .td-prof-trcn-verified-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #DCFCE7;
+          border: 1px solid #BBF7D0;
+          color: #15803D;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 3px 10px;
+          border-radius: 9999px;
+        }
+
+        .td-prof-hero-role {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: #475569;
+          margin: 0 0 4px;
+        }
+
+        .td-prof-hero-meta-row {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          flex-wrap: wrap;
+        }
+
+        .td-prof-hero-meta-item {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 13px;
+          color: #64748B;
+          font-weight: 500;
+        }
+
+        .td-prof-view-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 24px;
+          align-items: start;
         }
 
         .td-prof-card {
           background: #FFFFFF;
-          border-radius: 18px;
-          border: 1px solid #F1F5F9;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-          padding: 28px;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 24px 28px;
         }
 
-        .td-prof-pref-card {
-          max-width: 420px;
-        }
-
-        .td-prof-card-title-row {
+        .td-prof-card-head {
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           margin-bottom: 16px;
         }
 
-        .td-prof-title-icon-wrap {
+        .td-prof-card-icon-wrap {
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
-        .td-prof-card-title-row h2 {
-          font-size: 20px;
-          font-weight: 700;
+        .td-prof-card-head h2 {
+          font-size: 17px;
+          font-weight: 800;
           color: #0F172A;
           margin: 0;
           letter-spacing: -0.3px;
         }
 
-        .td-prof-divider {
-          height: 1px;
-          background: #F1F5F9;
-          margin-bottom: 24px;
-          width: 100%;
+        .td-prof-summary-text {
+          font-size: 13px;
+          color: #475569;
+          line-height: 1.65;
+          margin: 0;
         }
 
-        .td-prof-divider-green {
-          background: #DCFCE7;
-        }
-
-        .td-prof-divider-light {
-          height: 1px;
-          background: #F1F5F9;
-          margin: 20px 0;
-          width: 100%;
-        }
-
-        .td-prof-fields {
+        .td-prof-subject-pills-row {
           display: flex;
-          flex-direction: column;
-          gap: 20px;
-        }
-
-        .td-prof-field-group {
-          display: flex;
-          flex-direction: column;
+          flex-wrap: wrap;
           gap: 8px;
         }
 
-        .td-prof-label {
-          font-size: 13px;
-          font-weight: 700;
-          color: #334155;
-        }
-
-        .td-prof-input {
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          border-radius: 8px;
-          padding: 12px 16px;
-          font-size: 14px;
-          color: #334155;
-          font-family: inherit;
-          font-weight: 500;
-          outline: none;
-          transition: all 0.2s ease;
-          width: 100%;
-        }
-
-        .td-prof-input:focus {
-          background: #FFFFFF;
-          border-color: #10B981;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .td-prof-textarea {
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          border-radius: 8px;
-          padding: 12px 16px;
-          font-size: 14px;
-          color: #334155;
-          font-family: inherit;
-          font-weight: 500;
-          outline: none;
-          resize: vertical;
-          min-height: 100px;
-          line-height: 1.5;
-          transition: all 0.2s ease;
-          width: 100%;
-        }
-
-        .td-prof-textarea:focus {
-          background: #FFFFFF;
-          border-color: #10B981;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .td-prof-select-wrap {
-          position: relative;
-          width: 100%;
-        }
-
-        .td-prof-select-half {
-          max-width: 240px;
-        }
-
-        .td-prof-select {
-          appearance: none;
-          -webkit-appearance: none;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          border-radius: 8px;
-          padding: 12px 40px 12px 16px;
-          font-size: 14px;
-          color: #334155;
-          font-family: inherit;
-          font-weight: 500;
-          outline: none;
-          width: 100%;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .td-prof-select:focus {
-          background: #FFFFFF;
-          border-color: #10B981;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .td-prof-select-arrow {
-          position: absolute;
-          right: 14px;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #64748B;
-          pointer-events: none;
-        }
-
-        .td-prof-section-block {
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .td-prof-section-label {
-          font-size: 13.5px;
-          font-weight: 700;
-          color: #334155;
-        }
-
-        .td-prof-subject-tags {
-          display: flex;
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 10px;
-        }
-
-        .td-prof-subject-pill {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          padding: 6px 14px;
-          border-radius: 20px;
-          font-size: 13px;
-          font-weight: 500;
-          color: #334155;
-        }
-
-        .td-prof-remove-subj-btn {
-          background: none;
-          border: none;
-          color: #94A3B8;
-          font-size: 11px;
-          cursor: pointer;
-          padding: 0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          transition: color 0.15s ease;
-        }
-
-        .td-prof-remove-subj-btn:hover {
-          color: #EF4444;
-        }
-
-        .td-prof-add-subject-btn {
-          background: #FFFFFF;
-          border: 1.5px dashed #10B981;
-          color: #059669;
-          padding: 6px 16px;
-          border-radius: 20px;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          font-family: inherit;
-        }
-
-        .td-prof-add-subject-btn:hover {
-          background: #ECFDF5;
-        }
-
-        .td-prof-add-subject-input-wrap {
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          width: 100%;
-        }
-
-        .td-prof-add-input {
-          background: #FFFFFF;
-          border: 1.5px solid #10B981;
-          padding: 6px 12px;
-          border-radius: 20px;
-          font-size: 13px;
-          outline: none;
-          flex: 1;
-        }
-
-        .td-prof-add-confirm-btn {
-          background: #10B981;
-          color: #FFFFFF;
-          border: none;
-          border-radius: 12px;
-          padding: 6px 12px;
+        .td-prof-sub-pill {
+          background: #EEF4FF;
+          color: #2563EB;
           font-size: 12px;
           font-weight: 600;
-          cursor: pointer;
+          padding: 5px 14px;
+          border-radius: 9999px;
+          border: 1px solid #DBEAFE;
         }
 
-        .td-prof-add-cancel-btn {
-          background: none;
-          border: none;
-          color: #94A3B8;
-          cursor: pointer;
-          font-size: 14px;
+        .td-prof-levels-col {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          align-items: flex-start;
         }
 
-        .td-prof-checkbox-list {
+        .td-prof-level-pill {
+          background: #F1F5F9;
+          color: #475569;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 5px 14px;
+          border-radius: 9999px;
+        }
+
+        .td-prof-exp-items-list {
           display: flex;
           flex-direction: column;
           gap: 12px;
         }
 
-        .td-prof-checkbox-row {
+        .td-prof-exp-item-card {
+          border: 1px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 16px 18px;
           display: flex;
           align-items: center;
-          gap: 12px;
-          cursor: pointer;
-          user-select: none;
-        }
-
-        .td-prof-hidden-checkbox {
-          display: none;
-        }
-
-        .td-prof-custom-checkbox {
-          width: 20px;
-          height: 20px;
-          border-radius: 5px;
-          border: 1.5px solid #CBD5E1;
+          justify-content: space-between;
           background: #FFFFFF;
+          gap: 14px;
+        }
+
+        .td-prof-exp-item-left {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+
+        .td-prof-exp-date {
+          font-size: 11.5px;
+          font-weight: 600;
+          color: #64748B;
+        }
+
+        .td-prof-exp-date--present {
+          color: #15803D;
+        }
+
+        .td-prof-exp-title {
+          font-size: 14.5px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0;
+        }
+
+        .td-prof-exp-school {
+          font-size: 12px;
+          color: #64748B;
+          margin: 0;
+        }
+
+        .td-prof-exp-cap-badge {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #0D4E33;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.15s ease;
           flex-shrink: 0;
         }
 
-        .td-prof-custom-checkbox--checked {
-          background: #15803D;
-          border-color: #15803D;
+        .td-prof-right-col-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
         }
 
-        .td-prof-checkbox-label {
-          font-size: 14px;
-          color: #334155;
+        .td-prof-edu-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+        }
+
+        .td-prof-edu-icon-box {
+          width: 38px;
+          height: 38px;
+          border-radius: 8px;
+          background: #EEF2FF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .td-prof-edu-info h3 {
+          font-size: 14.5px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0 0 2px;
+        }
+
+        .td-prof-edu-inst {
+          font-size: 12.5px;
+          color: #64748B;
+          margin: 0 0 2px;
+        }
+
+        .td-prof-edu-period {
+          font-size: 11.5px;
+          color: #94A3B8;
           font-weight: 500;
         }
 
-        .td-prof-save-btn {
-          width: 100%;
-          background: #16D458;
-          color: #FFFFFF;
-          border: none;
-          border-radius: 9999px;
-          padding: 14px 24px;
-          font-size: 14.5px;
+        .td-prof-trcn-box {
+          background: #F0FDF4;
+          border: 1px solid #DCFCE7;
+          border-radius: 10px;
+          padding: 12px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .td-prof-trcn-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .td-prof-trcn-left h4 {
+          font-size: 13px;
           font-weight: 700;
+          color: #0F172A;
+          margin: 0 0 2px;
+        }
+
+        .td-prof-trcn-left p {
+          font-size: 11.5px;
+          color: #64748B;
+          margin: 0;
+        }
+
+        .td-prof-active-badge {
+          background: #DCFCE7;
+          color: #15803D;
+          font-size: 10.5px;
+          font-weight: 700;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+
+        .td-prof-downloads-col {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          margin-top: 14px;
+        }
+
+        .td-prof-download-btn {
+          width: 100%;
+          background: #F8FAFC;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
+          padding: 10px 14px;
+          font-size: 12.5px;
+          font-weight: 600;
+          color: #334155;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
           cursor: pointer;
-          box-shadow: 0 4px 14px rgba(22, 212, 88, 0.35);
-          transition: all 0.2s ease;
+          transition: all 0.15s ease;
           font-family: inherit;
         }
 
-        .td-prof-save-btn:hover {
-          background: #14C04F;
-          box-shadow: 0 6px 18px rgba(22, 212, 88, 0.45);
+        .td-prof-download-btn:hover {
+          background: #F1F5F9;
+          border-color: #CBD5E1;
+        }
+
+        @media (max-width: 900px) {
+          .td-prof-view-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .td-prof-hero-content {
+            flex-direction: column;
+            text-align: center;
+          }
+          .td-prof-hero-name-row {
+            justify-content: center;
+          }
+          .td-prof-hero-meta-row {
+            justify-content: center;
+          }
         }
 
         /* ═══════════════════════════════════════
@@ -9555,6 +9697,176 @@ export default function TeacherDashboard() {
           justify-content: flex-end;
           gap: 14px;
           padding-top: 8px;
+        }
+
+        /* ═══════════════════════════════════════
+           PROFILE UPDATED SUCCESS FULL SCREEN OVERLAY
+        ═══════════════════════════════════════ */
+        .td-profile-success-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          width: 100vw;
+          height: 100vh;
+          background: #FAFAFA;
+          z-index: 999999;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          overflow-y: auto;
+        }
+
+        .td-success-overlay-back-btn {
+          position: absolute;
+          top: 36px;
+          left: 36px;
+          background: none;
+          border: none;
+          color: #0F172A;
+          cursor: pointer;
+          padding: 8px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background 0.15s ease;
+          z-index: 10;
+        }
+
+        .td-success-overlay-back-btn:hover {
+          background: #F1F5F9;
+        }
+
+        .td-success-card {
+          background: #FFFFFF;
+          border-radius: 20px;
+          border: 1px solid #F1F5F9;
+          box-shadow: 0 10px 35px rgba(0, 0, 0, 0.04);
+          padding: 44px 38px 38px;
+          max-width: 460px;
+          width: 100%;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .td-success-icon-outer {
+          width: 68px;
+          height: 68px;
+          border-radius: 50%;
+          background: #E8F7EE;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 22px;
+        }
+
+        .td-success-icon-inner {
+          width: 34px;
+          height: 34px;
+          border-radius: 50%;
+          background: #15803D;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .td-success-title {
+          font-size: 25px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 12px;
+          line-height: 1.25;
+          letter-spacing: -0.4px;
+        }
+
+        .td-success-desc {
+          font-size: 13.5px;
+          color: #64748B;
+          line-height: 1.55;
+          margin: 0 0 26px;
+          max-width: 380px;
+        }
+
+        .td-success-progress-section {
+          width: 100%;
+          margin-bottom: 28px;
+        }
+
+        .td-success-progress-bar {
+          width: 100%;
+          height: 6px;
+          background: #15803D;
+          border-radius: 9999px;
+          margin-bottom: 8px;
+        }
+
+        .td-success-progress-text {
+          font-size: 12px;
+          font-weight: 700;
+          color: #15803D;
+          display: block;
+        }
+
+        .td-success-actions-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          width: 100%;
+        }
+
+        .td-success-view-profile-btn {
+          flex: 1;
+          background: #15803D;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 8px;
+          padding: 12px 18px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-success-view-profile-btn:hover {
+          background: #166534;
+        }
+
+        .td-success-dashboard-btn {
+          flex: 1;
+          background: #F8FAFC;
+          color: #1E293B;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
+          padding: 12px 18px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-success-dashboard-btn:hover {
+          background: #F1F5F9;
+          border-color: #CBD5E1;
+        }
+
+        @media (max-width: 540px) {
+          .td-success-card {
+            padding: 32px 20px;
+          }
+          .td-success-actions-row {
+            flex-direction: column;
+          }
+          .td-success-view-profile-btn,
+          .td-success-dashboard-btn {
+            width: 100%;
+          }
         }
 
         @media (max-width: 900px) {
