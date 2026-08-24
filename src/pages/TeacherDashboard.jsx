@@ -8,7 +8,7 @@ import {
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle,
-  FiUser, FiEdit2
+  FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiLock
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -198,6 +198,39 @@ export default function TeacherDashboard() {
     endYear: '2019',
     status: 'Completed'
   });
+
+  // ── Teaching Experience Tab state ──
+  const [experienceList, setExperienceList] = useState([
+    {
+      id: 1,
+      role: 'Senior Mathematics Teacher',
+      school: 'Bright Future College',
+      location: 'Benin City',
+      period: 'SEPT 2021 – PRESENT',
+      description: 'Lead mathematics educator for senior secondary classes with a specialized focus on intensive WAEC and NECO preparation. Developed standardized curriculum assessments and significantly improved student pass rates in consecutive academic years.'
+    }
+  ]);
+  const [showAddExpModal, setShowAddExpModal] = useState(false);
+  const [expForm, setExpForm] = useState({
+    role: '',
+    school: '',
+    location: '',
+    period: '',
+    description: ''
+  });
+  const [editingExpId, setEditingExpId] = useState(null);
+
+  // ── CV / Resume Tab state ──
+  const [activeResume, setActiveResume] = useState({
+    name: 'Esther_Egharevba_CV.pdf',
+    uploadDate: 'Uploaded Oct 24, 2024',
+    size: '1.2 MB'
+  });
+
+  // ── Availability Tab state ──
+  const [availEmpType, setAvailEmpType] = useState('full-time');
+  const [availLocation, setAvailLocation] = useState('Benin City, Edo State');
+  const [availStartOption, setAvailStartOption] = useState('immediately');
 
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Senior Mathematics Educator');
@@ -1875,6 +1908,17 @@ export default function TeacherDashboard() {
                       </div>
                       <h3 className="td-psc-title">CV / Resume</h3>
                     </motion.div>
+
+                    {/* 7. Availability */}
+                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('availability')}>
+                      <div className="td-psc-top">
+                        <div className="td-psc-icon-box td-psc-icon-teal">
+                          <FiClock size={18} />
+                        </div>
+                        <FiArrowRight size={18} className="td-psc-arrow" />
+                      </div>
+                      <h3 className="td-psc-title">Availability</h3>
+                    </motion.div>
                   </div>
                 </>
               ) : (
@@ -2441,114 +2485,370 @@ export default function TeacherDashboard() {
 
                   {/* 4. Teaching Experience Tab */}
                   {profileSubTab === 'teaching-experience' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-subtab-card">
-                      <div className="td-subtab-card-header">
-                        <div className="td-subtab-header-left">
-                          <div className="td-psc-icon-box td-psc-icon-teal">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                              <path d="M3 3v5h5"/>
-                              <path d="M12 7v5l4 2"/>
-                            </svg>
-                          </div>
-                          <div>
-                            <h2>Teaching Experience</h2>
-                            <p>History of your previous and current academic teaching positions</p>
-                          </div>
-                        </div>
-                        <button className="td-subtab-add-btn">+ Add Experience</button>
+                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-exp-info-page">
+                      {/* Top Breadcrumb Header */}
+                      <div className="td-exp-breadcrumb" onClick={() => setProfileSubTab('overview')}>
+                        <FiArrowLeft size={16} className="td-exp-back-icon" />
+                        <span>Settings/ ...Teaching Experience</span>
                       </div>
 
-                      <div className="td-subtab-items-list">
-                        <div className="td-subtab-item-card">
-                          <div className="td-subtab-item-icon">
-                            <FiBriefcase size={20} color="#0284C7" />
-                          </div>
-                          <div className="td-subtab-item-details">
-                            <div className="td-subtab-role-row">
-                              <h3>Senior Mathematics Teacher (SS1 - SS3 Lead)</h3>
-                              <span className="td-subtab-present-badge">CURRENT</span>
+                      {/* Header Row */}
+                      <div className="td-exp-header-row">
+                        <div className="td-exp-header-left">
+                          <h1 className="td-exp-page-title">Teaching Experience</h1>
+                          <p className="td-exp-page-desc">
+                            Document your work history and pedagogical achievements to build a strong professional profile.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className="td-exp-add-btn"
+                          onClick={() => {
+                            setEditingExpId(null);
+                            setExpForm({
+                              role: '',
+                              school: '',
+                              location: '',
+                              period: '',
+                              description: ''
+                            });
+                            setShowAddExpModal(true);
+                          }}
+                        >
+                          + Add Experience
+                        </button>
+                      </div>
+
+                      {/* Timeline & Experience List */}
+                      <div className="td-exp-timeline-container">
+                        {experienceList.map((exp, index) => (
+                          <div key={exp.id} className="td-exp-timeline-item">
+                            {/* Left Timeline Marker Column */}
+                            <div className="td-exp-timeline-marker-col">
+                              <div className="td-exp-node-active">
+                                <div className="td-exp-node-inner-dot" />
+                              </div>
+                              <div className="td-exp-timeline-line" />
+                              {index === experienceList.length - 1 && (
+                                <div className="td-exp-node-empty" />
+                              )}
                             </div>
-                            <p className="td-subtab-item-inst">Grace Academy • Benin City, Edo State</p>
-                            <span className="td-subtab-item-meta">September 2020 – Present (4+ Years)</span>
-                            <p className="td-subtab-item-desc">
-                              Prepared SS3 graduating classes for WAEC and NECO with over 98% distinction rate. Coordinated the departmental curriculum and coached the inter-school Mathematics Olympiad team.
-                            </p>
-                          </div>
-                        </div>
 
-                        <div className="td-subtab-item-card">
-                          <div className="td-subtab-item-icon">
-                            <FiBriefcase size={20} color="#0284C7" />
-                          </div>
-                          <div className="td-subtab-item-details">
-                            <h3>Mathematics Tutor (Junior & Senior Secondary)</h3>
-                            <p className="td-subtab-item-inst">Bright Stars Secondary School • Benin City</p>
-                            <span className="td-subtab-item-meta">January 2017 – August 2020 (3.5 Years)</span>
-                            <p className="td-subtab-item-desc">
-                              Taught core Mathematics to JSS3 - SS2 classes. Implemented diagnostic tests and customized remedial math clinics that improved student average test scores by 24%.
-                            </p>
-                          </div>
-                        </div>
+                            {/* Right Experience Card */}
+                            <div className="td-exp-card">
+                              <div className="td-exp-card-header">
+                                <div>
+                                  <h2 className="td-exp-role">{exp.role}</h2>
+                                  <div className="td-exp-school-location">
+                                    <span>{exp.school}</span>
+                                    <span className="td-exp-dot-sep">•</span>
+                                    <span>{exp.location}</span>
+                                  </div>
+                                </div>
+                                <div className="td-exp-badge">
+                                  <FiCalendar size={13} className="td-exp-badge-icon" />
+                                  <span>{exp.period}</span>
+                                </div>
+                              </div>
 
-                        <div className="td-subtab-item-card">
-                          <div className="td-subtab-item-icon">
-                            <FiBriefcase size={20} color="#0284C7" />
+                              <p className="td-exp-desc">{exp.description}</p>
+
+                              <div className="td-exp-divider" />
+
+                              <div className="td-exp-actions">
+                                <button
+                                  type="button"
+                                  className="td-exp-action-btn td-exp-action-edit"
+                                  onClick={() => {
+                                    setEditingExpId(exp.id);
+                                    setExpForm({
+                                      role: exp.role,
+                                      school: exp.school,
+                                      location: exp.location,
+                                      period: exp.period,
+                                      description: exp.description
+                                    });
+                                    setShowAddExpModal(true);
+                                  }}
+                                >
+                                  <FiEdit2 size={13} />
+                                  <span>Edit</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="td-exp-action-btn td-exp-action-delete"
+                                  onClick={() => {
+                                    setExperienceList(experienceList.filter(item => item.id !== exp.id));
+                                  }}
+                                >
+                                  <FiTrash2 size={13} />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            </div>
                           </div>
-                          <div className="td-subtab-item-details">
-                            <h3>Graduate Teaching Assistant (NYSC)</h3>
-                            <p className="td-subtab-item-inst">Community High School • Benin City</p>
-                            <span className="td-subtab-item-meta">November 2016 – October 2017 (1 Year)</span>
-                            <p className="td-subtab-item-desc">
-                              Assisted senior faculty with teaching Mathematics across Junior Secondary classes. Led peer study groups and after-school tutoring.
-                            </p>
-                          </div>
-                        </div>
+                        ))}
                       </div>
+
+                      {/* Modal for adding/editing experience */}
+                      {showAddExpModal && (
+                        <div className="td-modal-overlay" onClick={() => setShowAddExpModal(false)}>
+                          <div className="td-modal-content" onClick={(e) => e.stopPropagation()}>
+                            <div className="td-modal-header">
+                              <h2>{editingExpId ? 'Edit Experience' : 'Add Experience'}</h2>
+                              <button className="td-modal-close" onClick={() => setShowAddExpModal(false)}>✕</button>
+                            </div>
+                            <div className="td-modal-body">
+                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
+                                <label className="td-pers-label">Role / Job Title</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Senior Mathematics Teacher"
+                                  className="td-pers-input"
+                                  value={expForm.role}
+                                  onChange={(e) => setExpForm({ ...expForm, role: e.target.value })}
+                                />
+                              </div>
+                              <div className="td-pers-grid" style={{ marginBottom: '16px' }}>
+                                <div className="td-pers-field-group">
+                                  <label className="td-pers-label">School / Institution</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Bright Future College"
+                                    className="td-pers-input"
+                                    value={expForm.school}
+                                    onChange={(e) => setExpForm({ ...expForm, school: e.target.value })}
+                                  />
+                                </div>
+                                <div className="td-pers-field-group">
+                                  <label className="td-pers-label">Location (City)</label>
+                                  <input
+                                    type="text"
+                                    placeholder="e.g. Benin City"
+                                    className="td-pers-input"
+                                    value={expForm.location}
+                                    onChange={(e) => setExpForm({ ...expForm, location: e.target.value })}
+                                  />
+                                </div>
+                              </div>
+                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
+                                <label className="td-pers-label">Employment Period</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. SEPT 2021 – PRESENT"
+                                  className="td-pers-input"
+                                  value={expForm.period}
+                                  onChange={(e) => setExpForm({ ...expForm, period: e.target.value })}
+                                />
+                              </div>
+                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
+                                <label className="td-pers-label">Description / Responsibilities</label>
+                                <textarea
+                                  rows={4}
+                                  placeholder="Describe your key pedagogical responsibilities, student achievements, and leadership..."
+                                  className="td-prof-textarea"
+                                  value={expForm.description}
+                                  onChange={(e) => setExpForm({ ...expForm, description: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                            <div className="td-modal-footer">
+                              <button
+                                type="button"
+                                className="td-pers-cancel-btn"
+                                onClick={() => setShowAddExpModal(false)}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="button"
+                                className="td-pers-save-btn"
+                                onClick={() => {
+                                  if (expForm.role && expForm.school) {
+                                    if (editingExpId) {
+                                      setExperienceList(experienceList.map(item =>
+                                        item.id === editingExpId ? { ...item, ...expForm } : item
+                                      ));
+                                    } else {
+                                      setExperienceList([
+                                        ...experienceList,
+                                        {
+                                          id: Date.now(),
+                                          ...expForm
+                                        }
+                                      ]);
+                                    }
+                                    setShowAddExpModal(false);
+                                  }
+                                }}
+                              >
+                                {editingExpId ? 'Save Changes' : 'Add Experience'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
 
                   {/* 5. TRCN Certification Tab */}
                   {profileSubTab === 'trcn-certification' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-subtab-card">
-                      <div className="td-subtab-card-header">
-                        <div className="td-subtab-header-left">
-                          <div className="td-psc-icon-box td-psc-icon-green">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z"/>
-                              <path d="M9 12l2 2 4-4"/>
-                            </svg>
-                          </div>
-                          <div>
-                            <h2>TRCN Certification</h2>
-                            <p>Teachers Registration Council of Nigeria official license accreditation</p>
-                          </div>
-                        </div>
-                        <span className="td-subtab-verified-badge">
-                          <FiCheckCircle size={15} /> Verified & Active
-                        </span>
+                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-trcn-info-page">
+                      {/* Top Breadcrumb Header */}
+                      <div className="td-trcn-breadcrumb" onClick={() => setProfileSubTab('overview')}>
+                        <FiArrowLeft size={16} className="td-trcn-back-icon" />
+                        <span>Settings/ ...TRCN Certification</span>
                       </div>
 
-                      <div className="td-subtab-trcn-box">
-                        <div className="td-subtab-trcn-row">
-                          <span className="td-subtab-trcn-label">REGISTRATION NUMBER</span>
-                          <strong className="td-subtab-trcn-val">TRCN/ED/2018/04982</strong>
+                      {/* Header Row */}
+                      <div className="td-trcn-header-row">
+                        <h1 className="td-trcn-page-title">TRCN Certification</h1>
+                        <p className="td-trcn-page-desc">
+                          Manage your Teachers Registration Council of Nigeria credentials.
+                        </p>
+                      </div>
+
+                      {/* 2-Column Grid Layout */}
+                      <div className="td-trcn-grid-layout">
+                        {/* LEFT COLUMN */}
+                        <div className="td-trcn-left-col">
+                          {/* Top TRCN Status Card */}
+                          <div className="td-trcn-status-card">
+                            {/* Decorative soft green corner blob */}
+                            <div className="td-trcn-decor-blob" />
+
+                            <div className="td-trcn-status-left">
+                              <div className="td-trcn-status-title-row">
+                                <h2 className="td-trcn-card-title">TRCN Status</h2>
+                                <span className="td-trcn-active-pill">
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                  <span>Active & Validated</span>
+                                </span>
+                              </div>
+
+                              <div className="td-trcn-number-row">
+                                <span className="td-trcn-number-label">TRCN Number:</span>
+                                <span className="td-trcn-number-val">TRCN/EDO/123456</span>
+                              </div>
+                            </div>
+
+                            <div className="td-trcn-status-actions">
+                              <button
+                                type="button"
+                                className="td-trcn-btn-view"
+                                onClick={() => alert('Viewing TRCN Certificate: TRCN/EDO/123456')}
+                              >
+                                <FiEye size={16} />
+                                <span>View Certificate</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="td-trcn-btn-update"
+                                onClick={() => alert('Update TRCN documentation flow')}
+                              >
+                                <FiRotateCw size={14} />
+                                <span>Update</span>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* 2 Sub-Cards Row (Issuance Details + Verification Log) */}
+                          <div className="td-trcn-subcards-grid">
+                            {/* Card A: Issuance Details */}
+                            <div className="td-trcn-subcard">
+                              <div className="td-trcn-subcard-header">
+                                <FiCalendar size={16} className="td-trcn-subcard-icon" />
+                                <h3>Issuance Details</h3>
+                              </div>
+
+                              <div className="td-trcn-subcard-fields">
+                                <div className="td-trcn-field-item">
+                                  <label>Date Issued</label>
+                                  <p>15 August 2021</p>
+                                </div>
+                                <div className="td-trcn-field-item">
+                                  <label>Valid Until</label>
+                                  <p>14 August 2026</p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Card B: Verification Log */}
+                            <div className="td-trcn-subcard">
+                              <div className="td-trcn-subcard-header">
+                                <FiShield size={16} className="td-trcn-subcard-icon" />
+                                <h3>Verification Log</h3>
+                              </div>
+
+                              <div className="td-trcn-log-timeline">
+                                <div className="td-trcn-log-entry">
+                                  <div className="td-trcn-log-dot td-trcn-log-dot--green" />
+                                  <div className="td-trcn-log-info">
+                                    <h4>Validated by Staffroom Admin</h4>
+                                    <span>22 Sep 2023</span>
+                                  </div>
+                                </div>
+
+                                <div className="td-trcn-log-entry">
+                                  <div className="td-trcn-log-dot td-trcn-log-dot--gray" />
+                                  <div className="td-trcn-log-info">
+                                    <h4>Document Uploaded</h4>
+                                    <span>20 Sep 2023</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="td-subtab-trcn-row">
-                          <span className="td-subtab-trcn-label">TEACHING CATEGORY</span>
-                          <strong className="td-subtab-trcn-val">Category B (Bachelor of Education / PGDE)</strong>
-                        </div>
-                        <div className="td-subtab-trcn-row">
-                          <span className="td-subtab-trcn-label">ISSUED DATE</span>
-                          <strong className="td-subtab-trcn-val">15 August 2018</strong>
-                        </div>
-                        <div className="td-subtab-trcn-row">
-                          <span className="td-subtab-trcn-label">VALIDITY STATUS</span>
-                          <strong className="td-subtab-trcn-val" style={{ color: '#16A34A' }}>Valid & Up to Date (Through 2027)</strong>
-                        </div>
-                        <div className="td-subtab-trcn-row">
-                          <span className="td-subtab-trcn-label">DIGITAL VERIFICATION ID</span>
-                          <strong className="td-subtab-trcn-val">VRF-TRCN-88392-ED</strong>
+
+                        {/* RIGHT COLUMN (Why this matters) */}
+                        <div className="td-trcn-right-col">
+                          <div className="td-trcn-why-card">
+                            <div className="td-trcn-why-header">
+                              <div className="td-trcn-why-icon-box">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <circle cx="12" cy="8" r="7"/>
+                                  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                                </svg>
+                              </div>
+                              <h2>Why this matters</h2>
+                            </div>
+
+                            <p className="td-trcn-why-intro">
+                              A validated TRCN certificate significantly boosts your profile visibility to top educational institutions.
+                            </p>
+
+                            <div className="td-trcn-benefits-list">
+                              <div className="td-trcn-benefit-item">
+                                <svg className="td-trcn-check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <p>
+                                  <strong>Higher Ranking:</strong> Verified profiles appear first in recruiter search results.
+                                </p>
+                              </div>
+
+                              <div className="td-trcn-benefit-item">
+                                <svg className="td-trcn-check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <p>
+                                  <strong>Trust & Credibility:</strong> Schools prioritize candidates with verified professional standing.
+                                </p>
+                              </div>
+
+                              <div className="td-trcn-benefit-item">
+                                <svg className="td-trcn-check-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                                <p>
+                                  <strong>Premium Opportunities:</strong> Access exclusive job listings that require mandatory TRCN certification.
+                                </p>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
@@ -2556,55 +2856,332 @@ export default function TeacherDashboard() {
 
                   {/* 6. CV / Resume Tab */}
                   {profileSubTab === 'cv-resume' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-subtab-card">
-                      <div className="td-subtab-card-header">
-                        <div className="td-subtab-header-left">
-                          <div className="td-psc-icon-box td-psc-icon-teal">
-                            <FiFileText size={20} />
+                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-cv-info-page">
+                      {/* Top Breadcrumb Header */}
+                      <div className="td-cv-breadcrumb" onClick={() => setProfileSubTab('overview')}>
+                        <FiArrowLeft size={16} className="td-cv-back-icon" />
+                        <span>Settings/ ...CV/ Resume</span>
+                      </div>
+
+                      {/* Header Row */}
+                      <div className="td-cv-header-row">
+                        <h1 className="td-cv-page-title">CV / Resume</h1>
+                        <p className="td-cv-page-desc">
+                          Manage your curriculum vitae. Ensure your document is up-to-date to stand out to prospective employers.
+                        </p>
+                      </div>
+
+                      {/* 2-Column Grid Layout */}
+                      <div className="td-cv-grid-layout">
+                        {/* LEFT COLUMN */}
+                        <div className="td-cv-left-col">
+                          {/* Current Active Resume Card */}
+                          <div className="td-cv-active-card">
+                            <div className="td-cv-active-header">
+                              <div className="td-cv-title-wrap">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                  <polyline points="14 2 14 8 20 8"/>
+                                  <line x1="16" y1="13" x2="8" y2="13"/>
+                                  <line x1="16" y1="17" x2="8" y2="17"/>
+                                  <polyline points="10 9 9 9 8 9"/>
+                                </svg>
+                                <h2>Current Active Resume</h2>
+                              </div>
+                              <span className="td-cv-secure-pill">
+                                <FiLock size={12} />
+                                <span>Securely Stored</span>
+                              </span>
+                            </div>
+
+                            {/* Inner File Item Box */}
+                            <div className="td-cv-file-box">
+                              <div className="td-cv-pdf-icon-box">
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                  <polyline points="14 2 14 8 20 8"/>
+                                  <text x="7.5" y="17" fontSize="6.5" fontWeight="bold" fill="#15803D" stroke="none" fontFamily="sans-serif">PDF</text>
+                                </svg>
+                              </div>
+                              <div className="td-cv-file-info">
+                                <h3>{activeResume.name}</h3>
+                                <span>{activeResume.uploadDate} • {activeResume.size}</span>
+                              </div>
+                            </div>
+
+                            {/* Action buttons */}
+                            <div className="td-cv-actions-row">
+                              <button
+                                type="button"
+                                className="td-cv-btn-view"
+                                onClick={() => alert(`Previewing ${activeResume.name}`)}
+                              >
+                                <FiEye size={15} />
+                                <span>View Document</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="td-cv-btn-download"
+                                onClick={() => alert(`Downloading ${activeResume.name}`)}
+                              >
+                                <FiDownload size={15} />
+                                <span>Download</span>
+                              </button>
+                            </div>
                           </div>
-                          <div>
-                            <h2>CV & Documents</h2>
-                            <p>Manage your curriculum vitae and verified academic credentials</p>
+
+                          {/* Privacy Assured Card */}
+                          <div className="td-cv-privacy-card">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E40AF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="td-cv-shield-icon">
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                              <path d="m9 12 2 2 4-4"/>
+                            </svg>
+                            <div className="td-cv-privacy-info">
+                              <h3>Privacy Assured</h3>
+                              <p>
+                                Your resume is securely stored and only shared with verified institutions you apply to. We use industry-standard encryption to protect your data.
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* RIGHT COLUMN: Replace Resume */}
+                        <div className="td-cv-right-col">
+                          <div className="td-cv-replace-card">
+                            <div className="td-cv-replace-header">
+                              <h2>Replace Resume</h2>
+                              <p>Uploading a new document will immediately replace your current active resume.</p>
+                            </div>
+
+                            <label className="td-cv-dropzone">
+                              <input
+                                type="file"
+                                accept=".pdf,.docx,.doc"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files && e.target.files[0]) {
+                                    const file = e.target.files[0];
+                                    setActiveResume({
+                                      name: file.name,
+                                      uploadDate: 'Uploaded Just now',
+                                      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+                                    });
+                                    alert(`Uploaded ${file.name} successfully!`);
+                                  }
+                                }}
+                              />
+                              <div className="td-cv-cloud-icon-box">
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="16 16 12 12 8 16"/>
+                                  <line x1="12" y1="12" x2="12" y2="21"/>
+                                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
+                                  <polyline points="16 16 12 12 8 16"/>
+                                </svg>
+                              </div>
+                              <strong className="td-cv-drop-prompt">Drag and drop your new CV here</strong>
+                              <span className="td-cv-drop-sub">or click to browse from your device</span>
+                              <span className="td-cv-drop-formats">SUPPORTED FORMATS: PDF, DOCX (MAX 5MB)</span>
+                            </label>
                           </div>
                         </div>
                       </div>
+                    </motion.div>
+                  )}
 
-                      <div className="td-subtab-doc-card">
-                        <div className="td-subtab-doc-left">
-                          <div className="td-subtab-doc-icon">
-                            <FiFileText size={24} color="#0284C7" />
-                          </div>
-                          <div>
-                            <h3>Esther_Egharevba_CV_2026.pdf</h3>
-                            <span>PDF Document • 1.4 MB • Updated Jan 2026</span>
-                          </div>
-                        </div>
-                        <div className="td-subtab-doc-actions">
-                          <button className="td-subtab-btn-outline">Preview</button>
-                          <button className="td-subtab-btn-primary">Download</button>
-                        </div>
+                  {/* 7. Availability Tab */}
+                  {profileSubTab === 'availability' && (
+                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-avail-info-page">
+                      {/* Top Breadcrumb Header */}
+                      <div className="td-avail-breadcrumb" onClick={() => setProfileSubTab('overview')}>
+                        <FiArrowLeft size={16} className="td-avail-back-icon" />
+                        <span>Settings/ ...Availability</span>
                       </div>
 
-                      <div className="td-subtab-doc-card" style={{ marginTop: '16px' }}>
-                        <div className="td-subtab-doc-left">
-                          <div className="td-subtab-doc-icon">
-                            <FiFileText size={24} color="#16A34A" />
-                          </div>
-                          <div>
-                            <h3>TRCN_Certificate_Esther_E.pdf</h3>
-                            <span>PDF Document • 840 KB • Verified</span>
-                          </div>
-                        </div>
-                        <div className="td-subtab-doc-actions">
-                          <button className="td-subtab-btn-outline">Preview</button>
-                          <button className="td-subtab-btn-primary">Download</button>
-                        </div>
+                      {/* Header Row */}
+                      <div className="td-avail-header-row">
+                        <h1 className="td-avail-page-title">Availability</h1>
+                        <p className="td-avail-page-desc">
+                          Manage your current work status and location preferences.
+                        </p>
                       </div>
 
-                      <div className="td-subtab-upload-dropzone">
-                        <FiFileText size={32} color="#94A3B8" />
-                        <p><strong>Click to upload</strong> or drag and drop a new CV</p>
-                        <span>PDF, DOC, DOCX up to 10MB</span>
+                      {/* Main Form Card */}
+                      <div className="td-avail-card">
+                        {/* Section 1: Employment Type */}
+                        <div className="td-avail-section">
+                          <h2 className="td-avail-section-title">Employment Type</h2>
+                          <p className="td-avail-section-desc">Select the type of roles you are currently looking for.</p>
+
+                          <div className="td-avail-emp-grid">
+                            {/* Option 1: Full Time */}
+                            <div
+                              className={`td-avail-emp-card ${availEmpType === 'full-time' ? 'td-avail-emp-card--active' : ''}`}
+                              onClick={() => setAvailEmpType('full-time')}
+                            >
+                              <div className="td-avail-emp-left">
+                                <div className={`td-avail-radio-circle ${availEmpType === 'full-time' ? 'td-avail-radio-circle--active' : ''}`}>
+                                  {availEmpType === 'full-time' && <div className="td-avail-radio-inner" />}
+                                </div>
+                                <div className="td-avail-emp-info">
+                                  <h3>Full Time</h3>
+                                  <span>Standard 40–hour work week</span>
+                                </div>
+                              </div>
+                              {availEmpType === 'full-time' && (
+                                <div className="td-avail-check-badge">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Option 2: Part Time */}
+                            <div
+                              className={`td-avail-emp-card ${availEmpType === 'part-time' ? 'td-avail-emp-card--active' : ''}`}
+                              onClick={() => setAvailEmpType('part-time')}
+                            >
+                              <div className="td-avail-emp-left">
+                                <div className={`td-avail-radio-circle ${availEmpType === 'part-time' ? 'td-avail-radio-circle--active' : ''}`}>
+                                  {availEmpType === 'part-time' && <div className="td-avail-radio-inner" />}
+                                </div>
+                                <div className="td-avail-emp-info">
+                                  <h3>Part Time</h3>
+                                  <span>Flexible hours, less than 40h/wk</span>
+                                </div>
+                              </div>
+                              {availEmpType === 'part-time' && (
+                                <div className="td-avail-check-badge">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Option 3: Contract */}
+                            <div
+                              className={`td-avail-emp-card ${availEmpType === 'contract' ? 'td-avail-emp-card--active' : ''}`}
+                              onClick={() => setAvailEmpType('contract')}
+                            >
+                              <div className="td-avail-emp-left">
+                                <div className={`td-avail-radio-circle ${availEmpType === 'contract' ? 'td-avail-radio-circle--active' : ''}`}>
+                                  {availEmpType === 'contract' && <div className="td-avail-radio-inner" />}
+                                </div>
+                                <div className="td-avail-emp-info">
+                                  <h3>Contract</h3>
+                                  <span>Fixed-term teaching assignments</span>
+                                </div>
+                              </div>
+                              {availEmpType === 'contract' && (
+                                <div className="td-avail-check-badge">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Option 4: Substitute */}
+                            <div
+                              className={`td-avail-emp-card ${availEmpType === 'substitute' ? 'td-avail-emp-card--active' : ''}`}
+                              onClick={() => setAvailEmpType('substitute')}
+                            >
+                              <div className="td-avail-emp-left">
+                                <div className={`td-avail-radio-circle ${availEmpType === 'substitute' ? 'td-avail-radio-circle--active' : ''}`}>
+                                  {availEmpType === 'substitute' && <div className="td-avail-radio-inner" />}
+                                </div>
+                                <div className="td-avail-emp-info">
+                                  <h3>Substitute</h3>
+                                  <span>On-call short term coverage</span>
+                                </div>
+                              </div>
+                              {availEmpType === 'substitute' && (
+                                <div className="td-avail-check-badge">
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Section 2: Preferred Location */}
+                        <div className="td-avail-section">
+                          <h2 className="td-avail-section-title">Preferred Location</h2>
+                          <p className="td-avail-section-desc">Where are you looking to work?</p>
+
+                          <div className="td-avail-loc-field">
+                            <label className="td-avail-field-label">City & State</label>
+                            <div className="td-avail-loc-input-wrap">
+                              <FiMapPin size={16} className="td-avail-loc-icon" />
+                              <input
+                                type="text"
+                                className="td-avail-loc-input"
+                                value={availLocation}
+                                onChange={(e) => setAvailLocation(e.target.value)}
+                              />
+                            </div>
+                            <span className="td-avail-field-hint">This helps us match you with schools in your area.</span>
+                          </div>
+                        </div>
+
+                        {/* Section 3: Available From */}
+                        <div className="td-avail-section">
+                          <h2 className="td-avail-section-title">Available From</h2>
+                          <p className="td-avail-section-desc">When can you start a new position?</p>
+
+                          <div className="td-avail-start-grid">
+                            {/* Choice 1: Immediately */}
+                            <button
+                              type="button"
+                              className={`td-avail-start-btn ${availStartOption === 'immediately' ? 'td-avail-start-btn--active' : ''}`}
+                              onClick={() => setAvailStartOption('immediately')}
+                            >
+                              <FiZap size={18} className="td-avail-start-icon" />
+                              <span>Immediately</span>
+                            </button>
+
+                            {/* Choice 2: In 2 Weeks */}
+                            <button
+                              type="button"
+                              className={`td-avail-start-btn ${availStartOption === '2-weeks' ? 'td-avail-start-btn--active' : ''}`}
+                              onClick={() => setAvailStartOption('2-weeks')}
+                            >
+                              <FiCalendar size={18} className="td-avail-start-icon" />
+                              <span>In 2 Weeks</span>
+                            </button>
+
+                            {/* Choice 3: Specific Date */}
+                            <button
+                              type="button"
+                              className={`td-avail-start-btn ${availStartOption === 'specific-date' ? 'td-avail-start-btn--active' : ''}`}
+                              onClick={() => setAvailStartOption('specific-date')}
+                            >
+                              <FiCalendar size={18} className="td-avail-start-icon" />
+                              <span>Specific Date</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="td-avail-actions-row">
+                          <button
+                            type="button"
+                            className="td-pers-cancel-btn"
+                            onClick={() => setProfileSubTab('overview')}
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            className="td-pers-save-btn"
+                            onClick={() => alert('Availability settings saved successfully!')}
+                          >
+                            Save Changes
+                          </button>
+                        </div>
                       </div>
                     </motion.div>
                   )}
@@ -7806,12 +8383,1192 @@ export default function TeacherDashboard() {
           max-width: 190px;
         }
 
+        /* ═══════════════════════════════════════
+           EXACT TEACHING EXPERIENCE TAB DESIGN
+        ═══════════════════════════════════════ */
+        .td-exp-info-page {
+          max-width: 1050px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 8px 16px 60px;
+        }
+
+        .td-exp-breadcrumb {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #1E293B;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 24px;
+          transition: color 0.15s ease;
+        }
+
+        .td-exp-breadcrumb:hover {
+          color: #16A34A;
+        }
+
+        .td-exp-back-icon {
+          color: #0F172A;
+        }
+
+        .td-exp-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 36px;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+
+        .td-exp-header-left {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .td-exp-page-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.5px;
+        }
+
+        .td-exp-page-desc {
+          font-size: 14px;
+          color: #64748B;
+          line-height: 1.5;
+          margin: 0;
+          max-width: 620px;
+        }
+
+        .td-exp-add-btn {
+          background: #15803D;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 9999px;
+          padding: 10px 22px;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+          box-shadow: 0 2px 8px rgba(21, 128, 61, 0.25);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .td-exp-add-btn:hover {
+          background: #166534;
+          box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
+        }
+
+        .td-exp-timeline-container {
+          display: flex;
+          flex-direction: column;
+          gap: 0;
+          position: relative;
+        }
+
+        .td-exp-timeline-item {
+          display: flex;
+          gap: 24px;
+          position: relative;
+        }
+
+        .td-exp-timeline-marker-col {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          width: 32px;
+          flex-shrink: 0;
+          position: relative;
+          padding-top: 18px;
+        }
+
+        .td-exp-node-active {
+          width: 22px;
+          height: 22px;
+          border-radius: 50%;
+          border: 2px solid #15803D;
+          background: #FFFFFF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 2;
+          flex-shrink: 0;
+        }
+
+        .td-exp-node-inner-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #15803D;
+        }
+
+        .td-exp-timeline-line {
+          width: 2px;
+          background: #E2E8F0;
+          flex: 1;
+          margin: 4px 0;
+          min-height: 120px;
+        }
+
+        .td-exp-node-empty {
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          border: 2px solid #CBD5E1;
+          background: #FFFFFF;
+          margin-bottom: 8px;
+          z-index: 2;
+          flex-shrink: 0;
+        }
+
+        .td-exp-card {
+          flex: 1;
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 26px 30px;
+          margin-bottom: 24px;
+        }
+
+        .td-exp-card-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          flex-wrap: wrap;
+        }
+
+        .td-exp-role {
+          font-size: 20px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0 0 4px;
+          letter-spacing: -0.3px;
+        }
+
+        .td-exp-school-location {
+          font-size: 13.5px;
+          color: #475569;
+          font-weight: 500;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .td-exp-dot-sep {
+          color: #94A3B8;
+        }
+
+        .td-exp-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #F0FDF4;
+          border: 1px solid #DCFCE7;
+          color: #15803D;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 5px 12px;
+          border-radius: 9999px;
+          letter-spacing: 0.4px;
+        }
+
+        .td-exp-badge-icon {
+          color: #15803D;
+        }
+
+        .td-exp-desc {
+          font-size: 13.5px;
+          color: #475569;
+          line-height: 1.6;
+          margin: 16px 0 20px;
+        }
+
+        .td-exp-divider {
+          height: 1px;
+          background: #F1F5F9;
+          margin-bottom: 16px;
+          width: 100%;
+        }
+
+        .td-exp-actions {
+          display: flex;
+          align-items: center;
+          gap: 20px;
+        }
+
+        .td-exp-action-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          font-family: inherit;
+          transition: opacity 0.15s ease;
+        }
+
+        .td-exp-action-btn:hover {
+          opacity: 0.8;
+        }
+
+        .td-exp-action-edit {
+          color: #334155;
+        }
+
+        .td-exp-action-delete {
+          color: #DC2626;
+        }
+
+        /* ═══════════════════════════════════════
+           EXACT TRCN CERTIFICATION TAB DESIGN
+        ═══════════════════════════════════════ */
+        .td-trcn-info-page {
+          max-width: 1050px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 8px 16px 60px;
+        }
+
+        .td-trcn-breadcrumb {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #1E293B;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 24px;
+          transition: color 0.15s ease;
+        }
+
+        .td-trcn-breadcrumb:hover {
+          color: #16A34A;
+        }
+
+        .td-trcn-back-icon {
+          color: #0F172A;
+        }
+
+        .td-trcn-header-row {
+          margin-bottom: 32px;
+        }
+
+        .td-trcn-page-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 6px;
+          letter-spacing: -0.5px;
+        }
+
+        .td-trcn-page-desc {
+          font-size: 14px;
+          color: #64748B;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .td-trcn-grid-layout {
+          display: grid;
+          grid-template-columns: 1fr 340px;
+          gap: 24px;
+          align-items: start;
+        }
+
+        .td-trcn-left-col {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+        }
+
+        .td-trcn-status-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 26px 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          position: relative;
+          overflow: hidden;
+          flex-wrap: wrap;
+        }
+
+        .td-trcn-decor-blob {
+          position: absolute;
+          top: -40px;
+          right: -40px;
+          width: 130px;
+          height: 130px;
+          border-radius: 50%;
+          background: #ECFDF5;
+          z-index: 0;
+          pointer-events: none;
+        }
+
+        .td-trcn-status-left {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .td-trcn-status-title-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+
+        .td-trcn-card-title {
+          font-size: 19px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.3px;
+        }
+
+        .td-trcn-active-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #DCFCE7;
+          border: 1px solid #BBF7D0;
+          color: #15803D;
+          font-size: 11.5px;
+          font-weight: 700;
+          padding: 4px 12px;
+          border-radius: 9999px;
+        }
+
+        .td-trcn-number-row {
+          display: flex;
+          align-items: baseline;
+          gap: 12px;
+        }
+
+        .td-trcn-number-label {
+          font-size: 12.5px;
+          color: #64748B;
+          font-weight: 600;
+        }
+
+        .td-trcn-number-val {
+          font-size: 14.5px;
+          color: #1E293B;
+          font-weight: 700;
+        }
+
+        .td-trcn-status-actions {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          position: relative;
+          z-index: 1;
+        }
+
+        .td-trcn-btn-view {
+          background: #0D4E33;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 8px;
+          padding: 10px 18px;
+          font-size: 13px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: background 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-trcn-btn-view:hover {
+          background: #093b26;
+        }
+
+        .td-trcn-btn-update {
+          background: #FFFFFF;
+          border: 1.5px solid #CBD5E1;
+          color: #334155;
+          border-radius: 8px;
+          padding: 10px 18px;
+          font-size: 13px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-trcn-btn-update:hover {
+          background: #F8FAFC;
+          border-color: #94A3B8;
+        }
+
+        .td-trcn-subcards-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+        }
+
+        .td-trcn-subcard {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 22px 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+
+        .td-trcn-subcard-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .td-trcn-subcard-icon {
+          color: #64748B;
+        }
+
+        .td-trcn-subcard-header h3 {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #334155;
+          margin: 0;
+        }
+
+        .td-trcn-subcard-fields {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .td-trcn-field-item label {
+          font-size: 11.5px;
+          color: #64748B;
+          font-weight: 500;
+          display: block;
+          margin-bottom: 2px;
+        }
+
+        .td-trcn-field-item p {
+          font-size: 14.5px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0;
+        }
+
+        .td-trcn-log-timeline {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .td-trcn-log-entry {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .td-trcn-log-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          margin-top: 5px;
+          flex-shrink: 0;
+        }
+
+        .td-trcn-log-dot--green {
+          background: #15803D;
+        }
+
+        .td-trcn-log-dot--gray {
+          background: #CBD5E1;
+        }
+
+        .td-trcn-log-info h4 {
+          font-size: 13px;
+          font-weight: 700;
+          color: #1E293B;
+          margin: 0 0 2px;
+        }
+
+        .td-trcn-log-info span {
+          font-size: 11.5px;
+          color: #64748B;
+          font-weight: 500;
+        }
+
+        .td-trcn-right-col {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .td-trcn-why-card {
+          background: #F3F7FD;
+          border: 1px solid #E0EBF9;
+          border-radius: 20px;
+          padding: 26px 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        .td-trcn-why-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .td-trcn-why-icon-box {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: #DCFCE7;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .td-trcn-why-header h2 {
+          font-size: 18px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.3px;
+        }
+
+        .td-trcn-why-intro {
+          font-size: 13px;
+          color: #475569;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .td-trcn-benefits-list {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          margin-top: 4px;
+        }
+
+        .td-trcn-benefit-item {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .td-trcn-check-icon {
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+
+        .td-trcn-benefit-item p {
+          font-size: 12.5px;
+          color: #334155;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .td-trcn-benefit-item strong {
+          color: #0F172A;
+          font-weight: 700;
+        }
+
+        /* ═══════════════════════════════════════
+           EXACT CV / RESUME TAB DESIGN
+        ═══════════════════════════════════════ */
+        .td-cv-info-page {
+          max-width: 1050px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 8px 16px 60px;
+        }
+
+        .td-cv-breadcrumb {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #1E293B;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 24px;
+          transition: color 0.15s ease;
+        }
+
+        .td-cv-breadcrumb:hover {
+          color: #16A34A;
+        }
+
+        .td-cv-back-icon {
+          color: #0F172A;
+        }
+
+        .td-cv-header-row {
+          margin-bottom: 32px;
+        }
+
+        .td-cv-page-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 6px;
+          letter-spacing: -0.5px;
+        }
+
+        .td-cv-page-desc {
+          font-size: 14px;
+          color: #64748B;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .td-cv-grid-layout {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 28px;
+          align-items: start;
+        }
+
+        .td-cv-left-col {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .td-cv-active-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 26px 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+
+        .td-cv-active-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          flex-wrap: wrap;
+        }
+
+        .td-cv-title-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .td-cv-title-wrap h2 {
+          font-size: 18px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0;
+          letter-spacing: -0.3px;
+        }
+
+        .td-cv-secure-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #E0F2FE;
+          color: #0284C7;
+          font-size: 11px;
+          font-weight: 700;
+          padding: 4px 12px;
+          border-radius: 9999px;
+        }
+
+        .td-cv-file-box {
+          background: #F8FAFC;
+          border: 1px solid #F1F5F9;
+          border-radius: 12px;
+          padding: 16px 18px;
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .td-cv-pdf-icon-box {
+          width: 44px;
+          height: 44px;
+          border-radius: 10px;
+          background: #DCFCE7;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .td-cv-file-info h3 {
+          font-size: 14px;
+          font-weight: 700;
+          color: #1E293B;
+          margin: 0 0 3px;
+        }
+
+        .td-cv-file-info span {
+          font-size: 12px;
+          color: #64748B;
+          font-weight: 500;
+        }
+
+        .td-cv-actions-row {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+        }
+
+        .td-cv-btn-view {
+          background: #0D4E33;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 8px;
+          padding: 10px 20px;
+          font-size: 13px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: background 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-cv-btn-view:hover {
+          background: #093b26;
+        }
+
+        .td-cv-btn-download {
+          background: #FFFFFF;
+          border: 1.5px solid #CBD5E1;
+          color: #334155;
+          border-radius: 8px;
+          padding: 10px 20px;
+          font-size: 13px;
+          font-weight: 600;
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-cv-btn-download:hover {
+          background: #F8FAFC;
+          border-color: #94A3B8;
+        }
+
+        .td-cv-privacy-card {
+          background: #EEF4FF;
+          border: 1px solid #DBEAFE;
+          border-radius: 14px;
+          padding: 18px 20px;
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+        }
+
+        .td-cv-shield-icon {
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+
+        .td-cv-privacy-info h3 {
+          font-size: 13px;
+          font-weight: 700;
+          color: #1E3A8A;
+          margin: 0 0 4px;
+        }
+
+        .td-cv-privacy-info p {
+          font-size: 12px;
+          color: #475569;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .td-cv-right-col {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .td-cv-replace-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 26px 28px;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+
+        .td-cv-replace-header h2 {
+          font-size: 19px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 6px;
+          letter-spacing: -0.3px;
+        }
+
+        .td-cv-replace-header p {
+          font-size: 13px;
+          color: #64748B;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .td-cv-dropzone {
+          border: 1.5px dashed #CBD5E1;
+          border-radius: 14px;
+          padding: 40px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          background: #FFFFFF;
+        }
+
+        .td-cv-dropzone:hover {
+          border-color: #10B981;
+          background: #F0FDF4;
+        }
+
+        .td-cv-cloud-icon-box {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          background: #EEF2FF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 14px;
+          transition: transform 0.2s ease;
+        }
+
+        .td-cv-dropzone:hover .td-cv-cloud-icon-box {
+          transform: scale(1.08);
+        }
+
+        .td-cv-drop-prompt {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #0F172A;
+          margin-bottom: 3px;
+        }
+
+        .td-cv-drop-sub {
+          font-size: 12px;
+          color: #64748B;
+        }
+
+        .td-cv-drop-formats {
+          font-size: 10.5px;
+          font-weight: 700;
+          color: #94A3B8;
+          letter-spacing: 0.5px;
+          margin-top: 20px;
+        }
+
+        /* ═══════════════════════════════════════
+           EXACT AVAILABILITY TAB DESIGN
+        ═══════════════════════════════════════ */
+        .td-avail-info-page {
+          max-width: 820px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 8px 16px 60px;
+        }
+
+        .td-avail-breadcrumb {
+          display: inline-flex;
+          align-items: center;
+          gap: 10px;
+          color: #1E293B;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-bottom: 24px;
+          transition: color 0.15s ease;
+        }
+
+        .td-avail-breadcrumb:hover {
+          color: #16A34A;
+        }
+
+        .td-avail-back-icon {
+          color: #0F172A;
+        }
+
+        .td-avail-header-row {
+          margin-bottom: 32px;
+        }
+
+        .td-avail-page-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 6px;
+          letter-spacing: -0.5px;
+        }
+
+        .td-avail-page-desc {
+          font-size: 14px;
+          color: #64748B;
+          line-height: 1.5;
+          margin: 0;
+        }
+
+        .td-avail-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+          padding: 36px 36px 32px;
+          display: flex;
+          flex-direction: column;
+          gap: 32px;
+        }
+
+        .td-avail-section {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .td-avail-section-title {
+          font-size: 15px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0 0 4px;
+        }
+
+        .td-avail-section-desc {
+          font-size: 12.5px;
+          color: #64748B;
+          margin: 0 0 16px;
+        }
+
+        .td-avail-emp-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+
+        .td-avail-emp-card {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 16px 18px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .td-avail-emp-card:hover {
+          border-color: #CBD5E1;
+          background: #F8FAFC;
+        }
+
+        .td-avail-emp-card--active {
+          background: #F0F4FF;
+          border-color: #3B82F6;
+        }
+
+        .td-avail-emp-left {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .td-avail-radio-circle {
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          border: 2px solid #CBD5E1;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: all 0.15s ease;
+        }
+
+        .td-avail-radio-circle--active {
+          border-color: #2563EB;
+          background: #2563EB;
+        }
+
+        .td-avail-radio-inner {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #FFFFFF;
+        }
+
+        .td-avail-emp-info h3 {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #0F172A;
+          margin: 0 0 2px;
+        }
+
+        .td-avail-emp-info span {
+          font-size: 11.5px;
+          color: #64748B;
+        }
+
+        .td-avail-check-badge {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          background: #15803D;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        .td-avail-loc-field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+
+        .td-avail-field-label {
+          font-size: 12.5px;
+          font-weight: 700;
+          color: #334155;
+        }
+
+        .td-avail-loc-input-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: #FFFFFF;
+          border: 1px solid #E2E8F0;
+          border-radius: 8px;
+          padding: 10px 14px;
+          transition: all 0.2s ease;
+        }
+
+        .td-avail-loc-input-wrap:focus-within {
+          border-color: #10B981;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .td-avail-loc-icon {
+          color: #64748B;
+          flex-shrink: 0;
+        }
+
+        .td-avail-loc-input {
+          border: none;
+          outline: none;
+          background: transparent;
+          font-size: 13.5px;
+          color: #1E293B;
+          font-weight: 500;
+          font-family: inherit;
+          width: 100%;
+        }
+
+        .td-avail-field-hint {
+          font-size: 11.5px;
+          color: #64748B;
+          margin-top: 2px;
+        }
+
+        .td-avail-start-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 16px;
+        }
+
+        .td-avail-start-btn {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 18px 14px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+        }
+
+        .td-avail-start-btn:hover {
+          border-color: #CBD5E1;
+          background: #F8FAFC;
+        }
+
+        .td-avail-start-btn--active {
+          border-color: #15803D;
+          background: #F0FDF4;
+        }
+
+        .td-avail-start-icon {
+          color: #15803D;
+        }
+
+        .td-avail-start-btn span {
+          font-size: 13px;
+          font-weight: 700;
+          color: #0F172A;
+        }
+
+        .td-avail-actions-row {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 14px;
+          padding-top: 8px;
+        }
+
         @media (max-width: 900px) {
           .td-prof-grid-layout {
             grid-template-columns: 1fr;
           }
           .td-prof-pref-card {
             max-width: 100%;
+          }
+          .td-trcn-grid-layout {
+            grid-template-columns: 1fr;
+          }
+          .td-cv-grid-layout {
+            grid-template-columns: 1fr;
           }
         }
 
@@ -7843,6 +9600,61 @@ export default function TeacherDashboard() {
           .td-edu-add-btn {
             width: 100%;
             justify-content: center;
+          }
+          .td-exp-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .td-exp-add-btn {
+            width: 100%;
+            justify-content: center;
+          }
+          .td-exp-timeline-item {
+            gap: 14px;
+          }
+          .td-exp-card {
+            padding: 20px 16px;
+          }
+          .td-exp-role {
+            font-size: 17px;
+          }
+          .td-trcn-subcards-grid {
+            grid-template-columns: 1fr;
+          }
+          .td-trcn-status-card {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .td-trcn-status-actions {
+            width: 100%;
+            flex-direction: column;
+          }
+          .td-trcn-btn-view,
+          .td-trcn-btn-update {
+            width: 100%;
+            justify-content: center;
+          }
+          .td-cv-actions-row {
+            flex-direction: column;
+            width: 100%;
+          }
+          .td-cv-btn-view,
+          .td-cv-btn-download {
+            width: 100%;
+            justify-content: center;
+          }
+          .td-avail-emp-grid {
+            grid-template-columns: 1fr;
+          }
+          .td-avail-start-grid {
+            grid-template-columns: 1fr;
+          }
+          .td-avail-card {
+            padding: 24px 20px;
+          }
+          .td-avail-actions-row {
+            flex-direction: column-reverse;
+            width: 100%;
           }
         }
       `}</style>
