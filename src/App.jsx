@@ -9,6 +9,7 @@ import FAQs from './components/FAQs';
 import FooterCTA from './components/FooterCTA';
 import ScrollReveal from './components/ScrollReveal';
 import ScrollToTop from './components/ScrollToTop';
+import ProtectedRoute from './components/ProtectedRoute';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import VerifyEmail from './pages/VerifyEmail';
@@ -19,6 +20,7 @@ import TeacherInfo from './pages/TeacherInfo';
 import SchoolInfo from './pages/SchoolInfo';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import ApplicationSubmitted from './pages/ApplicationSubmitted';
 import PageExplorer from './pages/PageExplorer';
 import About from './pages/About';
 import ForSchools from './pages/ForSchools';
@@ -56,9 +58,31 @@ function App() {
         <Route path="/user-type" element={<UserType />} />
         <Route path="/teacher-info" element={<TeacherInfo />} />
         <Route path="/sch-info" element={<SchoolInfo />} />
-        <Route path="/teacher-dashboard" element={<TeacherDashboard />} />
-        <Route path="/application-submitted" element={<TeacherDashboard />} />
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
+        <Route
+          path="/teacher-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['teacher']}>
+              <TeacherDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/application-submitted" element={<ApplicationSubmitted />} />
+        <Route
+          path="/admin-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['admin', 'school']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/school-dashboard"
+          element={
+            <ProtectedRoute allowedRoles={['school']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/about" element={<About />} />
         <Route path="/for-schools" element={<ForSchools />} />
         <Route path="/for-teachers" element={<ForTeachers />} />

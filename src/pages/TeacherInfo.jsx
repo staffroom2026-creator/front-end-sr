@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
+import { profileService } from '../services/profileService';
+import { apiErrorMessage } from '../services/api';
 
 const pageVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -18,6 +21,7 @@ const itemVariants = {
 
 export default function TeacherInfo() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [form, setForm] = useState({
     country: '',
     state: '',
@@ -26,10 +30,38 @@ export default function TeacherInfo() {
     bio: '',
     photo: null
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleNext = () => {
-    // Navigate to signup or next step
-    navigate('/teacher-dashboard');
+  const handleNext = async () => {
+    if (!form.country || !form.state || !form.level || !form.subjects.trim() || !form.bio.trim()) {
+      setError('Please complete all teacher profile fields before continuing.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError('');
+
+      const payload = {
+        bio: form.bio.trim(),
+        skills: form.subjects.trim(),
+        location: `${form.state}, ${form.country}`.trim(),
+        preferred_location: `${form.state}, ${form.country}`.trim(),
+        preferred_employment_type: form.level === 'primary' ? 'full-time' : 'part-time',
+      };
+
+      await profileService.updateTeacher(payload);
+      const nextUser = user ? { ...user, role: user.role || 'teacher' } : user;
+      if (nextUser) {
+        localStorage.setItem('staffroom_user', JSON.stringify(nextUser));
+      }
+      navigate('/teacher-dashboard');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to save your profile right now.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -159,10 +191,14 @@ export default function TeacherInfo() {
             </div>
           </div>
 
+          {error && (
+            <div style={{ marginTop: '16px', color: '#b91c1c', fontSize: '14px', textAlign: 'center' }}>{error}</div>
+          )}
+
           {/* ── Next Button ── */}
           <motion.div variants={itemVariants} className="ti-footer">
-            <button className="ti-next-btn" onClick={handleNext}>
-              Next
+            <button className="ti-next-btn" onClick={handleNext} disabled={saving}>
+              {saving ? 'Saving…' : 'Next'}
             </button>
             <div className="ti-dots">
               <span className="ti-dot" />

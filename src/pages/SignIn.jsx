@@ -1,18 +1,47 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
+import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage } from '../services/api';
 
 export default function SignIn() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setLoading(true);
-    setTimeout(() => setLoading(false), 2000);
+
+    try {
+      const result = await login({
+        email: form.email,
+        password: form.password,
+      });
+
+      const user = result?.data?.user;
+      const role = user?.role || 'teacher';
+
+      if (role === 'teacher') {
+        navigate('/teacher-dashboard');
+      } else if (role === 'school') {
+        navigate('/school-dashboard');
+      } else if (role === 'admin') {
+        navigate('/admin-dashboard');
+      } else {
+        navigate('/');
+      }
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Login failed. Please try again.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -132,6 +161,10 @@ export default function SignIn() {
               </div>
 
               {/* Submit button */}
+              {error && (
+                <div className="error-message" style={{ marginBottom: '12px', color: '#b91c1c', fontSize: '14px' }}>{error}</div>
+              )}
+
               <button
                 id="signin-submit-btn"
                 type="submit"

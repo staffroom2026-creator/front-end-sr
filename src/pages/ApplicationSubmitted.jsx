@@ -1,8 +1,17 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import { useAuth } from '../context/AuthContext';
 
 export default function ApplicationSubmitted() {
+  const location = useLocation();
+  const { user } = useAuth();
+  const submission = location.state || {};
+  const jobTitle = submission.job?.title || submission.title || 'Teaching Role';
+  const schoolName = submission.job?.school || submission.school || 'School';
+  const schoolLocation = submission.job?.location || submission.location || 'Location pending';
+  const teacherName = user?.full_name || 'Teacher';
+
   return (
     <div className="font-sans text-[#1C1C1C] bg-[#F5F8FC] min-h-screen">
       <Navbar />
@@ -19,7 +28,7 @@ export default function ApplicationSubmitted() {
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#16A34A]">Application Submitted</p>
               <h1 className="text-3xl md:text-4xl font-extrabold tracking-tight">Application Submitted Successfully!</h1>
               <p className="max-w-2xl mx-auto text-sm md:text-base text-[#4B5563] leading-relaxed">
-                Your professional profile has been delivered to the hiring committee in Lagos. We will notify you when the school reviews your application.
+                {teacherName}'s professional profile has been delivered to the hiring committee for {jobTitle}. We will notify you when the school reviews your application.
               </p>
             </div>
           </div>
@@ -30,13 +39,13 @@ export default function ApplicationSubmitted() {
                 <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-[#111827] text-white text-lg font-bold">M</div>
                 <div>
                   <p className="text-xs tracking-[0.18em] uppercase text-[#16A34A] font-semibold">Position applied</p>
-                  <h2 className="text-xl md:text-2xl font-semibold text-[#111827]">Mathematics Tutor</h2>
+                  <h2 className="text-xl md:text-2xl font-semibold text-[#111827]">{jobTitle}</h2>
                 </div>
               </div>
 
               <div className="text-sm text-[#6B7280]">
-                <p>BrightMind Academy</p>
-                <p>Lagos, Nigeria</p>
+                <p>{schoolName}</p>
+                <p>{schoolLocation}</p>
               </div>
             </div>
           </div>

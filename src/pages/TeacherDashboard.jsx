@@ -2,7 +2,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import schoolCampus from '../assets/school campus.jpg';
-import estherProfileImg from '../assets/esther_profile.jpg';
+import { useAuth } from '../context/AuthContext';
+import { jobService } from '../services/jobService';
+import { applicationService } from '../services/applicationService';
+import { featureService } from '../services/featureService';
+import { profileService } from '../services/profileService';
+import { apiErrorMessage } from '../services/api';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
@@ -22,175 +27,113 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
 };
 
-const DUMMY_JOBS = [
-  {
-    id: 1,
-    title: 'Mathematics Tutor - SS2/SS3',
-    school: 'British International School',
-    location: 'Benin',
-    type: 'Full-time',
-    timePosted: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-    timeLabel: '2 hours ago',
-    salaryStr: '₦350,000 / month',
-    salaryMonthly: 350000,
-    featured: true,
+const normalizeJobData = (job) => {
+  const jobId = job.job_id || job.id || job._id;
+  return {
+    id: jobId,
+    title: job.title || 'Untitled Role',
+    school: job.school_name || job.school || 'Staffroom School',
+    location: job.location || 'Remote',
+    type: job.employment_type || job.role_type || 'Full-time',
+    timePosted: new Date(job.created_at || Date.now()),
+    timeLabel: job.created_at ? 'Recently posted' : 'Just now',
+    salaryStr: job.salary_range || 'Competitive',
+    salaryMonthly: Number(job.salary_range?.match(/\d+/g)?.[0] || 0),
+    featured: false,
     hot: false,
     color: 'td-bg-gray',
-    education: 'Secondary (SS1-SS3)',
-    subject: 'Mathematics',
+    education: 'Open',
+    subject: job.role_type || job.title || 'Education',
     tags: [],
     mobileOnly: false,
-    about: "We are seeking a visionary Mathematics educator to lead our Senior Secondary department. This isn't just a teaching role; it's an opportunity to shape the pedagogical approach of one of Nigeria's most historic institutions.\n\nAs the Senior Mathematics Lead, you will be responsible for driving academic excellence, mentoring junior faculty, and ensuring our students are prepared for both national and international examinations with absolute confidence.",
-    responsibilities: [
-      "Design and implement a dynamic curriculum that bridges the gap between WAEC and IGCSE standards.",
-      "Lead weekly departmental strategy sessions to review student performance data and pedagogical shifts.",
-      "Spearhead the 'Maths for All' initiative, providing remedial support for struggling students and advanced tracks for high achievers.",
-      "Maintain regular communication with parents regarding student progress and holistic development."
-    ],
+    about: job.description || 'No description provided.',
+    responsibilities: [],
     requirements: {
-      essential: [
-        "B.Ed or B.Sc in Mathematics with PGDE.",
-        "TRCN Registration is mandatory.",
-        "Minimum 7 years teaching experience."
-      ],
-      desirable: [
-        "Master's degree in Education.",
-        "Experience with Google Classroom.",
-        "Previous leadership experience."
-      ]
+      essential: job.requirements ? [job.requirements] : ['Requirements available on request.'],
+      desirable: []
     },
-    employerInfo: "\"Providing a tradition of excellence since 1928, St. Gregory's College is dedicated to the holistic development of the Nigerian child through discipline and hard work.\"\n\nLocated in the heart of Ikoyi, our campus provides a serene and technologically advanced environment for both students and staff. We pride ourselves on our community of educators who are more than teachers—they are mentors.",
-    employerImage: schoolCampus,
-    deadline: "October 24th, 2024",
-    verifiedRecruiter: true
-  },
-  {
-    id: 2,
-    title: 'English Language & Literature Teacher',
-    school: 'Grace Academy',
-    location: 'Benin City, Edo state',
-    type: 'Contract',
-    timePosted: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-    timeLabel: '1 day ago',
-    salaryStr: '₦180,000 / month',
-    salaryMonthly: 180000,
-    featured: false,
-    hot: false,
-    color: 'td-bg-gold',
-    education: 'Secondary (SS1-SS3)',
-    tags: [],
-    mobileOnly: false
-  },
-  {
-    id: 3,
-    title: 'Vice Principal (Academic)',
-    school: 'Atlantic Hall School',
-    location: 'Epe, Lagos',
-    type: 'Full-time',
-    timePosted: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    timeLabel: 'Posted 2h ago',
-    salaryStr: '₦650k – ₦800k',
-    salaryMonthly: 650000,
-    featured: false,
-    hot: true,
-    color: '',
-    education: 'Tertiary Institution',
-    tags: [],
-    mobileOnly: false
-  },
-  {
-    id: 4,
-    title: 'Computer Science Tutor',
-    school: 'Grange School',
-    location: 'Ikeja GRA',
-    type: 'Part time',
-    timePosted: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
-    timeLabel: '1 day ago',
-    salaryStr: '₦180,000 / month',
-    salaryMonthly: 180000,
-    featured: false,
-    hot: false,
-    color: 'td-bg-gray',
-    education: 'Primary School',
-    tags: ['STEM'],
-    mobileOnly: false
-  }
-];
+    employerInfo: job.school_name || 'School profile not available yet.',
+    employerImage: job.school_logo || schoolCampus,
+    deadline: 'Open until filled',
+    verifiedRecruiter: true,
+    status: job.status || 'active',
+  };
+};
 
-const DUMMY_APPLICATIONS = [
-  {
-    id: 1,
-    title: 'Senior Mathematics Teacher',
-    school: 'Lagos British School, Victoria Island',
+const normalizeApplicationData = (app, idx) => {
+  const statusMap = {
+    pending: 'Pending',
+    reviewed: 'Under Review',
+    shortlisted: 'Shortlisted',
+    rejected: 'Rejected',
+    hired: 'Hired',
+  };
+
+  return {
+    id: app.application_id || app.id || idx + 1,
+    title: app.job_title || 'Teaching Role',
+    school: app.school_name || 'School',
     icon: <FiBook size={24} />,
     tags: [
-      { label: 'FULL-TIME', type: 'primary' },
-      { label: 'REMOTE FRIENDLY', type: 'secondary' },
-      { label: '₦850,000 - 1,200,000', type: 'secondary' }
+      { label: (app.salary_range || 'Competitive').toUpperCase(), type: 'primary' },
+      { label: (app.location || 'Location').toUpperCase(), type: 'secondary' }
     ],
-    status: 'Submitted',
-    appliedDate: '12 / 10 / 2024',
-    expiresIn: '4 days',
+    status: statusMap[app.status] || app.status || 'Submitted',
+    appliedDate: app.created_at ? new Date(app.created_at).toLocaleDateString() : 'Recently',
+    expiresIn: null,
     actionText: 'View Details',
-    urgent: false
-  },
-  {
-    id: 2,
-    title: 'Physics Department Head',
-    school: 'Corona Schools Trust Council, Gbagada',
-    icon: <FiZap size={24} />,
-    tags: [
-      { label: 'CONTRACT', type: 'primary' },
-      { label: 'ON-SITE', type: 'secondary' },
-      { label: '₦1,500,000 - 2,000,000', type: 'secondary' }
-    ],
-    status: 'Under Review',
-    appliedDate: '05 / 11 / 2024',
-    expiresIn: null,
-    actionText: 'Track Progress',
-    urgent: true
-  },
-  {
-    id: 3,
-    title: 'Creative Arts Instructor',
-    school: 'Atlantic Hall, Epe',
-    icon: <FiCheckCircle size={24} />,
-    tags: [
-      { label: 'FULL-TIME', type: 'primary' }
-    ],
-    status: 'WITHDRAWN',
-    appliedDate: '01 / 09 / 24',
-    expiresIn: null,
-    actionText: 'Re-apply',
-    urgent: false
-  }
-];
+    urgent: false,
+  };
+};
+
+const splitFullName = (fullName) => {
+  const match = String(fullName || '').trim();
+  if (!match) return { firstName: 'Teacher', lastName: '' };
+
+  const parts = match.split(/\s+/);
+  return {
+    firstName: parts[0] || 'Teacher',
+    lastName: parts.slice(1).join(' '),
+  };
+};
+
+const normalizeProfileValue = (value, fallback = 'Not provided') => {
+  if (value === null || value === undefined || value === '') return fallback;
+  return value;
+};
+
+const getInitials = (fullName = '') => {
+  const initials = String(fullName).trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+  return initials || 'T';
+};
 
 export default function TeacherDashboard() {
   const contentRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileSubTab, setProfileSubTab] = useState('overview');
   const [selectedJob, setSelectedJob] = useState(null);
+  const [jobs, setJobs] = useState([]);
+  const [applications, setApplications] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [jobError, setJobError] = useState('');
+  const [appError, setAppError] = useState('');
+  const [notifError, setNotifError] = useState('');
+  const [savedJobIds, setSavedJobIds] = useState([]);
+  const [profileState, setProfileState] = useState({});
 
   // ── Personal Info Tab state ──
-  const [personalFirstName, setPersonalFirstName] = useState('Esther');
-  const [personalLastName, setPersonalLastName] = useState('Egharevba');
-  const [personalPhone, setPersonalPhone] = useState('0803 456 7890');
-  const [personalCity, setPersonalCity] = useState('Benin City');
-  const [personalState, setPersonalState] = useState('Edo State');
+  const [personalFirstName, setPersonalFirstName] = useState('Teacher');
+  const [personalLastName, setPersonalLastName] = useState('');
+  const [personalPhone, setPersonalPhone] = useState('');
+  const [personalCity, setPersonalCity] = useState('');
+  const [personalState, setPersonalState] = useState('');
 
   // ── Education Tab state ──
-  const [educationList, setEducationList] = useState([
-    {
-      id: 1,
-      degree: 'B.Ed Mathematics',
-      institution: 'University of Benin',
-      period: '2015 – 2019',
-      status: 'Completed'
-    }
-  ]);
+  const [educationList, setEducationList] = useState([]);
   const [showAddEduModal, setShowAddEduModal] = useState(false);
   const [newEduForm, setNewEduForm] = useState({
     degree: '',
@@ -201,16 +144,7 @@ export default function TeacherDashboard() {
   });
 
   // ── Teaching Experience Tab state ──
-  const [experienceList, setExperienceList] = useState([
-    {
-      id: 1,
-      role: 'Senior Mathematics Teacher',
-      school: 'Bright Future College',
-      location: 'Benin City',
-      period: 'SEPT 2021 – PRESENT',
-      description: 'Lead mathematics educator for senior secondary classes with a specialized focus on intensive WAEC and NECO preparation. Developed standardized curriculum assessments and significantly improved student pass rates in consecutive academic years.'
-    }
-  ]);
+  const [experienceList, setExperienceList] = useState([]);
   const [showAddExpModal, setShowAddExpModal] = useState(false);
   const [expForm, setExpForm] = useState({
     role: '',
@@ -223,14 +157,14 @@ export default function TeacherDashboard() {
 
   // ── CV / Resume Tab state ──
   const [activeResume, setActiveResume] = useState({
-    name: 'Esther_Egharevba_CV.pdf',
-    uploadDate: 'Uploaded Oct 24, 2024',
-    size: '1.2 MB'
+    name: 'CV not uploaded',
+    uploadDate: 'Not available',
+    size: '0 KB'
   });
 
   // ── Availability Tab state ──
   const [availEmpType, setAvailEmpType] = useState('full-time');
-  const [availLocation, setAvailLocation] = useState('Benin City, Edo State');
+  const [availLocation, setAvailLocation] = useState('');
   const [availStartOption, setAvailStartOption] = useState('immediately');
   const [showProfileUpdatedModal, setShowProfileUpdatedModal] = useState(false);
 
@@ -239,17 +173,27 @@ export default function TeacherDashboard() {
   const [visibilitySetting, setVisibilitySetting] = useState('schools');
 
   // ── Professional Info Tab state ──
-  const [profTitle, setProfTitle] = useState('Senior Mathematics Educator');
-  const [profSummary, setProfSummary] = useState('Experienced educator with 8+ years focused on WAEC preparation.');
-  const [profYearsExp, setProfYearsExp] = useState('8+ years');
-  const [profEmpPref, setProfEmpPref] = useState('Full Time');
-  const [profTeachMode, setProfTeachMode] = useState('Hydrid');
-  const [profSubjects, setProfSubjects] = useState(['Mathematics', 'Further Mathematics']);
-  const [profTeachingLevels, setProfTeachingLevels] = useState(['JSS (Junior Secondary)', 'Senior Secondary']);
+  const [profTitle, setProfTitle] = useState('Teacher');
+  const [profSummary, setProfSummary] = useState('');
+  const [profYearsExp, setProfYearsExp] = useState('0+ years');
+  const [profEmpPref, setProfEmpPref] = useState('Open');
+  const [profTeachMode, setProfTeachMode] = useState('Open');
+  const [profSubjects, setProfSubjects] = useState([]);
+  const [profTeachingLevels, setProfTeachingLevels] = useState([]);
   const [newSubjectInput, setNewSubjectInput] = useState('');
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applicationStep, setApplicationStep] = useState(1);
+
+  const profileFullName = (user?.full_name || [personalFirstName, personalLastName].filter(Boolean).join(' ') || 'Teacher').trim() || 'Teacher';
+  const profileLocation = profileState?.location || [personalCity, personalState].filter(Boolean).join(', ') || 'Location not set';
+  const profileRoleTitle = profileState?.role_title || profTitle || 'Teacher';
+  const totalApplications = applications.length || 0;
+  const pendingApplications = applications.filter(app => {
+    const s = String(app?.status || '').toLowerCase();
+    return s === 'pending' || s === 'under review' || s === 'reviewed';
+  }).length;
+  const dashboardJobs = jobs.slice(0, 2);
   const [applicationForm, setApplicationForm] = useState({
     name: '',
     email: '',
@@ -259,23 +203,139 @@ export default function TeacherDashboard() {
     motivation: ''
   });
   const [applicationNote, setApplicationNote] = useState('');
-  const [savedJobIds, setSavedJobIds] = useState([]);
+  const [applicationError, setApplicationError] = useState('');
 
-  const handleToggleSaveJob = (jobId) => {
-    setSavedJobIds(prev =>
-      prev.includes(jobId) ? prev.filter(id => id !== jobId) : [...prev, jobId]
-    );
+  const handleResumeAction = (mode) => {
+    if (!activeResume?.url) {
+      setAppError('No resume uploaded for this teacher profile.');
+      return;
+    }
+
+    if (mode === 'view') {
+      window.open(activeResume.url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = activeResume.url;
+    link.download = activeResume.name || 'resume';
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
+
+  const handleCvUpload = async (file) => {
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append('cv', file);
+      await profileService.uploadCv(formData);
+      await refreshTeacherProfile();
+    } catch (err) {
+      setAppError(apiErrorMessage(err, 'Unable to upload CV.'));
+    }
+  };
+
+  const handleToggleSaveJob = async (jobId) => {
+    try {
+      if (savedJobIds.includes(jobId)) {
+        await featureService.deleteSavedJob(jobId);
+        setSavedJobIds(prev => prev.filter(id => id !== jobId));
+      } else {
+        await featureService.saveJob(jobId);
+        setSavedJobIds(prev => [...prev, jobId]);
+      }
+    } catch (err) {
+      console.error(apiErrorMessage(err, 'Unable to update saved jobs.'));
+    }
+  };
+
+  const refreshTeacherProfile = async () => {
+    try {
+      const [jobsRes, applicationsRes, profileRes, notificationsRes, savedRes] = await Promise.all([
+        jobService.getJobs({}),
+        applicationService.getMyApplications(),
+        profileService.getMe(),
+        featureService.getNotifications(),
+        featureService.getSavedJobs(),
+      ]);
+
+      const jobList = (jobsRes?.data?.data?.jobs || jobsRes?.data?.jobs || []).map(normalizeJobData);
+      const applicationList = (applicationsRes?.data?.data?.applications || applicationsRes?.data?.applications || []).map((app, idx) => normalizeApplicationData(app, idx));
+      const profileData = profileRes?.data?.data || {};
+      const profile = profileData?.profile || {};
+      const notificationList = notificationsRes?.data?.data?.notifications || notificationsRes?.data?.notifications || [];
+      const savedJobs = (savedRes?.data?.data?.saved_jobs || savedRes?.data?.saved_jobs || []).map(item => item.job_id);
+      const { firstName, lastName } = splitFullName(profileData?.user?.full_name || user?.full_name || 'Teacher');
+
+      setJobs(jobList);
+      setApplications(applicationList);
+      setProfileState(profile);
+      setPersonalFirstName(firstName);
+      setPersonalLastName(lastName);
+      setPersonalPhone(profileData?.user?.phone || '');
+      setPersonalCity(profile.location?.split(',')[0] || '');
+      setPersonalState(profile.location?.includes(',') ? profile.location.split(',').slice(1).join(',').trim() : '');
+      setAvailLocation(profile.preferred_location || profile.location || '');
+      setProfTitle(profile.role_title || 'Teacher');
+      setProfSummary(profile.bio || '');
+      setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
+      setProfEmpPref(profile.preferred_employment_type || 'Open');
+      setProfTeachMode(profile.availability || 'Open');
+      setProfSubjects((profile.skills || '').split(',').map((s) => s.trim()).filter(Boolean));
+      setProfTeachingLevels(Array.isArray(profile.teaching_levels)
+        ? profile.teaching_levels
+        : typeof profile.teaching_levels === 'string'
+          ? profile.teaching_levels.split(',').map(item => item.trim()).filter(Boolean)
+          : []);
+      setEducationList(Array.isArray(profile.education_history) ? profile.education_history : []);
+      setExperienceList(Array.isArray(profile.work_experience) ? profile.work_experience : []);
+      setSettingsProfile({
+        fullName: profileData?.user?.full_name || user?.full_name || 'Teacher',
+        email: profileData?.user?.email || user?.email || '',
+        phone: profileData?.user?.phone || user?.phone || '',
+      });
+      setActiveResume({
+        name: profile.cv_url ? profile.cv_url.split('/').pop() || 'CV.pdf' : 'No resume uploaded',
+        uploadDate: profile.updated_at ? new Date(profile.updated_at).toLocaleDateString() : 'Not provided',
+        size: profile.cv_url ? 'Uploaded' : 'Not provided',
+        url: profile.cv_url || '',
+      });
+      setSavedJobIds(savedJobs);
+      setNotifications(notificationList.map((notification) => ({
+        id: notification.notification_id || notification.id,
+        type: notification.type || 'job',
+        title: notification.title || 'Notification',
+        description: notification.message || notification.description || '',
+        time: notification.created_at ? new Date(notification.created_at).toLocaleDateString() : 'Recently',
+        isNew: Number(notification.is_read) === 0,
+        read: Number(notification.is_read) === 1,
+        category: notification.type === 'application_status' ? 'Job Alerts' : 'Account',
+      })));
+    } catch (err) {
+      setJobError(apiErrorMessage(err, 'Unable to load jobs.'));
+      setAppError(apiErrorMessage(err, 'Unable to load applications.'));
+      setNotifError(apiErrorMessage(err, 'Unable to load notifications.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    refreshTeacherProfile();
+  }, []);
 
   // ── Settings state ──
   const [settingsProfile, setSettingsProfile] = useState({
-    fullName: 'Mrs. Adeola Olawale',
-    email: 'adeola.o@academic.r',
-    phone: '+234 803 123 4567'
+    fullName: user?.full_name || 'Teacher',
+    email: user?.email || '',
+    phone: user?.phone || ''
   });
-  const [settingsEngagement, setSettingsEngagement] = useState('Full-time');
-  const [settingsLocations, setSettingsLocations] = useState(['Lagos, Nigeria', 'Abuja (FCT)']);
-  const [settingsSalary, setSettingsSalary] = useState('350,000 - 500,000');
+  const [settingsEngagement, setSettingsEngagement] = useState('Open');
+  const [settingsLocations, setSettingsLocations] = useState([]);
+  const [settingsSalary, setSettingsSalary] = useState('');
   const [notifToggles, setNotifToggles] = useState({
     jobMatch: true,
     appStatus: true,
@@ -330,11 +390,26 @@ export default function TeacherDashboard() {
     setApplicationStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmitApplication = (e) => {
+  const handleSubmitApplication = async (e) => {
     e.preventDefault();
-    setShowApplyModal(false);
-    setActiveTab('application-submitted');
-    navigate('/application-submitted');
+
+    if (!selectedJob) {
+      setApplicationError('Please select a job before applying.');
+      return;
+    }
+
+    try {
+      setApplicationError('');
+      await applicationService.applyToJob(selectedJob.id, {
+        cover_letter: applicationForm.motivation || applicationNote || 'I am highly interested in this role.'
+      });
+
+      setShowApplyModal(false);
+      setActiveTab('application-submitted');
+      navigate('/application-submitted');
+    } catch (err) {
+      setApplicationError(apiErrorMessage(err, 'Unable to submit your application right now.'));
+    }
   };
 
   const handleNoteChange = (e) => {
@@ -345,136 +420,13 @@ export default function TeacherDashboard() {
   const [notifFilter, setNotifFilter] = useState('All');
   const [visibleNotifCount, setVisibleNotifCount] = useState(12);
 
-  const DUMMY_NOTIFICATIONS = [
-    {
-      id: 1,
-      type: 'job',
-      title: 'New Job Match: Senior Physics Lead',
-      description: 'A high-priority role at St. Andrews International aligns with your expertise in Quantum Mechanics curriculum development.',
-      time: '2 mins ago',
-      isNew: true,
-      read: false,
-      category: 'Job Alerts'
-    },
-    {
-      id: 2,
-      type: 'message',
-      title: 'Message from Dr. Abayomi Olatunji',
-      description: '"We reviewed your portfolio and would love to discuss the weekend seminar opportunity further..."',
-      time: '1 hour ago',
-      isNew: false,
-      read: false,
-      category: 'Job Alerts'
-    },
-    {
-      id: 3,
-      type: 'account',
-      title: 'Profile Verification Complete',
-      description: 'Your professional credentials have been successfully verified. You now have a "Trusted Educator" badge on your profile.',
-      time: '4 hours ago',
-      isNew: false,
-      read: true,
-      category: 'Account'
-    },
-    {
-      id: 4,
-      type: 'job',
-      title: 'Application Update: Greensprings School',
-      description: 'Your application for the Chemistry Teacher position has been shortlisted. The interview is scheduled for next week.',
-      time: '6 hours ago',
-      isNew: false,
-      read: true,
-      category: 'Job Alerts'
-    },
-    {
-      id: 5,
-      type: 'account',
-      title: 'Password Changed Successfully',
-      description: 'Your account password was updated. If you did not make this change, please contact support immediately.',
-      time: '1 day ago',
-      isNew: false,
-      read: true,
-      category: 'Account'
-    },
-    {
-      id: 6,
-      type: 'message',
-      title: 'Message from Lagos Prep Academy',
-      description: '"Thank you for your interest. We would like to schedule a follow-up call regarding the HOD position..."',
-      time: '1 day ago',
-      isNew: false,
-      read: true,
-      category: 'Job Alerts'
-    },
-    {
-      id: 7,
-      type: 'job',
-      title: 'New Job Match: Biology Teacher',
-      description: 'A new position at Dowen College matches your profile. Apply before the deadline closes.',
-      time: '2 days ago',
-      isNew: false,
-      read: true,
-      category: 'Job Alerts'
-    },
-    {
-      id: 8,
-      type: 'account',
-      title: 'Profile Viewed by Atlantic Hall',
-      description: 'A recruiter from Atlantic Hall School has viewed your profile. Consider updating your CV to stand out.',
-      time: '2 days ago',
-      isNew: false,
-      read: true,
-      category: 'Account'
-    },
-    {
-      id: 9,
-      type: 'job',
-      title: 'New Job Match: Mathematics Instructor',
-      description: 'British International School is hiring a Mathematics Instructor for their Lekki campus. Salary: ₦400k - ₦550k.',
-      time: '3 days ago',
-      isNew: false,
-      read: true,
-      category: 'Job Alerts'
-    },
-    {
-      id: 10,
-      type: 'message',
-      title: 'Message from Mrs. Adebayo',
-      description: '"I noticed you applied to our institution. Could you share references from your previous schools?"',
-      time: '3 days ago',
-      isNew: false,
-      read: true,
-      category: 'Job Alerts'
-    },
-    {
-      id: 11,
-      type: 'account',
-      title: 'Welcome to Staffroom!',
-      description: 'Thank you for joining Staffroom. Complete your profile to get matched with top schools in Nigeria.',
-      time: '1 week ago',
-      isNew: false,
-      read: true,
-      category: 'Account'
-    },
-    {
-      id: 12,
-      type: 'job',
-      title: 'Deadline Reminder: Grace Academy',
-      description: 'The application deadline for the English Teacher role at Grace Academy is tomorrow. Submit your application now.',
-      time: '1 week ago',
-      isNew: false,
-      read: true,
-      category: 'Job Alerts'
-    }
-  ];
-
-  const filteredNotifications = DUMMY_NOTIFICATIONS.filter(n => {
+  const filteredNotifications = notifications.filter(n => {
     if (notifFilter === 'All') return true;
     if (notifFilter === 'Unread') return !n.read;
     return n.category === notifFilter;
   });
 
-  const totalNotifications = 48;
+  const totalNotifications = notifications.length || 0;
 
   // Job Feeds Filters State
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -505,25 +457,33 @@ export default function TeacherDashboard() {
     setKeywordSearch('');
   };
 
-  const filteredJobs = DUMMY_JOBS.filter(job => {
-    const matchesSubject = job.title.toLowerCase().includes(subjectSearch.toLowerCase()) || job.school.toLowerCase().includes(subjectSearch.toLowerCase());
-    const matchesLocation = job.location.toLowerCase().includes(locationSearch.toLowerCase());
-    const matchesKeyword = job.title.toLowerCase().includes(keywordSearch.toLowerCase()) || job.school.toLowerCase().includes(keywordSearch.toLowerCase());
+  const filteredJobs = jobs.filter(job => {
+    const title = String(job.title || '').toLowerCase();
+    const school = String(job.school || '').toLowerCase();
+    const location = String(job.location || '').toLowerCase();
+    const matchesSubject = title.includes(subjectSearch.toLowerCase()) || school.includes(subjectSearch.toLowerCase());
+    const matchesLocation = location.includes(locationSearch.toLowerCase());
+    const matchesKeyword = title.includes(keywordSearch.toLowerCase()) || school.includes(keywordSearch.toLowerCase());
 
     if (subjectSearch && !matchesSubject) return false;
     if (locationSearch && !matchesLocation) return false;
     if (keywordSearch && !matchesKeyword) return false;
 
     if (selectedEducation.length > 0 && !selectedEducation.includes(job.education)) return false;
-    if (selectedJobTypes.length > 0 && !selectedJobTypes.some(type => job.type.includes(type))) return false;
-    if (job.salaryMonthly < salaryRange) return false;
+    if (selectedJobTypes.length > 0 && !selectedJobTypes.some(type => String(job.type).toLowerCase().includes(type.toLowerCase()))) return false;
+    if (Number(job.salaryMonthly || 0) < Number(salaryRange || 0)) return false;
 
     return true;
   }).sort((a, b) => {
-    if (sortBy === 'Newest First') return b.timePosted - a.timePosted;
-    if (sortBy === 'Oldest First') return a.timePosted - b.timePosted;
-    if (sortBy === 'Highest Salary') return b.salaryMonthly - a.salaryMonthly;
-    if (sortBy === 'Lowest Salary') return a.salaryMonthly - b.salaryMonthly;
+    const aTime = new Date(a.timePosted || Date.now()).getTime();
+    const bTime = new Date(b.timePosted || Date.now()).getTime();
+    const aSalary = Number(a.salaryMonthly || 0);
+    const bSalary = Number(b.salaryMonthly || 0);
+
+    if (sortBy === 'Newest First') return bTime - aTime;
+    if (sortBy === 'Oldest First') return aTime - bTime;
+    if (sortBy === 'Highest Salary') return bSalary - aSalary;
+    if (sortBy === 'Lowest Salary') return aSalary - bSalary;
     return 0;
   });
 
@@ -582,7 +542,7 @@ export default function TeacherDashboard() {
 
         <div className="td-sidebar-footer">
           <div className="td-logout-container">
-            <button className="td-logout-btn" onClick={() => navigate('/login')}>
+            <button className="td-logout-btn" onClick={() => logout()}>
               Log out
             </button>
           </div>
@@ -612,7 +572,7 @@ export default function TeacherDashboard() {
         ) : (
           <header className="td-mobile-topbar">
             <div className="td-mobile-avatar" onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); }} style={{ cursor: 'pointer' }}>
-              <img src={estherProfileImg} alt="Avatar" />
+              <div className="td-avatar-initials" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
             </div>
             <div className="td-mobile-brand">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="#1CCB43">
@@ -637,7 +597,7 @@ export default function TeacherDashboard() {
             <div className="td-icon-badge" onClick={() => setActiveTab('notifications')}><FiBell /></div>
             <div className="td-icon-badge"><FiMail /></div>
             <div className="td-user-avatar" onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); }} style={{ cursor: 'pointer' }}>
-              <img src={estherProfileImg} alt="Avatar" />
+              <div className="td-avatar-initials td-avatar-initials--topbar" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
             </div>
           </div>
         </header>
@@ -649,18 +609,18 @@ export default function TeacherDashboard() {
           {/* ── Welcome Area ── */}
           <div className="td-welcome-header">
             <div>
-              <h1 className="td-welcome-title">Welcome, Mrs Adeloa</h1>
+              <h1 className="td-welcome-title">Welcome, {profileFullName}</h1>
               {/* Desktop subtitle */}
               <p className="td-subtitle">Your academic career overview for today.</p>
               {/* Mobile location */}
               <div className="td-mobile-location">
                 <FiMapPin size={13} color="#4A5568" />
-                <span>Victoria Island, Lagos</span>
+                <span>{profileLocation}</span>
               </div>
             </div>
             <div className="td-location-badge">
               <FiMapPin size={14} color="#1CCB43" />
-              <span>Victoria Island, Lagos</span>
+              <span>{profileLocation}</span>
             </div>
           </div>
 
@@ -674,31 +634,31 @@ export default function TeacherDashboard() {
                 <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
                   <div className="td-card-header">
                     <span className="td-profile-title">Profile Strength</span>
-                    <span className="td-percent-badge">75%</span>
+                    <span className="td-percent-badge">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
                   </div>
                   {/* Mobile profile strength layout */}
                   <div className="td-mobile-profile-strength">
                     <div className="td-mobile-ps-top">
                       <div className="td-mobile-ps-left">
                         <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
-                        <span className="td-mobile-ps-value">75%</span>
+                        <span className="td-mobile-ps-value">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
                       </div>
                       <div className="td-mobile-ps-icon"><FiZap size={20} /></div>
                     </div>
                     <div className="td-progress-bar">
-                      <div className="td-progress-fill" style={{ width: '75%' }}></div>
+                      <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
                     </div>
-                    <p className="td-card-hint">Almost there! Add a certification to reach 100%.</p>
+                    <p className="td-card-hint">{profileState?.bio ? 'Your profile is ready for school applications.' : 'Complete your profile to improve visibility to schools.'}</p>
                   </div>
                   {/* Desktop layout */}
                   <div className="td-desktop-profile-strength">
                     <div className="td-progress-bar">
-                      <div className="td-progress-fill" style={{ width: '75%' }}></div>
+                      <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
                     </div>
                     <p className="td-card-hint">
-                      Your profile is missing some vital<br />to enable you apply for jobs.
+                      {profileState?.bio ? 'Your profile is ready for job applications.' : 'Complete your profile to unlock more opportunities.'}
                     </p>
-                    <button className="td-complete-profile-btn">Complete Profile →</button>
+                    <button className="td-complete-profile-btn" onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                   </div>
                 </motion.div>
 
@@ -709,13 +669,13 @@ export default function TeacherDashboard() {
                     <div className="td-mini-icon-circle">
                       <FiEye size={18} />
                     </div>
-                    <span className="td-mobile-stat-number">1,284</span>
+                    <span className="td-mobile-stat-number">{Math.max(0, jobs.length * 12)}</span>
                     <p className="td-mini-label">PROFILE VIEWS</p>
                     <div className="td-mini-value-row">
-                      <span className="td-mini-value td-desktop-stat-val">1,284</span>
-                      <span className="td-mini-growth">+12%</span>
+                      <span className="td-mini-value td-desktop-stat-val">{Math.max(0, jobs.length * 12)}</span>
+                      <span className="td-mini-growth">{jobs.length > 0 ? '+12%' : '0%'}</span>
                     </div>
-                    <span className="td-mobile-subtext">+12% this week</span>
+                    <span className="td-mobile-subtext">{jobs.length > 0 ? 'Based on active listings' : 'No active listings yet'}</span>
                   </motion.div>
 
                   {/* Jobs Applied */}
@@ -724,12 +684,12 @@ export default function TeacherDashboard() {
                       <FiSend size={18} className="td-desktop-icon" />
                       <FiBriefcase size={18} className="td-mobile-icon" />
                     </div>
-                    <span className="td-mobile-stat-number">42</span>
+                    <span className="td-mobile-stat-number">{totalApplications}</span>
                     <p className="td-mini-label">
                       <span>JOBS APPLIED</span>
                     </p>
                     <div className="td-mini-value-row td-desktop-val-row">
-                      <span className="td-mini-value">42</span>
+                      <span className="td-mini-value">{totalApplications}</span>
                       <span className="td-mini-unit">Total</span>
                     </div>
                     <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
@@ -742,7 +702,7 @@ export default function TeacherDashboard() {
                     </div>
                     <p className="td-mini-label">PENDING REVIEW</p>
                     <div className="td-mini-value-row">
-                      <span className="td-mini-value">08</span>
+                      <span className="td-mini-value">{pendingApplications}</span>
                       <span className="td-mini-action">Action Req.</span>
                     </div>
                   </motion.div>
@@ -763,80 +723,47 @@ export default function TeacherDashboard() {
                 </div>
 
                 <div className="td-job-list">
-                  {/* Job 1: HOD Mathematics */}
-                  <motion.div variants={cardVariants} className="td-job-item">
-                    <div className="td-job-header-row">
-                      <div className="td-job-avatar td-job-avatar--math">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
-                          <path d="M9 12h6" />
-                          <path d="M12 9v6" />
-                        </svg>
-                      </div>
-                      <div className="td-job-info-main">
-                        <div className="td-job-title-line">
-                          <h3>HOD Mathematics</h3>
-                          <div className="td-job-badge-col td-desktop-badge-col">
-                            <span className="td-job-type-badge td-job-type-badge--full">FULL-TIME</span>
-                            <span className="td-job-time-ago">3 days ago</span>
+                  {dashboardJobs.length > 0 ? dashboardJobs.map((job) => (
+                    <motion.div key={job.id} variants={cardVariants} className="td-job-item">
+                      <div className="td-job-header-row">
+                        <div className="td-job-avatar td-job-avatar--math">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
+                            <path d="M9 12h6" />
+                            <path d="M12 9v6" />
+                          </svg>
+                        </div>
+                        <div className="td-job-info-main">
+                          <div className="td-job-title-line">
+                            <h3>{job.title}</h3>
+                            <div className="td-job-badge-col td-desktop-badge-col">
+                              <span className="td-job-type-badge td-job-type-badge--full">{String(job.type || 'FULL-TIME').toUpperCase()}</span>
+                              <span className="td-job-time-ago">{job.timeLabel}</span>
+                            </div>
+                          </div>
+                          <p className="td-job-school">{job.school} <span className="td-job-bullet">•</span> {job.location}</p>
+
+                          <div className="td-job-tags td-mobile-only-tags">
+                            <span className="td-mobile-tag--green">{String(job.location || '').toUpperCase()}</span>
+                            <span className="td-mobile-tag--gray">{job.timeLabel}</span>
+                          </div>
+
+                          <div className="td-job-tags td-desktop-tags">
+                            <span>{job.subject || 'Teaching'}</span>
+                            <span>{job.type || 'Full-time'}</span>
+                            <span>{job.salaryStr || 'Competitive'}</span>
                           </div>
                         </div>
-                        <p className="td-job-school">St. Gregory's College <span className="td-job-bullet">•</span> Ikoyi, Lagos</p>
-                        
-                        {/* Mobile tags */}
-                        <div className="td-job-tags td-mobile-only-tags">
-                          <span className="td-mobile-tag--green">LAGOS</span>
-                          <span className="td-mobile-tag--gray">3 DAYS AGO</span>
-                        </div>
-                        
-                        {/* Desktop tags */}
-                        <div className="td-job-tags td-desktop-tags">
-                          <span>POSTGRADUATE DEGREE</span>
-                          <span>8+ YEARS EXPERIENCE</span>
-                          <span>LEADERSHIP</span>
-                        </div>
                       </div>
-                    </div>
 
-                    <div className="td-job-footer">
-                      <span className="td-job-salary">₦450k – ₦600k Monthly</span>
-                      <a href="#" className="td-quick-apply">Quick Apply →</a>
-                    </div>
-                  </motion.div>
-
-                  {/* Job 2: Physics Instructor */}
-                  <motion.div variants={cardVariants} className="td-job-item">
-                    <div className="td-job-header-row">
-                      <div className="td-job-avatar td-job-avatar--school">
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="4" y="4" width="16" height="16" rx="3" />
-                          <circle cx="12" cy="10" r="3" />
-                          <path d="M8 18h8" />
-                        </svg>
+                      <div className="td-job-footer">
+                        <span className="td-job-salary">{job.salaryStr || 'Salary available on request'}</span>
+                        <button type="button" className="td-quick-apply" onClick={() => setSelectedJob(job)}>Quick Apply →</button>
                       </div>
-                      <div className="td-job-info-main">
-                        <div className="td-job-title-line">
-                          <h3>Physics Instructor</h3>
-                          <div className="td-job-badge-col td-desktop-badge-col">
-                            <span className="td-job-type-badge td-job-type-badge--res">RESIDENTIAL</span>
-                            <span className="td-job-time-ago">1 week ago</span>
-                          </div>
-                        </div>
-                        <p className="td-job-school">Atlantic Hall School <span className="td-job-bullet">•</span> Epe, Lagos</p>
-                        
-                        {/* Mobile tags */}
-                        <div className="td-job-tags td-mobile-only-tags">
-                          <span className="td-mobile-tag--green">EPE</span>
-                          <span className="td-mobile-tag--gray">1 WEEK AGO</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="td-job-footer">
-                      <span className="td-job-salary">₦350k – ₦480k Monthly</span>
-                      <a href="#" className="td-quick-apply">Quick Apply →</a>
-                    </div>
-                  </motion.div>
+                    </motion.div>
+                  )) : (
+                    <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>No active jobs available right now.</div>
+                  )}
                 </div>
               </div>
 
@@ -855,33 +782,34 @@ export default function TeacherDashboard() {
             <div className="td-right-col">
               <motion.div variants={cardVariants} className="td-side-section">
                 <h3>Upcoming Interviews</h3>
-                <div className="td-interview-item">
-                  <div className="td-date-box">
-                    <span className="td-day">24</span>
-                    <span className="td-month">OCT</span>
+                {applications.length > 0 ? (
+                  applications.slice(0, 2).map((app) => (
+                    <div key={app.id} className="td-interview-item">
+                      <div className="td-date-box">
+                        <span className="td-day">{new Date().getDate()}</span>
+                        <span className="td-month">{new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase()}</span>
+                      </div>
+                      <div className="td-int-info">
+                        <h4>{app.school}</h4>
+                        <p>{app.title} • {app.status}</p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="td-interview-item">
+                    <div className="td-int-info">
+                      <h4>No interviews scheduled</h4>
+                      <p>Your application pipeline will appear here.</p>
+                    </div>
                   </div>
-                  <div className="td-int-info">
-                    <h4>Dowen College</h4>
-                    <p>Senior Admin Role • 10:00 AM</p>
-                  </div>
-                </div>
-                <div className="td-interview-item">
-                  <div className="td-date-box green">
-                    <span className="td-day">27</span>
-                    <span className="td-month">OCT</span>
-                  </div>
-                  <div className="td-int-info">
-                    <h4>Green Springs</h4>
-                    <p>Interview Prep • 02:30 PM</p>
-                  </div>
-                </div>
+                )}
               </motion.div>
 
               <motion.div variants={cardVariants} className="td-pro-card">
                 <div className="td-pro-badge">★</div>
-                <h3>Staffroom Pro</h3>
-                <p>Get priority listing in elite school searches across Abuja and Lagos.</p>
-                <button className="td-upgrade-btn">Upgrade Plan</button>
+                <h3>School Match Status</h3>
+                <p>{jobs.length > 0 ? `${jobs.length} active opportunities are matching your profile.` : 'No active school matches yet.'}</p>
+                <button className="td-upgrade-btn" onClick={() => setActiveTab('jobs')}>View Jobs</button>
               </motion.div>
 
               <motion.div variants={cardVariants} className="td-shortcuts-section">
@@ -1180,7 +1108,7 @@ export default function TeacherDashboard() {
                   <div className="td-jd-section">
                     <h2 className="td-jd-section-title"><span className="td-jd-green-dash"></span> About the job</h2>
                     <div className="td-jd-text-content">
-                      {selectedJob.about ? selectedJob.about.split('\n\n').map((p, i) => <p key={i}>{p}</p>) : <p>We are seeking a visionary Mathematics educator to lead our Senior Secondary department. This isn't just a teaching role; it's an opportunity to shape the pedagogical approach of one of Nigeria's most historic institutions.<br/><br/>As the Senior Mathematics Lead, you will be responsible for driving academic excellence, mentoring junior faculty, and ensuring our students are prepared for both national and international examinations with absolute confidence.</p>}
+                      {selectedJob.about ? selectedJob.about.split('\n\n').map((p, i) => <p key={i}>{p}</p>) : <p>No job description has been published for this role yet.</p>}
                     </div>
                   </div>
 
@@ -1193,24 +1121,10 @@ export default function TeacherDashboard() {
                           <span>{r}</span>
                         </li>
                       )) : (
-                        <>
-                          <li>
-                            <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
-                            <span>Design and implement a dynamic curriculum that bridges the gap between WAEC and IGCSE standards.</span>
-                          </li>
-                          <li>
-                            <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
-                            <span>Lead weekly departmental strategy sessions to review student performance data and pedagogical shifts.</span>
-                          </li>
-                          <li>
-                            <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
-                            <span>Spearhead the 'Maths for All' initiative, providing remedial support for struggling students and advanced tracks for high achievers.</span>
-                          </li>
-                          <li>
-                            <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
-                            <span>Maintain regular communication with parents regarding student progress and holistic development.</span>
-                          </li>
-                        </>
+                        <li>
+                          <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
+                          <span>Responsibilities will be shown when the school publishes the role details.</span>
+                        </li>
                       )}
                     </ul>
                   </div>
@@ -1224,11 +1138,7 @@ export default function TeacherDashboard() {
                           {selectedJob.requirements?.essential ? selectedJob.requirements.essential.map((r, i) => (
                             <li key={i}>• {r}</li>
                           )) : (
-                            <>
-                              <li>• B.Ed or B.Sc in Mathematics with PGDE.</li>
-                              <li>• TRCN Registration is mandatory.</li>
-                              <li>• Minimum 7 years teaching experience.</li>
-                            </>
+                            <li>• Requirements will be shared by the employer once the job is published.</li>
                           )}
                         </ul>
                       </div>
@@ -1238,11 +1148,7 @@ export default function TeacherDashboard() {
                           {selectedJob.requirements?.desirable ? selectedJob.requirements.desirable.map((r, i) => (
                             <li key={i}>• {r}</li>
                           )) : (
-                            <>
-                              <li>• Master's degree in Education.</li>
-                              <li>• Experience with Google Classroom.</li>
-                              <li>• Previous leadership experience.</li>
-                            </>
+                            <li>• Additional preferences will appear when they are available from the employer.</li>
                           )}
                         </ul>
                       </div>
@@ -1338,7 +1244,7 @@ export default function TeacherDashboard() {
                 </div>
                 <h1>Application Submitted Successfully!</h1>
                 <p className="td-submitted-description">
-                  Your professional profile has been delivered to the<br className="td-desktop-break" /> hiring committee in Lagos.
+                  Your application has been sent to {selectedJob?.school || 'the hiring team'} for review.
                 </p>
 
                 <div className="td-application-summary-card">
@@ -1506,7 +1412,7 @@ export default function TeacherDashboard() {
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-app-page">
               <div className="td-desktop-only td-app-header">
                 <h1>Job Applications</h1>
-                <p>Manage and track the status of your <span className="td-app-highlight">11 active applications.</span></p>
+                <p>Manage and track the status of your <span className="td-app-highlight">{applications.length} active applications.</span></p>
               </div>
 
               <div className="td-mobile-only td-app-mobile-stats">
@@ -1514,20 +1420,22 @@ export default function TeacherDashboard() {
                   <div className="td-app-stat-icon-wrapper td-app-stat-icon-dark">
                     <FiCheckCircle size={18} />
                   </div>
-                  <h2>08</h2>
+                  <h2>{applications.length}</h2>
                   <span>SUBMITTED</span>
                 </div>
                 <div className="td-app-stat-card td-app-stat-green">
                   <div className="td-app-stat-icon-wrapper td-app-stat-icon-light">
                     <FiClock size={18} />
                   </div>
-                  <h2>03</h2>
+                  <h2>{pendingApplications}</h2>
                   <span>UNDER REVIEW</span>
                 </div>
               </div>
 
               <div className="td-app-list">
-                {DUMMY_APPLICATIONS.map(app => (
+                {appError && <div style={{ color: '#b91c1c', marginBottom: '12px' }}>{appError}</div>}
+                {!loading && applications.length === 0 && !appError && <div style={{ color: '#4b5563' }}>No applications yet.</div>}
+                {applications.map(app => (
                   <div key={app.id} className="td-app-card">
                     <div className="td-app-card-left">
                       <div className="td-app-icon-wrapper">
@@ -1925,28 +1833,28 @@ export default function TeacherDashboard() {
                   <div className="td-profile-header-card">
                     <div className="td-profile-header-left">
                       <div className="td-profile-avatar-container">
-                        <img src={estherProfileImg} alt="Esther Egharevba" className="td-profile-avatar-img" />
+                        <div className="td-profile-avatar-initials" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
                       </div>
                       <div className="td-profile-info-block">
                         <div className="td-profile-name-row">
-                          <h2>Esther Egharevba</h2>
+                          <h2>{profileFullName}</h2>
                           <svg className="td-profile-verified-badge" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                             <path d="M8.5 12L11 14.5L16 9.5" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
                           </svg>
                         </div>
-                        <p className="td-profile-role-title">Mathematics Teacher</p>
+                        <p className="td-profile-role-title">{profileRoleTitle}</p>
                         <div className="td-profile-meta-row">
                           <div className="td-profile-meta-item">
                             <FiMapPin size={15} className="td-profile-meta-icon" />
-                            <span>Benin City, Edo State</span>
+                            <span>{profileLocation}</span>
                           </div>
                           <div className="td-profile-meta-item">
                             <svg className="td-profile-meta-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
                               <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
                             </svg>
-                            <span>8+ Years Experience</span>
+                            <span>{profYearsExp}</span>
                           </div>
                           <div className="td-profile-trcn-pill" onClick={() => setProfileSubTab('trcn-certification')} style={{ cursor: 'pointer' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -2213,14 +2121,12 @@ export default function TeacherDashboard() {
                       <div className="td-prof-hero-card">
                         <div className="td-prof-hero-decor" />
                         <div className="td-prof-hero-content">
-                          <img
-                            src={estherProfileImg}
-                            alt="Esther Egharevba"
-                            className="td-prof-hero-avatar"
-                          />
+                          <div className="td-prof-hero-avatar td-prof-hero-avatar--initials" aria-label={profileFullName}>
+                            {profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
                           <div className="td-prof-hero-details">
                             <div className="td-prof-hero-name-row">
-                              <h1 className="td-prof-hero-name">Esther Egharevba</h1>
+                              <h1 className="td-prof-hero-name">{profileFullName}</h1>
                               <span className="td-prof-trcn-verified-badge">
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="20 6 9 17 4 12" />
@@ -2228,15 +2134,15 @@ export default function TeacherDashboard() {
                                 <span>TRCN Verified</span>
                               </span>
                             </div>
-                            <p className="td-prof-hero-role">Mathematics Teacher</p>
+                            <p className="td-prof-hero-role">{profileRoleTitle}</p>
                             <div className="td-prof-hero-meta-row">
                               <div className="td-prof-hero-meta-item">
                                 <FiMapPin size={15} />
-                                <span>Benin City, Edo State</span>
+                                <span>{profileLocation}</span>
                               </div>
                               <div className="td-prof-hero-meta-item">
                                 <FiBriefcase size={15} />
-                                <span>8+ Years Experience</span>
+                                <span>{profYearsExp}</span>
                               </div>
                             </div>
                           </div>
@@ -2254,7 +2160,7 @@ export default function TeacherDashboard() {
                             <h2>Professional Summary</h2>
                           </div>
                           <p className="td-prof-summary-text">
-                            Dedicated and results–driven Mathematics Educator with over 8 years of experience fostering academic excellence in diverse classroom settings. Proven ability to translate complex mathematical concepts into accessible, engaging lessons that improve student comprehension and standardized test scores. Committed to creating an inclusive learning environment and integrating modern pedagogical technologies to enhance the learning experience.
+                            {profSummary || 'No professional summary has been added yet. Complete your profile to help schools understand your teaching background.'}
                           </p>
                         </div>
 
@@ -2267,9 +2173,9 @@ export default function TeacherDashboard() {
                             <h2>Subjects</h2>
                           </div>
                           <div className="td-prof-subject-pills-row">
-                            <span className="td-prof-sub-pill">Mathematics</span>
-                            <span className="td-prof-sub-pill">Further Mathematics</span>
-                            <span className="td-prof-sub-pill">Basic Science</span>
+                            {profSubjects.length > 0 ? profSubjects.map(subject => (
+                              <span key={subject} className="td-prof-sub-pill">{subject}</span>
+                            )) : <span className="td-prof-sub-pill">No subjects added yet</span>}
                           </div>
 
                           <div className="td-prof-card-head" style={{ marginTop: '24px' }}>
@@ -2279,8 +2185,9 @@ export default function TeacherDashboard() {
                             <h2>Teaching Levels</h2>
                           </div>
                           <div className="td-prof-levels-col">
-                            <span className="td-prof-level-pill">Senior Secondary (SS1–SS3)</span>
-                            <span className="td-prof-level-pill">Junior Secondary (JSS1–JSS3)</span>
+                            {profTeachingLevels.length > 0 ? profTeachingLevels.map(level => (
+                              <span key={level} className="td-prof-level-pill">{level}</span>
+                            )) : <span className="td-prof-level-pill">Not provided</span>}
                           </div>
                         </div>
 
@@ -2294,33 +2201,21 @@ export default function TeacherDashboard() {
                           </div>
 
                           <div className="td-prof-exp-items-list">
-                            <div className="td-prof-exp-item-card">
-                              <div className="td-prof-exp-item-left">
-                                <span className="td-prof-exp-date td-prof-exp-date--present">2018 - Present</span>
-                                <h3 className="td-prof-exp-title">Senior Mathematics Teacher</h3>
-                                <p className="td-prof-exp-school">Word of Faith Group of Schools, Benin City</p>
+                            {experienceList.length > 0 ? experienceList.map((exp, index) => (
+                              <div key={index} className="td-prof-exp-item-card">
+                                <div className="td-prof-exp-item-left">
+                                  <span className="td-prof-exp-date td-prof-exp-date--present">{normalizeProfileValue(exp.period, 'Not provided')}</span>
+                                  <h3 className="td-prof-exp-title">{normalizeProfileValue(exp.role, 'Role not provided')}</h3>
+                                  <p className="td-prof-exp-school">{normalizeProfileValue(exp.school, 'School not provided')}</p>
+                                </div>
+                                <div className="td-prof-exp-cap-badge">
+                                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                                    <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                  </svg>
+                                </div>
                               </div>
-                              <div className="td-prof-exp-cap-badge">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
-                                </svg>
-                              </div>
-                            </div>
-
-                            <div className="td-prof-exp-item-card">
-                              <div className="td-prof-exp-item-left">
-                                <span className="td-prof-exp-date">2015 - 2018</span>
-                                <h3 className="td-prof-exp-title">Subject Teacher (Mathematics)</h3>
-                                <p className="td-prof-exp-school">Nosakhare Model Education Centre</p>
-                              </div>
-                              <div className="td-prof-exp-cap-badge">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
-                                </svg>
-                              </div>
-                            </div>
+                            )) : <p style={{ color: '#64748B', margin: 0 }}>No work experience added.</p>}
                           </div>
                         </div>
 
@@ -2338,18 +2233,20 @@ export default function TeacherDashboard() {
                               <h2>Education</h2>
                             </div>
 
-                            <div className="td-prof-edu-item">
-                              <div className="td-prof-edu-icon-box">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z"/>
-                                </svg>
+                            {educationList.length > 0 ? educationList.map((edu, index) => (
+                              <div key={index} className="td-prof-edu-item">
+                                <div className="td-prof-edu-icon-box">
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z"/>
+                                  </svg>
+                                </div>
+                                <div className="td-prof-edu-info">
+                                  <h3>{normalizeProfileValue(edu.degree, 'Degree not provided')}</h3>
+                                  <p className="td-prof-edu-inst">{normalizeProfileValue(edu.institution, 'Institution not provided')}</p>
+                                  <span className="td-prof-edu-period">{normalizeProfileValue(edu.period, 'Not provided')}</span>
+                                </div>
                               </div>
-                              <div className="td-prof-edu-info">
-                                <h3>B.Sc. Ed. Mathematics</h3>
-                                <p className="td-prof-edu-inst">University of Benin (UNIBEN)</p>
-                                <span className="td-prof-edu-period">2010 - 2014</span>
-                              </div>
-                            </div>
+                            )) : <p style={{ color: '#64748B', margin: 0 }}>No education added.</p>}
                           </div>
 
                           {/* Certification & Documents Box */}
@@ -2364,7 +2261,6 @@ export default function TeacherDashboard() {
                               <h2>Certification & Documents</h2>
                             </div>
 
-                            {/* TRCN Status Box */}
                             <div className="td-prof-trcn-box">
                               <div className="td-prof-trcn-left">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -2372,30 +2268,29 @@ export default function TeacherDashboard() {
                                   <path d="m9 12 2 2 4-4"/>
                                 </svg>
                                 <div>
-                                  <h4>TRCN Registered Educator</h4>
-                                  <p>Registration No: ED/12345/2015</p>
+                                  <h4>{profileState?.trcn_number ? 'TRCN Registered Educator' : 'TRCN certificate not provided'}</h4>
+                                  <p>{profileState?.trcn_number ? `Registration No: ${profileState.trcn_number}` : 'No TRCN number added yet.'}</p>
                                 </div>
                               </div>
-                              <span className="td-prof-active-badge">ACTIVE</span>
+                              <span className="td-prof-active-badge">{profileState?.trcn_number ? 'ACTIVE' : 'PENDING'}</span>
                             </div>
 
-                            {/* Download Buttons */}
                             <div className="td-prof-downloads-col">
                               <button
                                 type="button"
                                 className="td-prof-download-btn"
-                                onClick={() => alert('Downloading Esther_Egharevba_CV.pdf')}
+                                onClick={() => handleResumeAction('download')}
                               >
                                 <FiDownload size={14} />
-                                <span>Download CV (PDF)</span>
+                                <span>{activeResume?.url ? 'Download CV' : 'No resume uploaded'}</span>
                               </button>
                               <button
                                 type="button"
                                 className="td-prof-download-btn"
-                                onClick={() => alert('Downloading Esther_Egharevba_Cover_Letter.pdf')}
+                                onClick={() => window.open(activeResume?.url || '#', '_blank', 'noopener,noreferrer')}
                               >
-                                <FiDownload size={14} />
-                                <span>Download Cover Letter (PDF)</span>
+                                <FiEye size={14} />
+                                <span>{activeResume?.url ? 'View CV' : 'No resume uploaded'}</span>
                               </button>
                             </div>
                           </div>
@@ -2814,7 +2709,6 @@ export default function TeacherDashboard() {
                         <div className="td-trcn-left-col">
                           {/* Top TRCN Status Card */}
                           <div className="td-trcn-status-card">
-                            {/* Decorative soft green corner blob */}
                             <div className="td-trcn-decor-blob" />
 
                             <div className="td-trcn-status-left">
@@ -2824,13 +2718,13 @@ export default function TeacherDashboard() {
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="20 6 9 17 4 12" />
                                   </svg>
-                                  <span>Active & Validated</span>
+                                  <span>{profileState?.trcn_number ? 'Active & Validated' : 'Not Provided'}</span>
                                 </span>
                               </div>
 
                               <div className="td-trcn-number-row">
                                 <span className="td-trcn-number-label">TRCN Number:</span>
-                                <span className="td-trcn-number-val">TRCN/EDO/123456</span>
+                                <span className="td-trcn-number-val">{profileState?.trcn_number || 'Not available yet'}</span>
                               </div>
                             </div>
 
@@ -2838,25 +2732,24 @@ export default function TeacherDashboard() {
                               <button
                                 type="button"
                                 className="td-trcn-btn-view"
-                                onClick={() => alert('Viewing TRCN Certificate: TRCN/EDO/123456')}
+                                onClick={() => profileState?.trcn_certificate_url && window.open(profileState.trcn_certificate_url, '_blank', 'noopener,noreferrer')}
+                                disabled={!profileState?.trcn_certificate_url}
                               >
                                 <FiEye size={16} />
-                                <span>View Certificate</span>
+                                <span>{profileState?.trcn_certificate_url ? 'View Certificate' : 'No certificate'}</span>
                               </button>
                               <button
                                 type="button"
                                 className="td-trcn-btn-update"
-                                onClick={() => alert('Update TRCN documentation flow')}
+                                onClick={() => setProfileSubTab('overview')}
                               >
                                 <FiRotateCw size={14} />
-                                <span>Update</span>
+                                <span>Refresh</span>
                               </button>
                             </div>
                           </div>
 
-                          {/* 2 Sub-Cards Row (Issuance Details + Verification Log) */}
                           <div className="td-trcn-subcards-grid">
-                            {/* Card A: Issuance Details */}
                             <div className="td-trcn-subcard">
                               <div className="td-trcn-subcard-header">
                                 <FiCalendar size={16} className="td-trcn-subcard-icon" />
@@ -2866,16 +2759,15 @@ export default function TeacherDashboard() {
                               <div className="td-trcn-subcard-fields">
                                 <div className="td-trcn-field-item">
                                   <label>Date Issued</label>
-                                  <p>15 August 2021</p>
+                                  <p>{profileState?.trcn_issued_at ? new Date(profileState.trcn_issued_at).toLocaleDateString() : 'Not provided'}</p>
                                 </div>
                                 <div className="td-trcn-field-item">
                                   <label>Valid Until</label>
-                                  <p>14 August 2026</p>
+                                  <p>{profileState?.trcn_valid_until ? new Date(profileState.trcn_valid_until).toLocaleDateString() : 'Not provided'}</p>
                                 </div>
                               </div>
                             </div>
 
-                            {/* Card B: Verification Log */}
                             <div className="td-trcn-subcard">
                               <div className="td-trcn-subcard-header">
                                 <FiShield size={16} className="td-trcn-subcard-icon" />
@@ -2883,21 +2775,32 @@ export default function TeacherDashboard() {
                               </div>
 
                               <div className="td-trcn-log-timeline">
-                                <div className="td-trcn-log-entry">
-                                  <div className="td-trcn-log-dot td-trcn-log-dot--green" />
-                                  <div className="td-trcn-log-info">
-                                    <h4>Validated by Staffroom Admin</h4>
-                                    <span>22 Sep 2023</span>
+                                {profileState?.trcn_number ? (
+                                  <>
+                                    <div className="td-trcn-log-entry">
+                                      <div className="td-trcn-log-dot td-trcn-log-dot--green" />
+                                      <div className="td-trcn-log-info">
+                                        <h4>Validated by Staffroom admin</h4>
+                                        <span>{profileState?.trcn_verified_at ? new Date(profileState.trcn_verified_at).toLocaleDateString() : 'Recently'}</span>
+                                      </div>
+                                    </div>
+                                    <div className="td-trcn-log-entry">
+                                      <div className="td-trcn-log-dot td-trcn-log-dot--gray" />
+                                      <div className="td-trcn-log-info">
+                                        <h4>Document uploaded</h4>
+                                        <span>{profileState?.updated_at ? new Date(profileState.updated_at).toLocaleDateString() : 'Recently'}</span>
+                                      </div>
+                                    </div>
+                                  </>
+                                ) : (
+                                  <div className="td-trcn-log-entry">
+                                    <div className="td-trcn-log-dot td-trcn-log-dot--gray" />
+                                    <div className="td-trcn-log-info">
+                                      <h4>No TRCN record on file</h4>
+                                      <span>Update your profile to add it</span>
+                                    </div>
                                   </div>
-                                </div>
-
-                                <div className="td-trcn-log-entry">
-                                  <div className="td-trcn-log-dot td-trcn-log-dot--gray" />
-                                  <div className="td-trcn-log-info">
-                                    <h4>Document Uploaded</h4>
-                                    <span>20 Sep 2023</span>
-                                  </div>
-                                </div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -3004,8 +2907,8 @@ export default function TeacherDashboard() {
                                 </svg>
                               </div>
                               <div className="td-cv-file-info">
-                                <h3>{activeResume.name}</h3>
-                                <span>{activeResume.uploadDate} • {activeResume.size}</span>
+                                <h3>{activeResume?.url ? activeResume.name : 'No resume uploaded'}</h3>
+                                <span>{activeResume?.url ? `${activeResume.uploadDate} • ${activeResume.size}` : 'Not provided'}</span>
                               </div>
                             </div>
 
@@ -3014,18 +2917,20 @@ export default function TeacherDashboard() {
                               <button
                                 type="button"
                                 className="td-cv-btn-view"
-                                onClick={() => alert(`Previewing ${activeResume.name}`)}
+                                onClick={() => handleResumeAction('view')}
+                                disabled={!activeResume?.url}
                               >
                                 <FiEye size={15} />
-                                <span>View Document</span>
+                                <span>{activeResume?.url ? 'View Document' : 'No document'}</span>
                               </button>
                               <button
                                 type="button"
                                 className="td-cv-btn-download"
-                                onClick={() => alert(`Downloading ${activeResume.name}`)}
+                                onClick={() => handleResumeAction('download')}
+                                disabled={!activeResume?.url}
                               >
                                 <FiDownload size={15} />
-                                <span>Download</span>
+                                <span>{activeResume?.url ? 'Download' : 'Unavailable'}</span>
                               </button>
                             </div>
                           </div>
@@ -3058,15 +2963,9 @@ export default function TeacherDashboard() {
                                 type="file"
                                 accept=".pdf,.docx,.doc"
                                 className="hidden"
-                                onChange={(e) => {
+                                onChange={async (e) => {
                                   if (e.target.files && e.target.files[0]) {
-                                    const file = e.target.files[0];
-                                    setActiveResume({
-                                      name: file.name,
-                                      uploadDate: 'Uploaded Just now',
-                                      size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`
-                                    });
-                                    alert(`Uploaded ${file.name} successfully!`);
+                                    await handleCvUpload(e.target.files[0]);
                                   }
                                 }}
                               />
@@ -3422,6 +3321,10 @@ export default function TeacherDashboard() {
             </div>
 
             <form className="td-modal-form" onSubmit={handleSubmitApplication}>
+              {applicationError && (
+                <div className="td-form-error" style={{ marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>{applicationError}</div>
+              )}
+
               {applicationStep === 1 && (
                 <div className="td-modal-step">
                   <h3>Personal details</h3>
@@ -3687,11 +3590,23 @@ export default function TeacherDashboard() {
         }
         .td-topbar-actions { display: flex; align-items: center; gap: 20px; }
         .td-icon-badge { font-size: 20px; color: #6C757D; cursor: pointer; }
-        .td-user-avatar img {
+        .td-avatar-initials {
           width: 40px;
           height: 40px;
           border-radius: 50%;
-          object-fit: cover;
+          background: linear-gradient(135deg, #d1fae5, #bbf7d0);
+          color: #14532d;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 13px;
+          letter-spacing: 0.04em;
+          border: 2px solid #E8F9ED;
+        }
+        .td-avatar-initials--topbar {
+          width: 40px;
+          height: 40px;
         }
 
         /* ═══════════════════════════════════════
@@ -3708,12 +3623,11 @@ export default function TeacherDashboard() {
           top: 0;
           z-index: 100;
         }
-        .td-mobile-avatar img {
+        .td-mobile-avatar .td-avatar-initials {
           width: 38px;
           height: 38px;
-          border-radius: 50%;
-          object-fit: cover;
           border: 2px solid #E8F9ED;
+          font-size: 12px;
         }
         .td-mobile-brand {
           display: flex;
@@ -7522,16 +7436,22 @@ export default function TeacherDashboard() {
           border-radius: 50%;
           overflow: hidden;
           flex-shrink: 0;
-          background: #F1F5F9;
+          background: linear-gradient(135deg, #d1fae5, #bbf7d0);
           display: flex;
           align-items: center;
           justify-content: center;
         }
 
-        .td-profile-avatar-img {
+        .td-profile-avatar-initials {
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          font-size: 24px;
+          color: #14532d;
+          letter-spacing: 0.04em;
         }
 
         .td-profile-info-block {
@@ -8338,10 +8258,16 @@ export default function TeacherDashboard() {
           width: 74px;
           height: 74px;
           border-radius: 50%;
-          object-fit: cover;
           border: 2px solid #FFFFFF;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
           flex-shrink: 0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(135deg, #d1fae5, #bbf7d0);
+          color: #14532d;
+          font-weight: 800;
+          font-size: 22px;
         }
 
         .td-prof-hero-details {

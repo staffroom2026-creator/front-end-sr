@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { profileService } from '../services/profileService';
+import { apiErrorMessage } from '../services/api';
 
 const pageVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -25,9 +27,33 @@ export default function SchoolInfo() {
     description: '',
     logo: null
   });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleNext = () => {
-    navigate('/admin-dashboard');
+  const handleNext = async () => {
+    if (!form.schoolName.trim() || !form.location.trim() || !form.type || !form.description.trim()) {
+      setError('Please complete all school profile details before continuing.');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError('');
+
+      await profileService.updateSchool({
+        school_name: form.schoolName.trim(),
+        address: form.location.trim(),
+        location: form.location.trim(),
+        state: form.location.trim(),
+        website: '',
+      });
+
+      navigate('/admin-dashboard');
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to save your school profile right now.'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -124,9 +150,13 @@ export default function SchoolInfo() {
             </div>
           </div>
 
+          {error && (
+            <div style={{ marginTop: '16px', color: '#b91c1c', fontSize: '14px', textAlign: 'center' }}>{error}</div>
+          )}
+
           <motion.div variants={itemVariants} className="si-footer">
-            <button className="si-next-btn" onClick={handleNext}>
-              Next
+            <button className="si-next-btn" onClick={handleNext} disabled={saving}>
+              {saving ? 'Saving…' : 'Next'}
             </button>
             <div className="si-dots">
               <span className="si-dot" />

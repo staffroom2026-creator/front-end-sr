@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
+import { authService } from '../services/authService';
+import { apiErrorMessage } from '../services/api';
 
 export default function VerifyEmail() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -11,7 +15,7 @@ export default function VerifyEmail() {
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
-  const navigate = useNavigate();
+  const email = location.state?.email || localStorage.getItem('staffroom_verification_email') || '';
 
   // Countdown timer for resend
   useEffect(() => {
@@ -76,33 +80,49 @@ export default function VerifyEmail() {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const fullCode = code.join('');
     if (fullCode.length !== 6) {
       setError('Please enter the complete 6-digit code');
       return;
     }
+
+    if (!email) {
+      setError('No email is available for verification. Please sign up again.');
+      return;
+    }
+
     setLoading(true);
     setError('');
 
-    // Simulate verification
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await authService.verifyEmail({ email, code: fullCode });
       setSuccess(true);
       setTimeout(() => {
         navigate('/user-type');
       }, 1800);
-    }, 2000);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Verification failed. Please check your code and try again.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleResend = () => {
-    if (!canResend) return;
+  const handleResend = async () => {
+    if (!canResend || !email) return;
+
     setCanResend(false);
     setResendTimer(60);
     setCode(['', '', '', '', '', '']);
     setError('');
     inputRefs.current[0]?.focus();
+
+    try {
+      await authService.resendVerification({ email });
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Could not resend the verification code.'));
+    }
   };
 
   const formatTime = (seconds) => {

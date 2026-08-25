@@ -1,27 +1,75 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import authHero from '../assets/auth-hero.png';
+import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage } from '../services/api';
 
 export default function SignUp() {
+  const navigate = useNavigate();
+  const { register } = useAuth();
   const [role, setRole] = useState('teacher');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     schoolName: '',
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!agreedToTerms) return;
+    setError('');
+
+    if (!agreedToTerms) {
+      setError('You must agree to the terms and conditions to continue.');
+      return;
+    }
+
+    if (form.password !== form.confirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => setLoading(false), 2000);
+
+    try {
+      const payload =
+        role === 'teacher'
+          ? {
+              full_name: `${form.firstName} ${form.lastName}`.trim(),
+              first_name: form.firstName,
+              last_name: form.lastName,
+              terms: 1,
+              email: form.email,
+              phone: form.phone,
+              password: form.password,
+              role: 'teacher',
+            }
+          : {
+              full_name: form.schoolName,
+              email: form.email,
+              phone: form.phone,
+              terms: 1,
+              password: form.password,
+              role: 'school',
+            };
+
+      const result = await register(payload);
+      const emailToVerify = form.email;
+      localStorage.setItem('staffroom_verification_email', emailToVerify);
+      navigate('/verify-email', { state: { email: emailToVerify, role } });
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Registration failed. Please try again.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const EyeIcon = ({ open }) => open ? (
@@ -77,8 +125,8 @@ export default function SignUp() {
                 <button
                   type="button"
                   id="mob-role-admin"
-                  className={`su-mob-pill ${role === 'admin' ? 'su-mob-pill--active' : ''}`}
-                  onClick={() => setRole('admin')}
+                  className={`su-mob-pill ${role === 'school' ? 'su-mob-pill--active' : ''}`}
+                  onClick={() => setRole('school')}
                 >
                   School Admin
                 </button>
@@ -86,6 +134,10 @@ export default function SignUp() {
             </div>
 
             <form onSubmit={handleSubmit} className="su-mob-form">
+
+              {error && (
+                <div className="su-error" style={{ color: '#b91c1c', marginBottom: '12px', fontSize: '13px' }}>{error}</div>
+              )}
 
               {/* Teacher fields */}
               {role === 'teacher' && (
@@ -102,11 +154,15 @@ export default function SignUp() {
                     placeholder="Email Address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="su-mob-input" />
+                  <input id="mob-phone" type="tel" required autoComplete="tel"
+                    placeholder="Phone number" value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="su-mob-input" />
                 </>
               )}
 
               {/* School Admin fields */}
-              {role === 'admin' && (
+              {role === 'school' && (
                 <>
                   <input id="mob-school" type="text" required autoComplete="organization"
                     placeholder="Schools name" value={form.schoolName}
@@ -115,6 +171,10 @@ export default function SignUp() {
                   <input id="mob-official-email" type="email" required autoComplete="email"
                     placeholder="Official Email address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="su-mob-input" />
+                  <input id="mob-school-phone" type="tel" required autoComplete="tel"
+                    placeholder="Phone number" value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className="su-mob-input" />
                 </>
               )}
@@ -193,11 +253,15 @@ export default function SignUp() {
                   onClick={() => setRole('teacher')}>Teacher</button>
                 <button type="button" id="signup-role-admin"
                   className={`su-pill ${role === 'admin' ? 'su-pill--active' : ''}`}
-                  onClick={() => setRole('admin')}>School Admin</button>
+                  onClick={() => setRole('school')}>School Admin</button>
               </div>
             </div>
 
             <form onSubmit={handleSubmit} className="su-form">
+
+              {error && (
+                <div className="su-error" style={{ color: '#b91c1c', marginBottom: '12px', fontSize: '14px' }}>{error}</div>
+              )}
 
               {/* Teacher fields */}
               {role === 'teacher' && (
@@ -214,11 +278,15 @@ export default function SignUp() {
                     placeholder="Email address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="su-input" />
+                  <input id="signup-phone" type="tel" required autoComplete="tel"
+                    placeholder="Phone number" value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    className="su-input" />
                 </>
               )}
 
               {/* School Admin fields */}
-              {role === 'admin' && (
+              {role === 'school' && (
                 <>
                   <input id="signup-school-name" type="text" required autoComplete="organization"
                     placeholder="Schools name" value={form.schoolName}
@@ -227,6 +295,10 @@ export default function SignUp() {
                   <input id="signup-official-email" type="email" required autoComplete="email"
                     placeholder="Official Email address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="su-input" />
+                  <input id="signup-school-phone" type="tel" required autoComplete="tel"
+                    placeholder="Phone number" value={form.phone}
+                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
                     className="su-input" />
                 </>
               )}
