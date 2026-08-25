@@ -9,7 +9,7 @@ import {
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle,
   FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiLock,
-  FiGlobe, FiEyeOff, FiInfo
+  FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -237,6 +237,7 @@ export default function TeacherDashboard() {
   // ── Settings Subtab state ──
   const [settingsSubTab, setSettingsSubTab] = useState('overview');
   const [visibilitySetting, setVisibilitySetting] = useState('schools');
+  const [personalInfoOrigin, setPersonalInfoOrigin] = useState('profile');
 
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Senior Mathematics Educator');
@@ -1577,7 +1578,11 @@ export default function TeacherDashboard() {
                     <motion.div
                       whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
                       className="td-settings-category-card"
-                      onClick={() => setSettingsSubTab('account')}
+                      onClick={() => {
+                        setPersonalInfoOrigin('settings');
+                        setActiveTab('profile');
+                        setProfileSubTab('personal-info');
+                      }}
                     >
                       <div className="td-settings-cat-icon-wrap td-settings-cat-icon--teal">
                         <FiUser size={22} />
@@ -1641,98 +1646,17 @@ export default function TeacherDashboard() {
                 </>
               )}
 
-              {/* ── Account Settings Subtab ── */}
+              {/* ── Account Settings Subtab (Emptied) ── */}
               {settingsSubTab === 'account' && (
-                <div className="td-accs-wrap">
-
-                  {/* Breadcrumb */}
-                  <button className="td-accs-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} />
-                    <span>Settings / Account Settings</span>
+                <div className="td-settings-subtab-wrap">
+                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} /> Settings / Account Settings
                   </button>
-
-                  {/* Header + decorative circle */}
-                  <div className="td-accs-header">
-                    <div>
-                      <h1 className="td-accs-title">Account Settings</h1>
-                      <p className="td-accs-subtitle">Manage your fundamental account details and login credentials securely.</p>
-                    </div>
-                    <div className="td-accs-deco-circle" />
+                  <h1 className="td-settings-title">Account Settings</h1>
+                  <div className="td-settings-subtab-placeholder">
+                    <FiUser size={40} style={{ color: '#10b981', marginBottom: 12 }} />
+                    <p>Account settings content is empty.</p>
                   </div>
-
-                  {/* Menu rows card */}
-                  <div className="td-accs-menu-card">
-
-                    {/* Account Setting */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <FiUser size={17} />
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">Account Setting</span>
-                        <span className="td-accs-row-sub">Update your personal details and contact information.</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-                    <div className="td-accs-divider" />
-
-                    {/* Password and security */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                          <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
-                        </svg>
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">password and security</span>
-                        <span className="td-accs-row-sub">Change your password and manage two-factor authentication.</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-                    <div className="td-accs-divider" />
-
-                    {/* Support & Legal */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                          <line x1="1" y1="1" x2="23" y2="23"/>
-                        </svg>
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">Support &amp; Legal</span>
-                        <span className="td-accs-row-sub">FAQs, Contact Support, Privacy Policy</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-                    <div className="td-accs-divider" />
-
-                    {/* Privacy and profile visibility */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <FiLock size={17} />
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">privacy and profile visibility</span>
-                        <span className="td-accs-row-sub">Manage who sees your profile and application information</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-
-                  </div>
-
-                  {/* Secure Account Updates info card */}
-                  <div className="td-accs-info-card">
-                    <div className="td-accs-info-icon">
-                      <FiShield size={17} />
-                    </div>
-                    <div>
-                      <p className="td-accs-info-title">Secure Account Updates</p>
-                      <p className="td-accs-info-text">Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
-                    </div>
-                  </div>
-
                 </div>
               )}
 
@@ -1887,29 +1811,306 @@ export default function TeacherDashboard() {
 
               {/* ── Security Subtab ── */}
               {settingsSubTab === 'security' && (
-                <div className="td-settings-subtab-wrap">
-                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} /> Settings / Security &amp; Login Activity
+                <div className="td-sec-wrap">
+
+                  {/* Breadcrumb */}
+                  <button className="td-sec-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} />
+                    <span>Settings/ ...Security &amp; Login Activity</span>
                   </button>
-                  <h1 className="td-settings-title">Security &amp; Login Activity</h1>
-                  <div className="td-settings-subtab-placeholder">
-                    <FiShield size={40} style={{ color: '#10b981', marginBottom: 12 }} />
-                    <p>Security settings content coming soon.</p>
+
+                  {/* Top Section: Password and security */}
+                  <div className="td-sec-top-header">
+                    <div>
+                      <h1 className="td-sec-top-title">Password and security</h1>
+                      <p className="td-sec-top-subtitle">Manage your fundamental account details and login credentials securely.</p>
+                    </div>
+                    <div className="td-sec-deco-circle" />
                   </div>
+
+                  {/* Password Card */}
+                  <div className="td-sec-pwd-card">
+                    <div className="td-sec-pwd-left">
+                      <div className="td-sec-pwd-title-row">
+                        <FiKey size={15} className="td-sec-pwd-icon" />
+                        <span className="td-sec-pwd-title">Password</span>
+                      </div>
+                      <div className="td-sec-pwd-dots">••••••••••••</div>
+                      <span className="td-sec-pwd-last">Last changed 3 months ago</span>
+                    </div>
+                    <button className="td-sec-btn td-sec-btn--green">
+                      Change Password
+                    </button>
+                  </div>
+
+                  {/* Secure Account Updates Card */}
+                  <div className="td-sec-info-banner">
+                    <div className="td-sec-info-icon-wrap">
+                      <FiShield size={16} />
+                    </div>
+                    <div>
+                      <h4 className="td-sec-info-title">Secure Account Updates</h4>
+                      <p className="td-sec-info-desc">
+                        Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Spacer */}
+                  <div className="td-sec-section-spacer" />
+
+                  {/* Lower Section: Security & Login Activity */}
+                  <div className="td-sec-main-header">
+                    <h2 className="td-sec-main-title">Security &amp; Login Activity</h2>
+                    <p className="td-sec-main-subtitle">Manage your account security, passwords, and active sessions.</p>
+                  </div>
+
+                  {/* Card 1: Authentication */}
+                  <div className="td-sec-auth-card">
+                    <div className="td-sec-auth-header">
+                      <div className="td-sec-card-title-row">
+                        <FiKey size={18} className="td-sec-green-icon" />
+                        <h3 className="td-sec-card-heading">Authentication</h3>
+                      </div>
+                    </div>
+
+                    {/* Watermark Lock Icon */}
+                    <div className="td-sec-watermark-lock">
+                      <FiLock size={84} />
+                    </div>
+
+                    <div className="td-sec-auth-body">
+                      <div className="td-sec-auth-col">
+                        <span className="td-sec-col-label">LAST PASSWORD CHANGE</span>
+                        <strong className="td-sec-col-value">October 12, 2023</strong>
+                        <span className="td-sec-col-hint">approx. 2 months ago</span>
+                      </div>
+
+                      <div className="td-sec-auth-col">
+                        <span className="td-sec-col-label">TWO-FACTOR AUTHENTICATION</span>
+                        <div className="td-sec-2fa-badge">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                          </svg>
+                          <span>Disabled</span>
+                        </div>
+                      </div>
+
+                      <div className="td-sec-auth-action">
+                        <button className="td-sec-btn td-sec-btn--darkgreen">
+                          Change Password
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Active Sessions */}
+                  <div className="td-sec-card">
+                    <div className="td-sec-card-title-row">
+                      <div className="td-sec-green-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                          <line x1="8" y1="21" x2="16" y2="21"></line>
+                          <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                      </div>
+                      <h3 className="td-sec-card-heading">Active Sessions</h3>
+                    </div>
+
+                    <div className="td-sec-sessions-list">
+                      {/* Session 1: Windows PC */}
+                      <div className="td-sec-session-item td-sec-session-item--current">
+                        <div className="td-sec-session-icon">
+                          <FiMonitor size={18} />
+                        </div>
+                        <div className="td-sec-session-info">
+                          <div className="td-sec-session-name-row">
+                            <strong className="td-sec-session-name">Windows PC - Chrome</strong>
+                            <span className="td-sec-curr-badge">CURRENT</span>
+                          </div>
+                          <span className="td-sec-session-ip">Lagos, Nigeria • IP: 197.210.64.12</span>
+                          <span className="td-sec-session-status">Active now</span>
+                        </div>
+                      </div>
+
+                      {/* Session 2: Android Phone */}
+                      <div className="td-sec-session-item">
+                        <div className="td-sec-session-icon">
+                          <FiSmartphone size={18} />
+                        </div>
+                        <div className="td-sec-session-info">
+                          <strong className="td-sec-session-name">Android Phone - Chrome</strong>
+                          <span className="td-sec-session-ip">Abuja, Nigeria • IP: 105.112.44.8</span>
+                          <span className="td-sec-session-status">Active 2 hours ago</span>
+                        </div>
+                        <button className="td-sec-signout-btn">
+                          <FiLogOut size={13} />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Recent Login Activity */}
+                  <div className="td-sec-card">
+                    <div className="td-sec-recent-header">
+                      <div className="td-sec-card-title-row">
+                        <FiClock size={18} className="td-sec-green-icon" />
+                        <h3 className="td-sec-card-heading">Recent Login Activity</h3>
+                      </div>
+                      <button className="td-sec-view-log-btn">View Full Log</button>
+                    </div>
+
+                    <div className="td-sec-timeline">
+                      {/* Item 1 */}
+                      <div className="td-sec-timeline-item">
+                        <div className="td-sec-timeline-dot td-sec-dot--green" />
+                        <div className="td-sec-timeline-content">
+                          <strong className="td-sec-log-title">Successful Login</strong>
+                          <span className="td-sec-log-device">Windows PC - Chrome</span>
+                          <span className="td-sec-log-location">
+                            <FiMapPin size={12} /> Benin City, Nigeria
+                          </span>
+                        </div>
+                        <div className="td-sec-timeline-meta">
+                          <span className="td-sec-log-time">Today, 08:45 AM</span>
+                          <span className="td-sec-ip-pill">197.210.88.3</span>
+                        </div>
+                      </div>
+
+                      {/* Item 2 */}
+                      <div className="td-sec-timeline-item">
+                        <div className="td-sec-timeline-dot td-sec-dot--green" />
+                        <div className="td-sec-timeline-content">
+                          <strong className="td-sec-log-title">Successful Login</strong>
+                          <span className="td-sec-log-device">Android Phone - Chrome</span>
+                          <span className="td-sec-log-location">
+                            <FiMapPin size={12} /> Abuja, Nigeria
+                          </span>
+                        </div>
+                        <div className="td-sec-timeline-meta">
+                          <span className="td-sec-log-time">Yesterday, 14:30 PM</span>
+                          <span className="td-sec-ip-pill">105.112.44.8</span>
+                        </div>
+                      </div>
+
+                      {/* Item 3 */}
+                      <div className="td-sec-timeline-item td-sec-timeline-item--last">
+                        <div className="td-sec-timeline-dot td-sec-dot--red" />
+                        <div className="td-sec-timeline-content">
+                          <strong className="td-sec-log-title td-sec-log-title--red">Failed Login Attempt</strong>
+                          <span className="td-sec-log-device">MacBook Pro - Safari</span>
+                          <span className="td-sec-log-location">
+                            <FiMapPin size={12} /> Unknown Location
+                          </span>
+                        </div>
+                        <div className="td-sec-timeline-meta">
+                          <span className="td-sec-log-time">Dec 10, 2023, 11:20 PM</span>
+                          <span className="td-sec-ip-pill td-sec-ip-pill--red">192.168.1.1</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
               {/* ── Legal Subtab ── */}
               {settingsSubTab === 'legal' && (
-                <div className="td-settings-subtab-wrap">
-                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} /> Settings / Legal
+                <div className="td-legal-wrap">
+
+                  {/* Breadcrumb */}
+                  <button className="td-legal-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} />
+                    <span>Settings/ ...Legal</span>
                   </button>
-                  <h1 className="td-settings-title">Legal</h1>
-                  <div className="td-settings-subtab-placeholder">
-                    <FiFileText size={40} style={{ color: '#10b981', marginBottom: 12 }} />
-                    <p>Legal documents content coming soon.</p>
+
+                  {/* Header */}
+                  <div className="td-legal-header">
+                    <h1 className="td-legal-title">Legal</h1>
+                    <p className="td-legal-subtitle">
+                      Review our policies and terms that govern your use of the Staffroom platform.
+                      <br />
+                      We prioritize transparency and security in our academic professional network.
+                    </p>
                   </div>
+
+                  {/* 3-Column Policy Cards Grid */}
+                  <div className="td-legal-grid">
+
+                    {/* Card 1: Terms of Service */}
+                    <div className="td-legal-card">
+                      <div className="td-legal-card-icon-wrap">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m14 13-7.5 7.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L11 10"></path>
+                          <path d="m16 16 6-6"></path>
+                          <path d="m8 8 6-6"></path>
+                          <path d="m9 7 8 8"></path>
+                          <path d="m21 11-8-8"></path>
+                        </svg>
+                      </div>
+                      <h3 className="td-legal-card-title">Terms of Service</h3>
+                      <p className="td-legal-card-desc">
+                        Read the rules, guidelines, and agreements for using the Staffroom platform. These terms
+                      </p>
+                      <button className="td-legal-card-link">
+                        <span>Read Terms</span>
+                        <FiArrowRight size={14} />
+                      </button>
+                    </div>
+
+                    {/* Card 2: Privacy Policy */}
+                    <div className="td-legal-card">
+                      <div className="td-legal-card-icon-wrap">
+                        <FiShield size={18} />
+                      </div>
+                      <h3 className="td-legal-card-title">Privacy Policy</h3>
+                      <p className="td-legal-card-desc">
+                        Understand how we collect, use, and protect your personal and professional data. We are...
+                      </p>
+                      <button className="td-legal-card-link">
+                        <span>Read Policy</span>
+                        <FiArrowRight size={14} />
+                      </button>
+                    </div>
+
+                    {/* Card 3: Cookie Policy */}
+                    <div className="td-legal-card">
+                      <div className="td-legal-card-icon-wrap">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"></path>
+                          <path d="M8.5 8.5v.01"></path>
+                          <path d="M16 15.5v.01"></path>
+                          <path d="M12 12v.01"></path>
+                          <path d="M11 17v.01"></path>
+                          <path d="M7 14v.01"></path>
+                        </svg>
+                      </div>
+                      <h3 className="td-legal-card-title">Cookie Policy</h3>
+                      <p className="td-legal-card-desc">
+                        Learn about the cookies and tracking technologies we use to improve your platform...
+                      </p>
+                      <button className="td-legal-card-link">
+                        <span>Manage Cookies</span>
+                        <FiArrowRight size={14} />
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* Bottom Assistance Banner */}
+                  <div className="td-legal-help-banner">
+                    <div className="td-legal-help-text">
+                      <h3 className="td-legal-help-title">Need specific legal assistance?</h3>
+                      <p className="td-legal-help-desc">If you have questions regarding our policies, our support team is available.</p>
+                    </div>
+                    <button className="td-legal-contact-btn">
+                      Contact Support
+                    </button>
+                  </div>
+
                 </div>
               )}
 
@@ -1960,11 +2161,11 @@ export default function TeacherDashboard() {
                     </div>
 
                     <div className="td-profile-header-actions">
-                      <button className="td-profile-btn-preview" onClick={() => setProfileSubTab('personal-info')}>
+                      <button className="td-profile-btn-preview" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
                         <FiEye size={15} />
                         <span>Preview Profile</span>
                       </button>
-                      <button className="td-profile-btn-edit" onClick={() => setProfileSubTab('personal-info')}>
+                      <button className="td-profile-btn-edit" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
                         <FiEdit2 size={14} />
                         <span>Edit Profile</span>
                       </button>
@@ -1974,7 +2175,7 @@ export default function TeacherDashboard() {
                   {/* 6 Sections Grid */}
                   <div className="td-profile-grid">
                     {/* 1. Personal Info */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('personal-info')}>
+                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiUser size={18} />
@@ -2067,9 +2268,19 @@ export default function TeacherDashboard() {
                   {profileSubTab === 'personal-info' && (
                     <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-pers-info-page">
                       {/* Top Breadcrumb Header */}
-                      <div className="td-pers-breadcrumb" onClick={() => setProfileSubTab('overview')}>
+                      <div
+                        className="td-pers-breadcrumb"
+                        onClick={() => {
+                          if (personalInfoOrigin === 'settings') {
+                            setActiveTab('settings');
+                            setSettingsSubTab('overview');
+                          } else {
+                            setProfileSubTab('overview');
+                          }
+                        }}
+                      >
                         <FiArrowLeft size={16} className="td-pers-back-icon" />
-                        <span>Settings/ ...Personal information</span>
+                        <span>{personalInfoOrigin === 'settings' ? 'Settings/ ...Personal information' : 'Profile/ ...Personal information'}</span>
                       </div>
 
                       {/* Main Title & Description */}
@@ -2164,7 +2375,14 @@ export default function TeacherDashboard() {
                           <button
                             type="button"
                             className="td-pers-cancel-btn"
-                            onClick={() => setProfileSubTab('overview')}
+                            onClick={() => {
+                              if (personalInfoOrigin === 'settings') {
+                                setActiveTab('settings');
+                                setSettingsSubTab('overview');
+                              } else {
+                                setProfileSubTab('overview');
+                              }
+                            }}
                           >
                             Cancel
                           </button>
@@ -3503,8 +3721,6 @@ export default function TeacherDashboard() {
           </div>
         </div>
       )}
-
-      <button className="td-fab"><FiPlus /></button>
 
       {/* ── Mobile Bottom Nav ── */}
       <nav className="td-mobile-bottomnav">
@@ -6987,6 +7203,588 @@ export default function TeacherDashboard() {
           color: #6B7280;
           margin: 0;
           line-height: 1.45;
+        }
+
+        /* ── Security & Login Activity Subtab ── */
+        .td-sec-wrap {
+          width: 100%;
+          max-width: 860px;
+        }
+        .td-sec-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #111827;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 24px;
+          transition: color 0.15s;
+        }
+        .td-sec-breadcrumb:hover { color: #10b981; }
+        .td-sec-top-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          position: relative;
+          overflow: hidden;
+        }
+        .td-sec-top-title {
+          font-size: 26px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-sec-top-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.5;
+        }
+        .td-sec-deco-circle {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: #E6FAF5;
+          flex-shrink: 0;
+          margin-left: 16px;
+          margin-top: -20px;
+        }
+        .td-sec-pwd-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 16px;
+          padding: 20px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+        }
+        .td-sec-pwd-left {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-sec-pwd-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .td-sec-pwd-icon {
+          color: #6B7280;
+        }
+        .td-sec-pwd-title {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-sec-pwd-dots {
+          font-size: 18px;
+          letter-spacing: 2px;
+          color: #374151;
+          font-weight: 700;
+          line-height: 1.2;
+        }
+        .td-sec-pwd-last {
+          font-size: 12.5px;
+          color: #9CA3AF;
+        }
+        .td-sec-btn {
+          padding: 10px 22px;
+          border-radius: 50px;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+          transition: all 0.18s;
+        }
+        .td-sec-btn--green {
+          background: #15803D;
+          color: #fff;
+        }
+        .td-sec-btn--green:hover {
+          background: #166534;
+        }
+        .td-sec-btn--darkgreen {
+          background: #004D2C;
+          color: #fff;
+          padding: 11px 24px;
+        }
+        .td-sec-btn--darkgreen:hover {
+          background: #003B22;
+        }
+        .td-sec-info-banner {
+          background: #F0F4FF;
+          border-radius: 16px;
+          padding: 18px 20px;
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          margin-bottom: 32px;
+        }
+        .td-sec-info-icon-wrap {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #E6FAF5;
+          color: #10b981;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .td-sec-info-title {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #111;
+          margin: 0 0 4px 0;
+        }
+        .td-sec-info-desc {
+          font-size: 13px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.5;
+        }
+        .td-sec-section-spacer {
+          height: 8px;
+          margin-bottom: 24px;
+        }
+        .td-sec-main-header {
+          margin-bottom: 20px;
+        }
+        .td-sec-main-title {
+          font-size: 26px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-sec-main-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+        }
+        .td-sec-auth-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 24px;
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+        .td-sec-watermark-lock {
+          position: absolute;
+          right: 28px;
+          top: 50%;
+          transform: translateY(-50%);
+          opacity: 0.08;
+          color: #111;
+          pointer-events: none;
+        }
+        .td-sec-card-title-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 18px;
+        }
+        .td-sec-green-icon {
+          color: #005A36;
+          display: flex;
+          align-items: center;
+        }
+        .td-sec-card-heading {
+          font-size: 17px;
+          font-weight: 700;
+          color: #111;
+          margin: 0;
+        }
+        .td-sec-auth-body {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
+          position: relative;
+          z-index: 1;
+        }
+        .td-sec-auth-col {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-sec-col-label {
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #9CA3AF;
+          letter-spacing: 0.5px;
+        }
+        .td-sec-col-value {
+          font-size: 16px;
+          font-weight: 700;
+          color: #111;
+        }
+        .td-sec-col-hint {
+          font-size: 12.5px;
+          color: #6B7280;
+        }
+        .td-sec-2fa-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #FEE2E2;
+          color: #DC2626;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 50px;
+          width: fit-content;
+          margin-top: 2px;
+        }
+        .td-sec-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 24px;
+          margin-bottom: 20px;
+        }
+        .td-sec-devices-icon {
+          color: #005A36;
+          display: flex;
+          align-items: center;
+        }
+        .td-sec-sessions-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .td-sec-session-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px 20px;
+          border-radius: 14px;
+          border: 1px solid #E5E7EB;
+          background: #fff;
+        }
+        .td-sec-session-item--current {
+          background: #F0F6FF;
+          border-color: #E0E7FF;
+        }
+        .td-sec-session-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          background: #EFF6FF;
+          color: #2563EB;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .td-sec-session-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .td-sec-session-name-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .td-sec-session-name {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-sec-curr-badge {
+          background: #004D2C;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 7px;
+          border-radius: 50px;
+          letter-spacing: 0.4px;
+        }
+        .td-sec-session-ip {
+          font-size: 12.5px;
+          color: #6B7280;
+        }
+        .td-sec-session-status {
+          font-size: 12px;
+          color: #9CA3AF;
+        }
+        .td-sec-signout-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #DC2626;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 6px 10px;
+          border-radius: 8px;
+          transition: background 0.15s;
+        }
+        .td-sec-signout-btn:hover {
+          background: #FEE2E2;
+        }
+        .td-sec-recent-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 18px;
+        }
+        .td-sec-view-log-btn {
+          background: none;
+          border: none;
+          color: #111827;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: underline;
+          padding: 0;
+        }
+        .td-sec-timeline {
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          padding-left: 8px;
+        }
+        .td-sec-timeline-item {
+          display: flex;
+          align-items: flex-start;
+          position: relative;
+          padding-bottom: 24px;
+          padding-left: 24px;
+          border-left: 2px solid #E5E7EB;
+          margin-left: 6px;
+        }
+        .td-sec-timeline-item--last {
+          border-left-color: transparent;
+          padding-bottom: 0;
+        }
+        .td-sec-timeline-dot {
+          position: absolute;
+          left: -7px;
+          top: 3px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #fff;
+          border: 3px solid #10B981;
+        }
+        .td-sec-dot--green {
+          border-color: #10B981;
+        }
+        .td-sec-dot--red {
+          border-color: #DC2626;
+        }
+        .td-sec-timeline-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .td-sec-log-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-sec-log-title--red {
+          color: #DC2626;
+        }
+        .td-sec-log-device {
+          font-size: 12.5px;
+          color: #4B5563;
+        }
+        .td-sec-log-location {
+          font-size: 12px;
+          color: #9CA3AF;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .td-sec-timeline-meta {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+        }
+        .td-sec-log-time {
+          font-size: 12px;
+          color: #6B7280;
+        }
+        .td-sec-ip-pill {
+          background: #F1F5F9;
+          color: #475569;
+          font-size: 11.5px;
+          font-family: monospace;
+          font-weight: 600;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+        .td-sec-ip-pill--red {
+          background: #FEE2E2;
+          color: #DC2626;
+        }
+
+        /* ── Legal Subtab ── */
+        .td-legal-wrap {
+          width: 100%;
+          max-width: 860px;
+        }
+        .td-legal-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #111827;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 24px;
+          transition: color 0.15s;
+        }
+        .td-legal-breadcrumb:hover { color: #10b981; }
+        .td-legal-header {
+          margin-bottom: 28px;
+        }
+        .td-legal-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 8px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-legal-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.55;
+        }
+        .td-legal-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 18px;
+          margin-bottom: 24px;
+        }
+        @media (max-width: 860px) {
+          .td-legal-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .td-legal-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 24px 20px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .td-legal-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+        }
+        .td-legal-card-icon-wrap {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #EEF7FF;
+          color: #005A36;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+          flex-shrink: 0;
+        }
+        .td-legal-card-title {
+          font-size: 17px;
+          font-weight: 700;
+          color: #111;
+          margin: 0 0 10px 0;
+        }
+        .td-legal-card-desc {
+          font-size: 13px;
+          color: #6B7280;
+          line-height: 1.5;
+          margin: 0 0 20px 0;
+          flex: 1;
+        }
+        .td-legal-card-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #005A36;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 0;
+          margin-top: auto;
+          width: fit-content;
+          transition: gap 0.15s;
+        }
+        .td-legal-card-link:hover {
+          gap: 9px;
+        }
+        .td-legal-help-banner {
+          background: #F0F4FF;
+          border: 1px solid #E0E7FF;
+          border-radius: 16px;
+          padding: 22px 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        .td-legal-help-text {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-legal-help-title {
+          font-size: 16.5px;
+          font-weight: 700;
+          color: #111;
+          margin: 0;
+        }
+        .td-legal-help-desc {
+          font-size: 13px;
+          color: #6B7280;
+          margin: 0;
+        }
+        .td-legal-contact-btn {
+          border: 1.5px solid #111827;
+          background: transparent;
+          border-radius: 8px;
+          padding: 9px 20px;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #111;
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .td-legal-contact-btn:hover {
+          background: #111827;
+          color: #fff;
         }
         .td-settings-subtab-placeholder {
           background: #fff;
