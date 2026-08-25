@@ -1,539 +1,649 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
 
 export default function SignUp() {
   const [role, setRole] = useState('teacher');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     firstName: '',
     lastName: '',
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
+    schoolName: '',
   });
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    if (!agreedToTerms) return;
     setLoading(true);
     setTimeout(() => setLoading(false), 2000);
   };
 
-  return (
-    <motion.div 
-      className="auth-layout"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, ease: "easeOut" }}
-    >
-      {/* ── Background Image Layer ── */}
-      <div className="auth-bg-layer">
-        <img
-          src={authHero}
-          alt="Teacher working at laptop"
-        />
-        <div className="auth-overlay" />
+  const EyeIcon = ({ open }) => open ? (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+    </svg>
+  ) : (
+    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+  );
 
-        {/* Desktop-only Logo & Quote */}
-        <Link className="desktop-logo" to="/">
+  return (
+    <div className="su-layout">
+
+      {/* ══════════════════════════════════
+          MOBILE VIEW (< 768px)
+          Full-screen image + glass card
+      ══════════════════════════════════ */}
+      <div className="su-mobile-view">
+        {/* Background */}
+        <img src={authHero} alt="" className="su-mob-bg" />
+        <div className="su-mob-overlay" />
+
+        {/* Logo */}
+        <Link to="/" className="su-mob-logo">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
             <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
           </svg>
           <span>Staffroom</span>
         </Link>
-        <div className="desktop-quote">
-          <h2>Ready to connect, teach, or hire? <br /> Join Staffroom today.</h2>
-        </div>
-      </div>
 
-      {/* ── Form Section ── */}
-      <div className="auth-form-wrapper">
-        {/* Mobile-only Top Logo */}
-        <div className="mobile-logo-container">
-          <Link className="mobile-logo" to="/">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-            <span>Staffroom</span>
-          </Link>
-        </div>
+        {/* Content */}
+        <div className="su-mob-content">
+          <h1 className="su-mob-title">Create an account</h1>
 
-        <div className="auth-inner-content">
-          <h1 className="auth-heading">Create an account</h1>
+          {/* Glass card */}
+          <div className="su-mob-card">
+            <form onSubmit={handleSubmit} className="su-mob-form">
 
-          <div className="auth-glass-box">
-            <form onSubmit={handleSubmit} className="auth-form">
-              {/* First name */}
-              <input
-                id="signup-firstname"
-                type="text"
-                required
-                autoComplete="given-name"
-                placeholder="First Name"
-                value={form.firstName}
-                onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                className="input-field"
-              />
+              {/* Teacher fields */}
+              {role === 'teacher' && (
+                <>
+                  <input id="mob-firstname" type="text" required autoComplete="given-name"
+                    placeholder="First Name" value={form.firstName}
+                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    className="su-mob-input" />
+                  <input id="mob-lastname" type="text" required autoComplete="family-name"
+                    placeholder="Last Name" value={form.lastName}
+                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    className="su-mob-input" />
+                  <input id="mob-email" type="email" required autoComplete="email"
+                    placeholder="Email Address" value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="su-mob-input" />
+                </>
+              )}
 
-              {/* Last name */}
-              <input
-                id="signup-lastname"
-                type="text"
-                required
-                autoComplete="family-name"
-                placeholder="Last Name"
-                value={form.lastName}
-                onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                className="input-field"
-              />
-
-              {/* Email */}
-              <input
-                id="signup-email"
-                type="email"
-                required
-                autoComplete="email"
-                placeholder="Email Address"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="input-field"
-              />
-
-              {/* Phone — Nigerian flag prefix */}
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <div className="phone-prefix">
-                  {/* Nigeria flag emoji representation */}
-                  <span className="flag-icon">
-                    <span style={{ flex: 1, backgroundColor: '#008751' }} />
-                    <span style={{ flex: 1, backgroundColor: '#fff' }} />
-                    <span style={{ flex: 1, backgroundColor: '#008751' }} />
-                  </span>
-                </div>
-                <input
-                  id="signup-phone"
-                  type="tel"
-                  placeholder="8012345678"
-                  value={form.phone}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  className="input-field"
-                  style={{ flex: 1 }}
-                />
-              </div>
+              {/* School Admin fields */}
+              {role === 'admin' && (
+                <>
+                  <input id="mob-school" type="text" required autoComplete="organization"
+                    placeholder="Schools name" value={form.schoolName}
+                    onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
+                    className="su-mob-input" />
+                  <input id="mob-official-email" type="email" required autoComplete="email"
+                    placeholder="Official Email address" value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="su-mob-input" />
+                </>
+              )}
 
               {/* Password */}
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="signup-password"
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  autoComplete="new-password"
-                  placeholder="Password"
-                  value={form.password}
+              <div className="su-mob-input-wrap">
+                <input id="mob-password" type={showPassword ? 'text' : 'password'} required
+                  autoComplete="new-password" placeholder="Password" value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="input-field"
-                  style={{ paddingRight: '44px' }}
-                />
-                <EyeToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} id="signup-toggle-password" />
+                  className="su-mob-input su-mob-input--icon" />
+                <button type="button" className="su-mob-eye" onClick={() => setShowPassword(!showPassword)}>
+                  <EyeIcon open={showPassword} />
+                </button>
               </div>
 
               {/* Confirm password */}
-              <div style={{ position: 'relative' }}>
-                <input
-                  id="signup-confirm-password"
-                  type={showConfirm ? 'text' : 'password'}
-                  required
-                  autoComplete="new-password"
-                  placeholder="Confirmed password"
-                  value={form.confirmPassword}
+              <div className="su-mob-input-wrap">
+                <input id="mob-confirm" type={showConfirm ? 'text' : 'password'} required
+                  autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  className="input-field"
-                  style={{ paddingRight: '44px' }}
-                />
-                <EyeToggle show={showConfirm} onToggle={() => setShowConfirm(!showConfirm)} id="signup-toggle-confirm" />
+                  className="su-mob-input su-mob-input--icon" />
+                <button type="button" className="su-mob-eye" onClick={() => setShowConfirm(!showConfirm)}>
+                  <EyeIcon open={showConfirm} />
+                </button>
               </div>
 
-              {/* Sign Up button */}
-              <button
-                id="signup-submit-btn"
-                type="submit"
-                disabled={loading}
-                className="submit-btn"
-                style={{ backgroundColor: loading ? '#a8e6b8' : '#1CCB43', marginTop: '6px' }}
-              >
-                {loading ? (
-                  <>
-                    <svg className="spin-icon" width="16" height="16" fill="none" viewBox="0 0 24 24">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                    Signing up…
-                  </>
-                ) : (
-                  'Sign Up'
-                )}
+              {/* Sign Up */}
+              <button id="mob-submit" type="submit" disabled={loading} className="su-mob-submit">
+                {loading ? 'Signing up…' : 'Sign Up'}
               </button>
+
             </form>
 
-            {/* Footer link */}
-            <p className="footer-login-text text-adaptive">
+            {/* Footer */}
+            <p className="su-mob-footer">
               Already have a Staffroom account?{' '}
-              <Link to="/signin" className="login-link">
-                Sign in.
-              </Link>
+              <Link to="/signin" className="su-mob-signin">Sign in.</Link>
             </p>
           </div>
         </div>
       </div>
 
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@100;300;600&display=swap');
-        @keyframes spin { to { transform: rotate(360deg); } }
+      {/* ══════════════════════════════════
+          DESKTOP VIEW (≥ 768px)
+          Split: photo left | form right
+      ══════════════════════════════════ */}
+      <div className="su-desktop-view">
 
-        /* General Layout */
-        .auth-layout {
+        {/* Left: Photo Panel */}
+        <div className="su-photo-panel">
+          <img src={authHero} alt="Teacher working at laptop" className="su-photo-img" />
+          <div className="su-photo-overlay" />
+          <Link to="/" className="su-logo">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+            </svg>
+            <span>Staffroom</span>
+          </Link>
+          <div className="su-photo-quote">
+            <p>Ready to connect, teach, or hire?<br />Join Staffroom today.</p>
+          </div>
+        </div>
+
+        {/* Right: Form Panel */}
+        <div className="su-form-panel">
+          <div className="su-form-inner">
+
+            <h1 className="su-title">Create an account</h1>
+
+            {/* Role toggle */}
+            <div className="su-role-section">
+              <p className="su-role-label">Sign up as</p>
+              <div className="su-role-pills">
+                <button type="button" id="signup-role-teacher"
+                  className={`su-pill ${role === 'teacher' ? 'su-pill--active' : ''}`}
+                  onClick={() => setRole('teacher')}>Teacher</button>
+                <button type="button" id="signup-role-admin"
+                  className={`su-pill ${role === 'admin' ? 'su-pill--active' : ''}`}
+                  onClick={() => setRole('admin')}>School Admin</button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="su-form">
+
+              {/* Teacher fields */}
+              {role === 'teacher' && (
+                <>
+                  <input id="signup-firstname" type="text" required autoComplete="given-name"
+                    placeholder="First name" value={form.firstName}
+                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                    className="su-input" />
+                  <input id="signup-lastname" type="text" required autoComplete="family-name"
+                    placeholder="Last name" value={form.lastName}
+                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                    className="su-input" />
+                  <input id="signup-email" type="email" required autoComplete="email"
+                    placeholder="Email address" value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="su-input" />
+                </>
+              )}
+
+              {/* School Admin fields */}
+              {role === 'admin' && (
+                <>
+                  <input id="signup-school-name" type="text" required autoComplete="organization"
+                    placeholder="Schools name" value={form.schoolName}
+                    onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
+                    className="su-input" />
+                  <input id="signup-official-email" type="email" required autoComplete="email"
+                    placeholder="Official Email address" value={form.email}
+                    onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    className="su-input" />
+                </>
+              )}
+
+              {/* Password */}
+              <div className="su-input-wrap">
+                <input id="signup-password" type={showPassword ? 'text' : 'password'} required
+                  autoComplete="new-password" placeholder="Password" value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="su-input su-input--icon" />
+                <button type="button" id="signup-toggle-password" className="su-eye-btn"
+                  onClick={() => setShowPassword(!showPassword)}>
+                  <EyeIcon open={showPassword} />
+                </button>
+              </div>
+
+              {/* Confirm password */}
+              <div className="su-input-wrap">
+                <input id="signup-confirm-password" type={showConfirm ? 'text' : 'password'} required
+                  autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
+                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                  className="su-input su-input--icon" />
+                <button type="button" id="signup-toggle-confirm" className="su-eye-btn"
+                  onClick={() => setShowConfirm(!showConfirm)}>
+                  <EyeIcon open={showConfirm} />
+                </button>
+              </div>
+
+              {/* Terms */}
+              <label className="su-terms-row" htmlFor="signup-terms">
+                <input id="signup-terms" type="checkbox" className="su-checkbox"
+                  checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
+                <span className="su-terms-text">
+                  I confirm that i agree to the{' '}
+                  <Link to="/terms" className="su-terms-link">terms and conditions</Link>
+                  {' '}below
+                </span>
+              </label>
+
+              {/* Submit */}
+              <button id="signup-submit-btn" type="submit"
+                disabled={loading || !agreedToTerms} className="su-submit-btn">
+                {loading ? (
+                  <><svg className="su-spin" width="16" height="16" fill="none" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>Signing up…</>
+                ) : 'Sign Up'}
+              </button>
+
+            </form>
+
+            <p className="su-footer-text">
+              Already have a Staffroom account?{' '}
+              <Link to="/signin" className="su-signin-link">Sign in.</Link>
+            </p>
+
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@400;600;700&display=swap');
+        @keyframes su-spin { to { transform: rotate(360deg); } }
+        *, *::before, *::after { box-sizing: border-box; }
+
+        .su-layout {
           min-height: 100vh;
-          display: flex;
           font-family: 'Inter', sans-serif;
-          position: relative;
         }
 
-        .auth-bg-layer img {
-          position: absolute;
+        /* ════════════════════════════════
+           MOBILE VIEW
+        ════════════════════════════════ */
+        .su-mobile-view {
+          display: flex;
+          flex-direction: column;
+          min-height: 100vh;
+          position: relative;
+        }
+        .su-desktop-view { display: none; }
+
+        /* Background image */
+        .su-mob-bg {
+          position: fixed;
           inset: 0;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          object-position: center;
+          object-position: center top;
+          z-index: 0;
         }
 
-        .auth-overlay {
-          position: absolute;
-          inset: 0;
-          background: rgba(30, 60, 30, 0.55);
-        }
-
-        /* Mobile First Defaults */
-        .auth-layout {
-          flex-direction: column;
-        }
-
-        .auth-bg-layer {
+        /* Green overlay */
+        .su-mob-overlay {
           position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100vh;
+          inset: 0;
+          background: rgba(120, 230, 68, 0.25);
           z-index: 1;
         }
 
-        .desktop-logo, .desktop-quote {
-          display: none;
-        }
-
-        .auth-form-wrapper {
-          position: relative;
-          z-index: 2;
-          width: 100%;
-          min-height: 100vh;
-          padding: 24px 20px;
-          display: flex;
-          flex-direction: column;
-          /* Keep enough padding at bottom for scrolling */
-          padding-bottom: 40px; 
-        }
-
-        .mobile-logo-container {
-          display: flex;
-          margin-bottom: 30px;
-          padding-top: 10px;
-        }
-
-        .mobile-logo {
+        /* Logo */
+        .su-mob-logo {
+          position: fixed;
+          top: 28px;
+          left: 24px;
           display: flex;
           align-items: center;
           gap: 8px;
           text-decoration: none;
           color: #fff;
           font-weight: 700;
-          font-size: 18px;
-          letter-spacing: -0.5px;
+          font-size: 16px;
+          z-index: 10;
+          letter-spacing: -0.3px;
         }
 
-        .auth-inner-content {
-          width: 100%;
-          max-width: 420px;
-          margin: 0 auto auto auto;
-        }
-
-        .auth-heading {
-          font-size: 34px;
-          font-weight: 600;
-          color: #fff;
-          margin: 0 0 20px 0;
-          letter-spacing: -0.5px;
-        }
-
-        .auth-glass-box {
-          background: rgba(255, 255, 255, 0.15);
-          backdrop-filter: blur(16px);
-          -webkit-backdrop-filter: blur(16px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          border-radius: 20px;
-          padding: 24px;
-        }
-
-        .auth-form {
+        /* Content wrapper */
+        .su-mob-content {
+          position: relative;
+          z-index: 5;
           display: flex;
           flex-direction: column;
-          gap: 16px;
-        }
-        
-        .role-toggle-container {
-          display: flex;
-          background-color: transparent;
-          border: 1px solid rgba(255, 255, 255, 0.4);
-          border-radius: 50px;
-          padding: 4px;
-          margin-bottom: 22px;
-          gap: 4px;
+          justify-content: flex-end;
+          min-height: 100vh;
+          padding: 100px 16px 24px;
         }
 
-        .role-toggle-btn {
-          flex: 1;
-          padding: 10px 0;
+        /* Title */
+        .su-mob-title {
+          font-size: 32px;
+          font-weight: 600;
+          color: #fff;
+          margin: 0 0 20px 4px;
+          letter-spacing: -0.5px;
+          line-height: 1.2;
+        }
+
+        /* Glass card */
+        .su-mob-card {
+          background: rgba(255, 255, 255, 0.18);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 24px;
+          padding: 20px 16px 16px;
+        }
+
+        .su-mob-form {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        /* Mobile inputs */
+        .su-mob-input {
+          width: 100%;
+          padding: 15px 18px;
           border-radius: 50px;
           border: none;
+          background: rgba(255, 255, 255, 0.75);
           font-size: 14px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s;
-          background-color: transparent;
-          color: #fff;
-        }
-
-        .role-toggle-btn.active {
-          background-color: #1CCB43;
-          color: #111;
-          box-shadow: 0 2px 8px rgba(28,203,67,0.25);
-        }
-
-        .input-field {
-          width: 100%;
-          padding: 14px 16px;
-          border-radius: 12px;
-          border: 1px solid transparent;
-          background-color: #f3f4f6;
-          font-size: 14px;
-          color: #333;
-          box-sizing: border-box;
+          color: #374151;
           outline: none;
-          transition: border-color 0.2s, box-shadow 0.2s;
+          font-family: 'Inter', sans-serif;
+          transition: box-shadow 0.18s;
         }
-
-        .input-field::placeholder {
-          color: #888;
+        .su-mob-input::placeholder { color: #6B7280; }
+        .su-mob-input:focus {
+          box-shadow: 0 0 0 2px rgba(34,197,94,0.4);
+          background: rgba(255,255,255,0.92);
         }
+        .su-mob-input--icon { padding-right: 48px; }
 
-        .input-field:focus {
-          border-color: #bbb;
-          box-shadow: 0 0 0 3px rgba(28, 203, 67, 0.12);
-        }
-
-        .phone-prefix {
+        .su-mob-input-wrap {
+          position: relative;
           display: flex;
           align-items: center;
-          gap: 8px;
-          padding: 0 14px;
-          background-color: #f3f4f6;
-          border-radius: 12px;
-          border: 1px solid transparent;
-          white-space: nowrap;
-          font-size: 14px;
-          color: #333;
-          font-weight: 500;
-          flex-shrink: 0;
         }
-
-        .flag-icon {
+        .su-mob-eye {
+          position: absolute;
+          right: 16px;
+          background: none;
+          border: none;
+          cursor: pointer;
+          color: #6B7280;
+          padding: 0;
           display: flex;
-          gap: 1px;
-          width: 20px;
-          height: 14px;
-          overflow: hidden;
-          border-radius: 2px;
-          flex-shrink: 0;
+          align-items: center;
         }
 
-        .submit-btn {
+        /* Mobile submit */
+        .su-mob-submit {
           width: 100%;
           padding: 16px;
-          color: #111;
+          background: #fff;
+          color: #111827;
           border: none;
           border-radius: 50px;
           font-size: 15px;
-          font-weight: 700;
+          font-weight: 600;
           cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          transition: background-color 0.2s;
-          letter-spacing: 0.3px;
+          font-family: 'Inter', sans-serif;
+          transition: opacity 0.18s;
+          margin-top: 4px;
         }
+        .su-mob-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+        .su-mob-submit:hover:not(:disabled) { opacity: 0.9; }
 
-        .submit-btn:disabled { cursor: not-allowed; }
-
-        .spin-icon {
-          animation: spin 1s linear infinite;
-        }
-        .spin-icon circle { opacity: 0.25; }
-        .spin-icon path { opacity: 0.75; }
-
-        .footer-login-text {
+        /* Mobile footer */
+        .su-mob-footer {
           text-align: center;
-          font-size: 14px;
-          margin-top: 24px;
-          color: #fff; /* For mobile */
+          font-size: 13.5px;
+          color: rgba(255,255,255,0.85);
+          margin: 14px 0 0;
         }
-
-        .login-link {
-          color: #1CCB43;
+        .su-mob-signin {
+          color: #22C55E;
           font-weight: 600;
           text-decoration: none;
         }
 
-        /* Desktop Adjustments */
+        /* ════════════════════════════════
+           DESKTOP VIEW (≥ 768px)
+        ════════════════════════════════ */
         @media (min-width: 768px) {
-          .auth-layout {
-            flex-direction: row;
+          .su-mobile-view { display: none; }
+          .su-desktop-view {
+            display: flex;
+            min-height: 100vh;
+            background: #F5F7F0;
           }
 
-          .auth-bg-layer {
+          /* Photo panel */
+          .su-photo-panel {
             position: relative;
             width: 50%;
-            height: auto;
             flex-shrink: 0;
             overflow: hidden;
           }
-
-          .desktop-logo {
+          .su-photo-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center top;
+          }
+          .su-photo-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(120, 230, 68, 0.25);
+            z-index: 1;
+          }
+          .su-logo {
             position: absolute;
             top: 28px;
-            left: 32px;
+            left: 30px;
             display: flex;
             align-items: center;
             gap: 8px;
             text-decoration: none;
-            z-index: 10;
             color: #fff;
             font-weight: 700;
-            font-size: 18px;
-            letter-spacing: -0.5px;
+            font-size: 17px;
+            letter-spacing: -0.4px;
+            z-index: 2;
           }
-
-          .desktop-quote {
+          .su-photo-quote {
             position: absolute;
-            bottom: 360px;
-            left: 40px;
+            top: 40%;
+            transform: translateY(-20%);
+            left: 20px;
             right: 40px;
-            z-index: 10;
+            z-index: 2;
           }
-
-          .desktop-quote h2 {
+          .su-photo-quote p {
             color: #fff;
-            font-family: 'Poppins', sans-serif;
-            font-size: 2.6em;
-            font-weight: 100;
-            line-height: 1.25;
+            font-family: 'Sora', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            font-size: 48px;
+            line-height: 55px;
+            letter-spacing: 0;
             margin: 0;
+            padding: 0 120px;
           }
 
-          .auth-form-wrapper {
+          /* Form panel */
+          .su-form-panel {
             flex: 1;
-            padding: 40px 32px;
-            background-color: #FAFAF8;
-            min-height: 100vh;
+            display: flex;
+            align-items: center;
             justify-content: center;
+            padding: 40px 32px;
+            background: #F5F7F0;
+            min-height: 100vh;
+          }
+          .su-form-inner {
+            width: 100%;
+            max-width: 420px;
           }
 
-          .mobile-logo-container {
-            display: none;
-          }
-
-          /* Desktop uses regular styling, no glassmorphism */
-          .auth-glass-box {
-            background: transparent;
-            backdrop-filter: none;
-            -webkit-backdrop-filter: none;
-            border: none;
-            padding: 0;
-          }
-
-          .auth-heading {
-            font-size: 34px;
+          /* Title */
+          .su-title {
+            font-size: 36px;
             font-weight: 700;
-            color: #111;
+            color: #111827;
             margin: 0 0 24px 0;
             letter-spacing: -0.8px;
+            line-height: 1.15;
           }
 
-          .role-toggle-container {
-            background-color: #fff;
-            border: 1px solid #e6e6e6;
+          /* Role Toggle */
+          .su-role-section { margin-bottom: 24px; }
+          .su-role-label {
+            font-size: 13px;
+            color: #6B7280;
+            margin: 0 0 10px 0;
+            font-weight: 400;
+          }
+          .su-role-pills { display: flex; gap: 10px; }
+          .su-pill {
+            padding: 9px 22px;
+            border-radius: 50px;
+            border: 1.5px solid #D1D5DB;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 600;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.18s;
+            font-family: 'Inter', sans-serif;
+          }
+          .su-pill:hover { border-color: #9CA3AF; }
+          .su-pill--active {
+            background: #22C55E;
+            border-color: #22C55E;
+            color: #fff;
           }
 
-          .role-toggle-btn {
-            color: #555;
-          }
-          
-          .role-toggle-btn.active {
-            color: #111;
-          }
+          /* Form */
+          .su-form { display: flex; flex-direction: column; gap: 12px; }
 
-          .footer-login-text {
-            color: #555;
+          /* Inputs */
+          .su-input {
+            width: 100%;
+            padding: 14px 18px;
+            border-radius: 50px;
+            border: 1.5px solid #E5E7EB;
+            background: #fff;
+            font-size: 14px;
+            color: #374151;
+            outline: none;
+            transition: border-color 0.18s, box-shadow 0.18s;
+            font-family: 'Inter', sans-serif;
           }
+          .su-input::placeholder { color: #9CA3AF; }
+          .su-input:focus {
+            border-color: #22C55E;
+            box-shadow: 0 0 0 3px rgba(34,197,94,0.1);
+          }
+          .su-input--icon { padding-right: 48px; }
+          .su-input-wrap { position: relative; display: flex; align-items: center; }
+          .su-eye-btn {
+            position: absolute;
+            right: 16px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #9CA3AF;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            transition: color 0.15s;
+          }
+          .su-eye-btn:hover { color: #6B7280; }
+
+          /* Terms */
+          .su-terms-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            margin: 4px 0;
+          }
+          .su-checkbox {
+            width: 17px;
+            height: 17px;
+            margin-top: 2px;
+            border: 1.5px solid #D1D5DB;
+            border-radius: 4px;
+            cursor: pointer;
+            accent-color: #22C55E;
+            flex-shrink: 0;
+          }
+          .su-terms-text { font-size: 13.5px; color: #6B7280; line-height: 1.5; }
+          .su-terms-link { font-weight: 700; color: #111827; text-decoration: none; }
+          .su-terms-link:hover { text-decoration: underline; }
+
+          /* Submit */
+          .su-submit-btn {
+            width: 100%;
+            padding: 15px;
+            background: #111827;
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background 0.18s, opacity 0.18s;
+            font-family: 'Inter', sans-serif;
+            margin-top: 4px;
+            letter-spacing: 0.2px;
+          }
+          .su-submit-btn:hover:not(:disabled) { background: #1F2937; }
+          .su-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+          .su-spin { animation: su-spin 1s linear infinite; }
+          .su-spin circle { opacity: 0.25; }
+          .su-spin path { opacity: 0.75; }
+
+          /* Footer */
+          .su-footer-text {
+            text-align: center;
+            font-size: 14px;
+            color: #6B7280;
+            margin-top: 20px;
+          }
+          .su-signin-link {
+            color: #22C55E;
+            font-weight: 600;
+            text-decoration: none;
+          }
+          .su-signin-link:hover { text-decoration: underline; }
         }
       `}</style>
-    </motion.div>
-  );
-}
-
-/* ── Eye toggle helper ── */
-function EyeToggle({ show, onToggle, id }) {
-  return (
-    <button
-      type="button"
-      id={id}
-      onClick={onToggle}
-      style={{
-        position: 'absolute',
-        right: '14px',
-        top: '50%',
-        transform: 'translateY(-50%)',
-        background: 'none',
-        border: 'none',
-        cursor: 'pointer',
-        color: '#999',
-        padding: 0,
-        display: 'flex',
-        alignItems: 'center',
-      }}
-    >
-      {show ? (
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-        </svg>
-      ) : (
-        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-        </svg>
-      )}
-    </button>
+    </div>
   );
 }
