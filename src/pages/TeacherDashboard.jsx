@@ -8,7 +8,8 @@ import {
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle,
-  FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiLock
+  FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiLock,
+  FiGlobe, FiEyeOff, FiInfo
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -235,6 +236,7 @@ export default function TeacherDashboard() {
 
   // ── Settings Subtab state ──
   const [settingsSubTab, setSettingsSubTab] = useState('overview');
+  const [visibilitySetting, setVisibilitySetting] = useState('schools');
 
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Senior Mathematics Educator');
@@ -1641,29 +1643,245 @@ export default function TeacherDashboard() {
 
               {/* ── Account Settings Subtab ── */}
               {settingsSubTab === 'account' && (
-                <div className="td-settings-subtab-wrap">
-                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} /> Settings / Account Settings
+                <div className="td-accs-wrap">
+
+                  {/* Breadcrumb */}
+                  <button className="td-accs-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} />
+                    <span>Settings / Account Settings</span>
                   </button>
-                  <h1 className="td-settings-title">Account Settings</h1>
-                  <div className="td-settings-subtab-placeholder">
-                    <FiUser size={40} style={{ color: '#10b981', marginBottom: 12 }} />
-                    <p>Account settings content coming soon.</p>
+
+                  {/* Header + decorative circle */}
+                  <div className="td-accs-header">
+                    <div>
+                      <h1 className="td-accs-title">Account Settings</h1>
+                      <p className="td-accs-subtitle">Manage your fundamental account details and login credentials securely.</p>
+                    </div>
+                    <div className="td-accs-deco-circle" />
                   </div>
+
+                  {/* Menu rows card */}
+                  <div className="td-accs-menu-card">
+
+                    {/* Account Setting */}
+                    <div className="td-accs-row">
+                      <div className="td-accs-row-icon td-accs-icon--green">
+                        <FiUser size={17} />
+                      </div>
+                      <div className="td-accs-row-text">
+                        <span className="td-accs-row-title">Account Setting</span>
+                        <span className="td-accs-row-sub">Update your personal details and contact information.</span>
+                      </div>
+                      <FiArrowRight size={16} className="td-accs-row-arrow" />
+                    </div>
+                    <div className="td-accs-divider" />
+
+                    {/* Password and security */}
+                    <div className="td-accs-row">
+                      <div className="td-accs-row-icon td-accs-icon--green">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                          <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                        </svg>
+                      </div>
+                      <div className="td-accs-row-text">
+                        <span className="td-accs-row-title">password and security</span>
+                        <span className="td-accs-row-sub">Change your password and manage two-factor authentication.</span>
+                      </div>
+                      <FiArrowRight size={16} className="td-accs-row-arrow" />
+                    </div>
+                    <div className="td-accs-divider" />
+
+                    {/* Support & Legal */}
+                    <div className="td-accs-row">
+                      <div className="td-accs-row-icon td-accs-icon--green">
+                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                          <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                      </div>
+                      <div className="td-accs-row-text">
+                        <span className="td-accs-row-title">Support &amp; Legal</span>
+                        <span className="td-accs-row-sub">FAQs, Contact Support, Privacy Policy</span>
+                      </div>
+                      <FiArrowRight size={16} className="td-accs-row-arrow" />
+                    </div>
+                    <div className="td-accs-divider" />
+
+                    {/* Privacy and profile visibility */}
+                    <div className="td-accs-row">
+                      <div className="td-accs-row-icon td-accs-icon--green">
+                        <FiLock size={17} />
+                      </div>
+                      <div className="td-accs-row-text">
+                        <span className="td-accs-row-title">privacy and profile visibility</span>
+                        <span className="td-accs-row-sub">Manage who sees your profile and application information</span>
+                      </div>
+                      <FiArrowRight size={16} className="td-accs-row-arrow" />
+                    </div>
+
+                  </div>
+
+                  {/* Secure Account Updates info card */}
+                  <div className="td-accs-info-card">
+                    <div className="td-accs-info-icon">
+                      <FiShield size={17} />
+                    </div>
+                    <div>
+                      <p className="td-accs-info-title">Secure Account Updates</p>
+                      <p className="td-accs-info-text">Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
               {/* ── Privacy Subtab ── */}
               {settingsSubTab === 'privacy' && (
-                <div className="td-settings-subtab-wrap">
-                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} /> Settings / Privacy &amp; Profile Visibility
+                <div className="td-privacy-wrap">
+
+                  {/* Breadcrumb */}
+                  <button className="td-privacy-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} />
+                    <span>Settings/ ...Privacy &amp; Profile Visibility</span>
                   </button>
-                  <h1 className="td-settings-title">Privacy &amp; Profile Visibility</h1>
-                  <div className="td-settings-subtab-placeholder">
-                    <FiEye size={40} style={{ color: '#10b981', marginBottom: 12 }} />
-                    <p>Privacy settings content coming soon.</p>
+
+                  {/* Header */}
+                  <div className="td-privacy-header">
+                    <h1 className="td-privacy-title">Privacy &amp; Profile Visibility</h1>
+                    <p className="td-privacy-subtitle">
+                      Manage how schools and recruiters can see your professional profile and application information on Staffroom.
+                    </p>
                   </div>
+
+                  {/* Top 2-Column Row */}
+                  <div className="td-privacy-top-grid">
+
+                    {/* Left Card: Profile Discoverability */}
+                    <div className="td-privacy-card td-privacy-card--discover">
+                      <div className="td-privacy-discover-top">
+                        <div className="td-privacy-card-title-row">
+                          <span className="td-privacy-card-icon td-privacy-icon--darkgreen">
+                            <FiGlobe size={18} />
+                          </span>
+                          <h2 className="td-privacy-card-heading">Profile Discoverability</h2>
+                        </div>
+                        <div className="td-privacy-badge-circle">
+                          <FiCheckCircle size={22} className="td-privacy-check-icon" />
+                        </div>
+                      </div>
+
+                      <p className="td-privacy-card-desc">
+                        When enabled, verified schools and recruiters can find your profile when searching for candidates. This increases your chances of being headhunted for relevant roles.
+                      </p>
+
+                      <div className="td-privacy-status-box">
+                        <FiInfo size={15} className="td-privacy-status-icon" />
+                        <span className="td-privacy-status-text">
+                          <strong>Status: Visible to Schools.</strong> Your profile is currently active in the candidate pool.
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Right Card: Application Data */}
+                    <div className="td-privacy-card td-privacy-card--appdata">
+                      <div className="td-privacy-card-title-row">
+                        <span className="td-privacy-card-icon td-privacy-icon--darkgreen">
+                          <FiShare2 size={18} />
+                        </span>
+                        <h2 className="td-privacy-card-heading">Application Data</h2>
+                      </div>
+
+                      <p className="td-privacy-card-desc">
+                        When you apply for a job, employers receive a snapshot of your profile as it appears at the time of application.
+                      </p>
+
+                      <button className="td-privacy-view-btn">
+                        View Shared Data
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* Bottom Card: Specific Visibility Controls */}
+                  <div className="td-privacy-controls-card">
+                    <h2 className="td-privacy-controls-title">Specific Visibility Controls</h2>
+                    <div className="td-privacy-divider" />
+
+                    <div className="td-privacy-controls-inner">
+                      <h3 className="td-privacy-controls-subtitle">Who can see your profile?</h3>
+                      <p className="td-privacy-controls-hint">Choose your primary visibility setting. This affects how recruiters and schools find you.</p>
+
+                      <div className="td-privacy-options-list">
+
+                        {/* Option 1: Schools on Staffroom */}
+                        <div
+                          className={`td-privacy-option-card ${visibilitySetting === 'schools' ? 'td-privacy-option-card--active' : ''}`}
+                          onClick={() => setVisibilitySetting('schools')}
+                        >
+                          <div className="td-privacy-option-icon">
+                            <FiGlobe size={18} />
+                          </div>
+                          <div className="td-privacy-option-text">
+                            <div className="td-privacy-option-title-row">
+                              <span className="td-privacy-option-title">Schools on Staffroom</span>
+                              <span className="td-privacy-rec-pill">RECOMMENDED</span>
+                            </div>
+                            <p className="td-privacy-option-desc">
+                              Your profile is visible to all registered schools and recruiters searching for candidates.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Option 2: Only schools I apply to */}
+                        <div
+                          className={`td-privacy-option-card ${visibilitySetting === 'applied' ? 'td-privacy-option-card--active' : ''}`}
+                          onClick={() => setVisibilitySetting('applied')}
+                        >
+                          <div className="td-privacy-option-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                              <line x1="9" y1="6" x2="9.01" y2="6"></line>
+                              <line x1="15" y1="6" x2="15.01" y2="6"></line>
+                              <line x1="9" y1="10" x2="9.01" y2="10"></line>
+                              <line x1="15" y1="10" x2="15.01" y2="10"></line>
+                              <line x1="9" y1="14" x2="9.01" y2="14"></line>
+                              <line x1="15" y1="14" x2="15.01" y2="14"></line>
+                              <line x1="9" y1="18" x2="15" y2="18"></line>
+                            </svg>
+                          </div>
+                          <div className="td-privacy-option-text">
+                            <div className="td-privacy-option-title-row">
+                              <span className="td-privacy-option-title">Only schools I apply to</span>
+                            </div>
+                            <p className="td-privacy-option-desc">
+                              Your profile is hidden from search, but visible to schools where you submit an application.
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Option 3: Nobody */}
+                        <div
+                          className={`td-privacy-option-card ${visibilitySetting === 'nobody' ? 'td-privacy-option-card--active' : ''}`}
+                          onClick={() => setVisibilitySetting('nobody')}
+                        >
+                          <div className="td-privacy-option-icon">
+                            <FiEyeOff size={18} />
+                          </div>
+                          <div className="td-privacy-option-text">
+                            <div className="td-privacy-option-title-row">
+                              <span className="td-privacy-option-title">Nobody</span>
+                            </div>
+                            <p className="td-privacy-option-desc">
+                              Your profile is completely hidden. Useful if you are currently employed and not looking.
+                            </p>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
@@ -6402,6 +6620,374 @@ export default function TeacherDashboard() {
           transition: color 0.15s;
         }
         .td-settings-breadcrumb-btn:hover { color: #10b981; }
+
+        /* ── Account Settings Subtab ── */
+        .td-accs-wrap {
+          width: 100%;
+          max-width: 760px;
+        }
+        .td-accs-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #6B7280;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 24px;
+          transition: color 0.15s;
+        }
+        .td-accs-breadcrumb:hover { color: #10b981; }
+        .td-accs-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 28px;
+          position: relative;
+          overflow: hidden;
+        }
+        .td-accs-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-accs-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.5;
+        }
+        .td-accs-deco-circle {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: #E6FAF5;
+          flex-shrink: 0;
+          margin-left: 16px;
+          margin-top: -20px;
+        }
+        .td-accs-menu-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+        .td-accs-row {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 20px 24px;
+          cursor: pointer;
+          transition: background 0.15s;
+        }
+        .td-accs-row:hover { background: #F9FAFB; }
+        .td-accs-row-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .td-accs-icon--green {
+          background: #E6FAF5;
+          color: #10b981;
+        }
+        .td-accs-row-text {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .td-accs-row-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-accs-row-sub {
+          font-size: 13px;
+          color: #6B7280;
+          line-height: 1.4;
+        }
+        .td-accs-row-arrow {
+          color: #9CA3AF;
+          flex-shrink: 0;
+        }
+        .td-accs-divider {
+          height: 1px;
+          background: #F3F4F6;
+          margin: 0 24px;
+        }
+        .td-accs-info-card {
+          background: #F0F4FF;
+          border-radius: 16px;
+          padding: 18px 20px;
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+        }
+        .td-accs-info-icon {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #E6FAF5;
+          color: #10b981;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .td-accs-info-title {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #111;
+          margin: 0 0 5px 0;
+        }
+        .td-accs-info-text {
+          font-size: 13px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.55;
+        }
+
+        /* ── Privacy & Profile Visibility Subtab ── */
+        .td-privacy-wrap {
+          width: 100%;
+          max-width: 860px;
+        }
+        .td-privacy-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #111827;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 24px;
+          transition: color 0.15s;
+        }
+        .td-privacy-breadcrumb:hover { color: #10b981; }
+        .td-privacy-header {
+          margin-bottom: 24px;
+        }
+        .td-privacy-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-privacy-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.5;
+        }
+        .td-privacy-top-grid {
+          display: grid;
+          grid-template-columns: 1.7fr 1fr;
+          gap: 18px;
+          margin-bottom: 24px;
+        }
+        @media (max-width: 860px) {
+          .td-privacy-top-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .td-privacy-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 22px 24px;
+          display: flex;
+          flex-direction: column;
+        }
+        .td-privacy-discover-top {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 8px;
+        }
+        .td-privacy-card-title-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 10px;
+        }
+        .td-privacy-card-icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .td-privacy-icon--darkgreen {
+          color: #005A36;
+        }
+        .td-privacy-card-heading {
+          font-size: 16.5px;
+          font-weight: 700;
+          color: #111;
+          margin: 0;
+        }
+        .td-privacy-badge-circle {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: #EEF7FF;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin-top: -6px;
+          margin-right: -6px;
+        }
+        .td-privacy-check-icon {
+          color: #15803D;
+        }
+        .td-privacy-card-desc {
+          font-size: 13.5px;
+          color: #6B7280;
+          line-height: 1.5;
+          margin: 0 0 16px 0;
+        }
+        .td-privacy-status-box {
+          background: #EEF4FF;
+          border-radius: 12px;
+          padding: 13px 16px;
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          margin-top: auto;
+        }
+        .td-privacy-status-icon {
+          color: #4B5563;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .td-privacy-status-text {
+          font-size: 13px;
+          color: #374151;
+          line-height: 1.45;
+        }
+        .td-privacy-status-text strong {
+          color: #111;
+          font-weight: 700;
+        }
+        .td-privacy-view-btn {
+          width: 100%;
+          border: 1.5px solid #111827;
+          background: transparent;
+          border-radius: 50px;
+          padding: 10px 16px;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #111;
+          cursor: pointer;
+          transition: all 0.15s;
+          margin-top: auto;
+          text-align: center;
+        }
+        .td-privacy-view-btn:hover {
+          background: #111827;
+          color: #fff;
+        }
+        .td-privacy-controls-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 24px;
+        }
+        .td-privacy-controls-title {
+          font-size: 19px;
+          font-weight: 700;
+          color: #111;
+          margin: 0 0 18px 0;
+        }
+        .td-privacy-divider {
+          height: 1px;
+          background: #F3F4F6;
+          margin: 0 0 20px 0;
+        }
+        .td-privacy-controls-subtitle {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: #111;
+          margin: 0 0 6px 0;
+        }
+        .td-privacy-controls-hint {
+          font-size: 13.5px;
+          color: #6B7280;
+          margin: 0 0 18px 0;
+        }
+        .td-privacy-options-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .td-privacy-option-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          padding: 18px 20px;
+          border-radius: 14px;
+          border: 1.5px solid #E5E7EB;
+          background: #fff;
+          cursor: pointer;
+          transition: all 0.18s;
+        }
+        .td-privacy-option-card:hover {
+          border-color: #CBD5E1;
+        }
+        .td-privacy-option-card--active {
+          border-color: #005A36;
+          background: #F0F6FF;
+        }
+        .td-privacy-option-icon {
+          color: #005A36;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .td-privacy-option-text {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-privacy-option-title-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .td-privacy-option-title {
+          font-size: 15px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-privacy-rec-pill {
+          background: #E6F7F0;
+          color: #0D9488;
+          font-size: 10.5px;
+          font-weight: 800;
+          padding: 3px 8px;
+          border-radius: 50px;
+          letter-spacing: 0.4px;
+        }
+        .td-privacy-option-desc {
+          font-size: 13px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.45;
+        }
         .td-settings-subtab-placeholder {
           background: #fff;
           border: 2px dashed #E5E7EB;

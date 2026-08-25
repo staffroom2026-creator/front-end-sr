@@ -61,6 +61,30 @@ export default function SignUp() {
 
           {/* Glass card */}
           <div className="su-mob-card">
+
+            {/* Role selector for Mobile */}
+            <div className="su-mob-role-section">
+              <p className="su-mob-role-label">Sign up as</p>
+              <div className="su-mob-role-pills">
+                <button
+                  type="button"
+                  id="mob-role-teacher"
+                  className={`su-mob-pill ${role === 'teacher' ? 'su-mob-pill--active' : ''}`}
+                  onClick={() => setRole('teacher')}
+                >
+                  Teacher
+                </button>
+                <button
+                  type="button"
+                  id="mob-role-admin"
+                  className={`su-mob-pill ${role === 'admin' ? 'su-mob-pill--active' : ''}`}
+                  onClick={() => setRole('admin')}
+                >
+                  School Admin
+                </button>
+              </div>
+            </div>
+
             <form onSubmit={handleSubmit} className="su-mob-form">
 
               {/* Teacher fields */}
@@ -349,6 +373,39 @@ export default function SignUp() {
           border: 1px solid rgba(255, 255, 255, 0.3);
           border-radius: 24px;
           padding: 20px 16px 16px;
+        }
+
+        /* Mobile Role Selector */
+        .su-mob-role-section {
+          margin-bottom: 14px;
+        }
+        .su-mob-role-label {
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.95);
+          margin: 0 0 8px 2px;
+          font-weight: 500;
+        }
+        .su-mob-role-pills {
+          display: flex;
+          gap: 8px;
+        }
+        .su-mob-pill {
+          padding: 8px 18px;
+          border-radius: 50px;
+          border: 1.5px solid rgba(255, 255, 255, 0.55);
+          background: rgba(255, 255, 255, 0.12);
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #fff;
+          cursor: pointer;
+          transition: all 0.18s;
+          font-family: 'Inter', sans-serif;
+        }
+        .su-mob-pill--active {
+          background: #22C55E;
+          border-color: #22C55E;
+          color: #fff;
+          box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
         }
 
         .su-mob-form {
