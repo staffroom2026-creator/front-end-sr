@@ -14,7 +14,7 @@ import {
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle,
   FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiLock,
-  FiGlobe, FiEyeOff, FiInfo
+  FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
 } from 'react-icons/fi';
 
 const pageVariants = {
@@ -27,23 +27,22 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
 };
 
-const normalizeJobData = (job) => {
-  const jobId = job.job_id || job.id || job._id;
-  return {
-    id: jobId,
-    title: job.title || 'Untitled Role',
-    school: job.school_name || job.school || 'Staffroom School',
-    location: job.location || 'Remote',
-    type: job.employment_type || job.role_type || 'Full-time',
-    timePosted: new Date(job.created_at || Date.now()),
-    timeLabel: job.created_at ? 'Recently posted' : 'Just now',
-    salaryStr: job.salary_range || 'Competitive',
-    salaryMonthly: Number(job.salary_range?.match(/\d+/g)?.[0] || 0),
-    featured: false,
+const DUMMY_JOBS = [
+  {
+    id: 1,
+    title: 'Mathematics Tutor - SS2/SS3',
+    school: 'British International School',
+    location: 'Benin',
+    type: 'Full-time',
+    timePosted: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    timeLabel: '2 hours ago',
+    salaryStr: '₦350,000 / month',
+    salaryMonthly: 350000,
+    featured: true,
     hot: false,
     color: 'td-bg-gray',
-    education: 'Open',
-    subject: job.role_type || job.title || 'Education',
+    education: 'Secondary (SS1-SS3)',
+    subject: 'Mathematics',
     tags: [],
     mobileOnly: false,
     about: job.description || 'No description provided.',
@@ -52,27 +51,69 @@ const normalizeJobData = (job) => {
       essential: job.requirements ? [job.requirements] : ['Requirements available on request.'],
       desirable: []
     },
-    employerInfo: job.school_name || 'School profile not available yet.',
-    employerImage: job.school_logo || schoolCampus,
-    deadline: 'Open until filled',
-    verifiedRecruiter: true,
-    status: job.status || 'active',
-  };
-};
+    employerInfo: "\"Providing a tradition of excellence since 1928, St. Gregory's College is dedicated to the holistic development of the Nigerian child through discipline and hard work.\"\n\nLocated in the heart of Ikoyi, our campus provides a serene and technologically advanced environment for both students and staff. We pride ourselves on our community of educators who are more than teachers—they are mentors.",
+    employerImage: schoolCampus,
+    deadline: "October 24th, 2024",
+    verifiedRecruiter: true
+  },
+  {
+    id: 2,
+    title: 'English Language & Literature Teacher',
+    school: 'Grace Academy',
+    location: 'Benin City, Edo state',
+    type: 'Contract',
+    timePosted: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+    timeLabel: '1 day ago',
+    salaryStr: '₦180,000 / month',
+    salaryMonthly: 180000,
+    featured: false,
+    hot: false,
+    color: 'td-bg-gold',
+    education: 'Secondary (SS1-SS3)',
+    tags: [],
+    mobileOnly: false
+  },
+  {
+    id: 3,
+    title: 'Vice Principal (Academic)',
+    school: 'Atlantic Hall School',
+    location: 'Epe, Lagos',
+    type: 'Full-time',
+    timePosted: new Date(Date.now() - 2 * 60 * 60 * 1000),
+    timeLabel: 'Posted 2h ago',
+    salaryStr: '₦650k – ₦800k',
+    salaryMonthly: 650000,
+    featured: false,
+    hot: true,
+    color: '',
+    education: 'Tertiary Institution',
+    tags: [],
+    mobileOnly: false
+  },
+  {
+    id: 4,
+    title: 'Computer Science Tutor',
+    school: 'Grange School',
+    location: 'Ikeja GRA',
+    type: 'Part time',
+    timePosted: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+    timeLabel: '1 day ago',
+    salaryStr: '₦180,000 / month',
+    salaryMonthly: 180000,
+    featured: false,
+    hot: false,
+    color: 'td-bg-gray',
+    education: 'Primary School',
+    tags: ['STEM'],
+    mobileOnly: false
+  }
+];
 
-const normalizeApplicationData = (app, idx) => {
-  const statusMap = {
-    pending: 'Pending',
-    reviewed: 'Under Review',
-    shortlisted: 'Shortlisted',
-    rejected: 'Rejected',
-    hired: 'Hired',
-  };
-
-  return {
-    id: app.application_id || app.id || idx + 1,
-    title: app.job_title || 'Teaching Role',
-    school: app.school_name || 'School',
+const DUMMY_APPLICATIONS = [
+  {
+    id: 1,
+    title: 'Senior Mathematics Teacher',
+    school: 'Lagos British School, Victoria Island',
     icon: <FiBook size={24} />,
     tags: [
       { label: (app.salary_range || 'Competitive').toUpperCase(), type: 'primary' },
@@ -171,6 +212,7 @@ export default function TeacherDashboard() {
   // ── Settings Subtab state ──
   const [settingsSubTab, setSettingsSubTab] = useState('overview');
   const [visibilitySetting, setVisibilitySetting] = useState('schools');
+  const [personalInfoOrigin, setPersonalInfoOrigin] = useState('profile');
 
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Teacher');
@@ -832,62 +874,81 @@ export default function TeacherDashboard() {
 
           {activeTab === 'jobs' && !selectedJob && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-jobs-tab">
+
+              {/* ── Hero ── */}
               <div className="td-jobs-hero">
-                <h1>Find your next <span className="td-highlight">teaching milestone.</span></h1>
-                <p>Connecting Nigeria's finest educators with prestigious academic institutions.</p>
-                
-                <div className="td-jobs-search-bar td-desktop-search">
-                  <motion.div whileHover={{ scale: 1.02 }} className="td-search-input-group">
-                    <FiBriefcase className="td-search-icon" />
-                    <input type="text" placeholder="Subject (e.g., Physics, English)" className="td-interactive-input" value={subjectSearch} onChange={e => setSubjectSearch(e.target.value)} />
-                  </motion.div>
-                  <motion.div whileHover={{ scale: 1.02 }} className="td-search-input-group">
-                    <FiMapPin className="td-search-icon" />
-                    <input type="text" placeholder="Benin City, Lagos..." className="td-interactive-input" value={locationSearch} onChange={e => setLocationSearch(e.target.value)} />
-                  </motion.div>
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-btn-primary"><FiSearch /> Find Jobs</motion.button>
+                <div className="td-jobs-hero-top">
+                  <div className="td-jobs-hero-text">
+                    <h1>Find your next <span className="td-highlight">teaching milestone.</span></h1>
+                    <p>Connecting Nigeria's finest educators with prestigious academic institutions.</p>
+                  </div>
+                  <button className="td-saved-jobs-btn">
+                    <FiBookmark size={14} /> Saved Jobs
+                  </button>
                 </div>
 
+                {/* Desktop Search */}
+                <div className="td-jobs-search-bar td-desktop-search">
+                  <div className="td-search-input-group">
+                    <FiBriefcase className="td-search-icon" size={16} />
+                    <input type="text" placeholder="Subject (e.g., Physics, English)" className="td-interactive-input" value={subjectSearch} onChange={e => setSubjectSearch(e.target.value)} />
+                  </div>
+                  <div className="td-search-divider" />
+                  <div className="td-search-input-group">
+                    <FiMapPin className="td-search-icon" size={16} />
+                    <input type="text" placeholder="Benin City, Edo..." className="td-interactive-input" value={locationSearch} onChange={e => setLocationSearch(e.target.value)} />
+                  </div>
+                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-btn-primary"><FiSearch size={14} /> Find Jobs</motion.button>
+                </div>
+
+                {/* Mobile Search & Chips */}
                 <div className="td-mobile-jobs-search">
-                  <motion.div whileHover={{ scale: 1.02 }} className="td-search-box-mobile">
+                  <div className="td-search-box-mobile">
                     <FiSearch className="td-search-icon" size={18} />
-                    <input type="text" placeholder="Role, subject or keyword" className="td-interactive-input" value={keywordSearch} onChange={e => setKeywordSearch(e.target.value)} />
-                  </motion.div>
+                    <input
+                      type="text"
+                      placeholder="Role, subject or keyword"
+                      className="td-interactive-input"
+                      value={keywordSearch}
+                      onChange={e => setKeywordSearch(e.target.value)}
+                    />
+                  </div>
                   <div className="td-mobile-filter-chips">
-                    <motion.button 
-                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    <button
+                      type="button"
                       className={`td-filter-chip ${locationSearch.toLowerCase().includes('lagos') ? 'td-chip-active-green' : 'td-chip-soft'}`}
                       onClick={() => setLocationSearch(locationSearch.toLowerCase().includes('lagos') ? '' : 'Lagos')}
                     >
                       <FiMapPin size={13} /> Lagos
-                    </motion.button>
-                    
-                    <motion.button 
-                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    </button>
+                    <button
+                      type="button"
                       className={`td-filter-chip ${selectedJobTypes.includes('Full-time') ? 'td-chip-active-lightgreen' : 'td-chip-soft'}`}
                       onClick={() => toggleJobType('Full-time')}
                     >
                       <FiClock size={13} /> Full-time
-                    </motion.button>
-                    
-                    <motion.button 
-                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                    </button>
+                    <button
+                      type="button"
                       className={`td-filter-chip ${salaryRange >= 250000 ? 'td-chip-active-green' : 'td-chip-soft'}`}
                       onClick={() => setSalaryRange(salaryRange >= 250000 ? 50000 : 250000)}
                     >
                       <FiBriefcase size={13} /> ₦250k+
-                    </motion.button>
+                    </button>
                   </div>
                 </div>
               </div>
 
+              {/* ── Main layout ── */}
               <div className="td-jobs-layout">
+
+                {/* Sidebar Filters */}
                 <div className="td-jobs-filters td-desktop-only">
                   <div className="td-filter-header">
                     <h3>Filters</h3>
-                    <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} className="td-clear-btn" onClick={clearFilters}>Clear all</motion.button>
+                    <button className="td-clear-btn" onClick={clearFilters}>Clear all</button>
                   </div>
-                  
+
                   <div className="td-filter-group">
                     <h4>EDUCATION LEVEL</h4>
                     {['Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'].map(level => (
@@ -904,30 +965,28 @@ export default function TeacherDashboard() {
                     <h4>JOB TYPE</h4>
                     <div className="td-filter-tags">
                       {['Full-time', 'Part-time', 'Online', 'Contract'].map(type => (
-                        <motion.span 
+                        <span
                           key={type}
-                          whileHover={{ scale: 1.05 }} 
-                          whileTap={{ scale: 0.95 }} 
                           onClick={() => toggleJobType(type)}
                           className={`td-tag ${selectedJobTypes.includes(type) ? 'td-tag-active' : ''}`}
                         >
                           {type}
-                        </motion.span>
+                        </span>
                       ))}
                     </div>
                   </div>
 
                   <div className="td-filter-group">
-                    <h4>MONTHLY SALARY (₦): ₦{salaryRange.toLocaleString()}</h4>
+                    <h4>MONTHLY SALARY (₦)</h4>
                     <div className="td-progress-scroll-wrapper">
-                      <input 
-                        type="range" 
-                        min="50000" 
-                        max="1000000" 
+                      <input
+                        type="range"
+                        min="50000"
+                        max="1000000"
                         step="10000"
-                        value={salaryRange} 
+                        value={salaryRange}
                         onChange={(e) => setSalaryRange(e.target.value)}
-                        className="td-progress-scroll-input" 
+                        className="td-progress-scroll-input"
                       />
                       <div className="td-range-labels">
                         <span>₦50k</span>
@@ -937,6 +996,7 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
 
+                {/* Job Cards */}
                 <div className="td-jobs-list-container">
                   <div className="td-jobs-list-header">
                     <div className="td-desktop-showing">Showing <strong>{filteredJobs.length} jobs</strong> in Nigeria</div>
@@ -950,19 +1010,19 @@ export default function TeacherDashboard() {
                       </button>
                     </div>
                     <div className="td-sort-by td-desktop-only" style={{ position: 'relative' }}>
-                      Sort by: 
-                      <strong 
-                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px' }} 
+                      Sort by:
+                      <strong
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', marginLeft: '4px', color: '#15803D' }}
                         onClick={() => setShowSortDropdown(!showSortDropdown)}
                       >
-                        {sortBy} <FiChevronDown />
+                        {sortBy} <FiChevronDown size={14} />
                       </strong>
                       {showSortDropdown && (
                         <div style={{ position: 'absolute', top: '30px', right: 0, background: '#fff', border: '1px solid #E9ECEF', borderRadius: '8px', padding: '8px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', width: '160px' }}>
                           {['Newest First', 'Oldest First', 'Highest Salary', 'Lowest Salary'].map(s => (
-                            <div 
-                              key={s} 
-                              onClick={() => { setSortBy(s); setShowSortDropdown(false); }} 
+                            <div
+                              key={s}
+                              onClick={() => { setSortBy(s); setShowSortDropdown(false); }}
                               style={{ padding: '8px 16px', cursor: 'pointer', fontSize: '13px', borderRadius: '4px', background: sortBy === s ? '#F1F3F5' : 'transparent', fontWeight: sortBy === s ? '700' : '500', color: sortBy === s ? '#111' : '#495057' }}
                             >
                               {s}
@@ -987,7 +1047,9 @@ export default function TeacherDashboard() {
                             <div className="td-hot-salary-range">SALARY RANGE</div>
                             <div className="td-hot-footer">
                               <div className="td-hot-salary-value">{job.salaryStr}</div>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={() => setSelectedJob(job)}>Apply Fast</motion.button>
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={() => setSelectedJob(job)}>
+                                Apply Fast
+                              </motion.button>
                             </div>
                           </motion.div>
                         );
@@ -995,31 +1057,67 @@ export default function TeacherDashboard() {
 
                       return (
                         <motion.div key={job.id} variants={cardVariants} className="td-feed-card td-feed-card-standard">
+                          {/* Card Header */}
                           <div className="td-fc-header">
                             <div className="td-fc-icon-wrapper">
-                              <div className={`td-fc-icon ${job.color || 'td-bg-gray'}`}>
-                                <FiBriefcase size={20} color={job.color === 'td-bg-gold' ? '#947600' : job.color === 'td-bg-purple' ? '#5F3DC4' : '#495057'}/>
+                              <div className={`td-fc-icon ${job.color || 'td-bg-darkgreen'}`}>
+                                {job.iconType === 'academic' ? <FiBook size={20} /> :
+                                 job.iconType === 'science' ? <FiZap size={20} /> :
+                                 <FiBriefcase size={20} />}
                               </div>
                             </div>
                             <div className="td-fc-main-info">
                               <div className="td-fc-title-row">
                                 <h3>{job.title}</h3>
-                                <motion.button whileHover={{ scale: 1.15 }} whileTap={{ scale: 0.9 }} className="td-bookmark-btn"><FiBookmark /></motion.button>
+                                <motion.button
+                                  whileHover={{ scale: 1.1 }}
+                                  whileTap={{ scale: 0.9 }}
+                                  className={`td-bookmark-btn ${savedJobIds.includes(job.id) ? 'td-bookmark-btn--saved' : ''}`}
+                                  onClick={() => handleToggleSaveJob(job.id)}
+                                  title={savedJobIds.includes(job.id) ? 'Remove from saved' : 'Save job'}
+                                >
+                                  <FiBookmark
+                                    size={18}
+                                    style={{ fill: savedJobIds.includes(job.id) ? '#15803D' : 'none' }}
+                                  />
+                                </motion.button>
                               </div>
-                              <p className="td-fc-school">{job.school} <span className="td-dot">•</span> {job.location}</p>
+                              <p className="td-fc-school">
+                                {job.school} {job.location && <><span className="td-dot">•</span> {job.location}</>}
+                              </p>
                             </div>
-                            {job.featured && <div className="td-fc-badge-desktop"><span className="td-badge-featured"><FiCheck size={12}/> Featured</span></div>}
-                          </div>
-                          
-                          <div className="td-fc-meta">
-                            <div className="td-fc-meta-item"><FiClock size={13} color="#475569" /> {job.type}</div>
-                            <div className="td-fc-meta-item"><FiClock size={13} color="#475569" /> {job.timeLabel}</div>
-                            {job.tags && job.tags.map(tag => <div key={tag} className="td-fc-meta-tag td-tag-stem">{tag}</div>)}
+                            {job.featured && (
+                              <div className="td-fc-badge-desktop">
+                                <span className="td-badge-featured"><FiCheck size={12}/> Featured</span>
+                              </div>
+                            )}
                           </div>
 
+                          {/* Meta row */}
+                          <div className="td-fc-meta">
+                            <div className="td-fc-meta-item">
+                              <FiClock size={13} color="#6C757D" />
+                              <span>{job.type}</span>
+                            </div>
+                            <div className="td-fc-meta-item">
+                              <FiClock size={13} color="#6C757D" />
+                              <span>{job.timeLabel}</span>
+                            </div>
+                            {job.tags && job.tags.map(tag => (
+                              <span key={tag} className="td-fc-meta-tag">{tag}</span>
+                            ))}
+                          </div>
+
+                          {/* Actions */}
                           <div className="td-fc-footer">
-                            <div className="td-fc-salary">{job.salaryStr.split(' / ')[0]} {job.salaryStr.includes(' / ') && <span>/ {job.salaryStr.split(' / ')[1]}</span>}</div>
-                            <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => setSelectedJob(job)}>View Details</motion.button>
+                            <div className="td-fc-salary">
+                              {job.salaryStr.split(' / ')[0]} <span>{job.salaryStr.includes(' / ') ? `/ ${job.salaryStr.split(' / ')[1]}` : ''}</span>
+                            </div>
+                            <div className="td-fc-footer-actions">
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => setSelectedJob(job)}>
+                                View Details
+                              </motion.button>
+                            </div>
                           </div>
                         </motion.div>
                       );
@@ -1029,11 +1127,11 @@ export default function TeacherDashboard() {
                       </div>
                     )}
                   </div>
-                  
+
                   {filteredJobs.length > 0 && (
                     <div className="td-load-more-container td-desktop-only">
                       <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn">Load More Jobs</motion.button>
-                      <p>Showing {filteredJobs.length > 3 ? 3 : filteredJobs.length} of {filteredJobs.length} results</p>
+                      <p>Showing {filteredJobs.length > 3 ? 3 : filteredJobs.length} of 124 results</p>
                     </div>
                   )}
                 </div>
@@ -1485,7 +1583,11 @@ export default function TeacherDashboard() {
                     <motion.div
                       whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
                       className="td-settings-category-card"
-                      onClick={() => setSettingsSubTab('account')}
+                      onClick={() => {
+                        setPersonalInfoOrigin('settings');
+                        setActiveTab('profile');
+                        setProfileSubTab('personal-info');
+                      }}
                     >
                       <div className="td-settings-cat-icon-wrap td-settings-cat-icon--teal">
                         <FiUser size={22} />
@@ -1549,98 +1651,17 @@ export default function TeacherDashboard() {
                 </>
               )}
 
-              {/* ── Account Settings Subtab ── */}
+              {/* ── Account Settings Subtab (Emptied) ── */}
               {settingsSubTab === 'account' && (
-                <div className="td-accs-wrap">
-
-                  {/* Breadcrumb */}
-                  <button className="td-accs-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} />
-                    <span>Settings / Account Settings</span>
+                <div className="td-settings-subtab-wrap">
+                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} /> Settings / Account Settings
                   </button>
-
-                  {/* Header + decorative circle */}
-                  <div className="td-accs-header">
-                    <div>
-                      <h1 className="td-accs-title">Account Settings</h1>
-                      <p className="td-accs-subtitle">Manage your fundamental account details and login credentials securely.</p>
-                    </div>
-                    <div className="td-accs-deco-circle" />
+                  <h1 className="td-settings-title">Account Settings</h1>
+                  <div className="td-settings-subtab-placeholder">
+                    <FiUser size={40} style={{ color: '#10b981', marginBottom: 12 }} />
+                    <p>Account settings content is empty.</p>
                   </div>
-
-                  {/* Menu rows card */}
-                  <div className="td-accs-menu-card">
-
-                    {/* Account Setting */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <FiUser size={17} />
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">Account Setting</span>
-                        <span className="td-accs-row-sub">Update your personal details and contact information.</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-                    <div className="td-accs-divider" />
-
-                    {/* Password and security */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                          <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
-                        </svg>
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">password and security</span>
-                        <span className="td-accs-row-sub">Change your password and manage two-factor authentication.</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-                    <div className="td-accs-divider" />
-
-                    {/* Support & Legal */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-                          <line x1="1" y1="1" x2="23" y2="23"/>
-                        </svg>
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">Support &amp; Legal</span>
-                        <span className="td-accs-row-sub">FAQs, Contact Support, Privacy Policy</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-                    <div className="td-accs-divider" />
-
-                    {/* Privacy and profile visibility */}
-                    <div className="td-accs-row">
-                      <div className="td-accs-row-icon td-accs-icon--green">
-                        <FiLock size={17} />
-                      </div>
-                      <div className="td-accs-row-text">
-                        <span className="td-accs-row-title">privacy and profile visibility</span>
-                        <span className="td-accs-row-sub">Manage who sees your profile and application information</span>
-                      </div>
-                      <FiArrowRight size={16} className="td-accs-row-arrow" />
-                    </div>
-
-                  </div>
-
-                  {/* Secure Account Updates info card */}
-                  <div className="td-accs-info-card">
-                    <div className="td-accs-info-icon">
-                      <FiShield size={17} />
-                    </div>
-                    <div>
-                      <p className="td-accs-info-title">Secure Account Updates</p>
-                      <p className="td-accs-info-text">Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
-                    </div>
-                  </div>
-
                 </div>
               )}
 
@@ -1795,29 +1816,306 @@ export default function TeacherDashboard() {
 
               {/* ── Security Subtab ── */}
               {settingsSubTab === 'security' && (
-                <div className="td-settings-subtab-wrap">
-                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} /> Settings / Security &amp; Login Activity
+                <div className="td-sec-wrap">
+
+                  {/* Breadcrumb */}
+                  <button className="td-sec-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} />
+                    <span>Settings/ ...Security &amp; Login Activity</span>
                   </button>
-                  <h1 className="td-settings-title">Security &amp; Login Activity</h1>
-                  <div className="td-settings-subtab-placeholder">
-                    <FiShield size={40} style={{ color: '#10b981', marginBottom: 12 }} />
-                    <p>Security settings content coming soon.</p>
+
+                  {/* Top Section: Password and security */}
+                  <div className="td-sec-top-header">
+                    <div>
+                      <h1 className="td-sec-top-title">Password and security</h1>
+                      <p className="td-sec-top-subtitle">Manage your fundamental account details and login credentials securely.</p>
+                    </div>
+                    <div className="td-sec-deco-circle" />
                   </div>
+
+                  {/* Password Card */}
+                  <div className="td-sec-pwd-card">
+                    <div className="td-sec-pwd-left">
+                      <div className="td-sec-pwd-title-row">
+                        <FiKey size={15} className="td-sec-pwd-icon" />
+                        <span className="td-sec-pwd-title">Password</span>
+                      </div>
+                      <div className="td-sec-pwd-dots">••••••••••••</div>
+                      <span className="td-sec-pwd-last">Last changed 3 months ago</span>
+                    </div>
+                    <button className="td-sec-btn td-sec-btn--green">
+                      Change Password
+                    </button>
+                  </div>
+
+                  {/* Secure Account Updates Card */}
+                  <div className="td-sec-info-banner">
+                    <div className="td-sec-info-icon-wrap">
+                      <FiShield size={16} />
+                    </div>
+                    <div>
+                      <h4 className="td-sec-info-title">Secure Account Updates</h4>
+                      <p className="td-sec-info-desc">
+                        Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Spacer */}
+                  <div className="td-sec-section-spacer" />
+
+                  {/* Lower Section: Security & Login Activity */}
+                  <div className="td-sec-main-header">
+                    <h2 className="td-sec-main-title">Security &amp; Login Activity</h2>
+                    <p className="td-sec-main-subtitle">Manage your account security, passwords, and active sessions.</p>
+                  </div>
+
+                  {/* Card 1: Authentication */}
+                  <div className="td-sec-auth-card">
+                    <div className="td-sec-auth-header">
+                      <div className="td-sec-card-title-row">
+                        <FiKey size={18} className="td-sec-green-icon" />
+                        <h3 className="td-sec-card-heading">Authentication</h3>
+                      </div>
+                    </div>
+
+                    {/* Watermark Lock Icon */}
+                    <div className="td-sec-watermark-lock">
+                      <FiLock size={84} /><svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                    </div>
+
+                    <div className="td-sec-auth-body">
+                      <div className="td-sec-auth-col">
+                        <span className="td-sec-col-label">LAST PASSWORD CHANGE</span>
+                        <strong className="td-sec-col-value">October 12, 2023</strong>
+                        <span className="td-sec-col-hint">approx. 2 months ago</span>
+                      </div>
+
+                      <div className="td-sec-auth-col">
+                        <span className="td-sec-col-label">TWO-FACTOR AUTHENTICATION</span>
+                        <div className="td-sec-2fa-badge">
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                          </svg>
+                          <span>Disabled</span>
+                        </div>
+                      </div>
+
+                      <div className="td-sec-auth-action">
+                        <button className="td-sec-btn td-sec-btn--darkgreen">
+                          Change Password
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 2: Active Sessions */}
+                  <div className="td-sec-card">
+                    <div className="td-sec-card-title-row">
+                      <div className="td-sec-green-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+                          <line x1="8" y1="21" x2="16" y2="21"></line>
+                          <line x1="12" y1="17" x2="12" y2="21"></line>
+                        </svg>
+                      </div>
+                      <h3 className="td-sec-card-heading">Active Sessions</h3>
+                    </div>
+
+                    <div className="td-sec-sessions-list">
+                      {/* Session 1: Windows PC */}
+                      <div className="td-sec-session-item td-sec-session-item--current">
+                        <div className="td-sec-session-icon">
+                          <FiMonitor size={18} />
+                        </div>
+                        <div className="td-sec-session-info">
+                          <div className="td-sec-session-name-row">
+                            <strong className="td-sec-session-name">Windows PC - Chrome</strong>
+                            <span className="td-sec-curr-badge">CURRENT</span>
+                          </div>
+                          <span className="td-sec-session-ip">Lagos, Nigeria • IP: 197.210.64.12</span>
+                          <span className="td-sec-session-status">Active now</span>
+                        </div>
+                      </div>
+
+                      {/* Session 2: Android Phone */}
+                      <div className="td-sec-session-item">
+                        <div className="td-sec-session-icon">
+                          <FiSmartphone size={18} />
+                        </div>
+                        <div className="td-sec-session-info">
+                          <strong className="td-sec-session-name">Android Phone - Chrome</strong>
+                          <span className="td-sec-session-ip">Abuja, Nigeria • IP: 105.112.44.8</span>
+                          <span className="td-sec-session-status">Active 2 hours ago</span>
+                        </div>
+                        <button className="td-sec-signout-btn">
+                          <FiLogOut size={13} />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Card 3: Recent Login Activity */}
+                  <div className="td-sec-card">
+                    <div className="td-sec-recent-header">
+                      <div className="td-sec-card-title-row">
+                        <FiClock size={18} className="td-sec-green-icon" />
+                        <h3 className="td-sec-card-heading">Recent Login Activity</h3>
+                      </div>
+                      <button className="td-sec-view-log-btn">View Full Log</button>
+                    </div>
+
+                    <div className="td-sec-timeline">
+                      {/* Item 1 */}
+                      <div className="td-sec-timeline-item">
+                        <div className="td-sec-timeline-dot td-sec-dot--green" />
+                        <div className="td-sec-timeline-content">
+                          <strong className="td-sec-log-title">Successful Login</strong>
+                          <span className="td-sec-log-device">Windows PC - Chrome</span>
+                          <span className="td-sec-log-location">
+                            <FiMapPin size={12} /> Benin City, Nigeria
+                          </span>
+                        </div>
+                        <div className="td-sec-timeline-meta">
+                          <span className="td-sec-log-time">Today, 08:45 AM</span>
+                          <span className="td-sec-ip-pill">197.210.88.3</span>
+                        </div>
+                      </div>
+
+                      {/* Item 2 */}
+                      <div className="td-sec-timeline-item">
+                        <div className="td-sec-timeline-dot td-sec-dot--green" />
+                        <div className="td-sec-timeline-content">
+                          <strong className="td-sec-log-title">Successful Login</strong>
+                          <span className="td-sec-log-device">Android Phone - Chrome</span>
+                          <span className="td-sec-log-location">
+                            <FiMapPin size={12} /> Abuja, Nigeria
+                          </span>
+                        </div>
+                        <div className="td-sec-timeline-meta">
+                          <span className="td-sec-log-time">Yesterday, 14:30 PM</span>
+                          <span className="td-sec-ip-pill">105.112.44.8</span>
+                        </div>
+                      </div>
+
+                      {/* Item 3 */}
+                      <div className="td-sec-timeline-item td-sec-timeline-item--last">
+                        <div className="td-sec-timeline-dot td-sec-dot--red" />
+                        <div className="td-sec-timeline-content">
+                          <strong className="td-sec-log-title td-sec-log-title--red">Failed Login Attempt</strong>
+                          <span className="td-sec-log-device">MacBook Pro - Safari</span>
+                          <span className="td-sec-log-location">
+                            <FiMapPin size={12} /> Unknown Location
+                          </span>
+                        </div>
+                        <div className="td-sec-timeline-meta">
+                          <span className="td-sec-log-time">Dec 10, 2023, 11:20 PM</span>
+                          <span className="td-sec-ip-pill td-sec-ip-pill--red">192.168.1.1</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                 </div>
               )}
 
               {/* ── Legal Subtab ── */}
               {settingsSubTab === 'legal' && (
-                <div className="td-settings-subtab-wrap">
-                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
-                    <FiArrowLeft size={16} /> Settings / Legal
+                <div className="td-legal-wrap">
+
+                  {/* Breadcrumb */}
+                  <button className="td-legal-breadcrumb" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} />
+                    <span>Settings/ ...Legal</span>
                   </button>
-                  <h1 className="td-settings-title">Legal</h1>
-                  <div className="td-settings-subtab-placeholder">
-                    <FiFileText size={40} style={{ color: '#10b981', marginBottom: 12 }} />
-                    <p>Legal documents content coming soon.</p>
+
+                  {/* Header */}
+                  <div className="td-legal-header">
+                    <h1 className="td-legal-title">Legal</h1>
+                    <p className="td-legal-subtitle">
+                      Review our policies and terms that govern your use of the Staffroom platform.
+                      <br />
+                      We prioritize transparency and security in our academic professional network.
+                    </p>
                   </div>
+
+                  {/* 3-Column Policy Cards Grid */}
+                  <div className="td-legal-grid">
+
+                    {/* Card 1: Terms of Service */}
+                    <div className="td-legal-card">
+                      <div className="td-legal-card-icon-wrap">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="m14 13-7.5 7.5c-.83.83-2.17.83-3 0 0 0 0 0 0 0a2.12 2.12 0 0 1 0-3L11 10"></path>
+                          <path d="m16 16 6-6"></path>
+                          <path d="m8 8 6-6"></path>
+                          <path d="m9 7 8 8"></path>
+                          <path d="m21 11-8-8"></path>
+                        </svg>
+                      </div>
+                      <h3 className="td-legal-card-title">Terms of Service</h3>
+                      <p className="td-legal-card-desc">
+                        Read the rules, guidelines, and agreements for using the Staffroom platform. These terms
+                      </p>
+                      <button className="td-legal-card-link">
+                        <span>Read Terms</span>
+                        <FiArrowRight size={14} />
+                      </button>
+                    </div>
+
+                    {/* Card 2: Privacy Policy */}
+                    <div className="td-legal-card">
+                      <div className="td-legal-card-icon-wrap">
+                        <FiShield size={18} />
+                      </div>
+                      <h3 className="td-legal-card-title">Privacy Policy</h3>
+                      <p className="td-legal-card-desc">
+                        Understand how we collect, use, and protect your personal and professional data. We are...
+                      </p>
+                      <button className="td-legal-card-link">
+                        <span>Read Policy</span>
+                        <FiArrowRight size={14} />
+                      </button>
+                    </div>
+
+                    {/* Card 3: Cookie Policy */}
+                    <div className="td-legal-card">
+                      <div className="td-legal-card-icon-wrap">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2a10 10 0 1 0 10 10 4 4 0 0 1-5-5 4 4 0 0 1-5-5"></path>
+                          <path d="M8.5 8.5v.01"></path>
+                          <path d="M16 15.5v.01"></path>
+                          <path d="M12 12v.01"></path>
+                          <path d="M11 17v.01"></path>
+                          <path d="M7 14v.01"></path>
+                        </svg>
+                      </div>
+                      <h3 className="td-legal-card-title">Cookie Policy</h3>
+                      <p className="td-legal-card-desc">
+                        Learn about the cookies and tracking technologies we use to improve your platform...
+                      </p>
+                      <button className="td-legal-card-link">
+                        <span>Manage Cookies</span>
+                        <FiArrowRight size={14} />
+                      </button>
+                    </div>
+
+                  </div>
+
+                  {/* Bottom Assistance Banner */}
+                  <div className="td-legal-help-banner">
+                    <div className="td-legal-help-text">
+                      <h3 className="td-legal-help-title">Need specific legal assistance?</h3>
+                      <p className="td-legal-help-desc">If you have questions regarding our policies, our support team is available.</p>
+                    </div>
+                    <button className="td-legal-contact-btn">
+                      Contact Support
+                    </button>
+                  </div>
+
                 </div>
               )}
 
@@ -1868,11 +2166,11 @@ export default function TeacherDashboard() {
                     </div>
 
                     <div className="td-profile-header-actions">
-                      <button className="td-profile-btn-preview" onClick={() => setProfileSubTab('personal-info')}>
+                      <button className="td-profile-btn-preview" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
                         <FiEye size={15} />
                         <span>Preview Profile</span>
                       </button>
-                      <button className="td-profile-btn-edit" onClick={() => setProfileSubTab('personal-info')}>
+                      <button className="td-profile-btn-edit" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
                         <FiEdit2 size={14} />
                         <span>Edit Profile</span>
                       </button>
@@ -1882,7 +2180,7 @@ export default function TeacherDashboard() {
                   {/* 6 Sections Grid */}
                   <div className="td-profile-grid">
                     {/* 1. Personal Info */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('personal-info')}>
+                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiUser size={18} />
@@ -1975,9 +2273,19 @@ export default function TeacherDashboard() {
                   {profileSubTab === 'personal-info' && (
                     <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-pers-info-page">
                       {/* Top Breadcrumb Header */}
-                      <div className="td-pers-breadcrumb" onClick={() => setProfileSubTab('overview')}>
+                      <div
+                        className="td-pers-breadcrumb"
+                        onClick={() => {
+                          if (personalInfoOrigin === 'settings') {
+                            setActiveTab('settings');
+                            setSettingsSubTab('overview');
+                          } else {
+                            setProfileSubTab('overview');
+                          }
+                        }}
+                      >
                         <FiArrowLeft size={16} className="td-pers-back-icon" />
-                        <span>Settings/ ...Personal information</span>
+                        <span>{personalInfoOrigin === 'settings' ? 'Settings/ ...Personal information' : 'Profile/ ...Personal information'}</span>
                       </div>
 
                       {/* Main Title & Description */}
@@ -2012,24 +2320,6 @@ export default function TeacherDashboard() {
                               onChange={(e) => setPersonalLastName(e.target.value)}
                             />
                           </div>
-
-                          {/* Phone Number */}
-                          <div className="td-pers-field-group">
-                            <label className="td-pers-label">Phone Number</label>
-                            <div className="td-pers-phone-wrap">
-                              <span className="td-pers-phone-prefix">+234</span>
-                              <div className="td-pers-phone-divider" />
-                              <input
-                                type="tel"
-                                className="td-pers-phone-input"
-                                value={personalPhone}
-                                onChange={(e) => setPersonalPhone(e.target.value)}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Empty space placeholder for symmetric layout */}
-                          <div className="td-pers-empty-cell" />
 
                           {/* City/Location */}
                           <div className="td-pers-field-group">
@@ -2067,12 +2357,55 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
 
+                        {/* Phone Number Box Card */}
+                        <div className="td-pers-contact-card">
+                          <div className="td-pers-contact-info">
+                            <div className="td-pers-contact-header">
+                              <FiSmartphone size={15} className="td-pers-contact-icon" />
+                              <span className="td-pers-contact-label">Phone Number</span>
+                            </div>
+                            <div className="td-pers-contact-value">{personalPhone}</div>
+                            <div className="td-pers-contact-badge td-pers-badge--info">
+                              <FiInfo size={13} />
+                              <span>Used for 2FA</span>
+                            </div>
+                          </div>
+                          <button type="button" className="td-pers-contact-btn">
+                            Change Phone Number
+                          </button>
+                        </div>
+
+                        {/* Email Address Box Card */}
+                        <div className="td-pers-contact-card">
+                          <div className="td-pers-contact-info">
+                            <div className="td-pers-contact-header">
+                              <FiMail size={15} className="td-pers-contact-icon" />
+                              <span className="td-pers-contact-label">Email Address</span>
+                            </div>
+                            <div className="td-pers-contact-value">esther.egharevba@email.com</div>
+                            <div className="td-pers-contact-badge td-pers-badge--verified">
+                              <FiCheckCircle size={13} />
+                              <span>Verified</span>
+                            </div>
+                          </div>
+                          <button type="button" className="td-pers-contact-btn">
+                            Change Email
+                          </button>
+                        </div>
+
                         {/* Action Buttons */}
                         <div className="td-pers-actions-row">
                           <button
                             type="button"
                             className="td-pers-cancel-btn"
-                            onClick={() => setProfileSubTab('overview')}
+                            onClick={() => {
+                              if (personalInfoOrigin === 'settings') {
+                                setActiveTab('settings');
+                                setSettingsSubTab('overview');
+                              } else {
+                                setProfileSubTab('overview');
+                              }
+                            }}
                           >
                             Cancel
                           </button>
@@ -3407,8 +3740,6 @@ export default function TeacherDashboard() {
         </div>
       )}
 
-      <button className="td-fab"><FiPlus /></button>
-
       {/* ── Mobile Bottom Nav ── */}
       <nav className="td-mobile-bottomnav">
         {[
@@ -4433,114 +4764,228 @@ export default function TeacherDashboard() {
            JOB FEEDS TAB
         ═══════════════════════════════════════ */
         .td-jobs-tab { display: flex; flex-direction: column; }
-        .td-jobs-hero { margin-bottom: 32px; }
-        .td-jobs-hero h1 { font-size: 36px; font-weight: 800; color: #111; margin-bottom: 8px; }
-        .td-highlight { color: #1CCB43; }
-        .td-jobs-hero p { color: #6C757D; font-size: 15px; margin-bottom: 24px; max-width: 500px; }
-        
-        .td-desktop-search { display: flex; gap: 16px; background: #fff; padding: 12px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.03); }
-        .td-search-input-group { flex: 1; display: flex; align-items: center; background: #F8F9FA; padding: 12px 16px; border-radius: 12px; gap: 12px; }
-        .td-search-input-group input { border: none; background: transparent; outline: none; width: 100%; font-size: 14px; }
-        .td-btn-primary { background: #0b7a24; color: white; border: none; padding: 0 24px; border-radius: 12px; font-weight: 700; display: flex; align-items: center; gap: 8px; cursor: pointer; transition: 0.2s; }
-        .td-btn-primary:hover { background: #09611c; }
-        
+
+        /* Hero */
+        .td-jobs-hero { margin-bottom: 28px; }
+        .td-jobs-hero-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .td-jobs-hero-text h1 { font-size: 34px; font-weight: 800; color: #111; margin: 0 0 6px; line-height: 1.2; }
+        .td-highlight { color: #16A34A; }
+        .td-jobs-hero-text p { color: #6C757D; font-size: 14px; margin: 0; }
+
+        /* Saved Jobs Button */
+        .td-saved-jobs-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: #DCFCE7;
+          color: #15803D;
+          border: none;
+          border-radius: 50px;
+          padding: 9px 18px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          font-family: inherit;
+          transition: background 0.15s ease;
+        }
+        .td-saved-jobs-btn:hover { background: #BBF7D0; }
+
+        /* Search Bar */
+        .td-desktop-search {
+          display: flex;
+          align-items: center;
+          gap: 0;
+          background: #fff;
+          border-radius: 12px;
+          border: 1px solid #E5E7EB;
+          overflow: hidden;
+        }
+        .td-search-input-group {
+          flex: 1;
+          display: flex;
+          align-items: center;
+          padding: 14px 18px;
+          gap: 10px;
+          background: transparent;
+          border: none;
+        }
+        .td-search-input-group input { border: none; background: transparent; outline: none; width: 100%; font-size: 14px; color: #111; }
+        .td-search-input-group input::placeholder { color: #9CA3AF; }
+        .td-search-divider { width: 1px; height: 28px; background: #E5E7EB; flex-shrink: 0; }
+        .td-search-icon { color: #6C757D; flex-shrink: 0; }
+        .td-btn-primary {
+          background: #15803D;
+          color: white;
+          border: none;
+          padding: 14px 26px;
+          font-weight: 700;
+          font-size: 14px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          cursor: pointer;
+          transition: background 0.2s;
+          white-space: nowrap;
+          font-family: inherit;
+          border-radius: 0 12px 12px 0;
+        }
+        .td-btn-primary:hover { background: #166534; }
+        .td-interactive-input { border: none; background: transparent; outline: none; width: 100%; font-size: 14px; }
+        .td-interactive-input:focus { color: #15803D; }
+
         .td-mobile-jobs-search { display: none; }
 
+        /* Layout */
         .td-jobs-layout { display: flex; gap: 32px; align-items: flex-start; }
-        .td-jobs-filters { width: 260px; flex-shrink: 0; }
-        .td-filter-header { display: flex; justify-content: space-between; margin-bottom: 24px; align-items: center; }
-        .td-filter-header h3 { font-size: 16px; font-weight: 800; }
-        .td-clear-btn { background: none; border: none; color: #1CCB43; font-size: 12px; font-weight: 600; cursor: pointer; }
-        
-        .td-filter-group { margin-bottom: 32px; }
-        .td-filter-group h4 { font-size: 12px; color: #6C757D; font-weight: 800; margin-bottom: 16px; letter-spacing: 0.5px; }
-        .td-checkbox-label { display: flex; align-items: center; gap: 12px; font-size: 14px; color: #495057; margin-bottom: 12px; cursor: pointer; }
-        .td-checkbox-custom { width: 20px; height: 20px; border-radius: 6px; border: 2px solid #DEE2E6; display: flex; align-items: center; justify-content: center; }
-        .td-checkbox-custom.td-checked { background: #1CCB43; border-color: #1CCB43; color: white; }
-        
+
+        /* Filters sidebar */
+        .td-jobs-filters { width: 220px; flex-shrink: 0; }
+        .td-filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+        .td-filter-header h3 { font-size: 15px; font-weight: 800; color: #111; margin: 0; }
+        .td-clear-btn { background: none; border: none; color: #16A34A; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
+
+        .td-filter-group { margin-bottom: 28px; }
+        .td-filter-group h4 { font-size: 11px; color: #6C757D; font-weight: 800; margin: 0 0 14px; letter-spacing: 0.6px; text-transform: uppercase; }
+        .td-checkbox-label { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: #374151; margin-bottom: 12px; cursor: pointer; user-select: none; }
+        .td-checkbox-custom { width: 20px; height: 20px; border-radius: 50%; border: 2px solid #D1D5DB; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+        .td-checkbox-custom.td-checked { background: #15803D; border-color: #15803D; color: white; }
+
         .td-filter-tags { display: flex; flex-wrap: wrap; gap: 8px; }
-        .td-tag { padding: 8px 16px; border-radius: 20px; background: #E9ECEF; color: #495057; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .td-tag-active { background: #B5F0A5; color: #111; }
-        
-        .td-progress-scroll-wrapper { position: relative; padding-top: 10px; }
+        .td-tag { padding: 7px 14px; border-radius: 20px; background: #F3F4F6; color: #374151; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: 1.5px solid transparent; }
+        .td-tag:hover { border-color: #D1FAE5; background: #ECFDF5; }
+        .td-tag-active { background: #DCFCE7; color: #15803D; border-color: #86EFAC; }
+
+        .td-progress-scroll-wrapper { padding-top: 4px; }
         .td-progress-scroll-input {
           -webkit-appearance: none;
           width: 100%;
-          height: 6px;
-          background: #DEE2E6;
+          height: 4px;
+          background: #E5E7EB;
           border-radius: 3px;
           outline: none;
-          margin-bottom: 12px;
+          margin-bottom: 10px;
         }
         .td-progress-scroll-input::-webkit-slider-thumb {
           -webkit-appearance: none;
-          appearance: none;
-          width: 20px;
-          height: 20px;
+          width: 18px;
+          height: 18px;
           background: white;
-          border: 3px solid #1CCB43;
+          border: 2.5px solid #15803D;
           border-radius: 50%;
           cursor: pointer;
-          transition: 0.2s;
-        }
-        .td-progress-scroll-input::-webkit-slider-thumb:hover {
-          transform: scale(1.2);
-          box-shadow: 0 0 10px rgba(28,203,67,0.4);
-        }
-        .td-progress-scroll-input::-moz-range-thumb {
-          width: 20px;
-          height: 20px;
-          background: white;
-          border: 3px solid #1CCB43;
-          border-radius: 50%;
-          cursor: pointer;
-          transition: 0.2s;
-        }
-        .td-progress-scroll-input::-moz-range-thumb:hover {
-          transform: scale(1.2);
         }
         .td-range-labels { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; color: #111; }
-        
-        .td-interactive-input { border: none; background: transparent; outline: none; width: 100%; font-size: 14px; transition: 0.3s; }
-        .td-interactive-input:focus { color: #1CCB43; }
-        .td-search-input-group { border: 2px solid transparent; transition: 0.3s; }
-        .td-search-input-group:focus-within { border-color: #1CCB43; background: #fff; box-shadow: 0 4px 12px rgba(28,203,67,0.1); }
 
-        .td-jobs-list-container { flex: 1; }
-        .td-jobs-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .td-desktop-showing { font-size: 14px; color: #6C757D; }
-        .td-sort-by { font-size: 14px; color: #6C757D; display: flex; align-items: center; gap: 8px; }
+        /* Job Cards List */
+        .td-jobs-list-container { flex: 1; min-width: 0; }
+        .td-jobs-list-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .td-desktop-showing { font-size: 13.5px; color: #6C757D; }
+        .td-sort-by { font-size: 13.5px; color: #6C757D; display: flex; align-items: center; }
         .td-mobile-showing { display: none; }
-        
-        .td-feed-list { display: flex; flex-direction: column; gap: 16px; }
-        .td-feed-card { background: white; border-radius: 24px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 16px; border: 1px solid #E9ECEF; }
-        .td-fc-header { display: flex; gap: 16px; }
-        .td-fc-icon-wrapper { flex-shrink: 0; }
-        .td-fc-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .td-bg-gray { background: #E9ECEF; }
-        .td-bg-gold { background: #E5D59F; }
-        .td-bg-purple { background: #D0C6F5; }
-        .td-fc-main-info { flex: 1; }
-        .td-fc-title-row { display: flex; justify-content: space-between; align-items: flex-start; }
-        .td-fc-title-row h3 { font-size: 18px; font-weight: 700; color: #111; margin-bottom: 4px; }
-        .td-bookmark-btn { background: none; border: none; color: #ADB5BD; font-size: 20px; cursor: pointer; }
-        .td-fc-school { font-size: 13px; color: #6C757D; font-weight: 500; }
-        .td-dot { margin: 0 6px; color: #DEE2E6; }
-        .td-fc-badge-desktop { display: flex; align-items: flex-start; }
-        .td-badge-featured { background: #B5F0A5; color: #111; font-size: 11px; font-weight: 800; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 4px; }
-        
-        .td-fc-meta { display: flex; gap: 24px; align-items: center; margin-left: 64px; }
-        .td-fc-meta-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #6C757D; font-weight: 600; }
-        
-        .td-fc-footer { display: flex; justify-content: space-between; align-items: center; margin-left: 64px; }
-        .td-fc-salary { font-size: 18px; font-weight: 800; color: #111; }
-        .td-fc-salary span { font-size: 13px; color: #6C757D; font-weight: 500; }
-        .td-fc-action { background: #0b7a24; color: white; border: none; padding: 10px 24px; border-radius: 24px; font-weight: 700; cursor: pointer; transition: 0.2s; }
-        .td-fc-action:hover { background: #09611c; }
 
+        .td-feed-list { display: flex; flex-direction: column; gap: 16px; }
+        .td-feed-card {
+          background: #FFFFFF;
+          border-radius: 16px;
+          padding: 24px;
+          border: 1px solid #E9ECEF;
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+        }
+
+        /* Card header */
+        .td-fc-header { display: flex; align-items: flex-start; gap: 16px; }
+        .td-fc-icon-wrapper { flex-shrink: 0; }
+        .td-fc-icon {
+          width: 48px;
+          height: 48px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #F3F4F6;
+        }
+        .td-bg-gray { background: #F3F4F6; }
+        .td-fc-main-info { flex: 1; min-width: 0; }
+        .td-fc-main-info h3 { font-size: 17px; font-weight: 700; color: #111; margin: 0 0 4px; }
+        .td-fc-school { font-size: 13px; color: #6C757D; margin: 0; }
+        .td-fc-school strong { color: #374151; font-weight: 600; }
+        .td-dot { margin: 0 6px; color: #D1D5DB; }
+        .td-fc-badge-desktop { flex-shrink: 0; }
+        .td-badge-featured {
+          background: #DCFCE7;
+          color: #15803D;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 5px 12px;
+          border-radius: 50px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+        }
+
+        /* Meta row */
+        .td-fc-meta { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+        .td-fc-meta-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #374151; font-weight: 500; }
+
+        /* Footer actions */
+        .td-fc-footer { display: flex; align-items: center; }
+        .td-fc-footer-actions { display: flex; align-items: center; gap: 12px; }
+        .td-fc-action {
+          background: #15803D;
+          color: white;
+          border: none;
+          padding: 10px 22px;
+          border-radius: 50px;
+          font-weight: 700;
+          font-size: 13.5px;
+          cursor: pointer;
+          transition: background 0.2s;
+          font-family: inherit;
+        }
+        .td-fc-action:hover { background: #166534; }
+        .td-bookmark-btn {
+          background: #FFFFFF;
+          border: 1.5px solid #E5E7EB;
+          color: #9CA3AF;
+          border-radius: 50px;
+          width: 42px;
+          height: 38px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s ease;
+        }
+        .td-bookmark-btn:hover {
+          border-color: #15803D;
+          color: #15803D;
+        }
+        .td-bookmark-btn--saved {
+          background: #DCFCE7;
+          border-color: #86EFAC;
+          color: #15803D;
+        }
+
+        /* Load More */
         .td-load-more-container { text-align: center; margin-top: 32px; }
-        .td-load-more-btn { background: transparent; border: 2px solid #0b7a24; color: #0b7a24; padding: 12px 32px; border-radius: 24px; font-weight: 700; font-size: 14px; cursor: pointer; margin-bottom: 12px; }
-        .td-load-more-container p { font-size: 13px; color: #6C757D; }
+        .td-load-more-btn {
+          background: transparent;
+          border: 2px solid #15803D;
+          color: #15803D;
+          padding: 12px 32px;
+          border-radius: 50px;
+          font-weight: 700;
+          font-size: 14px;
+          cursor: pointer;
+          margin-bottom: 12px;
+          font-family: inherit;
+          transition: all 0.15s;
+        }
+        .td-load-more-btn:hover { background: #15803D; color: white; }
+        .td-load-more-container p { font-size: 13px; color: #6C757D; margin: 0; }
 
         .td-mobile-only { display: none; }
 
@@ -4572,21 +5017,21 @@ export default function TeacherDashboard() {
           .td-mobile-bottomnav { display: flex; }
 
           /* Job Feeds Mobile */
-          .td-jobs-hero { margin-bottom: 24px; }
-          .td-jobs-hero h1 { font-size: 32px; font-weight: 800; color: #1E293B; letter-spacing: -0.6px; line-height: 1.2; margin-bottom: 20px; }
+          .td-jobs-hero { margin-bottom: 20px; }
+          .td-jobs-hero h1 { font-size: 30px; font-weight: 800; color: #1E293B; letter-spacing: -0.6px; line-height: 1.25; margin-bottom: 18px; }
           .td-jobs-hero p { display: none; }
           .td-desktop-search { display: none; }
           .td-mobile-jobs-search { display: block; }
           
           .td-search-box-mobile {
-            background: #E2E8F0;
-            border-radius: 9999px;
+            background: #E5E7EB;
+            border-radius: 50px;
             display: flex;
             align-items: center;
-            padding: 14px 20px;
-            margin-bottom: 16px;
+            padding: 13px 20px;
+            margin-bottom: 14px;
           }
-          .td-search-box-mobile .td-search-icon { color: #64748B; }
+          .td-search-box-mobile .td-search-icon { color: #64748B; flex-shrink: 0; }
           .td-search-box-mobile input {
             border: none;
             background: transparent;
@@ -4595,6 +5040,7 @@ export default function TeacherDashboard() {
             width: 100%;
             font-size: 14px;
             color: #1E293B;
+            font-family: inherit;
           }
           .td-search-box-mobile input::placeholder {
             color: #64748B;
@@ -4604,33 +5050,34 @@ export default function TeacherDashboard() {
             display: flex;
             gap: 10px;
             overflow-x: auto;
-            padding-bottom: 8px;
+            padding-bottom: 4px;
           }
           .td-filter-chip {
             display: flex;
             align-items: center;
             gap: 6px;
-            padding: 8px 18px;
-            border-radius: 9999px;
-            font-size: 12px;
+            padding: 9px 18px;
+            border-radius: 50px;
+            font-size: 13px;
             font-weight: 700;
             white-space: nowrap;
             flex-shrink: 0;
             cursor: pointer;
             border: none;
             outline: none;
+            font-family: inherit;
           }
           .td-chip-active-green {
-            background: #1B5E20;
+            background: #15803D;
             color: #ffffff;
           }
           .td-chip-active-lightgreen {
             background: #DCFCE7;
-            color: #166534;
+            color: #15803D;
           }
           .td-chip-soft {
             background: #F1F5F9;
-            color: #334155;
+            color: #374151;
           }
 
           .td-jobs-filters { display: none; }
@@ -4642,14 +5089,14 @@ export default function TeacherDashboard() {
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            margin-bottom: 20px;
-            margin-top: 12px;
+            margin-bottom: 18px;
+            margin-top: 10px;
           }
           .td-mobile-rec-info h3 {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 800;
             color: #1E293B;
-            margin-bottom: 2px;
+            margin: 0 0 2px;
           }
           .td-mobile-rec-info span {
             font-size: 11px;
@@ -4660,16 +5107,17 @@ export default function TeacherDashboard() {
           }
           .td-mobile-saved-btn {
             background: #DCFCE7;
-            color: #166534;
+            color: #15803D;
             border: none;
             padding: 8px 16px;
-            border-radius: 12px;
+            border-radius: 50px;
             font-size: 12px;
             font-weight: 700;
             display: flex;
             align-items: center;
             gap: 6px;
             cursor: pointer;
+            font-family: inherit;
           }
 
           /* Job Cards list on Mobile */
@@ -4679,44 +5127,49 @@ export default function TeacherDashboard() {
 
           /* Standard Job Card on Mobile */
           .td-feed-card-standard {
-            background: #fff;
-            border-radius: 28px;
-            padding: 22px 20px;
+            background: #FFFFFF;
+            border-radius: 24px;
+            padding: 20px 18px;
             border: 1px solid #EEF2F6;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.02);
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            gap: 12px;
           }
           .td-feed-card-standard .td-fc-header {
             display: flex;
-            gap: 14px;
+            gap: 12px;
             align-items: flex-start;
           }
           .td-feed-card-standard .td-fc-icon-wrapper {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #F1F5F9;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             flex-shrink: 0;
           }
           .td-feed-card-standard .td-fc-icon {
-            width: 46px;
-            height: 46px;
-            border-radius: 14px;
-            background: #2D3748;
-            color: #fff;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
           }
+          .td-feed-card-standard .td-fc-icon.td-bg-darkgreen {
+            background: #1B3F35;
+            color: #ffffff;
+          }
           .td-feed-card-standard .td-fc-icon.td-bg-gold {
             background: #A38C52;
-            color: #fff;
+            color: #ffffff;
           }
           .td-feed-card-standard .td-fc-icon.td-bg-gray {
-            background: #2E473F;
-            color: #fff;
-          }
-          .td-feed-card-standard .td-fc-icon.td-bg-purple {
-            background: #4A3A5A;
-            color: #fff;
+            background: #2D3748;
+            color: #ffffff;
           }
           .td-feed-card-standard .td-fc-title-row {
             display: flex;
@@ -4725,44 +5178,54 @@ export default function TeacherDashboard() {
             margin-bottom: 2px;
           }
           .td-feed-card-standard .td-fc-title-row h3 {
-            font-size: 15px;
+            font-size: 15.5px;
             font-weight: 800;
             color: #1E293B;
             line-height: 1.3;
+            margin: 0;
           }
           .td-feed-card-standard .td-bookmark-btn {
-            color: #64748B;
-            font-size: 16px;
+            background: transparent;
+            border: none;
+            color: #94A3B8;
+            font-size: 18px;
             padding: 0;
             margin-left: 8px;
+            cursor: pointer;
+            width: auto;
+            height: auto;
+          }
+          .td-feed-card-standard .td-bookmark-btn--saved {
+            color: #15803D;
           }
           .td-feed-card-standard .td-fc-school {
-            font-size: 12px;
+            font-size: 12.5px;
             color: #64748B;
             font-weight: 500;
+            margin: 0;
           }
           .td-feed-card-standard .td-fc-meta {
             margin-left: 0;
             margin-top: 0;
             display: flex;
-            gap: 16px;
+            gap: 14px;
             align-items: center;
           }
           .td-feed-card-standard .td-fc-meta-item {
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 11px;
+            font-size: 12px;
             color: #475569;
             font-weight: 600;
           }
           .td-feed-card-standard .td-fc-meta-tag {
             margin-left: auto;
-            background: #F1F5F9;
+            background: #DCFCE7;
             color: #15803D;
-            font-size: 9px;
+            font-size: 10px;
             font-weight: 800;
-            padding: 4px 8px;
+            padding: 3px 8px;
             border-radius: 6px;
             letter-spacing: 0.5px;
           }
@@ -4774,34 +5237,35 @@ export default function TeacherDashboard() {
             align-items: center;
           }
           .td-feed-card-standard .td-fc-salary {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 800;
             color: #15803D;
           }
           .td-feed-card-standard .td-fc-salary span {
-            font-size: 11px;
+            font-size: 11.5px;
             color: #64748B;
             font-weight: 500;
           }
           .td-feed-card-standard .td-fc-action {
-            background: #1B5E20;
+            background: #15803D;
             color: #ffffff;
             border: none;
-            padding: 10px 22px;
-            border-radius: 9999px;
+            padding: 9px 20px;
+            border-radius: 50px;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 12.5px;
             cursor: pointer;
+            font-family: inherit;
           }
 
           /* Hot Card on Mobile */
           .td-feed-card-hot {
-            background: linear-gradient(135deg, #1B5E20 0%, #0F3E14 100%);
+            background: linear-gradient(135deg, #15803D 0%, #0F3E14 100%);
             color: white;
-            border-radius: 28px;
-            padding: 24px 20px;
+            border-radius: 24px;
+            padding: 22px 18px;
             border: none;
-            box-shadow: 0 10px 25px rgba(27, 94, 32, 0.25);
+            box-shadow: 0 10px 25px rgba(21, 128, 61, 0.25);
             display: flex;
             flex-direction: column;
             gap: 8px;
@@ -4829,18 +5293,19 @@ export default function TeacherDashboard() {
           .td-hot-title {
             font-size: 18px;
             color: white;
-            margin-bottom: 2px;
+            margin: 0 0 2px;
             font-weight: 800;
             line-height: 1.3;
           }
           .td-hot-school {
             color: rgba(255,255,255,0.8);
-            font-size: 12px;
+            font-size: 12.5px;
             font-weight: 500;
+            margin: 0;
           }
           .td-feed-card-hot .td-dot { color: rgba(255,255,255,0.4); }
           .td-hot-salary-range {
-            font-size: 9px;
+            font-size: 9.5px;
             color: rgba(255,255,255,0.65);
             font-weight: 800;
             margin-top: 14px;
@@ -4860,13 +5325,14 @@ export default function TeacherDashboard() {
           }
           .td-hot-action {
             background: #ffffff;
-            color: #1B5E20;
+            color: #15803D;
             border: none;
-            padding: 10px 24px;
-            border-radius: 9999px;
+            padding: 9px 22px;
+            border-radius: 50px;
             font-weight: 800;
-            font-size: 12px;
+            font-size: 12.5px;
             cursor: pointer;
+            font-family: inherit;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
           }
 
@@ -6902,6 +7368,588 @@ export default function TeacherDashboard() {
           margin: 0;
           line-height: 1.45;
         }
+
+        /* ── Security & Login Activity Subtab ── */
+        .td-sec-wrap {
+          width: 100%;
+          max-width: 860px;
+        }
+        .td-sec-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #111827;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 24px;
+          transition: color 0.15s;
+        }
+        .td-sec-breadcrumb:hover { color: #10b981; }
+        .td-sec-top-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin-bottom: 20px;
+          position: relative;
+          overflow: hidden;
+        }
+        .td-sec-top-title {
+          font-size: 26px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-sec-top-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.5;
+        }
+        .td-sec-deco-circle {
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: #E6FAF5;
+          flex-shrink: 0;
+          margin-left: 16px;
+          margin-top: -20px;
+        }
+        .td-sec-pwd-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 16px;
+          padding: 20px 24px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 16px;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.02);
+        }
+        .td-sec-pwd-left {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-sec-pwd-title-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .td-sec-pwd-icon {
+          color: #6B7280;
+        }
+        .td-sec-pwd-title {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-sec-pwd-dots {
+          font-size: 18px;
+          letter-spacing: 2px;
+          color: #374151;
+          font-weight: 700;
+          line-height: 1.2;
+        }
+        .td-sec-pwd-last {
+          font-size: 12.5px;
+          color: #9CA3AF;
+        }
+        .td-sec-btn {
+          padding: 10px 22px;
+          border-radius: 50px;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          border: none;
+          transition: all 0.18s;
+        }
+        .td-sec-btn--green {
+          background: #15803D;
+          color: #fff;
+        }
+        .td-sec-btn--green:hover {
+          background: #166534;
+        }
+        .td-sec-btn--darkgreen {
+          background: #004D2C;
+          color: #fff;
+          padding: 11px 24px;
+        }
+        .td-sec-btn--darkgreen:hover {
+          background: #003B22;
+        }
+        .td-sec-info-banner {
+          background: #F0F4FF;
+          border-radius: 16px;
+          padding: 18px 20px;
+          display: flex;
+          align-items: flex-start;
+          gap: 14px;
+          margin-bottom: 32px;
+        }
+        .td-sec-info-icon-wrap {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #E6FAF5;
+          color: #10b981;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          margin-top: 2px;
+        }
+        .td-sec-info-title {
+          font-size: 13.5px;
+          font-weight: 700;
+          color: #111;
+          margin: 0 0 4px 0;
+        }
+        .td-sec-info-desc {
+          font-size: 13px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.5;
+        }
+        .td-sec-section-spacer {
+          height: 8px;
+          margin-bottom: 24px;
+        }
+        .td-sec-main-header {
+          margin-bottom: 20px;
+        }
+        .td-sec-main-title {
+          font-size: 26px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 6px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-sec-main-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+        }
+        .td-sec-auth-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 24px;
+          position: relative;
+          overflow: hidden;
+          margin-bottom: 20px;
+        }
+        .td-sec-watermark-lock {
+          position: absolute;
+          right: 28px;
+          top: 50%;
+          transform: translateY(-50%);
+          opacity: 0.08;
+          color: #111;
+          pointer-events: none;
+        }
+        .td-sec-card-title-row {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 18px;
+        }
+        .td-sec-green-icon {
+          color: #005A36;
+          display: flex;
+          align-items: center;
+        }
+        .td-sec-card-heading {
+          font-size: 17px;
+          font-weight: 700;
+          color: #111;
+          margin: 0;
+        }
+        .td-sec-auth-body {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 24px;
+          flex-wrap: wrap;
+          position: relative;
+          z-index: 1;
+        }
+        .td-sec-auth-col {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-sec-col-label {
+          font-size: 11.5px;
+          font-weight: 700;
+          color: #9CA3AF;
+          letter-spacing: 0.5px;
+        }
+        .td-sec-col-value {
+          font-size: 16px;
+          font-weight: 700;
+          color: #111;
+        }
+        .td-sec-col-hint {
+          font-size: 12.5px;
+          color: #6B7280;
+        }
+        .td-sec-2fa-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          background: #FEE2E2;
+          color: #DC2626;
+          font-size: 12px;
+          font-weight: 700;
+          padding: 4px 10px;
+          border-radius: 50px;
+          width: fit-content;
+          margin-top: 2px;
+        }
+        .td-sec-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 24px;
+          margin-bottom: 20px;
+        }
+        .td-sec-devices-icon {
+          color: #005A36;
+          display: flex;
+          align-items: center;
+        }
+        .td-sec-sessions-list {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+        .td-sec-session-item {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 16px 20px;
+          border-radius: 14px;
+          border: 1px solid #E5E7EB;
+          background: #fff;
+        }
+        .td-sec-session-item--current {
+          background: #F0F6FF;
+          border-color: #E0E7FF;
+        }
+        .td-sec-session-icon {
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          background: #EFF6FF;
+          color: #2563EB;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .td-sec-session-info {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .td-sec-session-name-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .td-sec-session-name {
+          font-size: 14.5px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-sec-curr-badge {
+          background: #004D2C;
+          color: #fff;
+          font-size: 10px;
+          font-weight: 800;
+          padding: 2px 7px;
+          border-radius: 50px;
+          letter-spacing: 0.4px;
+        }
+        .td-sec-session-ip {
+          font-size: 12.5px;
+          color: #6B7280;
+        }
+        .td-sec-session-status {
+          font-size: 12px;
+          color: #9CA3AF;
+        }
+        .td-sec-signout-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #DC2626;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 6px 10px;
+          border-radius: 8px;
+          transition: background 0.15s;
+        }
+        .td-sec-signout-btn:hover {
+          background: #FEE2E2;
+        }
+        .td-sec-recent-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 18px;
+        }
+        .td-sec-view-log-btn {
+          background: none;
+          border: none;
+          color: #111827;
+          font-size: 12.5px;
+          font-weight: 600;
+          cursor: pointer;
+          text-decoration: underline;
+          padding: 0;
+        }
+        .td-sec-timeline {
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          padding-left: 8px;
+        }
+        .td-sec-timeline-item {
+          display: flex;
+          align-items: flex-start;
+          position: relative;
+          padding-bottom: 24px;
+          padding-left: 24px;
+          border-left: 2px solid #E5E7EB;
+          margin-left: 6px;
+        }
+        .td-sec-timeline-item--last {
+          border-left-color: transparent;
+          padding-bottom: 0;
+        }
+        .td-sec-timeline-dot {
+          position: absolute;
+          left: -7px;
+          top: 3px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #fff;
+          border: 3px solid #10B981;
+        }
+        .td-sec-dot--green {
+          border-color: #10B981;
+        }
+        .td-sec-dot--red {
+          border-color: #DC2626;
+        }
+        .td-sec-timeline-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .td-sec-log-title {
+          font-size: 14px;
+          font-weight: 600;
+          color: #111;
+        }
+        .td-sec-log-title--red {
+          color: #DC2626;
+        }
+        .td-sec-log-device {
+          font-size: 12.5px;
+          color: #4B5563;
+        }
+        .td-sec-log-location {
+          font-size: 12px;
+          color: #9CA3AF;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .td-sec-timeline-meta {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 4px;
+        }
+        .td-sec-log-time {
+          font-size: 12px;
+          color: #6B7280;
+        }
+        .td-sec-ip-pill {
+          background: #F1F5F9;
+          color: #475569;
+          font-size: 11.5px;
+          font-family: monospace;
+          font-weight: 600;
+          padding: 3px 8px;
+          border-radius: 6px;
+        }
+        .td-sec-ip-pill--red {
+          background: #FEE2E2;
+          color: #DC2626;
+        }
+
+        /* ── Legal Subtab ── */
+        .td-legal-wrap {
+          width: 100%;
+          max-width: 860px;
+        }
+        .td-legal-breadcrumb {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #111827;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 24px;
+          transition: color 0.15s;
+        }
+        .td-legal-breadcrumb:hover { color: #10b981; }
+        .td-legal-header {
+          margin-bottom: 28px;
+        }
+        .td-legal-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #111;
+          margin: 0 0 8px 0;
+          letter-spacing: -0.5px;
+        }
+        .td-legal-subtitle {
+          font-size: 14px;
+          color: #6B7280;
+          margin: 0;
+          line-height: 1.55;
+        }
+        .td-legal-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 18px;
+          margin-bottom: 24px;
+        }
+        @media (max-width: 860px) {
+          .td-legal-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .td-legal-card {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 24px 20px;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+          transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .td-legal-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+        }
+        .td-legal-card-icon-wrap {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          background: #EEF7FF;
+          color: #005A36;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+          flex-shrink: 0;
+        }
+        .td-legal-card-title {
+          font-size: 17px;
+          font-weight: 700;
+          color: #111;
+          margin: 0 0 10px 0;
+        }
+        .td-legal-card-desc {
+          font-size: 13px;
+          color: #6B7280;
+          line-height: 1.5;
+          margin: 0 0 20px 0;
+          flex: 1;
+        }
+        .td-legal-card-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #005A36;
+          font-size: 13.5px;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 0;
+          margin-top: auto;
+          width: fit-content;
+          transition: gap 0.15s;
+        }
+        .td-legal-card-link:hover {
+          gap: 9px;
+        }
+        .td-legal-help-banner {
+          background: #F0F4FF;
+          border: 1px solid #E0E7FF;
+          border-radius: 16px;
+          padding: 22px 28px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          flex-wrap: wrap;
+        }
+        .td-legal-help-text {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-legal-help-title {
+          font-size: 16.5px;
+          font-weight: 700;
+          color: #111;
+          margin: 0;
+        }
+        .td-legal-help-desc {
+          font-size: 13px;
+          color: #6B7280;
+          margin: 0;
+        }
+        .td-legal-contact-btn {
+          border: 1.5px solid #111827;
+          background: transparent;
+          border-radius: 8px;
+          padding: 9px 20px;
+          font-size: 13.5px;
+          font-weight: 600;
+          color: #111;
+          cursor: pointer;
+          transition: all 0.15s;
+          white-space: nowrap;
+        }
+        .td-legal-contact-btn:hover {
+          background: #111827;
+          color: #fff;
+        }
         .td-settings-subtab-placeholder {
           background: #fff;
           border: 2px dashed #E5E7EB;
@@ -8489,106 +9537,6 @@ export default function TeacherDashboard() {
           margin: 0 0 2px;
         }
 
-        .td-prof-edu-inst {
-          font-size: 12.5px;
-          color: #64748B;
-          margin: 0 0 2px;
-        }
-
-        .td-prof-edu-period {
-          font-size: 11.5px;
-          color: #94A3B8;
-          font-weight: 500;
-        }
-
-        .td-prof-trcn-box {
-          background: #F0FDF4;
-          border: 1px solid #DCFCE7;
-          border-radius: 10px;
-          padding: 12px 16px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
-
-        .td-prof-trcn-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .td-prof-trcn-left h4 {
-          font-size: 13px;
-          font-weight: 700;
-          color: #0F172A;
-          margin: 0 0 2px;
-        }
-
-        .td-prof-trcn-left p {
-          font-size: 11.5px;
-          color: #64748B;
-          margin: 0;
-        }
-
-        .td-prof-active-badge {
-          background: #DCFCE7;
-          color: #15803D;
-          font-size: 10.5px;
-          font-weight: 700;
-          padding: 3px 8px;
-          border-radius: 6px;
-        }
-
-        .td-prof-downloads-col {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          margin-top: 14px;
-        }
-
-        .td-prof-download-btn {
-          width: 100%;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          border-radius: 8px;
-          padding: 10px 14px;
-          font-size: 12.5px;
-          font-weight: 600;
-          color: #334155;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          font-family: inherit;
-        }
-
-        .td-prof-download-btn:hover {
-          background: #F1F5F9;
-          border-color: #CBD5E1;
-        }
-
-        @media (max-width: 900px) {
-          .td-prof-view-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .td-prof-hero-content {
-            flex-direction: column;
-            text-align: center;
-          }
-          .td-prof-hero-name-row {
-            justify-content: center;
-          }
-          .td-prof-hero-meta-row {
-            justify-content: center;
-          }
-        }
-
         /* ═══════════════════════════════════════
            EXACT PERSONAL INFO TAB DESIGN
         ═══════════════════════════════════════ */
@@ -8641,20 +9589,16 @@ export default function TeacherDashboard() {
         .td-pers-card {
           background: #FFFFFF;
           border-radius: 16px;
-          border: 1px solid #E2E8F0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
-          padding: 36px 36px 32px;
+          border: 1px solid #E9ECEF;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+          padding: 32px 32px 28px;
         }
 
         .td-pers-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 24px 28px;
-          margin-bottom: 36px;
-        }
-
-        .td-pers-empty-cell {
-          display: block;
+          gap: 20px 24px;
+          margin-bottom: 20px;
         }
 
         .td-pers-field-group {
@@ -8666,16 +9610,16 @@ export default function TeacherDashboard() {
         .td-pers-label {
           font-size: 13px;
           font-weight: 700;
-          color: #334155;
+          color: #111827;
         }
 
         .td-pers-input {
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
+          background: #FFFFFF;
+          border: 1.5px solid #E5E7EB;
           border-radius: 8px;
           padding: 12px 16px;
           font-size: 14px;
-          color: #334155;
+          color: #111827;
           font-family: inherit;
           font-weight: 500;
           outline: none;
@@ -8684,50 +9628,8 @@ export default function TeacherDashboard() {
         }
 
         .td-pers-input:focus {
-          background: #FFFFFF;
           border-color: #10B981;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .td-pers-phone-wrap {
-          display: flex;
-          align-items: center;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          border-radius: 8px;
-          padding: 0 16px;
-          transition: all 0.2s ease;
-        }
-
-        .td-pers-phone-wrap:focus-within {
-          background: #FFFFFF;
-          border-color: #10B981;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .td-pers-phone-prefix {
-          font-size: 14px;
-          color: #334155;
-          font-weight: 500;
-        }
-
-        .td-pers-phone-divider {
-          width: 1px;
-          height: 20px;
-          background: #CBD5E1;
-          margin: 0 12px;
-        }
-
-        .td-pers-phone-input {
-          border: none;
-          background: transparent;
-          padding: 12px 0;
-          font-size: 14px;
-          color: #334155;
-          font-family: inherit;
-          font-weight: 500;
-          outline: none;
-          width: 100%;
         }
 
         .td-pers-select-wrap {
@@ -8738,12 +9640,12 @@ export default function TeacherDashboard() {
         .td-pers-select {
           appearance: none;
           -webkit-appearance: none;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
+          background: #FFFFFF;
+          border: 1.5px solid #E5E7EB;
           border-radius: 8px;
           padding: 12px 40px 12px 16px;
           font-size: 14px;
-          color: #334155;
+          color: #111827;
           font-family: inherit;
           font-weight: 500;
           outline: none;
@@ -8753,7 +9655,6 @@ export default function TeacherDashboard() {
         }
 
         .td-pers-select:focus {
-          background: #FFFFFF;
           border-color: #10B981;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
@@ -8767,21 +9668,98 @@ export default function TeacherDashboard() {
           pointer-events: none;
         }
 
+        .td-pers-contact-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 18px 22px;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          margin-bottom: 16px;
+          background: #FFFFFF;
+        }
+
+        .td-pers-contact-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .td-pers-contact-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .td-pers-contact-icon {
+          color: #6B7280;
+        }
+
+        .td-pers-contact-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .td-pers-contact-value {
+          font-size: 14.5px;
+          color: #374151;
+          font-weight: 500;
+        }
+
+        .td-pers-contact-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          margin-top: 2px;
+        }
+
+        .td-pers-badge--info {
+          color: #6B7280;
+        }
+
+        .td-pers-badge--verified {
+          color: #10B981;
+          font-weight: 600;
+        }
+
+        .td-pers-contact-btn {
+          border: 1.5px solid #111827;
+          background: transparent;
+          border-radius: 50px;
+          padding: 9px 20px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #111827;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+          font-family: inherit;
+        }
+
+        .td-pers-contact-btn:hover {
+          background: #111827;
+          color: #FFFFFF;
+        }
+
         .td-pers-actions-row {
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 14px;
+          gap: 12px;
+          margin-top: 28px;
         }
 
         .td-pers-cancel-btn {
           background: #FFFFFF;
-          border: 1.5px solid #CBD5E1;
-          border-radius: 10px;
+          border: 1.5px solid #D1D5DB;
+          border-radius: 50px;
           padding: 10px 24px;
           font-size: 13.5px;
           font-weight: 600;
-          color: #334155;
+          color: #374151;
           cursor: pointer;
           transition: all 0.15s ease;
           font-family: inherit;
@@ -8796,7 +9774,7 @@ export default function TeacherDashboard() {
           background: #15803D;
           color: #FFFFFF;
           border: none;
-          border-radius: 10px;
+          border-radius: 50px;
           padding: 10px 24px;
           font-size: 13.5px;
           font-weight: 600;
@@ -8808,7 +9786,6 @@ export default function TeacherDashboard() {
 
         .td-pers-save-btn:hover {
           background: #166534;
-          box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
         }
 
         /* ═══════════════════════════════════════
