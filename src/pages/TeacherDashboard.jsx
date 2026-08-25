@@ -2316,24 +2316,6 @@ export default function TeacherDashboard() {
                             />
                           </div>
 
-                          {/* Phone Number */}
-                          <div className="td-pers-field-group">
-                            <label className="td-pers-label">Phone Number</label>
-                            <div className="td-pers-phone-wrap">
-                              <span className="td-pers-phone-prefix">+234</span>
-                              <div className="td-pers-phone-divider" />
-                              <input
-                                type="tel"
-                                className="td-pers-phone-input"
-                                value={personalPhone}
-                                onChange={(e) => setPersonalPhone(e.target.value)}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Empty space placeholder for symmetric layout */}
-                          <div className="td-pers-empty-cell" />
-
                           {/* City/Location */}
                           <div className="td-pers-field-group">
                             <label className="td-pers-label">City/Location</label>
@@ -2368,6 +2350,42 @@ export default function TeacherDashboard() {
                               <FiChevronDown className="td-pers-select-arrow" size={16} />
                             </div>
                           </div>
+                        </div>
+
+                        {/* Phone Number Box Card */}
+                        <div className="td-pers-contact-card">
+                          <div className="td-pers-contact-info">
+                            <div className="td-pers-contact-header">
+                              <FiSmartphone size={15} className="td-pers-contact-icon" />
+                              <span className="td-pers-contact-label">Phone Number</span>
+                            </div>
+                            <div className="td-pers-contact-value">{personalPhone}</div>
+                            <div className="td-pers-contact-badge td-pers-badge--info">
+                              <FiInfo size={13} />
+                              <span>Used for 2FA</span>
+                            </div>
+                          </div>
+                          <button type="button" className="td-pers-contact-btn">
+                            Change Phone Number
+                          </button>
+                        </div>
+
+                        {/* Email Address Box Card */}
+                        <div className="td-pers-contact-card">
+                          <div className="td-pers-contact-info">
+                            <div className="td-pers-contact-header">
+                              <FiMail size={15} className="td-pers-contact-icon" />
+                              <span className="td-pers-contact-label">Email Address</span>
+                            </div>
+                            <div className="td-pers-contact-value">esther.egharevba@email.com</div>
+                            <div className="td-pers-contact-badge td-pers-badge--verified">
+                              <FiCheckCircle size={13} />
+                              <span>Verified</span>
+                            </div>
+                          </div>
+                          <button type="button" className="td-pers-contact-btn">
+                            Change Email
+                          </button>
                         </div>
 
                         {/* Action Buttons */}
@@ -9361,106 +9379,6 @@ export default function TeacherDashboard() {
           margin: 0 0 2px;
         }
 
-        .td-prof-edu-inst {
-          font-size: 12.5px;
-          color: #64748B;
-          margin: 0 0 2px;
-        }
-
-        .td-prof-edu-period {
-          font-size: 11.5px;
-          color: #94A3B8;
-          font-weight: 500;
-        }
-
-        .td-prof-trcn-box {
-          background: #F0FDF4;
-          border: 1px solid #DCFCE7;
-          border-radius: 10px;
-          padding: 12px 16px;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-        }
-
-        .td-prof-trcn-left {
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-
-        .td-prof-trcn-left h4 {
-          font-size: 13px;
-          font-weight: 700;
-          color: #0F172A;
-          margin: 0 0 2px;
-        }
-
-        .td-prof-trcn-left p {
-          font-size: 11.5px;
-          color: #64748B;
-          margin: 0;
-        }
-
-        .td-prof-active-badge {
-          background: #DCFCE7;
-          color: #15803D;
-          font-size: 10.5px;
-          font-weight: 700;
-          padding: 3px 8px;
-          border-radius: 6px;
-        }
-
-        .td-prof-downloads-col {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-          margin-top: 14px;
-        }
-
-        .td-prof-download-btn {
-          width: 100%;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          border-radius: 8px;
-          padding: 10px 14px;
-          font-size: 12.5px;
-          font-weight: 600;
-          color: #334155;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          font-family: inherit;
-        }
-
-        .td-prof-download-btn:hover {
-          background: #F1F5F9;
-          border-color: #CBD5E1;
-        }
-
-        @media (max-width: 900px) {
-          .td-prof-view-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .td-prof-hero-content {
-            flex-direction: column;
-            text-align: center;
-          }
-          .td-prof-hero-name-row {
-            justify-content: center;
-          }
-          .td-prof-hero-meta-row {
-            justify-content: center;
-          }
-        }
-
         /* ═══════════════════════════════════════
            EXACT PERSONAL INFO TAB DESIGN
         ═══════════════════════════════════════ */
@@ -9513,20 +9431,16 @@ export default function TeacherDashboard() {
         .td-pers-card {
           background: #FFFFFF;
           border-radius: 16px;
-          border: 1px solid #E2E8F0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
-          padding: 36px 36px 32px;
+          border: 1px solid #E9ECEF;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+          padding: 32px 32px 28px;
         }
 
         .td-pers-grid {
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 24px 28px;
-          margin-bottom: 36px;
-        }
-
-        .td-pers-empty-cell {
-          display: block;
+          gap: 20px 24px;
+          margin-bottom: 20px;
         }
 
         .td-pers-field-group {
@@ -9538,16 +9452,16 @@ export default function TeacherDashboard() {
         .td-pers-label {
           font-size: 13px;
           font-weight: 700;
-          color: #334155;
+          color: #111827;
         }
 
         .td-pers-input {
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
+          background: #FFFFFF;
+          border: 1.5px solid #E5E7EB;
           border-radius: 8px;
           padding: 12px 16px;
           font-size: 14px;
-          color: #334155;
+          color: #111827;
           font-family: inherit;
           font-weight: 500;
           outline: none;
@@ -9556,50 +9470,8 @@ export default function TeacherDashboard() {
         }
 
         .td-pers-input:focus {
-          background: #FFFFFF;
           border-color: #10B981;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .td-pers-phone-wrap {
-          display: flex;
-          align-items: center;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
-          border-radius: 8px;
-          padding: 0 16px;
-          transition: all 0.2s ease;
-        }
-
-        .td-pers-phone-wrap:focus-within {
-          background: #FFFFFF;
-          border-color: #10B981;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .td-pers-phone-prefix {
-          font-size: 14px;
-          color: #334155;
-          font-weight: 500;
-        }
-
-        .td-pers-phone-divider {
-          width: 1px;
-          height: 20px;
-          background: #CBD5E1;
-          margin: 0 12px;
-        }
-
-        .td-pers-phone-input {
-          border: none;
-          background: transparent;
-          padding: 12px 0;
-          font-size: 14px;
-          color: #334155;
-          font-family: inherit;
-          font-weight: 500;
-          outline: none;
-          width: 100%;
         }
 
         .td-pers-select-wrap {
@@ -9610,12 +9482,12 @@ export default function TeacherDashboard() {
         .td-pers-select {
           appearance: none;
           -webkit-appearance: none;
-          background: #F8FAFC;
-          border: 1px solid #E2E8F0;
+          background: #FFFFFF;
+          border: 1.5px solid #E5E7EB;
           border-radius: 8px;
           padding: 12px 40px 12px 16px;
           font-size: 14px;
-          color: #334155;
+          color: #111827;
           font-family: inherit;
           font-weight: 500;
           outline: none;
@@ -9625,7 +9497,6 @@ export default function TeacherDashboard() {
         }
 
         .td-pers-select:focus {
-          background: #FFFFFF;
           border-color: #10B981;
           box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
         }
@@ -9639,21 +9510,98 @@ export default function TeacherDashboard() {
           pointer-events: none;
         }
 
+        .td-pers-contact-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 18px 22px;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          margin-bottom: 16px;
+          background: #FFFFFF;
+        }
+
+        .td-pers-contact-info {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .td-pers-contact-header {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+
+        .td-pers-contact-icon {
+          color: #6B7280;
+        }
+
+        .td-pers-contact-label {
+          font-size: 13px;
+          font-weight: 700;
+          color: #111827;
+        }
+
+        .td-pers-contact-value {
+          font-size: 14.5px;
+          color: #374151;
+          font-weight: 500;
+        }
+
+        .td-pers-contact-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 12px;
+          margin-top: 2px;
+        }
+
+        .td-pers-badge--info {
+          color: #6B7280;
+        }
+
+        .td-pers-badge--verified {
+          color: #10B981;
+          font-weight: 600;
+        }
+
+        .td-pers-contact-btn {
+          border: 1.5px solid #111827;
+          background: transparent;
+          border-radius: 50px;
+          padding: 9px 20px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #111827;
+          cursor: pointer;
+          transition: all 0.15s ease;
+          white-space: nowrap;
+          font-family: inherit;
+        }
+
+        .td-pers-contact-btn:hover {
+          background: #111827;
+          color: #FFFFFF;
+        }
+
         .td-pers-actions-row {
           display: flex;
           align-items: center;
           justify-content: flex-end;
-          gap: 14px;
+          gap: 12px;
+          margin-top: 28px;
         }
 
         .td-pers-cancel-btn {
           background: #FFFFFF;
-          border: 1.5px solid #CBD5E1;
-          border-radius: 10px;
+          border: 1.5px solid #D1D5DB;
+          border-radius: 50px;
           padding: 10px 24px;
           font-size: 13.5px;
           font-weight: 600;
-          color: #334155;
+          color: #374151;
           cursor: pointer;
           transition: all 0.15s ease;
           font-family: inherit;
@@ -9668,7 +9616,7 @@ export default function TeacherDashboard() {
           background: #15803D;
           color: #FFFFFF;
           border: none;
-          border-radius: 10px;
+          border-radius: 50px;
           padding: 10px 24px;
           font-size: 13.5px;
           font-weight: 600;
@@ -9680,7 +9628,6 @@ export default function TeacherDashboard() {
 
         .td-pers-save-btn:hover {
           background: #166534;
-          box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
         }
 
         /* ═══════════════════════════════════════
