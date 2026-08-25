@@ -233,6 +233,9 @@ export default function TeacherDashboard() {
   const [availStartOption, setAvailStartOption] = useState('immediately');
   const [showProfileUpdatedModal, setShowProfileUpdatedModal] = useState(false);
 
+  // ── Settings Subtab state ──
+  const [settingsSubTab, setSettingsSubTab] = useState('overview');
+
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Senior Mathematics Educator');
   const [profSummary, setProfSummary] = useState('Experienced educator with 8+ years focused on WAEC preparation.');
@@ -1561,219 +1564,137 @@ export default function TeacherDashboard() {
           )}
           {activeTab === 'settings' && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-settings-page">
-              <h1 className="td-settings-title">Settings</h1>
 
-              <div className="td-settings-grid">
-                {/* ── LEFT COLUMN ── */}
-                <div className="td-settings-left">
+              {/* ── Settings Overview: 4 Category Boxes ── */}
+              {settingsSubTab === 'overview' && (
+                <>
+                  <h1 className="td-settings-title">Settings</h1>
+                  <div className="td-settings-category-grid">
 
-                  {/* Profile Information */}
-                  <div className="td-settings-card">
-                    <div className="td-settings-card-header">
-                      <div className="td-settings-card-title">
-                        <span className="td-settings-card-icon td-settings-card-icon--green"><FiCheckCircle size={16} /></span>
-                        <h2>Profile Information</h2>
+                    {/* Account Settings */}
+                    <motion.div
+                      whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
+                      className="td-settings-category-card"
+                      onClick={() => setSettingsSubTab('account')}
+                    >
+                      <div className="td-settings-cat-icon-wrap td-settings-cat-icon--teal">
+                        <FiUser size={22} />
                       </div>
-                      <span className="td-settings-badge">PRIMARY IDENTITY</span>
-                    </div>
-                    <div className="td-settings-profile-row">
-                      <div className="td-settings-avatar-wrap">
-                        <img src="https://ui-avatars.com/api/?name=Mrs+Adeola+Olawale&background=A8E6B8&color=1CCB43&size=120" alt="Profile" className="td-settings-avatar" />
-                        <button className="td-settings-avatar-edit"><FiCheckCircle size={14} /></button>
+                      <div className="td-settings-cat-text">
+                        <h3>Account Settings</h3>
+                        <p>Manage your personal information and preferences</p>
                       </div>
-                      <div className="td-settings-profile-fields">
-                        <label className="td-settings-label">FULL NAME</label>
-                        <input
-                          className="td-settings-input"
-                          value={settingsProfile.fullName}
-                          onChange={e => setSettingsProfile(p => ({ ...p, fullName: e.target.value }))}
-                        />
-                        <div className="td-settings-two-col">
-                          <div>
-                            <label className="td-settings-label">EMAIL ADDRESS</label>
-                            <input
-                              className="td-settings-input"
-                              value={settingsProfile.email}
-                              onChange={e => setSettingsProfile(p => ({ ...p, email: e.target.value }))}
-                            />
-                          </div>
-                          <div>
-                            <label className="td-settings-label">PHONE NUMBER</label>
-                            <input
-                              className="td-settings-input"
-                              value={settingsProfile.phone}
-                              onChange={e => setSettingsProfile(p => ({ ...p, phone: e.target.value }))}
-                            />
-                          </div>
-                        </div>
+                      <FiArrowRight size={20} className="td-settings-cat-arrow" />
+                    </motion.div>
+
+                    {/* Privacy & Profile Visibility */}
+                    <motion.div
+                      whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
+                      className="td-settings-category-card"
+                      onClick={() => setSettingsSubTab('privacy')}
+                    >
+                      <div className="td-settings-cat-icon-wrap td-settings-cat-icon--blue">
+                        <FiEye size={22} />
                       </div>
-                    </div>
+                      <div className="td-settings-cat-text">
+                        <h3>Privacy &amp; Profile Visibility</h3>
+                        <p>Control who can see your profile and data</p>
+                      </div>
+                      <FiArrowRight size={20} className="td-settings-cat-arrow" />
+                    </motion.div>
+
+                    {/* Security & Login Activity */}
+                    <motion.div
+                      whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
+                      className="td-settings-category-card"
+                      onClick={() => setSettingsSubTab('security')}
+                    >
+                      <div className="td-settings-cat-icon-wrap td-settings-cat-icon--orange">
+                        <FiShield size={22} />
+                      </div>
+                      <div className="td-settings-cat-text">
+                        <h3>Security &amp; Login Activity</h3>
+                        <p>Password, two-factor auth and active sessions</p>
+                      </div>
+                      <FiArrowRight size={20} className="td-settings-cat-arrow" />
+                    </motion.div>
+
+                    {/* Legal */}
+                    <motion.div
+                      whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
+                      className="td-settings-category-card"
+                      onClick={() => setSettingsSubTab('legal')}
+                    >
+                      <div className="td-settings-cat-icon-wrap td-settings-cat-icon--purple">
+                        <FiFileText size={22} />
+                      </div>
+                      <div className="td-settings-cat-text">
+                        <h3>Legal</h3>
+                        <p>Terms of service, privacy policy and more</p>
+                      </div>
+                      <FiArrowRight size={20} className="td-settings-cat-arrow" />
+                    </motion.div>
+
                   </div>
+                </>
+              )}
 
-                  {/* Academic Credentials */}
-                  <div className="td-settings-card">
-                    <div className="td-settings-card-header">
-                      <div className="td-settings-card-title">
-                        <span className="td-settings-card-icon td-settings-card-icon--green"><FiBook size={16} /></span>
-                        <h2>Academic Credentials</h2>
-                      </div>
-                    </div>
-                    <div className="td-settings-credential-row">
-                      <div className="td-settings-cred-icon"><FiCheckCircle size={18} /></div>
-                      <div className="td-settings-cred-info">
-                        <strong>TRCN Certification</strong>
-                        <span>Verified · ID: TRCN/LA/2023/892</span>
-                      </div>
-                      <button className="td-settings-replace-btn">Replace</button>
-                    </div>
-                    <div className="td-settings-degree-row">
-                      <div className="td-settings-degree-card">
-                        <span className="td-settings-degree-label">HIGHEST DEGREE</span>
-                        <strong>M.Ed. Educational Leadership</strong>
-                        <span className="td-settings-degree-school">University of Lagos</span>
-                      </div>
-                      <div className="td-settings-degree-card">
-                        <span className="td-settings-degree-label">SUBJECT EXPERTISE</span>
-                        <div className="td-settings-subjects">
-                          <span className="td-settings-subject-tag">Mathematics</span>
-                          <span className="td-settings-subject-tag">Physics</span>
-                          <button className="td-settings-subject-add">+</button>
-                        </div>
-                      </div>
-                    </div>
+              {/* ── Account Settings Subtab ── */}
+              {settingsSubTab === 'account' && (
+                <div className="td-settings-subtab-wrap">
+                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} /> Settings / Account Settings
+                  </button>
+                  <h1 className="td-settings-title">Account Settings</h1>
+                  <div className="td-settings-subtab-placeholder">
+                    <FiUser size={40} style={{ color: '#10b981', marginBottom: 12 }} />
+                    <p>Account settings content coming soon.</p>
                   </div>
-
-                  {/* Account Security */}
-                  <div className="td-settings-card">
-                    <div className="td-settings-card-header">
-                      <div className="td-settings-card-title">
-                        <span className="td-settings-card-icon td-settings-card-icon--red"><FiSettings size={16} /></span>
-                        <h2 style={{ color: '#DC3545' }}>Account Security</h2>
-                      </div>
-                    </div>
-                    <div className="td-settings-security-item">
-                      <div className="td-settings-security-left">
-                        <span className="td-settings-security-icon"><FiClock size={18} /></span>
-                        <div>
-                          <strong>Change Password</strong>
-                          <span className="td-settings-security-sub">Last changed 4 months ago</span>
-                        </div>
-                      </div>
-                      <button className="td-settings-reset-btn">Reset</button>
-                    </div>
-                    <div className="td-settings-security-item">
-                      <div className="td-settings-security-left">
-                        <span className="td-settings-security-icon"><FiSettings size={18} /></span>
-                        <div>
-                          <strong>Two-Factor Authentication</strong>
-                          <span className="td-settings-security-sub">Adds an extra layer of security</span>
-                        </div>
-                      </div>
-                      <button
-                        className={`td-settings-toggle ${twoFAEnabled ? 'td-settings-toggle--on' : ''}`}
-                        onClick={() => setTwoFAEnabled(p => !p)}
-                      >
-                        <span className="td-settings-toggle-thumb" />
-                      </button>
-                    </div>
-                  </div>
-
                 </div>
+              )}
 
-                {/* ── RIGHT COLUMN ── */}
-                <div className="td-settings-right">
-
-                  {/* Job Preferences */}
-                  <div className="td-settings-card">
-                    <div className="td-settings-card-header">
-                      <div className="td-settings-card-title">
-                        <span className="td-settings-card-icon td-settings-card-icon--green"><FiZap size={16} /></span>
-                        <h2>Job Preferences</h2>
-                      </div>
-                    </div>
-                    <label className="td-settings-label">ENGAGEMENT TYPE</label>
-                    <div className="td-settings-engagement-tabs">
-                      {['Full-time', 'Contract', 'Part-time'].map(opt => (
-                        <button
-                          key={opt}
-                          className={`td-settings-eng-tab ${settingsEngagement === opt ? 'td-settings-eng-tab--active' : ''}`}
-                          onClick={() => setSettingsEngagement(opt)}
-                        >{opt}</button>
-                      ))}
-                    </div>
-                    <label className="td-settings-label" style={{ marginTop: 16 }}>PREFERRED LOCATIONS</label>
-                    {settingsLocations.map((loc, i) => (
-                      <div key={i} className="td-settings-location-chip">
-                        <FiMapPin size={13} />
-                        <span>{loc}</span>
-                        <button className="td-settings-chip-remove" onClick={() => setSettingsLocations(prev => prev.filter((_, idx) => idx !== i))}>×</button>
-                      </div>
-                    ))}
-                    <button className="td-settings-add-city">
-                      + Add another city
-                    </button>
-                    <label className="td-settings-label" style={{ marginTop: 16 }}>EXPECTED MONTHLY SALARY (₦)</label>
-                    <div className="td-settings-salary-input">
-                      <span className="td-settings-salary-icon">₦</span>
-                      <input
-                        className="td-settings-input td-settings-input--no-border"
-                        value={settingsSalary}
-                        onChange={e => setSettingsSalary(e.target.value)}
-                      />
-                    </div>
-                    <p className="td-settings-salary-hint">Teachers with your credentials in Lagos earn ₦920k on average.</p>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="td-settings-save-btn"
-                    >Save</motion.button>
+              {/* ── Privacy Subtab ── */}
+              {settingsSubTab === 'privacy' && (
+                <div className="td-settings-subtab-wrap">
+                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} /> Settings / Privacy &amp; Profile Visibility
+                  </button>
+                  <h1 className="td-settings-title">Privacy &amp; Profile Visibility</h1>
+                  <div className="td-settings-subtab-placeholder">
+                    <FiEye size={40} style={{ color: '#10b981', marginBottom: 12 }} />
+                    <p>Privacy settings content coming soon.</p>
                   </div>
-
-                  {/* Notifications */}
-                  <div className="td-settings-card">
-                    <div className="td-settings-card-header">
-                      <div className="td-settings-card-title">
-                        <span className="td-settings-card-icon td-settings-card-icon--green"><FiBell size={16} /></span>
-                        <h2>Notifications</h2>
-                      </div>
-                    </div>
-                    <span className="td-settings-notif-section-label">EMAIL ALERTS</span>
-                    <div className="td-settings-notif-row">
-                      <span>Job Match Recommendations</span>
-                      <button className={`td-settings-toggle ${notifToggles.jobMatch ? 'td-settings-toggle--on' : ''}`} onClick={() => toggleNotif('jobMatch')}>
-                        <span className="td-settings-toggle-thumb" />
-                      </button>
-                    </div>
-                    <div className="td-settings-notif-row">
-                      <span>Application Status Updates</span>
-                      <button className={`td-settings-toggle ${notifToggles.appStatus ? 'td-settings-toggle--on' : ''}`} onClick={() => toggleNotif('appStatus')}>
-                        <span className="td-settings-toggle-thumb" />
-                      </button>
-                    </div>
-                    <span className="td-settings-notif-section-label" style={{ marginTop: 12 }}>MOBILE PUSH</span>
-                    <div className="td-settings-notif-row">
-                      <span>Direct Messages</span>
-                      <button className={`td-settings-toggle ${notifToggles.directMsg ? 'td-settings-toggle--on' : ''}`} onClick={() => toggleNotif('directMsg')}>
-                        <span className="td-settings-toggle-thumb" />
-                      </button>
-                    </div>
-                    <div className="td-settings-notif-row td-settings-notif-row--muted">
-                      <span>System Announcements</span>
-                      <button className={`td-settings-toggle ${notifToggles.sysAnnounce ? 'td-settings-toggle--on' : ''}`} onClick={() => toggleNotif('sysAnnounce')}>
-                        <span className="td-settings-toggle-thumb" />
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Help Card */}
-                  <div className="td-settings-help-card">
-                    <h3>Need help with your profile?</h3>
-                    <p>Our academic success team can help you optimize your professional credentials to attract the best schools in Nigeria.</p>
-                    <button className="td-settings-speak-btn">Speak with an Expert</button>
-                  </div>
-
                 </div>
-              </div>
+              )}
+
+              {/* ── Security Subtab ── */}
+              {settingsSubTab === 'security' && (
+                <div className="td-settings-subtab-wrap">
+                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} /> Settings / Security &amp; Login Activity
+                  </button>
+                  <h1 className="td-settings-title">Security &amp; Login Activity</h1>
+                  <div className="td-settings-subtab-placeholder">
+                    <FiShield size={40} style={{ color: '#10b981', marginBottom: 12 }} />
+                    <p>Security settings content coming soon.</p>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Legal Subtab ── */}
+              {settingsSubTab === 'legal' && (
+                <div className="td-settings-subtab-wrap">
+                  <button className="td-settings-breadcrumb-btn" onClick={() => setSettingsSubTab('overview')}>
+                    <FiArrowLeft size={16} /> Settings / Legal
+                  </button>
+                  <h1 className="td-settings-title">Legal</h1>
+                  <div className="td-settings-subtab-placeholder">
+                    <FiFileText size={40} style={{ color: '#10b981', marginBottom: 12 }} />
+                    <p>Legal documents content coming soon.</p>
+                  </div>
+                </div>
+              )}
+
             </motion.div>
           )}
           {activeTab === 'profile' && (
@@ -3227,6 +3148,8 @@ export default function TeacherDashboard() {
               )}
             </motion.div>
           )}
+
+
           {['messages'].includes(activeTab) && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="flex flex-col items-center justify-center h-full px-6 py-20 text-center" style={{ minHeight: '60vh' }}>
               <div className="inline-flex items-center gap-2 bg-[#1CCB43]/10 border border-[#1CCB43]/20 text-[#1CCB43] font-semibold text-sm px-4 py-2 rounded-full mb-8">
@@ -6404,6 +6327,92 @@ export default function TeacherDashboard() {
           font-weight: 800;
           color: #111;
           margin-bottom: 28px;
+        }
+
+        /* ── Category Grid ── */
+        .td-settings-category-grid {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          max-width: 640px;
+        }
+        .td-settings-category-card {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 16px;
+          padding: 20px 24px;
+          cursor: pointer;
+          transition: box-shadow 0.2s, transform 0.2s;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+        .td-settings-category-card:hover {
+          border-color: #10b981;
+        }
+        .td-settings-cat-icon-wrap {
+          width: 48px;
+          height: 48px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+        .td-settings-cat-icon--teal  { background: #E6FAF5; color: #10b981; }
+        .td-settings-cat-icon--blue  { background: #EBF4FF; color: #3B82F6; }
+        .td-settings-cat-icon--orange{ background: #FFF4E6; color: #F59E0B; }
+        .td-settings-cat-icon--purple{ background: #F3F0FF; color: #8B5CF6; }
+        .td-settings-cat-text {
+          flex: 1;
+        }
+        .td-settings-cat-text h3 {
+          font-size: 16px;
+          font-weight: 700;
+          color: #111;
+          margin: 0 0 4px 0;
+        }
+        .td-settings-cat-text p {
+          font-size: 13px;
+          color: #6B7280;
+          margin: 0;
+        }
+        .td-settings-cat-arrow {
+          color: #9CA3AF;
+          flex-shrink: 0;
+        }
+
+        /* ── Subtab wrapper ── */
+        .td-settings-subtab-wrap {
+          width: 100%;
+        }
+        .td-settings-breadcrumb-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #6B7280;
+          font-size: 14px;
+          font-weight: 500;
+          cursor: pointer;
+          padding: 0;
+          margin-bottom: 20px;
+          transition: color 0.15s;
+        }
+        .td-settings-breadcrumb-btn:hover { color: #10b981; }
+        .td-settings-subtab-placeholder {
+          background: #fff;
+          border: 2px dashed #E5E7EB;
+          border-radius: 16px;
+          padding: 60px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          color: #9CA3AF;
+          font-size: 15px;
+          max-width: 640px;
         }
         .td-settings-grid {
           display: grid;
@@ -9854,6 +9863,37 @@ export default function TeacherDashboard() {
         .td-success-dashboard-btn:hover {
           background: #F1F5F9;
           border-color: #CBD5E1;
+        }
+
+        .td-empty-settings-box {
+          background: #FFFFFF;
+          border-radius: 16px;
+          border: 1px dashed #CBD5E1;
+          padding: 60px 24px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 14px;
+          text-align: center;
+          margin-top: 10px;
+        }
+
+        .td-empty-settings-icon {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: #E8F7EE;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .td-empty-settings-text {
+          font-size: 14px;
+          color: #64748B;
+          margin: 0;
+          font-weight: 500;
         }
 
         @media (max-width: 540px) {
