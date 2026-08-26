@@ -97,7 +97,9 @@ export function AuthProvider({ children }) {
     const userData = result?.data?.user ?? null;
     const newToken = result?.data?.token ?? '';
 
-    if (newToken && userData) {
+    // Only persist session when backend provides a token and the account is verified
+    const emailVerified = result?.data?.email_verified ?? userData?.email_verified;
+    if (newToken && userData && (emailVerified === undefined || emailVerified === true)) {
       persistSession(userData, newToken);
     }
 

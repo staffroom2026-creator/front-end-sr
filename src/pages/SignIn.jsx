@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
+import { authService } from '../services/authService';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -13,6 +14,27 @@ export default function SignIn() {
   const [loading, setLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
+
+  const redirectToVerification = async (email, customMessage = 'Your email has not been verified. A new verification code has been sent to your email.') => {
+    if (!email) {
+      setError('No email is available for verification. Please try again.');
+      return;
+    }
+
+    try {
+      localStorage.setItem('staffroom_verification_email', email);
+      await authService.resendVerification({ email });
+      navigate('/verify-email', {
+        state: {
+          email,
+          fromLogin: true,
+          message: customMessage,
+        },
+      });
+    } catch (resendErr) {
+      setError(apiErrorMessage(resendErr, 'Could not resend verification code. Please try again.'));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -25,7 +47,24 @@ export default function SignIn() {
         password: form.password,
       });
 
-      const user = result?.data?.user;
+      const apiSuccess = result?.success;
+      const apiData = result?.data || {};
+      const apiUser = apiData?.user || null;
+      const apiMessage = String(result?.message || '');
+
+      const emailNotVerified =
+        apiSuccess === false && (
+          apiData?.email_verified === false ||
+          apiUser?.email_verified === false ||
+          /verify|verification|not verified/i.test(apiMessage)
+        );
+
+      if (emailNotVerified) {
+        await redirectToVerification(form.email);
+        return;
+      }
+
+      const user = apiUser || result?.data?.user;
       const role = user?.role || 'teacher';
 
       if (role === 'teacher') {
@@ -38,6 +77,22 @@ export default function SignIn() {
         navigate('/');
       }
     } catch (err) {
+      const resp = err?.response?.data ?? {};
+      const status = err?.response?.status;
+      const message = String(resp?.message || err?.message || '');
+      const data = resp?.data || resp;
+
+      const emailNotVerified =
+        data?.email_verified === false ||
+        data?.user?.email_verified === false ||
+        (status === 403 && /verify|verification|not verified/i.test(message)) ||
+        /verify|verification|not verified/i.test(message);
+
+      if (emailNotVerified) {
+        await redirectToVerification(form.email);
+        return;
+      }
+
       setError(apiErrorMessage(err, 'Login failed. Please try again.'));
     } finally {
       setLoading(false);

@@ -12,10 +12,13 @@ export default function VerifyEmail() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [infoMessage, setInfoMessage] = useState(location.state?.message || '');
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
   const email = location.state?.email || localStorage.getItem('staffroom_verification_email') || '';
+  const arrivalMessage = location.state?.message || '';
+  const fromLogin = Boolean(location.state?.fromLogin);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -100,7 +103,7 @@ export default function VerifyEmail() {
       await authService.verifyEmail({ email, code: fullCode });
       setSuccess(true);
       setTimeout(() => {
-        navigate('/user-type');
+        navigate('/signin');
       }, 1800);
     } catch (err) {
       setError(apiErrorMessage(err, 'Verification failed. Please check your code and try again.'));
@@ -110,18 +113,26 @@ export default function VerifyEmail() {
   };
 
   const handleResend = async () => {
-    if (!canResend || !email) return;
+    if (!canResend) return;
+
+    if (!email) {
+      setError('No email is available for verification. Please sign up again.');
+      return;
+    }
 
     setCanResend(false);
     setResendTimer(60);
     setCode(['', '', '', '', '', '']);
     setError('');
+    setSuccess(false);
     inputRefs.current[0]?.focus();
 
     try {
       await authService.resendVerification({ email });
+      setInfoMessage('A new verification code has been sent to your email.');
     } catch (err) {
       setError(apiErrorMessage(err, 'Could not resend the verification code.'));
+      setCanResend(true);
     }
   };
 
@@ -196,7 +207,7 @@ export default function VerifyEmail() {
             </div>
 
             <p className="verify-subtitle text-adaptive">
-              We've sent a 6-digit verification code to your email address. Enter the code below to verify your account.
+              {infoMessage || `We've sent a 6-digit verification code to ${email || 'your email address'}. Enter the code below to verify your account.`}
             </p>
 
             <form onSubmit={handleSubmit} className="auth-form">
@@ -236,6 +247,18 @@ export default function VerifyEmail() {
                 </motion.p>
               )}
 
+              {/* Arrival message (e.g., resend from login) */}
+              {arrivalMessage && !error && (
+                <motion.div
+                  className="info-banner"
+                  initial={{ opacity: 0, scale: 0.98 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ duration: 0.25 }}
+                  style={{ marginBottom: '8px', padding: '8px 12px', borderRadius: 8, background: '#FEF3C7', color: '#92400e' }}
+                >
+                  {arrivalMessage}
+                </motion.div>
+              )}
               {/* Success message */}
               {success && (
                 <motion.div

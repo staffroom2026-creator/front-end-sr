@@ -22,7 +22,6 @@ const pages = [
   { name: 'Verify Phone',    path: '/verify-phone',     description: 'Phone number OTP verification screen.', icon: '✅' },
 
   // ── Onboarding Flow ───────────────────────────────────────────
-  { name: 'User Type',       path: '/user-type',        description: 'Role selection — choose between Teacher or School Admin.', icon: '👥' },
   { name: 'Teacher Info',    path: '/teacher-info',     description: 'Onboarding form to capture teacher profile details.', icon: '🧑‍🏫' },
   { name: 'School Info',     path: '/sch-info',         description: 'Onboarding form to capture school profile details.', icon: '🏛️' },
 

@@ -43,6 +43,61 @@ const normalizeProfileValue = (value, fallback = 'Not provided') => {
   return value;
 };
 
+const normalizeJobData = (job = {}, index = 0) => {
+  const salaryValue = Number(job.salary || job.salary_monthly || job.salaryMonthly || 0);
+  const salaryStr = salaryValue > 0
+    ? `₦${salaryValue.toLocaleString()} / month`
+    : (job.salaryStr || job.salary_range || 'Competitive');
+
+  const timePosted = job.timePosted || job.created_at || job.posted_at || new Date().toISOString();
+  const createdDate = timePosted ? new Date(timePosted) : new Date();
+
+  return {
+    id: job.id || job.job_id || index,
+    title: job.title || job.role || job.position || 'Teaching Opportunity',
+    school: job.school || job.school_name || job.employer || 'School',
+    location: job.location || job.city || job.state || 'Nigeria',
+    type: job.type || job.job_type || job.employment_type || 'Full-time',
+    subject: job.subject || job.subject_area || 'Teaching',
+    salaryStr,
+    salaryMonthly: salaryValue,
+    timeLabel: job.timeLabel || (Number.isNaN(createdDate.getTime()) ? 'Recently' : 'Recently'),
+    timePosted,
+    hot: Boolean(job.hot || job.featured || job.is_hot),
+    featured: Boolean(job.featured || job.is_featured),
+    education: job.education || job.education_level || 'Secondary (SS1-SS3)',
+    color: job.color || 'td-bg-darkgreen',
+    iconType: job.iconType || 'academic',
+    about: job.about || job.description || 'No job description available yet.',
+    responsibilities: Array.isArray(job.responsibilities) ? job.responsibilities : [],
+    requirements: job.requirements || { essential: [], desirable: [] },
+    employerInfo: job.employerInfo || job.employer_info || 'School information not provided.',
+    employerImage: job.employerImage || job.employer_image || '',
+    verifiedRecruiter: Boolean(job.verifiedRecruiter || job.verified_recruiter),
+    deadline: job.deadline || job.application_deadline || 'October 24th, 2024',
+    tags: Array.isArray(job.tags) ? job.tags : [],
+  };
+};
+
+const normalizeApplicationData = (application = {}, index = 0) => {
+  const status = application.status || application.application_status || 'Pending';
+  const appliedAt = application.appliedDate || application.applied_at || application.created_at || new Date().toISOString();
+  const date = new Date(appliedAt);
+
+  return {
+    id: application.id || application.application_id || index,
+    title: application.title || application.job_title || application.position || 'Teaching Opportunity',
+    school: application.school || application.school_name || application.employer || 'School',
+    status,
+    appliedDate: Number.isNaN(date.getTime()) ? 'Recently' : date.toLocaleDateString(),
+    expiresIn: application.expiresIn || application.expires_in || '',
+    urgent: application.urgent ?? application.is_urgent ?? false,
+    icon: application.icon || '📄',
+    tags: Array.isArray(application.tags) ? application.tags : [{ type: 'neutral', label: status }],
+    actionText: application.actionText || 'View',
+  };
+};
+
 const getInitials = (fullName = '') => {
   const initials = String(fullName).trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
   return initials || 'T';

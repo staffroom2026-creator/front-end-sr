@@ -82,7 +82,8 @@ export default function VerifyPhone() {
     // Simulate verification
     setTimeout(() => {
       setLoading(false);
-      navigate('/user-type');
+      // After phone verification, send user to login instead of onboarding
+      navigate('/signin');
     }, 2000);
   };
 
