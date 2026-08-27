@@ -10,6 +10,7 @@ import FooterCTA from './components/FooterCTA';
 import ScrollReveal from './components/ScrollReveal';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
+import PublicRoute from './components/PublicRoute';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import VerifyEmail from './pages/VerifyEmail';
@@ -49,13 +50,13 @@ function App() {
       <ScrollToTop />
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/verify-email" element={<VerifyEmail />} />
-        <Route path="/add-phone-number" element={<AddPhoneNumber />} />
-        <Route path="/verify-phone" element={<VerifyPhone />} />
-        <Route path="/teacher-info" element={<TeacherInfo />} />
-        <Route path="/sch-info" element={<SchoolInfo />} />
+        <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
+        <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
+        <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
+        <Route path="/add-phone-number" element={<PublicRoute><AddPhoneNumber /></PublicRoute>} />
+        <Route path="/verify-phone" element={<PublicRoute><VerifyPhone /></PublicRoute>} />
+        <Route path="/teacher-info" element={<PublicRoute><TeacherInfo /></PublicRoute>} />
+        <Route path="/sch-info" element={<PublicRoute><SchoolInfo /></PublicRoute>} />
         <Route
           path="/teacher-dashboard"
           element={

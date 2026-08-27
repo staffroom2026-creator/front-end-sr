@@ -62,7 +62,12 @@ api.interceptors.response.use(
       sessionStorage.removeItem('staffroom_user');
       localStorage.removeItem('staffroom_token');
       localStorage.removeItem('staffroom_user');
-      if (window.location.pathname !== '/signin') {
+      localStorage.removeItem('staffroom_verification_email');
+
+      const currentPath = window.location.pathname;
+      const authPages = ['/signin', '/signup', '/verify-email'];
+
+      if (!authPages.includes(currentPath)) {
         window.location.href = '/signin';
       }
     }
