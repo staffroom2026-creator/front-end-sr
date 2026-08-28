@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import SiteFooter from '../components/SiteFooter';
 import classroomHelpImg from '../assets/classroom_help.webp';
 import teacherRoleImg from '../assets/teacher-role.webp';
 import smileyImg from '../assets/smiley.webp';
@@ -184,6 +185,7 @@ export default function ForTeachers() {
           </Link>
         </div>
       </section>
+      <SiteFooter />
     </div>
   );
 }

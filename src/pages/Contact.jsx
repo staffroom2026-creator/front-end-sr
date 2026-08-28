@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import SiteFooter from '../components/SiteFooter';
 
 const CONTACT_INFO = [
   {
@@ -271,6 +272,7 @@ export default function Contact() {
           </Link>
         </div>
       </section>
+      <SiteFooter />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
+import SiteFooter from '../components/SiteFooter';
 
 export default function Pricing() {
   const [email, setEmail] = useState('');
@@ -167,6 +168,7 @@ export default function Pricing() {
           </Link>
         </div>
       </section>
+      <SiteFooter />
     </div>
   );
 }

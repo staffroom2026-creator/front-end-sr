@@ -7,6 +7,7 @@ import WhyItChanges from './components/WhyItChanges';
 import HowItWorks from './components/HowItWorks';
 import FAQs from './components/FAQs';
 import FooterCTA from './components/FooterCTA';
+import SiteFooter from './components/SiteFooter';
 import ScrollReveal from './components/ScrollReveal';
 import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -41,6 +42,7 @@ function LandingPage() {
       <ScrollReveal><HowItWorks /></ScrollReveal>
       <ScrollReveal><FAQs /></ScrollReveal>
       <ScrollReveal><FooterCTA /></ScrollReveal>
+      <SiteFooter />
     </div>
   );
 }

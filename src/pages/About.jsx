@@ -1,5 +1,6 @@
 import React from 'react';
 import Navbar from '../components/Navbar';
+import SiteFooter from '../components/SiteFooter';
 import aboutHeroImg from '../assets/about_hero.webp';
 import aboutMeetingImg from '../assets/about_meeting.webp';
 
@@ -161,6 +162,7 @@ export default function About() {
           </p>
         </div>
       </section>
+      <SiteFooter />
     </div>
   );
 }
