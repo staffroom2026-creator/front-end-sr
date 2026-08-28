@@ -13,11 +13,11 @@ export default function FooterCTA() {
           Whether you’re a young graduate seeking your first job, a school looking to recruit, or a parent searching for tutors, Staff Room is the home for teaching opportunities.
         </p>
 
-        <div className="flex flex-row items-center gap-4">
-          <Link to="/signup" className="inline-block text-center bg-primary hover:bg-primary-dark text-white px-10 py-3.5 rounded-xl font-bold text-base transition-transform hover:scale-105 active:scale-95 shadow-md shadow-primary/25">
+        <div className="flex w-full flex-col items-center gap-4 md:flex-row md:w-auto">
+          <Link to="/signup" className="inline-block w-full text-center bg-primary hover:bg-primary-dark text-white px-10 py-3.5 rounded-xl font-bold text-base transition-transform hover:scale-105 active:scale-95 shadow-md shadow-primary/25 md:w-auto">
             Get Started
           </Link>
-          <Link to="/signin" className="inline-block text-center bg-white hover:bg-gray-100 text-primary border border-primary px-10 py-3.5 rounded-xl font-bold text-base transition-transform hover:scale-105 active:scale-95 shadow-md shadow-primary/25">
+          <Link to="/signin" className="inline-block w-full text-center bg-white hover:bg-gray-100 text-primary border border-primary px-10 py-3.5 rounded-xl font-bold text-base transition-transform hover:scale-105 active:scale-95 shadow-md shadow-primary/25 md:w-auto">
             Sign In
           </Link>
         </div>

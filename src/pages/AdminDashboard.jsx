@@ -5,7 +5,7 @@ import { apiErrorMessage } from '../services/api';
 import { jobService } from '../services/jobService';
 import { applicationService } from '../services/applicationService';
 import BrandLogo from '../components/BrandLogo';
-import { FiBell, FiBriefcase, FiCalendar, FiCheckCircle, FiClock, FiGrid, FiInfo, FiLogOut, FiPlus, FiSearch, FiSettings, FiTrash2, FiUsers } from 'react-icons/fi';
+import { FiAlertCircle, FiArrowLeft, FiBell, FiBriefcase, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiFileText, FiGrid, FiInfo, FiLogOut, FiMessageSquare, FiPlus, FiSearch, FiSettings, FiTrash2, FiUsers } from 'react-icons/fi';
 
 const emptyJobForm = {
   title: '',
@@ -264,6 +264,27 @@ export default function AdminDashboard() {
     );
   };
 
+  const renderDesktopNotifications = () => (
+    <div className="school-desktop-notifications">
+      <div className="school-notifications-heading">
+        <div><h2>Notifications</h2><p><strong>12 UNREAD</strong><span>You have new updates.</span></p></div>
+        <button type="button"><FiCheckCircle size={14} /> Mark all as read</button>
+      </div>
+      <div className="school-notifications-panel">
+        <h3>Today</h3>
+        <div className="school-notification-highlight school-notification-highlight--green"><span className="school-notification-icon"><FiFileText size={17} /></span><div><b>NEW APPLICATION</b><strong>Tunde Bello applied for Senior Mathematics Teacher</strong><p>The applicant has 8 years of experience and matches 90% of your required qualifications. Review their profile to proceed.</p></div><time>2 hours ago</time></div>
+        <div className="school-notification-highlight"><span className="school-notification-icon"><FiMessageSquare size={17} /></span><div><b>RESPONSE</b><strong>Mr. Segun responded to your message</strong><p>"Thank you for the update. I will be available for the interview next Tuesday at 10 AM as requested."</p></div><time>4 hours ago</time></div>
+        <div className="school-notification-highlight school-notification-highlight--red"><span className="school-notification-icon"><FiAlertCircle size={17} /></span><div><b>EXPIRY WARNING</b><strong>Job posting expires in 3 days</strong><p>Your listing for 'Assistant Principal' will be removed soon. Consider extending the duration or reviewing current applicants.</p></div><time>5 hours ago</time></div>
+        <h3>Yesterday</h3>
+        <div className="school-notification-simple"><span className="school-notification-icon"><FiFileText size={17} /></span><div><b>NEW APPLICATION</b><strong>Sarah Jenkins applied for Biology Teacher</strong><p>Profile overview and CV attached for review.</p></div><time>Yesterday, 2:30 PM</time></div>
+        <div className="school-notification-simple"><span className="school-notification-icon"><FiCheckCircle size={17} /></span><div><b>SYSTEM</b><strong>Subscription Renewed Successfully</strong><p>Your 'Premium School' plan has been renewed for another month.</p></div><time>Yesterday, 9:00 AM</time></div>
+        <h3>Earlier</h3>
+        <div className="school-notification-simple"><span className="school-notification-icon"><FiFileText size={17} /></span><div><b>NEW APPLICATION</b><strong>David Osa applied for Physics Teacher</strong></div><time>Oct 12</time></div>
+        <button type="button" className="school-load-more">Load More <FiChevronDown size={13} /></button>
+      </div>
+    </div>
+  );
+
   const renderJobForm = () => (
     <div className="rounded-2xl border border-[#dfe5e1] bg-white p-6 text-left shadow-sm">
       <div className="mb-5 flex items-center justify-between">
@@ -331,7 +352,7 @@ export default function AdminDashboard() {
           </div>
         </aside>
 
-        <div className="flex min-w-0 flex-1 flex-col">
+        <div className="admin-dashboard-main-wrapper flex min-w-0 flex-1 flex-col">
           <header className="admin-desktop-header flex items-center justify-between border-b border-[#e3e8e4] bg-white px-5 py-4 md:px-8">
             <div className="admin-topbar-spacer" />
             <label className="admin-topbar-search">
@@ -498,7 +519,15 @@ export default function AdminDashboard() {
             {activeTab === 'post-job' && isSchool && renderJobForm()}
             {activeTab === 'jobs' && isSchool && renderJobs()}
             {activeTab === 'applicants' && isSchool && renderApplicants()}
-            {activeTab === 'notifications' && <div className="rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm"><FiBell className="mx-auto mb-4 text-[#1ccb43]" size={32} /><h2 className="text-xl font-bold">Notifications</h2><p className="mt-2 text-sm text-[#718078]">You are all caught up.</p></div>}
+            {isSchool && activeTab === 'notifications' && renderDesktopNotifications()}
+            {activeTab === 'notifications' && <>
+              <div className="admin-mobile-notification-header">
+                <button type="button" onClick={() => setActiveTab('overview')} aria-label="Back to dashboard"><FiArrowLeft size={22} /></button>
+                <h2>Notifications</h2>
+                <span />
+              </div>
+              <div className="admin-mobile-notifications-content rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm"><FiBell className="mx-auto mb-4 text-[#1ccb43]" size={32} /><h2 className="text-xl font-bold">Notifications</h2><p className="mt-2 text-sm text-[#718078]">You are all caught up.</p></div>
+            </>}
             {activeTab === 'settings' && <div className="rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm"><FiSettings className="mx-auto mb-4 text-[#1ccb43]" size={32} /><h2 className="text-xl font-bold">Settings</h2><p className="mt-2 text-sm text-[#718078]">Dashboard preferences will appear here.</p></div>}
           </>
         )}
@@ -610,6 +639,31 @@ export default function AdminDashboard() {
         .school-empty-interviews strong { font-size: 11px; font-weight: 600; }
         .school-empty-interviews small { color: #62686d; font-size: 10px; }
         .school-schedule-button { display: block; width: calc(100% - 32px); margin: 0 16px; padding: 7px; border-radius: 5px; font-size: 10px; }
+        .school-desktop-notifications { display: none; }
+        .school-notifications-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+        .school-notifications-heading h2 { margin: 0; color: #20252b; font-size: 28px; font-weight: 700; }
+        .school-notifications-heading p { display: flex; align-items: center; gap: 10px; margin: 6px 0 0; color: #62686d; font-size: 12px; }
+        .school-notifications-heading p strong { padding: 4px 10px; border-radius: 999px; background: #22dd55; color: #07331b; font-size: 9px; }
+        .school-notifications-heading button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #16843d; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .school-notifications-panel { padding: 32px 35px 20px; border-radius: 28px; background: #fff; box-shadow: 0 8px 25px rgba(23, 34, 56, .05); }
+        .school-notifications-panel > h3 { margin: 0 0 17px; color: #20252b; font-size: 15px; font-weight: 600; }
+        .school-notifications-panel > h3:not(:first-child) { margin-top: 35px; }
+        .school-notification-highlight { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 18px; align-items: start; margin-bottom: 8px; padding: 20px; border-radius: 24px; background: #f5f5f7; }
+        .school-notification-highlight--green { background: #f4f4f6; }
+        .school-notification-highlight--red { background: #f4f4f6; }
+        .school-notification-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #edf0ed; color: #526158; }
+        .school-notification-highlight--green .school-notification-icon { background: #dff3e6; color: #467a4c; }
+        .school-notification-highlight--red .school-notification-icon { background: #ffd9d6; color: #bb2027; }
+        .school-notification-highlight b, .school-notification-simple b { display: block; margin-bottom: 5px; color: #47624e; font-size: 9px; font-weight: 700; letter-spacing: .04em; }
+        .school-notification-highlight--red b { color: #c4262c; }
+        .school-notification-highlight strong, .school-notification-simple strong { display: block; color: #20252b; font-size: 14px; font-weight: 500; }
+        .school-notification-highlight p, .school-notification-simple p { margin: 6px 0 0; color: #62686d; font-size: 11px; line-height: 1.45; }
+        .school-notification-highlight time, .school-notification-simple time { color: #62686d; font-size: 10px; white-space: nowrap; }
+        .school-notification-simple { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 18px; align-items: start; padding: 15px 20px; }
+        .school-notification-simple .school-notification-icon { background: #eef0f1; }
+        .school-load-more { display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; min-width: 126px; margin: 27px auto 0; padding: 10px 17px; border: 1px solid #dfe2e4; border-radius: 999px; background: #eef0f1; color: #20252b; font: inherit; font-size: 11px; font-weight: 600; line-height: 1; cursor: pointer; transition: background .2s ease, border-color .2s ease, box-shadow .2s ease; }
+        .school-load-more:hover { border-color: #cbd1ce; background: #e3e7e5; box-shadow: 0 3px 10px rgba(23, 34, 56, .08); }
+        .school-load-more svg { color: #526158; stroke-width: 2.5; }
 
         .admin-sidebar-inner { display: flex; flex-direction: column; min-height: calc(100vh - 40px); }
         .admin-sidebar-brand { display: flex; align-items: center; min-height: 44px; margin: 0 14px 42px; }
@@ -656,6 +710,17 @@ export default function AdminDashboard() {
         .admin-topbar-user span { color: #707a75; font-size: 11px; }
         .admin-topbar-avatar { display: grid; place-items: center; width: 36px; height: 36px; overflow: hidden; padding: 0; border: 2px solid #16843d; border-radius: 50%; background: #dcefe2; color: #166534; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
         .admin-topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .admin-mobile-notification-header { display: none; }
+        @media (min-width: 769px) {
+          .admin-desktop-sidebar { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; overflow-y: auto; }
+          .admin-dashboard-main-wrapper { margin-left: 14rem; }
+          .admin-desktop-header { position: fixed; z-index: 25; top: 0; right: 0; left: 14rem; min-height: 68px; }
+          .admin-dashboard-main { padding-top: 92px; }
+        }
+        @media (min-width: 769px) {
+          .school-desktop-notifications { display: block; }
+          .admin-mobile-notifications-content { display: none; }
+        }
 
         .admin-mobile-header,
         .admin-mobile-bottomnav { display: none; }
@@ -674,8 +739,13 @@ export default function AdminDashboard() {
           .school-table-row { grid-template-columns: 1.25fr 1fr .7fr .55fr; padding: 0 11px; font-size: 8px; }
           .school-table-head { font-size: 7px; }
           .school-posting-grid { grid-template-columns: 1fr; }
+          .admin-mobile-notification-header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: -4px 0 16px; }
+          .admin-mobile-notification-header button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: #fff; color: #20252b; box-shadow: 0 2px 8px rgba(23, 34, 56, .06); }
+          .admin-mobile-notification-header h2 { margin: 0; color: #20252b; font-size: 18px; font-weight: 700; }
+          .admin-mobile-notification-header span { width: 36px; height: 36px; }
           .admin-desktop-sidebar,
           .admin-desktop-header { display: none; }
+          .admin-dashboard-main-wrapper { margin-left: 0; }
           .admin-mobile-header {
             display: flex;
             position: relative;
