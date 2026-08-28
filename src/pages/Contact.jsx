@@ -53,7 +53,7 @@ export default function Contact() {
   };
 
   return (
-    <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
+    <div className="brand-typography font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
       <Navbar sticky />
 
       {/* Hero Header */}

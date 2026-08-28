@@ -15,7 +15,7 @@ export default function Pricing() {
   };
 
   return (
-    <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen flex flex-col">
+    <div className="brand-typography font-sans text-gray-900 bg-[#FAF9F6] min-h-screen flex flex-col">
       <Navbar sticky />
 
       {/* Main Content */}

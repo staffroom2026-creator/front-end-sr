@@ -5,7 +5,7 @@ import aboutMeetingImg from '../assets/about_meeting.png';
 
 export default function About() {
   return (
-    <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
+    <div className="brand-typography font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
       <Navbar sticky />
 
       {/* Header Section */}

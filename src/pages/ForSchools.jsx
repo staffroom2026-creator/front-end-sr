@@ -8,7 +8,7 @@ import recruitmentImg from '../assets/about_meeting.png'; // Reused meeting imag
 
 export default function ForSchools() {
   return (
-    <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
+    <div className="brand-typography font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
       <Navbar sticky />
 
       {/* Hero Section */}

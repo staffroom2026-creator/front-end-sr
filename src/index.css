@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -19,6 +20,19 @@ body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+}
+
+.brand-typography {
+  font-family: 'DM Sans', sans-serif;
+}
+
+.brand-typography h1,
+.brand-typography h2,
+.brand-typography h3,
+.brand-typography h4,
+.brand-typography h5,
+.brand-typography h6 {
+  font-family: 'Sora', sans-serif;
 }
 
 .brand-logo-image {
