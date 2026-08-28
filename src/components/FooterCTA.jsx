@@ -3,14 +3,14 @@ import { Link } from 'react-router-dom';
 
 export default function FooterCTA() {
   return (
-    <section className="bg-white border-t border-emerald-500/5 min-h-screen flex flex-col items-center justify-center mt-0">
+    <section className="bg-[#D6FBC5] border-t border-emerald-500/5 min-h-screen flex flex-col items-center justify-center mt-0">
       <div className="max-w-4xl mx-auto px-6 md:px-8 flex flex-col items-center text-center">
         <h2 className="text-3xl md:text-4xl font-extrabold mb-4 md:mb-6 text-gray-900 leading-tight">
           Ready to Find Your<br />Next Opportunity?
         </h2>
 
         <p className="text-gray-600 text-sm md:text-base mb-8 max-w-2xl leading-relaxed">
-          Join a growing network of educators connecting with schools through Staffroom.
+          Whether you’re a young graduate seeking your first job, a school looking to recruit, or a parent searching for tutors, Staff Room is the home for teaching opportunities.
         </p>
 
         <div className="flex flex-row items-center gap-4">

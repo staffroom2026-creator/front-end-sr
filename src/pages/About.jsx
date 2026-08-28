@@ -151,7 +151,7 @@ export default function About() {
       </section>
 
       {/* Footer Section */}
-      <section className="bg-light-green/20 border-t border-emerald-500/5 min-h-screen flex flex-col items-center justify-center text-center">
+      <section className="bg-[#D6FBC5] border-t border-emerald-500/5 min-h-screen flex flex-col items-center justify-center text-center">
         <div className="max-w-4xl mx-auto px-6 md:px-8">
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 leading-tight">
             Designed for the Future of Education

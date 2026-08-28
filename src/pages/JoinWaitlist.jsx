@@ -212,7 +212,7 @@ export default function JoinWaitlist() {
       </section>
 
       {/* Footer Spacing */}
-      <div className="h-16"></div>
+      <div className="h-16 bg-[#D6FBC5]"></div>
     </div>
   );
 }

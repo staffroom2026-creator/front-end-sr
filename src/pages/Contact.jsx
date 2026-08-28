@@ -257,11 +257,11 @@ export default function Contact() {
       </section>
 
       {/* Bottom Strip */}
-      <section className="bg-light-green/20 border-t border-emerald-500/5 min-h-screen flex flex-col items-center justify-center text-center">
+      <section className="bg-[#D6FBC5] border-t border-emerald-500/5 min-h-screen flex flex-col items-center justify-center text-center">
         <div className="max-w-2xl mx-auto px-6 md:px-8">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-4">Ready to get started?</h2>
-          <p className="text-gray-500 text-sm mb-7 leading-relaxed">
-            Join thousands of teachers and schools building better education outcomes with Staffroom.
+          <h2 className="text-2xl md:text-3xl font-extrabold text-gray-900 mb-4">Start Building The Future With Staffroom</h2>
+          <p className="text-gray-500 px-20 text-sm mb-7 leading-relaxed">
+            Whether you’re a young graduate seeking your first job, a school looking to recruit, or a parent searching for tutors, Staff Room is the home for teaching opportunities.
           </p>
           <Link
             to="/signup"

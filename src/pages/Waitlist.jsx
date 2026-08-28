@@ -192,7 +192,7 @@ export default function Waitlist() {
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#e9f7ea] py-20">
+      <section className="relative overflow-hidden bg-[#D6FBC5] py-20">
         <div className="absolute inset-0 opacity-20">
           <img src={heroBg} alt="Reserve your spot" className="w-full h-full object-cover" />
           <div className="absolute inset-0 bg-emerald-600/70"></div>
