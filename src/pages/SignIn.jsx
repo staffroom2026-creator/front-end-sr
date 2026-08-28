@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.png';
+import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
 import { authService } from '../services/authService';
@@ -113,10 +114,7 @@ export default function SignIn() {
 
         {/* Desktop-only Logo & Quote */}
         <Link className="desktop-logo" to="/">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
-          <span>Staffroom</span>
+          <BrandLogo className="brand-logo-image--white" />
         </Link>
         <div className="desktop-quote">
           <h2>Welcome back to<br />Staffroom.</h2>
@@ -128,10 +126,7 @@ export default function SignIn() {
         {/* Mobile-only Top Logo */}
         <div className="mobile-logo-container">
           <Link className="mobile-logo" to="/">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-            <span>Staffroom</span>
+            <BrandLogo className="brand-logo-image--white" />
           </Link>
         </div>
 

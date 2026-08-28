@@ -21,6 +21,27 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.brand-logo-image {
+  display: block;
+  width: 171px;
+  max-width: 100%;
+  height: auto;
+}
+
+.brand-logo-image--white {
+  filter: brightness(0) invert(1);
+}
+
+.desktop-logo .brand-logo-image,
+.su-logo .brand-logo-image {
+  width: 171px;
+}
+
+.mobile-logo .brand-logo-image,
+.su-mob-logo .brand-logo-image {
+  width: 140px;
+}
+
 .tab-active {
   background-color: var(--color-primary);
   color: white;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authHero from '../assets/auth-hero.png';
+import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
 
@@ -99,10 +100,7 @@ export default function SignUp() {
 
         {/* Logo */}
         <Link to="/" className="su-mob-logo">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
-          <span>Staffroom</span>
+          <BrandLogo className="brand-logo-image--white" />
         </Link>
 
         {/* Content */}
@@ -249,10 +247,7 @@ export default function SignUp() {
           <img src={authHero} alt="Teacher working at laptop" className="su-photo-img" />
           <div className="su-photo-overlay" />
           <Link to="/" className="su-logo">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-              <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-            </svg>
-            <span>Staffroom</span>
+            <BrandLogo className="brand-logo-image--white" />
           </Link>
           <div className="su-photo-quote">
             <p>Ready to connect, teach, or hire?<br />Join Staffroom today.</p>

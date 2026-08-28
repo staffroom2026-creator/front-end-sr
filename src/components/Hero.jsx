@@ -62,7 +62,7 @@ export default function Hero() {
       </div>
 
       {/* Left Content */}
-      <div className="flex-1 max-w-xl w-full relative z-10 flex flex-col justify-end md:justify-center min-h-[60vh] md:min-h-0 pt-20 md:pt-0 md:-translate-y-10">
+      <div className="flex-1 max-w-xl w-full relative z-10 flex flex-col justify-end md:justify-center min-h-[60vh] md:min-h-0 pt-20 md:pt-0 -translate-y-[8em]">
         <h1 className="text-[2.75rem] md:text-6xl font-extrabold leading-[1.15] tracking-tight mb-4 md:mb-6 text-gray-900 animate-fade-in-up">
           <span className="text-primary">Connecting</span><br />
           Teachers,<br className="md:hidden" /><span className="hidden md:inline"> </span>Schools,<br />
@@ -71,8 +71,8 @@ export default function Hero() {
         <p className="text-gray-600 text-sm md:text-lg mb-6 md:mb-8 max-w-md leading-relaxed animate-fade-in-up animation-delay-100">
           Staffroom is the trusted platform where young teachers find verified jobs, and schools hire the right talent with ease.
         </p>
-        <Link to="/signup" className="inline-block text-center bg-primary hover:bg-primary-dark text-white px-8 py-3.5 rounded-full font-bold text-base md:text-lg transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-primary/30 w-full md:w-auto animate-fade-in-up animation-delay-200">
-          Sign Up
+        <Link to="/signup" className="inline-block self-start text-center bg-primary hover:bg-primary-dark text-white px-7 py-2.5 rounded-xl font-bold text-sm transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-primary/30 w-fit animate-fade-in-up animation-delay-200">
+          Get Started
         </Link>
       </div>
 

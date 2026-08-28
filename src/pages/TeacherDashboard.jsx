@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import schoolCampus from '../assets/school campus.jpg';
+import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { jobService } from '../services/jobService';
 import { applicationService } from '../services/applicationService';
@@ -494,10 +495,7 @@ export default function TeacherDashboard() {
       {/* ── Desktop Sidebar ── */}
       <aside className="td-sidebar">
         <div className="td-logo-area">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1CCB43">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
-          <span>Staffroom</span>
+          <BrandLogo />
         </div>
 
         <nav className="td-nav">
@@ -572,10 +570,7 @@ export default function TeacherDashboard() {
               <div className="td-avatar-initials" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
             </div>
             <div className="td-mobile-brand">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="#1CCB43">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-              </svg>
-              <span>Staffroom</span>
+              <BrandLogo />
             </div>
             <button className="td-mobile-bell" onClick={() => setActiveTab('notifications')}>
               <FiBell />

@@ -33,7 +33,7 @@ import JoinWaitlist from './pages/JoinWaitlist';
 function LandingPage() {
   return (
     <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
-      <Navbar />
+      <Navbar sticky />
       <Hero />
       <ScrollReveal><Features /></ScrollReveal>
       <ScrollReveal><WhyItChanges /></ScrollReveal>

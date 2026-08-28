@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import heroBg from '../assets/school campus.jpg';
+import BrandLogo from '../components/BrandLogo';
 
 export default function JoinWaitlist() {
   const [formData, setFormData] = useState({
@@ -42,8 +43,7 @@ export default function JoinWaitlist() {
         <div className="relative z-10 max-w-7xl mx-auto px-6 md:px-8">
           <div className="flex items-center justify-between py-6">
             <Link to="/" className="flex items-center gap-2 text-white">
-              <span className="w-5 h-5 rounded-br-lg rounded-tl-lg rounded-tr-sm rounded-bl-sm bg-white/90"></span>
-              <span className="font-bold text-lg">Staffroom</span>
+              <BrandLogo />
             </Link>
 
             <div className="hidden md:flex items-center gap-8 text-sm font-medium text-white/90">

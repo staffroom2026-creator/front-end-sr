@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import teacherImg from '../assets/teacher-role.png';
 import adminImg from '../assets/admin-role.png';
+import BrandLogo from '../components/BrandLogo';
 
 /* ── Animation variants ── */
 const pageVariants = {
@@ -117,10 +118,7 @@ export default function UserType() {
       {/* ── Top Logo ── */}
       <motion.header className="ut-header" variants={slideUp}>
         <Link to="/" className="ut-logo">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1CCB43">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
-          <span>Staffroom</span>
+          <BrandLogo />
         </Link>
         <button onClick={() => navigate(-1)} className="ut-back-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

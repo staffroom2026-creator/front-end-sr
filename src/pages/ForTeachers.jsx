@@ -9,7 +9,7 @@ import recruitmentImg from '../assets/about_meeting.png'; // Reused meeting imag
 export default function ForTeachers() {
   return (
     <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
-      <Navbar />
+      <Navbar sticky />
 
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-6 md:px-8 py-12 md:py-20 flex flex-col lg:flex-row items-center gap-12 lg:gap-16">

@@ -16,7 +16,7 @@ export default function Pricing() {
 
   return (
     <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen flex flex-col">
-      <Navbar />
+      <Navbar sticky />
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-6 md:px-8 py-20 text-center">

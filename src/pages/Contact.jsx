@@ -54,7 +54,7 @@ export default function Contact() {
 
   return (
     <div className="font-sans text-gray-900 bg-[#FAF9F6] min-h-screen">
-      <Navbar />
+      <Navbar sticky />
 
       {/* Hero Header */}
       <section className="max-w-7xl mx-auto px-6 md:px-8 pt-12 pb-4 text-center animate-fade-in-up">

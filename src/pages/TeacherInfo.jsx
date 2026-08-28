@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
 import { profileService } from '../services/profileService';
 import { apiErrorMessage } from '../services/api';
+import BrandLogo from '../components/BrandLogo';
 
 const pageVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -74,10 +75,7 @@ export default function TeacherInfo() {
       {/* ── Header ── */}
       <header className="ti-header">
         <Link to="/" className="ti-logo">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="#1CCB43">
-            <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
-          </svg>
-          <span>Staffroom</span>
+          <BrandLogo />
         </Link>
         <button onClick={() => navigate('/signup')} className="ti-back-btn">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
