@@ -1352,9 +1352,21 @@ export default function TeacherDashboard() {
           )}
           {activeTab === 'notifications' && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-notif-page">
+              <div className="td-notif-back td-desktop-only" onClick={() => setActiveTab('dashboard')}>
+                <FiArrowLeft size={14} />
+                <span>Notification</span>
+              </div>
               <div className="td-notif-header td-desktop-only">
-                <h1>Notifications</h1>
-                <p>Stay updated with your latest academic opportunities and account activities.</p>
+                <div>
+                  <h1>Notifications</h1>
+                  <p>Stay up to date with your applications, job opportunities, and account updates.</p>
+                </div>
+                <div className="td-notif-header-actions">
+                  <span className="td-notif-unread-summary"><span /> {notifications.filter(notification => !notification.read).length} unread</span>
+                  <button type="button" className="td-notif-mark-read" onClick={() => setNotifications(current => current.map(notification => ({ ...notification, read: true })))}>
+                    Mark all as read
+                  </button>
+                </div>
               </div>
 
               <div className="td-notif-filter-tabs td-desktop-only">
@@ -6214,12 +6226,25 @@ export default function TeacherDashboard() {
            NOTIFICATIONS PAGE
         ═══════════════════════════════════════ */
         .td-notif-page {
-          max-width: 820px;
+          max-width: 100%;
           margin: 0 auto;
           width: 100%;
         }
 
+        .td-notif-back {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          color: #111;
+          font-size: 11px;
+          margin-bottom: 28px;
+          cursor: pointer;
+        }
+
         .td-notif-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
           margin-bottom: 28px;
         }
         .td-notif-header h1 {
@@ -6233,6 +6258,39 @@ export default function TeacherDashboard() {
           color: #6C757D;
           font-size: 14px;
           margin: 0;
+        }
+
+        .td-notif-header-actions {
+          display: flex;
+          align-items: center;
+          gap: 28px;
+          padding-top: 8px;
+        }
+
+        .td-notif-unread-summary {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #277a5f;
+          font-size: 11px;
+          white-space: nowrap;
+        }
+
+        .td-notif-unread-summary span {
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #277a5f;
+        }
+
+        .td-notif-mark-read {
+          border: none;
+          padding: 0;
+          background: transparent;
+          color: #277a5f;
+          font-size: 11px;
+          cursor: pointer;
+          white-space: nowrap;
         }
 
         .td-notif-filter-tabs {
@@ -6278,25 +6336,26 @@ export default function TeacherDashboard() {
         .td-notif-list {
           display: flex;
           flex-direction: column;
-          gap: 24px;
+          gap: 0;
         }
 
         .td-notif-card {
           display: flex;
-          gap: 24px;
-          padding: 32px 40px;
+          gap: 18px;
+          padding: 18px 12px 18px 18px;
           background: #fff;
           border: none;
-          border-radius: 50px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.01);
-          transition: background 0.2s, box-shadow 0.2s;
+          border-bottom: 1px solid #e5e9e7;
+          border-radius: 0;
+          box-shadow: none;
+          transition: background 0.2s;
           cursor: default;
           position: relative;
           overflow: hidden;
         }
         .td-notif-card:hover {
-          background: #fff;
-          box-shadow: 0 8px 30px rgba(0,0,0,0.035);
+          background: #fbfdfb;
+          box-shadow: none;
         }
         .td-notif-card--unread {
           background: #fff;
@@ -6305,11 +6364,11 @@ export default function TeacherDashboard() {
           content: '';
           position: absolute;
           left: 0;
-          top: 24px;
-          bottom: 24px;
-          width: 5px;
+          top: 0;
+          bottom: 0;
+          width: 3px;
           background: #277A16;
-          border-radius: 0 4px 4px 0;
+          border-radius: 0;
         }
         .td-notif-card--unread:hover {
           background: #fff;
@@ -6317,18 +6376,18 @@ export default function TeacherDashboard() {
 
         .td-notif-card-icon {
           flex-shrink: 0;
-          padding-top: 2px;
+          padding-top: 0;
         }
         .td-notif-icon-circle {
-          width: 48px;
-          height: 48px;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
           background: #E8F9ED;
           color: #1CCB43;
-          border: 1px solid #C3E6CB;
+          border: none;
         }
         .td-notif-icon--job {
           /* unified circular styles matching design */
@@ -6352,7 +6411,7 @@ export default function TeacherDashboard() {
           margin-bottom: 4px;
         }
         .td-notif-card-top h3 {
-          font-size: 15px;
+          font-size: 11px;
           font-weight: 700;
           color: #111;
           margin: 0;
@@ -6365,8 +6424,8 @@ export default function TeacherDashboard() {
           flex-shrink: 0;
         }
         .td-notif-time {
-          font-size: 12px;
-          color: #ADB5BD;
+          font-size: 10px;
+          color: #607064;
           white-space: nowrap;
         }
         .td-notif-new-badge {
@@ -6380,10 +6439,10 @@ export default function TeacherDashboard() {
         }
 
         .td-notif-card-desc {
-          font-size: 13.5px;
-          color: #6C757D;
-          line-height: 1.6;
-          margin: 0 0 10px;
+          font-size: 10px;
+          color: #607064;
+          line-height: 1.5;
+          margin: 0 0 8px;
         }
 
         .td-notif-card-actions {
@@ -6395,11 +6454,11 @@ export default function TeacherDashboard() {
           display: flex;
           align-items: center;
           gap: 4px;
-          font-size: 12px;
-          color: #ADB5BD;
+          font-size: 10px;
+          color: #607064;
         }
         .td-notif-link {
-          font-size: 13px;
+          font-size: 10px;
           font-weight: 700;
           color: #1CCB43;
           text-decoration: none;
@@ -6445,7 +6504,7 @@ export default function TeacherDashboard() {
 
         .td-notif-footer {
           text-align: center;
-          padding: 32px 0 8px;
+          padding: 24px 0 8px;
         }
         .td-notif-count {
           font-size: 13px;

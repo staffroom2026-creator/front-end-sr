@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { profileService } from '../services/profileService';
@@ -23,16 +23,29 @@ export default function SchoolInfo() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     schoolName: '',
-    location: '',
+    country: '',
+    state: '',
+    city: '',
+    address: '',
+    schoolEmail: '',
+    phone: '',
     type: '',
-    description: '',
     logo: null
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [logoPreview, setLogoPreview] = useState('');
+
+  useEffect(() => {
+    return () => {
+      if (logoPreview) {
+        URL.revokeObjectURL(logoPreview);
+      }
+    };
+  }, [logoPreview]);
 
   const handleNext = async () => {
-    if (!form.schoolName.trim() || !form.location.trim() || !form.type || !form.description.trim()) {
+    if (!form.schoolName.trim() || !form.country || !form.state.trim() || !form.city.trim() || !form.type || !form.schoolEmail.trim() || !form.phone.trim()) {
       setError('Please complete all school profile details before continuing.');
       return;
     }
@@ -43,13 +56,18 @@ export default function SchoolInfo() {
 
       await profileService.updateSchool({
         school_name: form.schoolName.trim(),
-        address: form.location.trim(),
-        location: form.location.trim(),
-        state: form.location.trim(),
+        address: form.address.trim() || form.city.trim(),
+        location: `${form.city.trim()}, ${form.state.trim()}, ${form.country}`,
+        state: form.state.trim(),
+        country: form.country,
+        city: form.city.trim(),
+        email: form.schoolEmail.trim(),
+        phone: form.phone.trim(),
+        school_type: form.type,
         website: '',
       });
 
-      navigate('/admin-dashboard');
+      navigate('/admin-dashboard', { replace: true });
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to save your school profile right now.'));
     } finally {
@@ -78,89 +96,55 @@ export default function SchoolInfo() {
 
       <main className="si-main">
         <div className="si-container">
-          <h1 style={{ textAlign: 'center', marginBottom: '20px' }}>School Information</h1>
-          <p style={{ textAlign: 'center', color: '#718096', marginBottom: '40px' }}>
-            Tell us more about your school to get started.
-          </p>
-
-          <div className="si-grid">
-            <div className="si-col">
-              <motion.section variants={itemVariants} className="si-section">
-                <label className="si-label">School Name</label>
-                <input 
-                  type="text" 
-                  className="si-input" 
-                  placeholder="Enter school name"
-                  value={form.schoolName}
-                  onChange={(e) => setForm({...form, schoolName: e.target.value})}
-                />
-              </motion.section>
-
-              <motion.section variants={itemVariants} className="si-section">
-                <label className="si-label">Location</label>
-                <input 
-                  type="text" 
-                  className="si-input" 
-                  placeholder="City, Country"
-                  value={form.location}
-                  onChange={(e) => setForm({...form, location: e.target.value})}
-                />
-              </motion.section>
-
-              <motion.section variants={itemVariants} className="si-section">
-                <label className="si-label">School Type</label>
-                <select 
-                  className="si-select"
-                  value={form.type}
-                  onChange={(e) => setForm({...form, type: e.target.value})}
-                >
-                  <option value="" disabled hidden>Select type</option>
-                  <option value="private">Private</option>
-                  <option value="public">Public</option>
-                  <option value="international">International</option>
-                </select>
-              </motion.section>
+          <div className="si-page-intro">
+            <button onClick={() => navigate('/signup')} className="si-intro-back" aria-label="Back to sign up">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <div>
+              <h1>Let's set up your school</h1>
+              <p>Add a few details to get your school profile ready. You can complete the rest later.</p>
             </div>
+          </div>
 
-            <div className="si-col">
-              <motion.section variants={itemVariants} className="si-section">
-                <label className="si-label">Short Description</label>
-                <textarea 
-                  className="si-textarea"
-                  placeholder="A brief overview of your institution"
-                  value={form.description}
-                  onChange={(e) => setForm({...form, description: e.target.value})}
-                  style={{ height: '140px' }}
-                />
-              </motion.section>
+          <div className="si-card">
+            <section className="si-form-section">
+              <h2>School Information</h2>
+              <div className="si-field-grid">
+                <label className="si-field"><span>School Name<em>*</em></span><input type="text" placeholder="e.g. Springfield Elementary" value={form.schoolName} onChange={(e) => setForm({...form, schoolName: e.target.value})} /></label>
+                <label className="si-field"><span>School Type<em>*</em></span><select value={form.type} onChange={(e) => setForm({...form, type: e.target.value})}><option value="" disabled>Select a type...</option><option value="private">Private</option><option value="public">Public</option><option value="international">International</option></select></label>
+              </div>
+            </section>
 
-              <motion.section variants={itemVariants} className="si-section">
-                <label className="si-label">School Logo</label>
-                <div className="si-upload-box">
-                  <span className="si-upload-text">Upload logo</span>
-                  <input 
-                    type="file" 
-                    className="si-file-input" 
-                    onChange={(e) => setForm({...form, logo: e.target.files[0]})}
-                  />
-                </div>
-              </motion.section>
-            </div>
+            <section className="si-form-section">
+              <h2>Location</h2>
+              <div className="si-field-grid">
+                <label className="si-field"><span>Country<em>*</em></span><select value={form.country} onChange={(e) => setForm({...form, country: e.target.value})}><option value="" disabled>Select country...</option><option value="Nigeria">Nigeria</option><option value="Ghana">Ghana</option><option value="Kenya">Kenya</option></select></label>
+                <label className="si-field"><span>State<em>*</em></span><input type="text" placeholder="e.g. Lagos" value={form.state} onChange={(e) => setForm({...form, state: e.target.value})} /></label>
+                <label className="si-field"><span>City<em>*</em></span><input type="text" placeholder="e.g. Ikeja" value={form.city} onChange={(e) => setForm({...form, city: e.target.value})} /></label>
+              </div>
+              <label className="si-field si-field-full"><span>School Address <small>(Optional)</small></span><input type="text" placeholder="Street address" value={form.address} onChange={(e) => setForm({...form, address: e.target.value})} /></label>
+            </section>
+
+            <section className="si-form-section">
+              <h2>Contact Information</h2>
+              <div className="si-field-grid">
+                <label className="si-field"><span>School Email<em>*</em></span><input type="email" placeholder="admin@school.com" value={form.schoolEmail} onChange={(e) => setForm({...form, schoolEmail: e.target.value})} /></label>
+                <label className="si-field"><span>Phone Number<em>*</em></span><input type="tel" placeholder="+234 XXX XXXX" value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} /></label>
+              </div>
+            </section>
+
+            <section className="si-form-section si-bottom-section">
+              <div className="si-logo-field"><h2>School Logo</h2><p>Optional - You can add this later</p><div className="si-upload-box">{logoPreview ? <img src={logoPreview} alt="School logo preview" className="si-upload-preview" /> : <><span className="si-upload-placeholder">▧</span><span className="si-upload-text">Upload logo</span></>}<input type="file" accept="image/*" className="si-file-input" onChange={(e) => { const logo = e.target.files[0]; if (!logo) return; setForm({...form, logo}); setLogoPreview(URL.createObjectURL(logo)); }} /></div></div>
+              <button type="button" className="si-next-btn" onClick={handleNext} disabled={saving}>{saving ? 'Saving…' : 'Complete school setup'}</button>
+            </section>
           </div>
 
           {error && (
             <div style={{ marginTop: '16px', color: '#b91c1c', fontSize: '14px', textAlign: 'center' }}>{error}</div>
           )}
 
-          <motion.div variants={itemVariants} className="si-footer">
-            <button className="si-next-btn" onClick={handleNext} disabled={saving}>
-              {saving ? 'Saving…' : 'Next'}
-            </button>
-            <div className="si-dots">
-              <span className="si-dot" />
-              <span className="si-dot si-dot--active" />
-            </div>
-          </motion.div>
         </div>
       </main>
 
@@ -222,6 +206,225 @@ export default function SchoolInfo() {
 
         @media (max-width: 768px) {
           .si-grid { grid-template-columns: 1fr; gap: 24px; }
+        }
+
+        .si-page-intro {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          margin-bottom: 24px;
+        }
+
+        .si-intro-back {
+          display: flex;
+          flex-shrink: 0;
+          margin-top: 2px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #111827;
+          cursor: pointer;
+        }
+
+        .si-page-intro h1 {
+          margin: 0 0 8px;
+          color: #293047;
+          font-size: 24px;
+          line-height: 1.2;
+          font-weight: 700;
+        }
+
+        .si-page-intro p {
+          margin: 0;
+          color: #293047;
+          font-size: 12px;
+        }
+
+        .si-card {
+          width: 100%;
+          padding: 24px 22px;
+          background: #fff;
+          border: 1px solid #d6ddd8;
+          border-radius: 8px;
+          box-shadow: 0 8px 20px rgba(30, 55, 40, 0.08);
+        }
+
+        .si-form-section {
+          padding-bottom: 20px;
+          margin-bottom: 18px;
+          border-bottom: 1px solid #dce3de;
+        }
+
+        .si-form-section h2 {
+          margin: 0 0 16px;
+          color: #293047;
+          font-size: 14px;
+          line-height: 1.2;
+          font-weight: 700;
+        }
+
+        .si-field-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px 12px;
+        }
+
+        .si-field {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 5px;
+          color: #293047;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .si-field em {
+          color: #e05252;
+          font-style: normal;
+        }
+
+        .si-field small {
+          color: #a5aca8;
+          font-size: 9px;
+          font-weight: 400;
+        }
+
+        .si-field input,
+        .si-field select {
+          width: 100%;
+          min-width: 0;
+          padding: 9px 11px;
+          border: 1px solid #c8d0cc;
+          border-radius: 5px;
+          background: #f9faf9;
+          color: #293047;
+          font-family: inherit;
+          font-size: 11px;
+          font-weight: 400;
+          outline: none;
+        }
+
+        .si-field input::placeholder {
+          color: #c8cecb;
+        }
+
+        .si-field input:focus,
+        .si-field select:focus {
+          border-color: #1ccb43;
+          box-shadow: 0 0 0 2px rgba(28, 203, 67, 0.12);
+        }
+
+        .si-field-full {
+          margin-top: 14px;
+        }
+
+        .si-bottom-section {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          align-items: end;
+          gap: 70px;
+          padding-bottom: 0;
+          margin-bottom: 0;
+          border-bottom: 0;
+        }
+
+        .si-logo-field h2 {
+          margin-bottom: 5px;
+        }
+
+        .si-logo-field p {
+          margin: 0 0 10px;
+          color: #293047;
+          font-size: 9px;
+        }
+
+        .si-upload-box {
+          height: 66px;
+          display: flex;
+          justify-content: flex-start;
+          gap: 10px;
+          padding: 10px 12px;
+          border: 1px solid #c8d0cc;
+          border-radius: 5px;
+          background: #f9faf9;
+        }
+
+        .si-upload-placeholder {
+          display: flex;
+          width: 34px;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #c8d0cc;
+          border-radius: 5px;
+          color: #c0c8c3;
+          font-size: 20px;
+        }
+
+        .si-upload-text {
+          align-self: center;
+          padding: 6px 10px;
+          border: 1px solid #b9d3c0;
+          border-radius: 5px;
+          color: #17683a;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .si-upload-preview {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          padding: 8px;
+        }
+
+        .si-next-btn {
+          width: 100%;
+          max-width: none;
+          padding: 13px 12px;
+          border-radius: 999px;
+          background: #24dc5b;
+          color: #14532d;
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .si-next-btn:hover {
+          background: #1ccb43;
+        }
+
+        @media (max-width: 768px) {
+          .si-main {
+            align-items: flex-start;
+            padding: 24px 16px 48px;
+          }
+
+          .si-header {
+            padding: 20px 16px;
+          }
+
+          .si-page-intro h1 {
+            font-size: 21px;
+          }
+
+          .si-page-intro p {
+            line-height: 1.5;
+          }
+
+          .si-card {
+            padding: 20px 16px;
+          }
+
+          .si-field-grid,
+          .si-bottom-section {
+            grid-template-columns: 1fr;
+            gap: 14px;
+          }
+
+          .si-bottom-section {
+            align-items: stretch;
+          }
         }
       `}</style>
     </motion.div>
