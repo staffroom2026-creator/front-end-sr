@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import authHero from '../assets/auth-hero.png';
+import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 import { authService } from '../services/authService';
 import { apiErrorMessage } from '../services/api';
@@ -303,7 +303,10 @@ export default function VerifyEmail() {
                     Verified
                   </>
                 ) : (
-                  'Verify Email'
+                  <>
+                    <span className="verify-email-desktop-label">Verify Email</span>
+                    <span className="verify-email-mobile-label">Next</span>
+                  </>
                 )}
               </button>
             </form>
@@ -311,7 +314,8 @@ export default function VerifyEmail() {
             {/* Resend Code */}
             <div className="resend-section">
               <p className="resend-text text-adaptive">
-                Didn't receive the code?{' '}
+                <span className="verify-email-desktop-resend">Didn't receive the code?{' '}</span>
+                <span className="verify-email-mobile-resend">Didn't get the email?{' '}</span>
                 {canResend ? (
                   <button
                     id="resend-code-btn"
@@ -341,7 +345,7 @@ export default function VerifyEmail() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@100;300;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ── Pulse ring animation ── */
@@ -355,11 +359,11 @@ export default function VerifyEmail() {
         .auth-layout {
           min-height: 100vh;
           display: flex;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           position: relative;
         }
 
-        .auth-bg-layer img {
+        .auth-bg-layer > img {
           position: absolute;
           inset: 0;
           width: 100%;
@@ -511,7 +515,7 @@ export default function VerifyEmail() {
           outline: none;
           transition: all 0.25s ease;
           caret-color: #1CCB43;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           letter-spacing: 2px;
         }
 
@@ -620,7 +624,7 @@ export default function VerifyEmail() {
           font-size: 14px;
           cursor: pointer;
           text-decoration: none;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           padding: 0;
           transition: opacity 0.2s;
         }
@@ -656,6 +660,11 @@ export default function VerifyEmail() {
 
         .text-adaptive {
           color: #fff;
+        }
+
+        .verify-email-mobile-label,
+        .verify-email-mobile-resend {
+          display: none;
         }
 
         /* ── Desktop Adjustments ── */
@@ -697,7 +706,7 @@ export default function VerifyEmail() {
 
           .desktop-quote h2 {
             color: #fff;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Sora', sans-serif;
             font-size: 2.6em;
             font-weight: 100;
             line-height: 1.25;
@@ -823,6 +832,111 @@ export default function VerifyEmail() {
             height: 48px;
             font-size: 18px;
             border-radius: 10px;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .auth-layout {
+            font-family: 'Sora', sans-serif;
+          }
+
+          .auth-form-wrapper {
+            padding: 24px 14px 20px;
+          }
+
+          .mobile-logo {
+            padding-left: 12px;
+          }
+
+          .auth-inner-content {
+            max-width: 412px;
+          }
+
+          .back-arrow-btn {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            width: 32px;
+            height: 32px;
+            border: none;
+            color: #fff;
+            margin: 0 0 20px 8px;
+            padding: 0;
+          }
+
+          .auth-heading {
+            margin-left: 16px;
+            margin-bottom: 12px;
+          }
+
+          .auth-glass-box {
+            background: rgba(246, 255, 242, 0.97);
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            border-radius: 32px;
+            padding: 32px 16px 34px;
+          }
+
+          .verify-icon-wrapper {
+            display: none;
+          }
+
+          .verify-subtitle {
+            color: #263247;
+            text-align: left;
+            margin: 0 0 24px;
+          }
+
+          .otp-container {
+            gap: 10px;
+          }
+
+          .otp-input {
+            width: 50px;
+            height: 52px;
+            border: 1.5px solid #b9c4c0;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.18);
+            color: #374151;
+          }
+
+          .otp-input:focus,
+          .otp-input.filled {
+            border-color: #22c55e;
+            background: rgba(255, 255, 255, 0.35);
+          }
+
+          .submit-btn {
+            padding: 16px;
+            border-radius: 16px;
+            background-color: #24dc5b !important;
+            color: #14532d;
+          }
+
+          .verify-email-desktop-label,
+          .verify-email-desktop-resend,
+          .resend-timer {
+            display: none;
+          }
+
+          .verify-email-mobile-label,
+          .verify-email-mobile-resend {
+            display: inline;
+          }
+
+          .resend-section {
+            margin-top: 22px;
+          }
+
+          .resend-text {
+            color: #87918d;
+          }
+
+          .resend-btn {
+            color: #1fd957;
+          }
+
+          .footer-login-text {
+            display: none;
           }
         }
       `}</style>

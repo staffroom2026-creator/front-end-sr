@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import authHero from '../assets/auth-hero.png';
+import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
@@ -377,7 +377,7 @@ export default function SignUp() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap');
         @keyframes su-spin { to { transform: rotate(360deg); } }
         .su-spin { animation: su-spin 1s linear infinite; flex-shrink: 0; }
         .su-spin circle { opacity: 0.25; }
@@ -386,7 +386,7 @@ export default function SignUp() {
 
         .su-layout {
           min-height: 100vh;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
         }
 
         /* ════════════════════════════════
@@ -458,12 +458,10 @@ export default function SignUp() {
 
         /* Glass card */
         .su-mob-card {
-          background: rgba(255, 255, 255, 0.18);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          border: 1px solid rgba(255, 255, 255, 0.3);
-          border-radius: 24px;
-          padding: 20px 16px 16px;
+          background: rgba(246, 255, 242, 0.97);
+          border: 1px solid rgba(255, 255, 255, 0.75);
+          border-radius: 32px;
+          padding: 36px 27px 48px;
         }
 
         /* Mobile Role Selector */
@@ -472,7 +470,7 @@ export default function SignUp() {
         }
         .su-mob-role-label {
           font-size: 13px;
-          color: rgba(255, 255, 255, 0.95);
+          color: #374151;
           margin: 0 0 8px 2px;
           font-weight: 500;
         }
@@ -483,19 +481,19 @@ export default function SignUp() {
         .su-mob-pill {
           padding: 8px 18px;
           border-radius: 50px;
-          border: 1.5px solid rgba(255, 255, 255, 0.55);
-          background: rgba(255, 255, 255, 0.12);
+          border: 1.5px solid #cbd5d1;
+          background: transparent;
           font-size: 13.5px;
           font-weight: 600;
-          color: #fff;
+          color: #aeb7b3;
           cursor: pointer;
           transition: all 0.18s;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
         }
         .su-mob-pill--active {
-          background: #22C55E;
-          border-color: #22C55E;
-          color: #fff;
+          background: #24dc5b;
+          border-color: #24dc5b;
+          color: #14532d;
           box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
         }
 
@@ -509,19 +507,20 @@ export default function SignUp() {
         .su-mob-input {
           width: 100%;
           padding: 15px 18px;
-          border-radius: 50px;
-          border: none;
-          background: rgba(255, 255, 255, 0.75);
+          border-radius: 16px;
+          border: 1.5px solid #b9c4c0;
+          background: rgba(255, 255, 255, 0.18);
           font-size: 14px;
           color: #374151;
           outline: none;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           transition: box-shadow 0.18s;
         }
-        .su-mob-input::placeholder { color: #6B7280; }
+        .su-mob-input::placeholder { color: #68727d; }
         .su-mob-input:focus {
-          box-shadow: 0 0 0 2px rgba(34,197,94,0.4);
-          background: rgba(255,255,255,0.92);
+          border-color: #22c55e;
+          box-shadow: 0 0 0 2px rgba(34,197,94,0.15);
+          background: rgba(255,255,255,0.35);
         }
         .su-mob-input--icon { padding-right: 48px; }
 
@@ -561,12 +560,12 @@ export default function SignUp() {
         }
         .su-mob-terms-text {
           font-size: 13px;
-          color: rgba(255, 255, 255, 0.95);
+          color: #b8c0bd;
           line-height: 1.4;
         }
         .su-mob-terms-link {
           font-weight: 700;
-          color: #fff;
+          color: #263247;
           text-decoration: underline;
         }
 
@@ -574,14 +573,14 @@ export default function SignUp() {
         .su-mob-submit {
           width: 100%;
           padding: 16px;
-          background: #fff;
-          color: #111827;
-          border: none;
-          border-radius: 50px;
+          background: transparent;
+          color: #596171;
+          border: 1.5px solid #b9c4c0;
+          border-radius: 16px;
           font-size: 15px;
           font-weight: 600;
           cursor: pointer;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -596,11 +595,11 @@ export default function SignUp() {
         .su-mob-footer {
           text-align: center;
           font-size: 13.5px;
-          color: rgba(255,255,255,0.85);
-          margin: 14px 0 0;
+          color: #263247;
+          margin: 22px 0 0;
         }
         .su-mob-signin {
-          color: #22C55E;
+          color: #1fd957;
           font-weight: 600;
           text-decoration: none;
         }
@@ -715,7 +714,7 @@ export default function SignUp() {
             color: #374151;
             cursor: pointer;
             transition: all 0.18s;
-            font-family: 'Inter', sans-serif;
+            font-family: 'DM Sans', sans-serif;
           }
           .su-pill:hover { border-color: #9CA3AF; }
           .su-pill--active {
@@ -738,7 +737,7 @@ export default function SignUp() {
             color: #374151;
             outline: none;
             transition: border-color 0.18s, box-shadow 0.18s;
-            font-family: 'Inter', sans-serif;
+            font-family: 'DM Sans', sans-serif;
           }
           .su-input::placeholder { color: #9CA3AF; }
           .su-input:focus {
@@ -799,7 +798,7 @@ export default function SignUp() {
             justify-content: center;
             gap: 8px;
             transition: background 0.18s, opacity 0.18s;
-            font-family: 'Inter', sans-serif;
+            font-family: 'DM Sans', sans-serif;
             margin-top: 4px;
             letter-spacing: 0.2px;
           }

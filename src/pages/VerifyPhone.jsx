@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import authHero from '../assets/auth-hero.png';
+import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 
 export default function VerifyPhone() {
@@ -198,14 +198,18 @@ export default function VerifyPhone() {
                     Verifying…
                   </>
                 ) : (
-                  'Next'
+                  <>
+                    <span className="verify-phone-desktop-label">Next</span>
+                    <span className="verify-phone-mobile-label">Verify</span>
+                  </>
                 )}
               </button>
             </form>
 
             {/* Resend link */}
             <p className="resend-footer text-adaptive">
-              Didn't get the SMS?{' '}
+              <span className="verify-phone-desktop-resend">Didn't get the SMS?{' '}</span>
+              <span className="verify-phone-mobile-resend">Didn't get the email?{' '}</span>
               {canResend ? (
                 <button
                   id="verify-phone-resend-btn"
@@ -221,23 +225,26 @@ export default function VerifyPhone() {
                 </span>
               )}
             </p>
+            <p className="verify-phone-mobile-timer text-adaptive">
+              Resend code available in&nbsp; {resendTimer > 0 ? `0:${resendTimer.toString().padStart(2, '0')}` : '0:00'}
+            </p>
           </div>
         </div>
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@100;300;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ── General Layout ── */
         .auth-layout {
           min-height: 100vh;
           display: flex;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           position: relative;
         }
 
-        .auth-bg-layer img {
+        .auth-bg-layer > img {
           position: absolute;
           inset: 0;
           width: 100%;
@@ -393,7 +400,7 @@ export default function VerifyPhone() {
           outline: none;
           transition: all 0.25s ease;
           caret-color: #1CCB43;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           letter-spacing: 2px;
         }
 
@@ -462,7 +469,7 @@ export default function VerifyPhone() {
           font-size: 14px;
           cursor: pointer;
           text-decoration: none;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           padding: 0;
           transition: opacity 0.2s;
         }
@@ -479,6 +486,12 @@ export default function VerifyPhone() {
         .resend-link--disabled:hover {
           opacity: 0.4;
           text-decoration: none;
+        }
+
+        .verify-phone-mobile-label,
+        .verify-phone-mobile-resend,
+        .verify-phone-mobile-timer {
+          display: none;
         }
 
         .text-adaptive {
@@ -524,7 +537,7 @@ export default function VerifyPhone() {
 
           .desktop-quote h2 {
             color: #fff;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Sora', sans-serif;
             font-size: 2.6em;
             font-weight: 100;
             line-height: 1.25;
@@ -644,6 +657,104 @@ export default function VerifyPhone() {
             height: 48px;
             font-size: 18px;
             border-radius: 10px;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .auth-layout {
+            font-family: 'Sora', sans-serif;
+          }
+
+          .auth-form-wrapper {
+            padding: 24px 16px 20px;
+          }
+
+          .mobile-logo {
+            padding-left: 12px;
+          }
+
+          .auth-inner-content {
+            max-width: 408px;
+          }
+
+          .auth-heading {
+            margin-left: 10px;
+            margin-bottom: 8px;
+          }
+
+          .verify-phone-subtitle {
+            margin-left: 10px;
+            margin-bottom: 24px;
+          }
+
+          .auth-glass-box {
+            background: rgba(246, 255, 242, 0.97);
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            border-radius: 32px;
+            padding: 24px 16px 34px;
+          }
+
+          .code-label {
+            color: #87918d;
+          }
+
+          .edit-link {
+            color: #263247;
+          }
+
+          .otp-container {
+            gap: 10px;
+          }
+
+          .otp-input {
+            width: 50px;
+            height: 52px;
+            border: 1.5px solid #b9c4c0;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.18);
+            color: #374151;
+          }
+
+          .otp-input:focus,
+          .otp-input.filled {
+            border-color: #22c55e;
+            background: rgba(255, 255, 255, 0.35);
+          }
+
+          .submit-btn {
+            padding: 16px;
+            border-radius: 16px;
+            background-color: #24dc5b !important;
+            color: #14532d;
+          }
+
+          .verify-phone-desktop-label,
+          .verify-phone-desktop-resend {
+            display: none;
+          }
+
+          .verify-phone-mobile-label,
+          .verify-phone-mobile-resend,
+          .verify-phone-mobile-timer {
+            display: inline;
+          }
+
+          .resend-footer,
+          .verify-phone-mobile-timer {
+            color: #87918d;
+          }
+
+          .resend-footer {
+            margin-top: 22px;
+          }
+
+          .resend-link {
+            color: #1fd957;
+          }
+
+          .verify-phone-mobile-timer {
+            font-size: 14px;
+            margin: 24px 0 0;
           }
         }
       `}</style>

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import heroBg from '../assets/school campus.jpg';
+import heroBg from '../assets/school campus.webp';
 import BrandLogo from '../components/BrandLogo';
 
 export default function JoinWaitlist() {

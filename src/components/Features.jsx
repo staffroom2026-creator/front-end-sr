@@ -1,6 +1,6 @@
 import React from 'react';
-import stressedTeacher from '../assets/stressed_teacher.jpeg';
-import stressedHeadTeacher from '../assets/stressed_head_teacher.jpeg';
+import stressedTeacher from '../assets/stressed_teacher.webp';
+import stressedHeadTeacher from '../assets/stressed_head_teacher.webp';
 
 export default function Features() {
   return (

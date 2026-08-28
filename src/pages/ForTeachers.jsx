@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import classroomHelpImg from '../assets/classroom_help.png';
-import teacherRoleImg from '../assets/teacher-role.png';
-import smileyImg from '../assets/smiley.png';
-import recruitmentImg from '../assets/about_meeting.png'; // Reused meeting image
+import classroomHelpImg from '../assets/classroom_help.webp';
+import teacherRoleImg from '../assets/teacher-role.webp';
+import smileyImg from '../assets/smiley.webp';
+import recruitmentImg from '../assets/about_meeting.webp'; // Reused meeting image
 
 export default function ForTeachers() {
   return (

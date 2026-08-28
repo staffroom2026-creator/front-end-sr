@@ -1,10 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
-import schoolOfficerImg from '../assets/school_officer.png';
-import femaleEducatorImg from '../assets/female_educator.png';
-import schoolCollabImg from '../assets/school_collab.png';
-import recruitmentImg from '../assets/about_meeting.png'; // Reused meeting image
+import schoolOfficerImg from '../assets/school_officer.webp';
+import femaleEducatorImg from '../assets/female_educator.webp';
+import schoolCollabImg from '../assets/school_collab.webp';
+import recruitmentImg from '../assets/about_meeting.webp'; // Reused meeting image
 
 export default function ForSchools() {
   return (

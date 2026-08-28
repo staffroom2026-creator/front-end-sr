@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import authHero from '../assets/auth-hero.png';
+import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 
 export default function AddPhoneNumber() {
@@ -144,18 +144,18 @@ export default function AddPhoneNumber() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@100;300;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* ── General Layout ── */
         .auth-layout {
           min-height: 100vh;
           display: flex;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           position: relative;
         }
 
-        .auth-bg-layer img {
+        .auth-bg-layer > img {
           position: absolute;
           inset: 0;
           width: 100%;
@@ -330,7 +330,7 @@ export default function AddPhoneNumber() {
           outline: none;
           transition: border-color 0.25s, box-shadow 0.25s;
           min-height: 52px;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           letter-spacing: 0.8px;
           width: 100%;
         }
@@ -425,7 +425,7 @@ export default function AddPhoneNumber() {
 
           .desktop-quote h2 {
             color: #fff;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Sora', sans-serif;
             font-size: 2.6em;
             font-weight: 100;
             line-height: 1.25;
@@ -525,6 +525,73 @@ export default function AddPhoneNumber() {
           .phone-input-field {
             padding: 12px 14px;
             font-size: 15px;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .auth-form-wrapper {
+            padding: 24px 16px 20px;
+          }
+
+          .mobile-logo {
+            padding-left: 12px;
+          }
+
+          .auth-inner-content {
+            max-width: 408px;
+          }
+
+          .auth-heading {
+            margin-left: 10px;
+            margin-bottom: 8px;
+          }
+
+          .phone-subtitle {
+            margin-left: 10px;
+          }
+
+          .auth-glass-box {
+            background: rgba(246, 255, 242, 0.97);
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            border-radius: 32px;
+            padding: 34px 16px 32px;
+          }
+
+          .country-prefix,
+          .phone-input-field {
+            min-height: 56px;
+            border: 1.5px solid #b9c4c0;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.18);
+          }
+
+          .country-prefix {
+            padding: 0 14px;
+          }
+
+          .phone-input-field {
+            padding: 16px 18px;
+            color: #374151;
+          }
+
+          .phone-input-field::placeholder {
+            color: #68727d;
+          }
+
+          .country-code {
+            color: #9aa49f;
+          }
+
+          .phone-input-field:focus {
+            border-color: #22c55e;
+            background: rgba(255, 255, 255, 0.35);
+          }
+
+          .submit-btn {
+            padding: 16px;
+            border-radius: 16px;
+            background-color: #24dc5b !important;
+            color: #14532d;
           }
         }
       `}</style>

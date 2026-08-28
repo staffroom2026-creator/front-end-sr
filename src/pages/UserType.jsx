@@ -1,8 +1,8 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import teacherImg from '../assets/teacher-role.png';
-import adminImg from '../assets/admin-role.png';
+import teacherImg from '../assets/teacher-role.webp';
+import adminImg from '../assets/admin-role.webp';
 import BrandLogo from '../components/BrandLogo';
 
 /* ── Animation variants ── */
@@ -231,14 +231,14 @@ export default function UserType() {
       </main>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Sora:wght@400;500;600;700;800&display=swap');
 
         *, *::before, *::after { box-sizing: border-box; }
 
         .ut-page {
           min-height: 100vh;
           background-color: #F0F0EE;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           display: flex;
           flex-direction: column;
         }
@@ -374,7 +374,7 @@ export default function UserType() {
           padding: 18px;
           background: #1CCB43;
           color: #111;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           font-size: 15px;
           font-weight: 700;
           border: none;

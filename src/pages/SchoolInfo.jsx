@@ -168,7 +168,7 @@ export default function SchoolInfo() {
         .si-page {
           min-height: 100vh;
           background-color: #F0F0EE;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           display: flex;
           flex-direction: column;
           color: #2D3748;

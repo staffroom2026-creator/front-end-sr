@@ -10,11 +10,11 @@
   --color-text-muted: #666666;
   --color-light-green: #E8F9EB;
   --color-dark-green: #1B7A35;
-  --font-sans: "Inter", system-ui, sans-serif;
+  --font-sans: "DM Sans", sans-serif;
 }
 
 body {
-  font-family: "Inter", system-ui, sans-serif;
+  font-family: "DM Sans", sans-serif;
   background-color: var(--color-background);
   color: var(--color-text);
   margin: 0;
@@ -22,16 +22,21 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+.brand-typography,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: 'Sora', sans-serif;
+}
+
 .brand-typography {
   font-family: 'DM Sans', sans-serif;
 }
 
-.brand-typography h1,
-.brand-typography h2,
-.brand-typography h3,
-.brand-typography h4,
-.brand-typography h5,
-.brand-typography h6 {
+.font-sora {
   font-family: 'Sora', sans-serif;
 }
 

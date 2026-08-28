@@ -1,19 +1,77 @@
 import React, { useState } from 'react';
 
 const teacherFaqs = [
-  "What happens after I apply for a job?",
-  "How do schools contact me?",
-  "How can I improve my chances of getting hired?",
-  "Can I update my profile after signing up?",
-  "What if I don't get selected?"
+  {
+    question: 'Who can use Staffroom as a teacher?',
+    answer: 'Staffroom is designed for qualified teachers looking for teaching opportunities with private schools.',
+  },
+  {
+    question: 'Are the jobs on Staffroom verified?',
+    answer: 'We review job postings to help ensure opportunities come from legitimate schools. We still encourage teachers to review each opportunity carefully before applying.',
+  },
+  {
+    question: 'Do I have to pay to apply for jobs?',
+    answer: 'No. Teachers can create a profile and apply for available teaching opportunities without paying an application fee.',
+  },
+  {
+    question: 'What information can schools see on my profile?',
+    answer: 'Schools can view the professional information you make available, including your subjects, teaching levels, experience, education, availability, CV, and TRCN verification status.',
+  },
+  {
+    question: 'How do I apply for a teaching job?',
+    answer: 'Find a job that matches your experience and qualifications, review the job details, select Apply, confirm your CV and cover letter, and submit your application.',
+  },
+  {
+    question: 'What happens after I apply?',
+    answer: 'The school can review your application and update its status. You will be notified when there is an important update, such as being shortlisted or invited to an interview.',
+  },
+  {
+    question: 'Can I apply for multiple jobs?',
+    answer: 'Yes. You can apply for multiple positions that match your qualifications, experience, and career interests.',
+  },
+  {
+    question: 'What does the TRCN Verified badge mean?',
+    answer: 'It means the TRCN certificate submitted by the teacher has been reviewed and verified through Staffroom\'s verification process.',
+  },
 ];
 
 const schoolFaqs = [
-  "How do I post a new job opportunity?",
-  "What is the process for reviewing teacher applications?",
-  "Can I filter candidates by specific qualifications?",
-  "How do I contact a candidate for an interview?",
-  "Is there a limit to how many jobs we can post?"
+  {
+    question: 'Who can use Staffroom as a school?',
+    answer: 'Staffroom is designed for private schools, school owners, principals, HR teams, and authorized school administrators looking to recruit teachers.',
+  },
+  {
+    question: 'Can we search for teachers without posting a job?',
+    answer: 'Yes. Schools can browse and search teacher profiles using criteria such as subject, teaching level, qualification, experience, location, and availability.',
+  },
+  {
+    question: 'What information can we see about a teacher?',
+    answer: "Depending on the teacher's profile visibility, you can view their professional information, including subjects, teaching levels, education, experience, availability, CV, and TRCN verification status.",
+  },
+  {
+    question: 'How do we know if a teacher is TRCN verified?',
+    answer: 'Teachers can submit their TRCN certificate for verification. Once verified, their profile will display a TRCN Verified badge.',
+  },
+  {
+    question: 'How do we post a teaching vacancy?',
+    answer: 'Create your school account, open Jobs, select Post a Job, provide the role details and requirements, then publish the vacancy.',
+  },
+  {
+    question: 'How do we review applicants?',
+    answer: 'Open one of your active job posts and select View Applicants. You can review each applicant\'s profile, CV, and cover letter before deciding what to do next.',
+  },
+  {
+    question: 'Can we shortlist or reject applicants?',
+    answer: 'Yes. Schools can update application statuses, shortlist suitable candidates, reject applications, and move shortlisted candidates to the next stage of recruitment.',
+  },
+  {
+    question: 'Can we use saved messages when shortlisting candidates?',
+    answer: 'Yes. Schools can create reusable response templates for common recruitment messages and customize them before sending.',
+  },
+  {
+    question: 'Can we close a job after hiring?',
+    answer: 'Yes. You can close a job when you are no longer accepting applications.',
+  },
 ];
 
 export default function FAQs() {
@@ -65,7 +123,7 @@ export default function FAQs() {
                 onClick={() => toggleAccordion(idx)}
                 className="w-full py-4 md:py-6 flex items-center justify-between text-left hover:text-primary transition-colors focus:outline-none"
               >
-                <span className="font-semibold text-gray-900 text-sm md:text-base">{faq}</span>
+                <span className="font-semibold text-gray-900 text-sm md:text-base">{faq.question}</span>
                 <span className="ml-4 md:ml-6 flex-shrink-0">
                   {openIndex === idx ? (
                     <svg className="w-4 h-4 md:w-5 md:h-5 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -79,15 +137,37 @@ export default function FAQs() {
                 </span>
               </button>
               
-              {openIndex === idx && (
+              <div
+                className={`faq-answer-wrapper ${openIndex === idx ? 'faq-answer-wrapper--open' : ''}`}
+                aria-hidden={openIndex !== idx}
+              >
                 <div className="pb-4 md:pb-6 pr-8 md:pr-12 text-gray-600 text-sm md:text-base leading-relaxed">
-                  Placeholder text for the answer to "{faq}". This provides helpful context for the person inquiring about the platform.
+                  {faq.answer}
                 </div>
-              )}
+              </div>
             </div>
           ))}
         </div>
       </div>
+      <style>{`
+        .faq-answer-wrapper {
+          display: grid;
+          grid-template-rows: 0fr;
+          opacity: 0;
+          transition: grid-template-rows 300ms ease-out, opacity 200ms ease-out;
+        }
+
+        .faq-answer-wrapper > div {
+          min-height: 0;
+          overflow: hidden;
+        }
+
+        .faq-answer-wrapper--open {
+          grid-template-rows: 1fr;
+          opacity: 1;
+          transition: grid-template-rows 300ms ease-in, opacity 200ms ease-in;
+        }
+      `}</style>
     </section>
   );
 }

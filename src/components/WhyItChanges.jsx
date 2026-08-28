@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import teacherImg from '../assets/smiley.png';
-import schoolImg from '../assets/happy_head_teacher.jpeg';
+import teacherImg from '../assets/smiley.webp';
+import schoolImg from '../assets/happy_head_teacher.webp';
 
 export default function WhyItChanges() {
   const [activeTab, setActiveTab] = useState('teachers');
@@ -47,7 +47,7 @@ export default function WhyItChanges() {
             
             {/* Left Area (Text) */}
             <div className="flex-1 md:bg-dark-green md:p-16 flex flex-col justify-center text-white mt-6 md:mt-0 order-2 md:order-1">
-              <h3 className="text-[#1CCB43] md:text-white text-[17px] md:text-2xl font-bold mb-4 md:mb-8 font-inter">
+              <h3 className="text-[#1CCB43] md:text-white text-[17px] md:text-2xl font-bold mb-4 md:mb-8 font-sora">
                 {activeTab === 'teachers' ? (
                   <>
                     <span className="md:hidden">Teacher & Job Seekers</span>

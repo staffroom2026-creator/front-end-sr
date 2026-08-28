@@ -2,12 +2,12 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 
 // Import the images
-import img5 from '../assets/Rectangle 5.png';
-import img6 from '../assets/Rectangle 6.png';
-import img7 from '../assets/Rectangle 7.png';
-import img8 from '../assets/Rectangle 8.png';
-import img9 from '../assets/Rectangle 9.png';
-import img10 from '../assets/Rectangle 10.png';
+import img5 from '../assets/Rectangle 5.webp';
+import img6 from '../assets/Rectangle 6.webp';
+import img7 from '../assets/Rectangle 7.webp';
+import img8 from '../assets/Rectangle 8.webp';
+import img9 from '../assets/Rectangle 9.webp';
+import img10 from '../assets/Rectangle 10.webp';
 
 export default function Hero() {
   return (

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import schoolCampus from '../assets/school campus.jpg';
+import schoolCampus from '../assets/school campus.webp';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { jobService } from '../services/jobService';
@@ -3718,7 +3718,7 @@ export default function TeacherDashboard() {
           display: flex;
           background-color: #F8F9FA;
           min-height: 100vh;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
         }
 
         /* ═══════════════════════════════════════

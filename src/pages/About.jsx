@@ -1,7 +1,7 @@
 import React from 'react';
 import Navbar from '../components/Navbar';
-import aboutHeroImg from '../assets/about_hero.png';
-import aboutMeetingImg from '../assets/about_meeting.png';
+import aboutHeroImg from '../assets/about_hero.webp';
+import aboutMeetingImg from '../assets/about_meeting.webp';
 
 export default function About() {
   return (

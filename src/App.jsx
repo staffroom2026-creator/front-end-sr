@@ -29,6 +29,7 @@ import Pricing from './pages/Pricing';
 import Contact from './pages/Contact';
 import Waitlist from './pages/Waitlist';
 import JoinWaitlist from './pages/JoinWaitlist';
+import Terms from './pages/Terms';
 
 function LandingPage() {
   return (
@@ -89,6 +90,7 @@ function App() {
         <Route path="/contact" element={<Contact />} />
         <Route path="/waitlist" element={<Waitlist />} />
         <Route path="/join-waitlist" element={<JoinWaitlist />} />
+        <Route path="/terms" element={<Terms />} />
         <Route path="/sitemap" element={<PageExplorer />} />
       </Routes>
     </BrowserRouter>

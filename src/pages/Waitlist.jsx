@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import heroBg from '../assets/school campus.jpg';
-import teacherImg from '../assets/female_educator.png';
-import schoolImg from '../assets/school_officer.png';
+import heroBg from '../assets/school campus.webp';
+import teacherImg from '../assets/female_educator.webp';
+import schoolImg from '../assets/school_officer.webp';
 import BrandLogo from '../components/BrandLogo';
 
 export default function Waitlist() {

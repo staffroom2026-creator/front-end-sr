@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
@@ -33,6 +33,15 @@ export default function TeacherInfo() {
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [photoPreview, setPhotoPreview] = useState('');
+
+  useEffect(() => {
+    return () => {
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
 
   const handleNext = async () => {
     if (!form.country || !form.state || !form.level || !form.subjects.trim() || !form.bio.trim()) {
@@ -178,11 +187,21 @@ export default function TeacherInfo() {
               <motion.section variants={itemVariants} className="ti-section">
                 <label className="ti-label">Profile Photo</label>
                 <div className="ti-upload-box">
-                  <span className="ti-upload-text">Upload photo</span>
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Profile preview" className="ti-upload-preview" />
+                  ) : (
+                    <span className="ti-upload-text">Upload photo</span>
+                  )}
                   <input 
                     type="file" 
+                    accept="image/*"
                     className="ti-file-input" 
-                    onChange={(e) => setForm({...form, photo: e.target.files[0]})}
+                    onChange={(e) => {
+                      const photo = e.target.files[0];
+                      if (!photo) return;
+                      setForm({...form, photo});
+                      setPhotoPreview(URL.createObjectURL(photo));
+                    }}
                   />
                 </div>
               </motion.section>
@@ -210,7 +229,7 @@ export default function TeacherInfo() {
         .ti-page {
           min-height: 100vh;
           background-color: #F0F0EE;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           display: flex;
           flex-direction: column;
           color: #2D3748;
@@ -357,6 +376,12 @@ export default function TeacherInfo() {
           color: #A0AEC0;
         }
 
+        .ti-upload-preview {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
         .ti-file-input {
           position: absolute;
           inset: 0;
@@ -416,6 +441,68 @@ export default function TeacherInfo() {
           }
           .ti-header {
             padding: 20px;
+          }
+        }
+
+        @media (min-width: 769px) {
+          .ti-page {
+            background-color: #f7f7f6;
+            font-family: 'Sora', sans-serif;
+          }
+
+          .ti-header {
+            padding: 46px 88px;
+          }
+
+          .ti-main {
+            align-items: flex-start;
+            padding: 54px 20px 72px;
+          }
+
+          .ti-container {
+            max-width: 343px;
+            gap: 40px;
+          }
+
+          .ti-grid {
+            grid-template-columns: 1fr;
+            gap: 30px;
+          }
+
+          .ti-col {
+            gap: 24px;
+          }
+
+          .ti-label {
+            font-size: 14px;
+            color: #293047;
+          }
+
+          .ti-select,
+          .ti-textarea,
+          .ti-upload-box {
+            border-radius: 13px;
+          }
+
+          .ti-select {
+            padding: 13px 16px;
+            font-family: 'Sora', sans-serif;
+            font-size: 12px;
+          }
+
+          .ti-textarea {
+            font-family: 'Sora', sans-serif;
+          }
+
+          .ti-footer {
+            margin-top: 2px;
+            gap: 18px;
+          }
+
+          .ti-next-btn {
+            max-width: 343px;
+            border-radius: 13px;
+            font-family: 'Sora', sans-serif;
           }
         }
       `}</style>

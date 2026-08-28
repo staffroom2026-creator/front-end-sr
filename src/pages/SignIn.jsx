@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import authHero from '../assets/auth-hero.png';
+import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
@@ -240,18 +240,18 @@ export default function SignIn() {
       </div>
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@100;300;600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&display=swap');
         @keyframes spin { to { transform: rotate(360deg); } }
 
         /* General Layout */
         .auth-layout {
           min-height: 100vh;
           display: flex;
-          font-family: 'Inter', sans-serif;
+          font-family: 'DM Sans', sans-serif;
           position: relative;
         }
 
-        .auth-bg-layer img {
+        .auth-bg-layer > img {
           position: absolute;
           inset: 0;
           width: 100%;
@@ -470,7 +470,7 @@ export default function SignIn() {
           .auth-bg-layer {
             position: relative;
             width: 50%;
-            height: auto;
+            min-height: 100vh;
             flex-shrink: 0;
             overflow: hidden;
           }
@@ -492,15 +492,17 @@ export default function SignIn() {
           
           .desktop-quote {
             position: absolute;
-            bottom: 360px;
+            top: 50%;
             left: 40px;
             right: 40px;
-            z-index: 10;
+            transform: translateY(-50%);
+            display: block;
+            z-index: 20;
           }
 
           .desktop-quote h2 {
             color: #fff;
-            font-family: 'Poppins', sans-serif;
+            font-family: 'Sora', sans-serif;
             font-size: 2.6em;
             font-weight: 100;
             line-height: 1.25;
@@ -550,6 +552,77 @@ export default function SignIn() {
           
           .divider .or-text {
             color: #aaa;
+          }
+        }
+
+        @media (max-width: 767px) {
+          .auth-form-wrapper {
+            padding: 24px 16px 20px;
+          }
+
+          .mobile-logo {
+            padding-left: 12px;
+          }
+
+          .auth-inner-content {
+            max-width: 408px;
+          }
+
+          .auth-heading {
+            margin-left: 18px;
+            margin-bottom: 10px;
+          }
+
+          .auth-glass-box {
+            background: rgba(246, 255, 242, 0.97);
+            border: 1px solid rgba(255, 255, 255, 0.75);
+            border-radius: 32px;
+            padding: 36px 31px 32px;
+          }
+
+          .input-field {
+            padding: 16px 18px;
+            border: 1.5px solid #b9c4c0;
+            border-radius: 16px;
+            background: rgba(255, 255, 255, 0.18);
+            color: #374151;
+          }
+
+          .input-field::placeholder {
+            color: #68727d;
+          }
+
+          .input-field:focus {
+            border-color: #22c55e;
+            background: rgba(255, 255, 255, 0.35);
+          }
+
+          .remember-label,
+          .no-account-text {
+            color: #b8c0bd;
+          }
+
+          .forgot-link {
+            color: #ff5b4d;
+          }
+
+          .create-link {
+            color: #19883f;
+          }
+
+          .divider .line {
+            background-color: #aab4b1;
+          }
+
+          .divider .or-text {
+            color: #89928f;
+          }
+
+          .submit-btn {
+            padding: 16px;
+            border-radius: 16px;
+            background-color: #24dc5b !important;
+            color: #14532d;
           }
         }
       `}</style>
