@@ -203,9 +203,28 @@ export default function SignUp() {
                 </button>
               </div>
 
+              {/* Terms Checkbox */}
+              <label className="su-mob-terms-row" htmlFor="mob-terms">
+                <input id="mob-terms" type="checkbox" className="su-mob-checkbox"
+                  checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
+                <span className="su-mob-terms-text">
+                  I confirm that i agree to the{' '}
+                  <Link to="/terms" className="su-mob-terms-link">terms and conditions</Link>
+                  {' '}below
+                </span>
+              </label>
+
               {/* Sign Up */}
-              <button id="mob-submit" type="submit" disabled={loading} className="su-mob-submit">
-                {loading ? 'Signing up…' : 'Sign Up'}
+              <button id="mob-submit" type="submit" disabled={loading || !agreedToTerms} className="su-mob-submit">
+                {loading ? (
+                  <>
+                    <svg className="su-spin" width="18" height="18" fill="none" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Signing up…
+                  </>
+                ) : 'Sign Up'}
               </button>
 
             </form>
@@ -365,6 +384,9 @@ export default function SignUp() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@400;600;700&display=swap');
         @keyframes su-spin { to { transform: rotate(360deg); } }
+        .su-spin { animation: su-spin 1s linear infinite; flex-shrink: 0; }
+        .su-spin circle { opacity: 0.25; }
+        .su-spin path { opacity: 0.75; }
         *, *::before, *::after { box-sizing: border-box; }
 
         .su-layout {
@@ -525,6 +547,34 @@ export default function SignUp() {
           align-items: center;
         }
 
+        /* Mobile Terms */
+        .su-mob-terms-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          cursor: pointer;
+          margin: 4px 2px 2px;
+        }
+        .su-mob-checkbox {
+          width: 17px;
+          height: 17px;
+          margin-top: 2px;
+          border-radius: 4px;
+          cursor: pointer;
+          accent-color: #22C55E;
+          flex-shrink: 0;
+        }
+        .su-mob-terms-text {
+          font-size: 13px;
+          color: rgba(255, 255, 255, 0.95);
+          line-height: 1.4;
+        }
+        .su-mob-terms-link {
+          font-weight: 700;
+          color: #fff;
+          text-decoration: underline;
+        }
+
         /* Mobile submit */
         .su-mob-submit {
           width: 100%;
@@ -537,6 +587,10 @@ export default function SignUp() {
           font-weight: 600;
           cursor: pointer;
           font-family: 'Inter', sans-serif;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
           transition: opacity 0.18s;
           margin-top: 4px;
         }
