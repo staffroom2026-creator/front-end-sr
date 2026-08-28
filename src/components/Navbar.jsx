@@ -9,7 +9,7 @@ export default function Navbar({ sticky = false }) {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <nav className={sticky ? 'sticky top-0 z-40 bg-[#FAF9F6] border-b border-gray-100' : 'relative'}>
+    <nav className={sticky ? 'sticky top-0 z-40 bg-[#FAF9F6]/80 backdrop-blur-md border-b border-gray-100' : 'relative'}>
       <div className="flex items-center justify-between py-6 px-6 md:px-8 max-w-7xl mx-auto w-full">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 animate-fade-in no-underline text-gray-900">
