@@ -273,7 +273,7 @@ export default function SignUp() {
                   className={`su-pill ${role === 'teacher' ? 'su-pill--active' : ''}`}
                   onClick={() => setRole('teacher')}>Teacher</button>
                 <button type="button" id="signup-role-admin"
-                  className={`su-pill ${role === 'admin' ? 'su-pill--active' : ''}`}
+                  className={`su-pill ${role === 'school' ? 'su-pill--active' : ''}`}
                   onClick={() => setRole('school')}>School Admin</button>
               </div>
             </div>
