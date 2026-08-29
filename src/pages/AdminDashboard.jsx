@@ -9,6 +9,7 @@ import {
   FiAlertCircle,
   FiArchive,
   FiArrowLeft,
+  FiArrowRight,
   FiBell,
   FiBriefcase,
   FiCalendar,
@@ -158,6 +159,22 @@ export default function AdminDashboard() {
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [isShortlistModalOpen, setIsShortlistModalOpen] = useState(false);
+  const [isShortlistSuccessOpen, setIsShortlistSuccessOpen] = useState(false);
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [shortlistForm, setShortlistForm] = useState({
+    interviewType: "",
+    responseTemplate: "",
+    candidateMessage:
+      "Dear Elena,\n\nWe are pleased to inform you that you have been shortlisted for the Senior Literature Educator position. We would like to invite you for an interview to discuss your experience and pedagogical approach in further detail.\n\nKind regards,\nStaffroom Team",
+    saveTemplate: true,
+    interviewDate: "2024-05-24",
+    interviewTime: "10:30",
+    interviewVenue: "BrightMind Academy, 24 Airport Road, GRA, Benin City, Edo State",
+    interviewLink: "https://meet.google.com/abc-defg-hij",
+    recipientName: "",
+    recipientPhone: "",
+  });
 
   const isSchool = user?.role === "school";
 
@@ -175,6 +192,17 @@ export default function AdminDashboard() {
     const timeoutId = window.setTimeout(() => setSnackbar(null), 4500);
     return () => window.clearTimeout(timeoutId);
   }, [snackbar]);
+
+  useEffect(() => {
+    if (!isShortlistModalOpen && !isShortlistSuccessOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isShortlistModalOpen, isShortlistSuccessOpen]);
 
   const currentUserId = useMemo(
     () => user?.user_id || user?.id || user?.school_id || "",
@@ -1021,6 +1049,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               <button
                 type="button"
                 className="school-summary-shortlist-btn"
+                onClick={() => setIsShortlistModalOpen(true)}
               >
                 Shortlist Candidate
               </button>
@@ -1590,6 +1619,511 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     );
   };
 
+  const renderShortlistModal = () => {
+    const isAlreadyShortlisted =
+      String(selectedApplicant?.status || "").toLowerCase() === "shortlisted";
+    const modalSubtitle =
+      selectedApplicant?.teacher_name || "Dr. Elena Sterling";
+
+    return (
+      <div
+        className="school-shortlist-modal-backdrop"
+        onClick={() => setIsShortlistModalOpen(false)}
+        role="presentation"
+      >
+        <div
+          className="school-shortlist-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="shortlist-modal-title"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="school-shortlist-modal-header">
+            <div className="school-shortlist-modal-heading">
+              <h3 id="shortlist-modal-title">Shortlist Candidate</h3>
+              {isAlreadyShortlisted && (
+                <p className="school-shortlist-modal-subtitle">
+                  Update status for {modalSubtitle}
+                </p>
+              )}
+            </div>
+            <button
+              type="button"
+              className="school-shortlist-modal-close"
+              onClick={() => setIsShortlistModalOpen(false)}
+              aria-label="Close shortlist modal"
+            >
+              <FiX size={18} />
+            </button>
+          </div>
+
+          <div className="school-shortlist-modal-body">
+            {isAlreadyShortlisted ? (
+              <>
+                <div className="school-shortlist-status-row">
+                  <div className="school-shortlist-status-box">
+                    <span className="school-shortlist-status-label">
+                      Application Status
+                    </span>
+                    <div className="school-shortlist-status-pill">
+                      <span className="school-shortlist-status-dot" />
+                      SHORTLISTED
+                    </div>
+                  </div>
+
+                  <div className="school-shortlist-status-box">
+                    <span className="school-shortlist-status-label">
+                      Interview Stage
+                    </span>
+                    <select
+                      className="school-shortlist-status-select"
+                      value={shortlistForm.interviewType || "Interview"}
+                      onChange={(event) =>
+                        setShortlistForm((prev) => ({
+                          ...prev,
+                          interviewType: event.target.value,
+                        }))
+                      }
+                    >
+                      <option value="Interview">Interview</option>
+                      <option value="Physical Interview">Physical Interview</option>
+                      <option value="Virtual Interview">Virtual Interview</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="school-shortlist-interview-details">
+                  <div className="school-shortlist-interview-header">
+                    <span className="school-shortlist-calendar-icon">▣</span>
+                    <h4>Interview Details</h4>
+                  </div>
+
+                  <div className="school-shortlist-details-grid">
+                    <div className="school-shortlist-detail-block">
+                      <label>Date</label>
+                      <input
+                        type="text"
+                        value={shortlistForm.interviewDate || "05/24/2024"}
+                        onChange={(event) =>
+                          setShortlistForm((prev) => ({
+                            ...prev,
+                            interviewDate: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="school-shortlist-detail-block">
+                      <label>Time</label>
+                      <input
+                        type="text"
+                        value={shortlistForm.interviewTime || "10:30AM"}
+                        onChange={(event) =>
+                          setShortlistForm((prev) => ({
+                            ...prev,
+                            interviewTime: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+
+                    <div className="school-shortlist-detail-block school-shortlist-detail-block--wide school-shortlist-detail-block--link-row">
+                      <label>Venue / Meeting Link</label>
+                      <div className="school-shortlist-input-wrap">
+                        <span className="school-shortlist-link-icon">◫</span>
+                        <input
+                          type="text"
+                          value={shortlistForm.interviewLink || "https://zoom.us/j/8492013847"}
+                          onChange={(event) =>
+                            setShortlistForm((prev) => ({
+                              ...prev,
+                              interviewLink: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+
+                    <div className="school-shortlist-detail-block school-shortlist-detail-block--wide">
+                      <label>Additional Instructions</label>
+                      <input
+                        type="text"
+                        value={shortlistForm.additionalInstructions || "e.g. Please bring a copy of your portfolio"}
+                        onChange={(event) =>
+                          setShortlistForm((prev) => ({
+                            ...prev,
+                            additionalInstructions: event.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <label className="school-shortlist-field">
+                  <span>Interview Type</span>
+                  <select
+                    value={shortlistForm.interviewType}
+                    onChange={(event) =>
+                      setShortlistForm((prev) => ({
+                        ...prev,
+                        interviewType: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Select</option>
+                    <option value="Physical Interview">Physical Interview</option>
+                    <option value="Virtual Interview">Virtual Interview</option>
+                  </select>
+                </label>
+
+                {(shortlistForm.interviewType === "Physical Interview" ||
+                  shortlistForm.interviewType === "Virtual Interview") && (
+                  <div className="school-shortlist-interview-details">
+                    <div className="school-shortlist-interview-header">
+                      <span className="school-shortlist-calendar-icon">▣</span>
+                      <h4>Interview Details</h4>
+                    </div>
+
+                    <div className="school-shortlist-details-grid">
+                      <div className="school-shortlist-detail-block">
+                        <label>Date</label>
+                        <input
+                          type="date"
+                          value={shortlistForm.interviewDate}
+                          onChange={(event) =>
+                            setShortlistForm((prev) => ({
+                              ...prev,
+                              interviewDate: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      <div className="school-shortlist-detail-block">
+                        <label>Time</label>
+                        <input
+                          type="time"
+                          value={shortlistForm.interviewTime}
+                          onChange={(event) =>
+                            setShortlistForm((prev) => ({
+                              ...prev,
+                              interviewTime: event.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+
+                      {shortlistForm.interviewType === "Physical Interview" ? (
+                        <>
+                          <div className="school-shortlist-detail-block school-shortlist-detail-block--wide">
+                            <label>Venue</label>
+                            <div className="school-shortlist-input-wrap school-shortlist-input-wrap--venue">
+                              <span className="school-shortlist-location-dot">◉</span>
+                              <input
+                                type="text"
+                                value={shortlistForm.interviewVenue}
+                                onChange={(event) =>
+                                  setShortlistForm((prev) => ({
+                                    ...prev,
+                                    interviewVenue: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div className="school-shortlist-detail-block school-shortlist-detail-block--right">
+                            <label>Recipient contact</label>
+                            <input
+                              type="text"
+                              className="school-shortlist-recipient-input"
+                              placeholder="Name"
+                              value={shortlistForm.recipientName}
+                              onChange={(event) =>
+                                setShortlistForm((prev) => ({
+                                  ...prev,
+                                  recipientName: event.target.value,
+                                }))
+                              }
+                            />
+                            <input
+                              type="tel"
+                              className="school-shortlist-recipient-input"
+                              placeholder="Phone Number"
+                              value={shortlistForm.recipientPhone}
+                              onChange={(event) =>
+                                setShortlistForm((prev) => ({
+                                  ...prev,
+                                  recipientPhone: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="school-shortlist-detail-block school-shortlist-detail-block--wide">
+                            <label>Link</label>
+                            <div className="school-shortlist-input-wrap school-shortlist-input-wrap--link">
+                              <span className="school-shortlist-link-icon">◫</span>
+                              <input
+                                type="text"
+                                value={shortlistForm.interviewLink}
+                                onChange={(event) =>
+                                  setShortlistForm((prev) => ({
+                                    ...prev,
+                                    interviewLink: event.target.value,
+                                  }))
+                                }
+                              />
+                            </div>
+                          </div>
+
+                          <div className="school-shortlist-detail-block school-shortlist-detail-block--right">
+                            <label>Recipient contact</label>
+                            <input
+                              type="text"
+                              className="school-shortlist-recipient-input"
+                              placeholder="Name"
+                              value={shortlistForm.recipientName}
+                              onChange={(event) =>
+                                setShortlistForm((prev) => ({
+                                  ...prev,
+                                  recipientName: event.target.value,
+                                }))
+                              }
+                            />
+                            <input
+                              type="tel"
+                              className="school-shortlist-recipient-input"
+                              placeholder="Phone Number"
+                              value={shortlistForm.recipientPhone}
+                              onChange={(event) =>
+                                setShortlistForm((prev) => ({
+                                  ...prev,
+                                  recipientPhone: event.target.value,
+                                }))
+                              }
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="school-shortlist-field school-shortlist-field--template">
+              <div className="school-shortlist-template-header">
+                <span>Response Template</span>
+                <button
+                  type="button"
+                  className="school-shortlist-template-action"
+                  onClick={() =>
+                    setShortlistForm((prev) => ({
+                      ...prev,
+                      responseTemplate: "Manage Templates",
+                    }))
+                  }
+                >
+                  <span className="school-shortlist-gear">⚙</span>
+                  <span>Manage Templates</span>
+                </button>
+              </div>
+
+              <div
+                className="school-shortlist-template-select"
+                role="button"
+                tabIndex={0}
+                onClick={() => setShowTemplateMenu((prev) => !prev)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setShowTemplateMenu((prev) => !prev);
+                  }
+                }}
+              >
+                <span className="school-shortlist-template-value">
+                  {shortlistForm.responseTemplate ||
+                    "Select a saved template (optional)"}
+                </span>
+                <span className="school-shortlist-dropdown-caret" aria-hidden="true">
+                  <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </span>
+              </div>
+
+              {showTemplateMenu && (
+                <div className="school-shortlist-template-menu" role="listbox" aria-label="Saved response templates">
+                  <button
+                    type="button"
+                    className="school-shortlist-template-option"
+                    onClick={() => {
+                      setShortlistForm((prev) => ({
+                        ...prev,
+                        responseTemplate: "",
+                      }));
+                      setShowTemplateMenu(false);
+                    }}
+                  >
+                    Select a saved template (optional)
+                  </button>
+                  <button
+                    type="button"
+                    className="school-shortlist-template-option"
+                    onClick={() => {
+                      setShortlistForm((prev) => ({
+                        ...prev,
+                        responseTemplate: "Senior Literature Interview Invitation",
+                      }));
+                      setShowTemplateMenu(false);
+                    }}
+                  >
+                    Senior Literature Interview Invitation
+                  </button>
+                  <button
+                    type="button"
+                    className="school-shortlist-template-option"
+                    onClick={() => {
+                      setShortlistForm((prev) => ({
+                        ...prev,
+                        responseTemplate: "Math Teacher Interview Invitation",
+                      }));
+                      setShowTemplateMenu(false);
+                    }}
+                  >
+                    Math Teacher Interview Invitation
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <label className="school-shortlist-field">
+              <span>Candidate Message (Optional)</span>
+              <textarea
+                rows="6"
+                value={shortlistForm.candidateMessage}
+                onChange={(event) =>
+                  setShortlistForm((prev) => ({
+                    ...prev,
+                    candidateMessage: event.target.value,
+                  }))
+                }
+              />
+            </label>
+
+            <label className="school-shortlist-save-template">
+              <input
+                type="checkbox"
+                checked={shortlistForm.saveTemplate}
+                onChange={(event) =>
+                  setShortlistForm((prev) => ({
+                    ...prev,
+                    saveTemplate: event.target.checked,
+                  }))
+                }
+              />
+              <span>Save this message as a reusable template</span>
+            </label>
+
+            <div className="school-shortlist-modal-actions">
+              <button
+                type="button"
+                className="school-shortlist-cancel-btn"
+                onClick={() => setIsShortlistModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="school-shortlist-confirm-btn"
+                onClick={() => {
+                  setIsShortlistModalOpen(false);
+                  setIsShortlistSuccessOpen(true);
+                  showSnackbar(
+                    "Shortlist sent",
+                    "Candidate has been shortlisted successfully.",
+                  );
+                }}
+              >
+                Confirm Shortlist
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderShortlistSuccessModal = () => {
+    const successName = selectedApplicant?.teacher_name || "Tunde Bello";
+
+    return (
+      <div
+        className="school-shortlist-success-backdrop"
+        role="presentation"
+        onClick={() => setIsShortlistSuccessOpen(false)}
+      >
+        <div
+          className="school-shortlist-success-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="shortlist-success-title"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="school-shortlist-success-icon-wrap">
+            <div className="school-shortlist-success-icon">
+              <FiCheck size={46} />
+            </div>
+          </div>
+
+          <h3 id="shortlist-success-title">Application Updated Successfully</h3>
+
+          <p className="school-shortlist-success-text">
+            {successName} has been notified. The application status is now
+            <span> Shortlisted</span>
+          </p>
+
+          <div className="school-shortlist-success-actions">
+            <button
+              type="button"
+              className="school-shortlist-success-primary"
+              onClick={() => {
+                setIsShortlistSuccessOpen(false);
+                setActiveTab("applicants");
+              }}
+            >
+              Return to Applicants
+              <FiArrowRight size={16} />
+            </button>
+            <button
+              type="button"
+              className="school-shortlist-success-secondary"
+              onClick={() => setIsShortlistSuccessOpen(false)}
+            >
+              View Teacher Profile
+            </button>
+          </div>
+
+          <div className="school-shortlist-success-notice">
+            <span className="school-shortlist-success-check">
+              <FiCheck size={16} />
+            </span>
+            <div>
+              <strong>Notification Sent</strong>
+              <p>An email and SMS alert were sent to the candidate.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderApplicants = () => (
     <div className="rounded-2xl border border-[#dfe5e1] bg-white p-6 text-left shadow-sm">
       <div className="mb-5">
@@ -2106,6 +2640,8 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           </button>
         ))}
       </nav>
+      {isShortlistModalOpen && renderShortlistModal()}
+      {isShortlistSuccessOpen && renderShortlistSuccessModal()}
       {snackbar && (
         <div className="admin-snackbar" role="status">
           <span className="admin-snackbar-icon">
@@ -2132,6 +2668,573 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .admin-snackbar strong { display: block; color: #090b0d; font-size: 24px; font-weight: 700; line-height: 1.25; }
         .admin-snackbar p { margin: 54px 0 0; color: #090b0d; font-size: 20px; line-height: 1.3; }
         .admin-snackbar > button { display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #090b0d; cursor: pointer; }
+
+        .school-shortlist-modal-backdrop {
+          position: fixed;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          padding: 24px;
+          overflow-y: auto;
+          background: rgba(17, 24, 24, 0.32);
+          z-index: 100;
+        }
+        .school-shortlist-modal {
+          width: min(100%, 460px);
+          max-height: calc(100vh - 48px);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border: 1px solid #e1e6e5;
+          border-radius: 18px;
+          background: #f4f6f5;
+          box-shadow: 0 24px 48px rgba(17, 24, 24, 0.15);
+        }
+        .school-shortlist-modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 12px;
+          flex-shrink: 0;
+          padding: 18px 18px 10px;
+          color: #121c2a;
+        }
+        .school-shortlist-modal-heading {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .school-shortlist-modal-header h3 {
+          margin: 0;
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: -0.04em;
+        }
+        .school-shortlist-modal-subtitle {
+          margin: 0;
+          color: #56656d;
+          font-size: 12px;
+          font-weight: 500;
+        }
+        .school-shortlist-modal-close {
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          background: transparent;
+          color: #62706d;
+          cursor: pointer;
+        }
+        .school-shortlist-modal-body {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          max-height: calc(100vh - 120px);
+          overflow-y: auto;
+          padding: 0 18px 18px;
+        }
+        .school-shortlist-field {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          color: #232f3a;
+          font-size: 13px;
+          font-weight: 600;
+          width: 100%;
+        }
+        .school-shortlist-field > select {
+          width: 50%;
+          min-width: 220px;
+        }
+        .school-shortlist-status-row {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px 16px;
+          align-items: end;
+        }
+        .school-shortlist-status-box {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .school-shortlist-status-label {
+          color: #232f3a;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .school-shortlist-status-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          min-height: 46px;
+          padding: 0 14px;
+          border: 1px solid #dbe3df;
+          border-radius: 12px;
+          background: rgba(28, 141, 96, 0.08);
+          color: #11734d;
+          font-size: 13px;
+          font-weight: 700;
+          letter-spacing: 0.06em;
+        }
+        .school-shortlist-status-dot {
+          display: inline-block;
+          width: 10px;
+          height: 10px;
+          border-radius: 50%;
+          background: #1a9c62;
+          box-shadow: 0 0 0 4px rgba(26, 156, 98, 0.18);
+        }
+        .school-shortlist-status-select {
+          width: 100%;
+          min-height: 46px;
+          padding: 0 14px;
+          border: 1px solid #d8e0de;
+          border-radius: 12px;
+          background: #f9faf9;
+          color: #1f2d2d;
+          appearance: none;
+          background-image: linear-gradient(45deg, transparent 50%, #53605b 50%), linear-gradient(135deg, #53605b 50%, transparent 50%);
+          background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+          background-size: 6px 6px, 6px 6px;
+          background-repeat: no-repeat;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .school-shortlist-detail-block--link-row {
+          grid-column: 1 / -1;
+        }
+        .school-shortlist-field--template {
+          gap: 10px;
+        }
+        .school-shortlist-interview-details {
+          display: flex;
+          flex-direction: column;
+          gap: 14px;
+          margin-top: 6px;
+          padding: 14px 16px 12px;
+          border: 1px solid #e4e8e7;
+          border-radius: 16px;
+          background: rgba(232, 236, 239, 0.42);
+        }
+        .school-shortlist-interview-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          color: #0f7b55;
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .school-shortlist-calendar-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          font-size: 18px;
+          line-height: 1;
+        }
+        .school-shortlist-interview-header h4 {
+          margin: 0;
+          color: #0f7b55;
+          font-size: 15px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+        }
+        .school-shortlist-details-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 14px 16px;
+          align-items: start;
+        }
+        .school-shortlist-detail-block {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .school-shortlist-detail-block label {
+          display: block;
+          margin: 0;
+          color: #1d2931;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .school-shortlist-detail-block input {
+          width: 100%;
+          min-height: 46px;
+          padding: 10px 12px;
+          border: 1px solid #dfe5e3;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.28);
+          color: #1c2226;
+          font: inherit;
+          font-size: 15px;
+          font-weight: 500;
+          letter-spacing: -0.02em;
+          outline: none;
+          box-sizing: border-box;
+        }
+        .school-shortlist-detail-block input:focus {
+          border-color: #1c8d60;
+          box-shadow: 0 0 0 3px rgba(28, 141, 96, 0.08);
+        }
+        .school-shortlist-input-wrap {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-height: 46px;
+          padding: 0 12px 0 10px;
+          border: 1px solid #dfe5e3;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.28);
+          box-sizing: border-box;
+        }
+        .school-shortlist-input-wrap input {
+          min-height: 0;
+          height: 100%;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          box-shadow: none;
+          font-size: 14px;
+          line-height: 1.4;
+        }
+        .school-shortlist-location-dot {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 16px;
+          height: 16px;
+          color: #8a9190;
+          font-size: 15px;
+          flex-shrink: 0;
+        }
+        .school-shortlist-link-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 20px;
+          height: 20px;
+          color: #7e8a88;
+          font-size: 18px;
+          flex-shrink: 0;
+        }
+        .school-shortlist-recipient-input {
+          min-height: 40px !important;
+          padding: 10px 12px !important;
+          font-size: 14px !important;
+          font-weight: 500 !important;
+        }
+        .school-shortlist-detail-block--wide {
+          grid-column: 1 / 2;
+        }
+        .school-shortlist-detail-block--right {
+          grid-column: 2 / 3;
+        }
+        .school-shortlist-template-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          color: #1e2a2b;
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .school-shortlist-template-action {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #0d7d54;
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .school-shortlist-gear {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 16px;
+          line-height: 1;
+        }
+        .school-shortlist-template-select {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          min-height: 62px;
+          padding: 0 18px 0 20px;
+          border: 1px solid #e2e8e6;
+          border-radius: 999px;
+          background: #f8f9f8;
+          color: #9aa3a1;
+          font-size: 18px;
+          font-weight: 500;
+          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
+          cursor: pointer;
+        }
+        .school-shortlist-template-value {
+          overflow: hidden;
+          color: #8b908d;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .school-shortlist-dropdown-caret {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          color: #7a817e;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+        .school-shortlist-dropdown-caret svg {
+          width: 18px;
+          height: 18px;
+          display: block;
+        }
+        .school-shortlist-template-menu {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          margin-top: 8px;
+          padding: 10px 8px;
+          border: 1px solid #e3e9e7;
+          border-radius: 16px;
+          background: #ffffff;
+          box-shadow: 0 18px 35px rgba(16, 24, 20, 0.08);
+        }
+        .school-shortlist-template-option {
+          width: 100%;
+          padding: 12px 14px;
+          border: 0;
+          border-radius: 10px;
+          background: transparent;
+          color: #27353c;
+          text-align: left;
+          font: inherit;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .school-shortlist-template-option:hover {
+          background: #f3f7f4;
+        }
+        .school-shortlist-field select,
+        .school-shortlist-field textarea {
+          width: 100%;
+          border: 1px solid #d8e0de;
+          border-radius: 12px;
+          background: #f9faf9;
+          color: #1f2d2d;
+          font: inherit;
+        }
+        .school-shortlist-field select {
+          height: 46px;
+          padding: 0 14px;
+          appearance: none;
+          background-image: linear-gradient(45deg, transparent 50%, #53605b 50%), linear-gradient(135deg, #53605b 50%, transparent 50%);
+          background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+          background-size: 6px 6px, 6px 6px;
+          background-repeat: no-repeat;
+        }
+        .school-shortlist-field > select {
+          width: 50%;
+          max-width: 50%;
+          min-width: 220px;
+        }
+        .school-shortlist-field textarea {
+          min-height: 120px;
+          padding: 12px 14px;
+          resize: vertical;
+          line-height: 1.5;
+        }
+        .school-shortlist-select-wrap {
+          position: relative;
+        }
+        .school-shortlist-select-wrap select {
+          width: 100%;
+          height: 46px;
+          padding: 0 14px;
+          border: 1px solid #d8e0de;
+          border-radius: 12px;
+          background: #f9faf9;
+          appearance: none;
+          color: #1f2d2d;
+          font: inherit;
+          background-image: linear-gradient(45deg, transparent 50%, #53605b 50%), linear-gradient(135deg, #53605b 50%, transparent 50%);
+          background-position: calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+          background-size: 6px 6px, 6px 6px;
+          background-repeat: no-repeat;
+        }
+        .school-shortlist-save-template {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #4d5d59;
+          font-size: 13px;
+        }
+        .school-shortlist-save-template input {
+          width: 16px;
+          height: 16px;
+          accent-color: #1a8e52;
+        }
+        .school-shortlist-modal-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 4px;
+        }
+        .school-shortlist-cancel-btn,
+        .school-shortlist-confirm-btn {
+          min-width: 120px;
+          height: 42px;
+          padding: 0 18px;
+          border-radius: 999px;
+          border: 1px solid #d9e0dd;
+          background: #ffffff;
+          color: #1f2b2c;
+          font: inherit;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .school-shortlist-confirm-btn {
+          border-color: #148a52;
+          background: #148a52;
+          color: #ffffff;
+        }
+
+        .school-shortlist-success-backdrop {
+          position: fixed;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          background: rgba(18, 24, 24, 0.2);
+          z-index: 120;
+        }
+        .school-shortlist-success-modal {
+          width: min(100%, 520px);
+          padding: 28px 28px 22px;
+          border: 1px solid #e3e7e5;
+          border-radius: 22px;
+          background: rgba(244, 246, 245, 0.97);
+          box-shadow: 0 30px 60px rgba(23, 34, 31, 0.16);
+          text-align: center;
+        }
+        .school-shortlist-success-icon-wrap {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 18px;
+        }
+        .school-shortlist-success-icon {
+          display: grid;
+          place-items: center;
+          width: 120px;
+          height: 120px;
+          border-radius: 50%;
+          background: #0f7d52;
+          color: #ffffff;
+          box-shadow: inset 0 0 0 8px rgba(255, 255, 255, 0.18);
+        }
+        .school-shortlist-success-modal h3 {
+          margin: 0;
+          color: #101b22;
+          font-size: clamp(28px, 3vw, 46px);
+          line-height: 1.1;
+          font-weight: 700;
+          letter-spacing: -0.04em;
+        }
+        .school-shortlist-success-text {
+          margin: 18px auto 0;
+          max-width: 380px;
+          color: #40515d;
+          font-size: 18px;
+          line-height: 1.45;
+        }
+        .school-shortlist-success-text span {
+          display: inline-block;
+          margin-left: 2px;
+          padding: 2px 8px;
+          border-radius: 6px;
+          background: rgba(20, 138, 82, 0.12);
+          color: #0f7d52;
+          font-weight: 700;
+        }
+        .school-shortlist-success-actions {
+          display: flex;
+          justify-content: center;
+          gap: 14px;
+          margin-top: 26px;
+        }
+        .school-shortlist-success-primary,
+        .school-shortlist-success-secondary {
+          min-height: 44px;
+          padding: 0 20px;
+          border-radius: 12px;
+          border: 1px solid #d7ddd9;
+          background: #ffffff;
+          color: #1a2d2a;
+          font: inherit;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .school-shortlist-success-primary {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          border-color: #0f7d52;
+          background: #0f7d52;
+          color: #ffffff;
+        }
+        .school-shortlist-success-secondary {
+          background: #f8faf9;
+        }
+        .school-shortlist-success-notice {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 26px;
+          padding: 14px 16px;
+          border: 1px solid #dfe7e2;
+          border-radius: 12px;
+          background: #f5f7f6;
+          color: #2c3b3e;
+          text-align: left;
+        }
+        .school-shortlist-success-check {
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: rgba(15, 125, 82, 0.12);
+          color: #0f7d52;
+        }
+        .school-shortlist-success-notice strong {
+          display: block;
+          margin: 0 0 2px;
+          font-size: 15px;
+          font-weight: 700;
+          color: #1e2c30;
+        }
+        .school-shortlist-success-notice p {
+          margin: 0;
+          color: #52636d;
+          font-size: 14px;
+          line-height: 1.4;
+        }
 
         .school-job-form-page { color: #252b3d; }
         .school-job-form-breadcrumb { color: #7b8490; font-size: 11px; }
