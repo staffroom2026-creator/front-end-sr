@@ -2821,7 +2821,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                   </div>
 
                   <div className="school-teacher-actions">
-                    <button type="button" className="school-teacher-primary-btn">
+                    <button
+                      type="button"
+                      className="school-teacher-primary-btn"
+                      onClick={() => {
+                        setSelectedTeacherProfile(teacher);
+                        setIsTeacherInviteModalOpen(true);
+                      }}
+                    >
                       Invite to Apply
                     </button>
                     <button
@@ -4537,7 +4544,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         }
         .school-teacher-primary-btn {
           background: #2AE156;
-          color: #ffffff;
+          color: #000000;
           border-color: #2AE156;
         }
         .school-teacher-secondary-btn {
