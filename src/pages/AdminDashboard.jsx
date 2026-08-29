@@ -161,6 +161,83 @@ export default function AdminDashboard() {
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
+  const [notificationItems, setNotificationItems] = useState([
+    {
+      key: "applicant-tunde",
+      tab: "applicants",
+      type: "highlight",
+      accent: "green",
+      icon: FiFileText,
+      label: "NEW APPLICATION",
+      title: "Tunde Bello applied for Senior Mathematics Teacher",
+      applicantName: "Tunde Bello",
+      unread: true,
+      description:
+        "The applicant has 8 years of experience and matches 90% of your required qualifications. Review their profile to proceed.",
+      time: "2 hours ago",
+    },
+    {
+      key: "response-segun",
+      tab: "notifications",
+      type: "highlight",
+      accent: "",
+      icon: FiMessageSquare,
+      label: "RESPONSE",
+      title: "Mr. Segun responded to your message",
+      unread: true,
+      description:
+        '"Thank you for the update. I will be available for the interview next Tuesday at 10 AM as requested."',
+      time: "4 hours ago",
+    },
+    {
+      key: "job-expiry",
+      tab: "jobs",
+      type: "highlight",
+      accent: "red",
+      icon: FiAlertCircle,
+      label: "EXPIRY WARNING",
+      title: "Job posting expires in 3 days",
+      unread: true,
+      description:
+        "Your listing for 'Assistant Principal' will be removed soon. Consider extending the duration or reviewing current applicants.",
+      time: "5 hours ago",
+    },
+    {
+      key: "applicant-sarah",
+      tab: "applicants",
+      type: "simple",
+      icon: FiFileText,
+      label: "NEW APPLICATION",
+      title: "Sarah Jenkins applied for Biology Teacher",
+      applicantName: "Sarah Jenkins",
+      unread: true,
+      description: "Profile overview and CV attached for review.",
+      time: "Yesterday, 2:30 PM",
+    },
+    {
+      key: "system-renewal",
+      tab: "settings",
+      type: "simple",
+      icon: FiCheckCircle,
+      label: "SYSTEM",
+      title: "Subscription Renewed Successfully",
+      unread: false,
+      description: "Your 'Premium School' plan has been renewed for another month.",
+      time: "Yesterday, 9:00 AM",
+    },
+    {
+      key: "applicant-david",
+      tab: "applicants",
+      type: "simple",
+      icon: FiFileText,
+      label: "NEW APPLICATION",
+      title: "David Osa applied for Physics Teacher",
+      applicantName: "David Osa",
+      unread: true,
+      description: "",
+      time: "Oct 12",
+    },
+  ]);
   const [isShortlistModalOpen, setIsShortlistModalOpen] = useState(false);
   const [isShortlistSuccessOpen, setIsShortlistSuccessOpen] = useState(false);
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
@@ -219,6 +296,33 @@ export default function AdminDashboard() {
   const showSnackbar = (title, message) => {
     setIsSnackbarClosing(false);
     setSnackbar({ title, message });
+  };
+
+  const markAllNotificationsAsRead = () => {
+    setNotificationItems((prev) => prev.map((item) => ({ ...item, unread: false })));
+  };
+
+  const handleNotificationItemClick = (item) => {
+    if (item.applicantName) {
+      const matchedApplicant = allApplicants.find(
+        (app) =>
+          (app.teacher_name || app.teacher_email || "")
+            .toLowerCase()
+            .includes(item.applicantName.toLowerCase()),
+      );
+
+      if (matchedApplicant) {
+        setSelectedApplicant(matchedApplicant);
+      }
+    }
+
+    setNotificationItems((prev) =>
+      prev.map((entry) =>
+        entry.key === item.key ? { ...entry, unread: false } : entry,
+      ),
+    );
+
+    handleTabChange(item.tab);
   };
 
   useEffect(() => {
@@ -634,106 +738,99 @@ export default function AdminDashboard() {
     );
   };
 
-  const renderDesktopNotifications = () => (
-    <div className="school-desktop-notifications">
-      <div className="school-notifications-heading">
-        <div>
-          <h2>Notifications</h2>
-          <p>
-            <strong>12 UNREAD</strong>
-            <span>You have new updates.</span>
-          </p>
+  const renderDesktopNotifications = () => {
+    const unreadCount = notificationItems.filter((item) => item.unread).length;
+
+    return (
+      <div className="school-desktop-notifications">
+        <div className="school-notifications-heading">
+          <div>
+            <h2>Notifications</h2>
+            <p>
+              <strong>{unreadCount} UNREAD</strong>
+              <span>You have new updates.</span>
+            </p>
+          </div>
+          <button type="button" onClick={markAllNotificationsAsRead}>
+            <FiCheckCircle size={14} /> Mark all as read
+          </button>
         </div>
-        <button type="button">
-          <FiCheckCircle size={14} /> Mark all as read
-        </button>
+        <div className="school-notifications-panel">
+          <h3>Today</h3>
+          {notificationItems.slice(0, 3).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`school-notification-${item.type} ${
+                  item.accent ? `school-notification-${item.type}--${item.accent}` : ""
+                } ${item.unread ? "is-unread" : ""}`}
+                onClick={() => handleNotificationItemClick(item)}
+              >
+                <span className="school-notification-icon">
+                  <Icon size={17} />
+                </span>
+                <div>
+                  <b>{item.label}</b>
+                  <strong>{item.title}</strong>
+                  {item.description && <p>{item.description}</p>}
+                </div>
+                <time>{item.time}</time>
+              </button>
+            );
+          })}
+          <h3>Yesterday</h3>
+          {notificationItems.slice(3, 5).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`school-notification-${item.type} ${item.unread ? "is-unread" : ""}`}
+                onClick={() => handleNotificationItemClick(item)}
+              >
+                <span className="school-notification-icon">
+                  <Icon size={17} />
+                </span>
+                <div>
+                  <b>{item.label}</b>
+                  <strong>{item.title}</strong>
+                  {item.description && <p>{item.description}</p>}
+                </div>
+                <time>{item.time}</time>
+              </button>
+            );
+          })}
+          <h3>Earlier</h3>
+          {notificationItems.slice(5).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`school-notification-simple ${item.unread ? "is-unread" : ""}`}
+                onClick={() => handleNotificationItemClick(item)}
+              >
+                <span className="school-notification-icon">
+                  <Icon size={17} />
+                </span>
+                <div>
+                  <b>{item.label}</b>
+                  <strong>{item.title}</strong>
+                  {item.description && <p>{item.description}</p>}
+                </div>
+                <time>{item.time}</time>
+              </button>
+            );
+          })}
+          <button type="button" className="school-load-more">
+            Load More <FiChevronDown size={13} />
+          </button>
+        </div>
       </div>
-      <div className="school-notifications-panel">
-        <h3>Today</h3>
-        <div className="school-notification-highlight school-notification-highlight--green">
-          <span className="school-notification-icon">
-            <FiFileText size={17} />
-          </span>
-          <div>
-            <b>NEW APPLICATION</b>
-            <strong>Tunde Bello applied for Senior Mathematics Teacher</strong>
-            <p>
-              The applicant has 8 years of experience and matches 90% of your
-              required qualifications. Review their profile to proceed.
-            </p>
-          </div>
-          <time>2 hours ago</time>
-        </div>
-        <div className="school-notification-highlight">
-          <span className="school-notification-icon">
-            <FiMessageSquare size={17} />
-          </span>
-          <div>
-            <b>RESPONSE</b>
-            <strong>Mr. Segun responded to your message</strong>
-            <p>
-              "Thank you for the update. I will be available for the interview
-              next Tuesday at 10 AM as requested."
-            </p>
-          </div>
-          <time>4 hours ago</time>
-        </div>
-        <div className="school-notification-highlight school-notification-highlight--red">
-          <span className="school-notification-icon">
-            <FiAlertCircle size={17} />
-          </span>
-          <div>
-            <b>EXPIRY WARNING</b>
-            <strong>Job posting expires in 3 days</strong>
-            <p>
-              Your listing for 'Assistant Principal' will be removed soon.
-              Consider extending the duration or reviewing current applicants.
-            </p>
-          </div>
-          <time>5 hours ago</time>
-        </div>
-        <h3>Yesterday</h3>
-        <div className="school-notification-simple">
-          <span className="school-notification-icon">
-            <FiFileText size={17} />
-          </span>
-          <div>
-            <b>NEW APPLICATION</b>
-            <strong>Sarah Jenkins applied for Biology Teacher</strong>
-            <p>Profile overview and CV attached for review.</p>
-          </div>
-          <time>Yesterday, 2:30 PM</time>
-        </div>
-        <div className="school-notification-simple">
-          <span className="school-notification-icon">
-            <FiCheckCircle size={17} />
-          </span>
-          <div>
-            <b>SYSTEM</b>
-            <strong>Subscription Renewed Successfully</strong>
-            <p>
-              Your 'Premium School' plan has been renewed for another month.
-            </p>
-          </div>
-          <time>Yesterday, 9:00 AM</time>
-        </div>
-        <h3>Earlier</h3>
-        <div className="school-notification-simple">
-          <span className="school-notification-icon">
-            <FiFileText size={17} />
-          </span>
-          <div>
-            <b>NEW APPLICATION</b>
-            <strong>David Osa applied for Physics Teacher</strong>
-          </div>
-          <time>Oct 12</time>
-        </div>
-        <button type="button" className="school-load-more">
-          Load More <FiChevronDown size={13} />
-        </button>
-      </div>
-    </div>
-  );
+    );
+  };
 
   const renderJobForm = () => (
     <div className="school-job-form-page">
@@ -3168,17 +3265,36 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                           <FiArrowLeft size={22} />
                         </button>
                         <h2>Notifications</h2>
-                        <span />
+                        <button
+                          type="button"
+                          className="admin-mobile-notification-mark-read"
+                          onClick={markAllNotificationsAsRead}
+                        >
+                          Mark all read
+                        </button>
                       </div>
-                      <div className="admin-mobile-notifications-content rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm">
-                        <FiBell
-                          className="mx-auto mb-4 text-[#1ccb43]"
-                          size={32}
-                        />
-                        <h2 className="text-xl font-bold">Notifications</h2>
-                        <p className="mt-2 text-sm text-[#718078]">
-                          You are all caught up.
-                        </p>
+                      <div className="admin-mobile-notifications-content">
+                        {notificationItems.map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <button
+                              key={item.key}
+                              type="button"
+                              className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                              onClick={() => handleNotificationItemClick(item)}
+                            >
+                              <span className="school-notification-icon">
+                                <Icon size={16} />
+                              </span>
+                              <div>
+                                <b>{item.label}</b>
+                                <strong>{item.title}</strong>
+                                {item.description && <p>{item.description}</p>}
+                              </div>
+                              <time>{item.time}</time>
+                            </button>
+                          );
+                        })}
                       </div>
                     </>
                   )}
@@ -3212,7 +3328,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             className={activeTab === key ? "is-active" : ""}
           >
             <Icon size={19} />
-            <span>{label}</span>
+            <span>{isSchool && key === "applicants" ? "Teachers" : label}</span>
           </button>
         ))}
       </nav>
@@ -5002,7 +5118,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-notifications-panel { padding: 32px 35px 20px; border-radius: 28px; background: #fff; box-shadow: 0 8px 25px rgba(23, 34, 56, .05); }
         .school-notifications-panel > h3 { margin: 0 0 17px; color: #20252b; font-size: 15px; font-weight: 600; }
         .school-notifications-panel > h3:not(:first-child) { margin-top: 35px; }
-        .school-notification-highlight { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 18px; align-items: start; margin-bottom: 8px; padding: 20px; border-radius: 24px; background: #f5f5f7; }
+        .school-notification-highlight { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 18px; align-items: start; width: 100%; margin-bottom: 8px; padding: 20px; border: 0; border-radius: 24px; background: #f5f5f7; color: inherit; text-align: left; cursor: pointer; }
         .school-notification-highlight--green { background: #f4f4f6; }
         .school-notification-highlight--red { background: #f4f4f6; }
         .school-notification-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #edf0ed; color: #526158; }
@@ -5013,8 +5129,21 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-notification-highlight strong, .school-notification-simple strong { display: block; color: #20252b; font-size: 14px; font-weight: 500; }
         .school-notification-highlight p, .school-notification-simple p { margin: 6px 0 0; color: #62686d; font-size: 11px; line-height: 1.45; }
         .school-notification-highlight time, .school-notification-simple time { color: #62686d; font-size: 10px; white-space: nowrap; }
-        .school-notification-simple { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 18px; align-items: start; padding: 15px 20px; }
+        .school-notification-simple { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 18px; align-items: start; width: 100%; padding: 15px 20px; border: 0; border-radius: 12px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
         .school-notification-simple .school-notification-icon { background: #eef0f1; }
+        .school-notification-highlight.is-unread, .school-notification-simple.is-unread { box-shadow: inset 0 0 0 1px rgba(30, 167, 73, 0.18); background: #f7fbf8; }
+        .admin-mobile-notification-header { display: flex; align-items: center; justify-content: space-between; min-height: 44px; margin: -4px 0 16px; }
+        .admin-mobile-notification-header button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: #fff; color: #20252b; box-shadow: 0 2px 8px rgba(23, 34, 56, .06); }
+        .admin-mobile-notification-header h2 { margin: 0; color: #20252b; font-size: 18px; font-weight: 700; }
+        .admin-mobile-notification-mark-read { width: auto !important; min-width: auto; padding: 0 10px !important; border-radius: 999px !important; background: #eafaf0 !important; color: #16843d !important; font-size: 10px !important; font-weight: 700; box-shadow: none !important; }
+        .admin-mobile-notifications-content { display: flex; flex-direction: column; gap: 12px; }
+        .admin-mobile-notification-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; width: 100%; padding: 14px 12px; border: 0; border-radius: 16px; background: #fff; color: inherit; text-align: left; box-shadow: 0 3px 10px rgba(23, 34, 56, .04); cursor: pointer; }
+        .admin-mobile-notification-item.is-unread { border: 1px solid rgba(30, 167, 73, 0.18); background: #f7fbf8; }
+        .admin-mobile-notification-item .school-notification-icon { width: 28px; height: 28px; }
+        .admin-mobile-notification-item b { display: block; color: #47624e; font-size: 8px; font-weight: 700; letter-spacing: .04em; }
+        .admin-mobile-notification-item strong { display: block; color: #20252b; font-size: 13px; font-weight: 600; }
+        .admin-mobile-notification-item p { margin: 6px 0 0; color: #62686d; font-size: 11px; line-height: 1.35; }
+        .admin-mobile-notification-item time { color: #62686d; font-size: 9px; white-space: nowrap; }
         .school-load-more { display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; min-width: 126px; margin: 27px auto 0; padding: 10px 17px; border: 1px solid #dfe2e4; border-radius: 999px; background: #eef0f1; color: #20252b; font: inherit; font-size: 11px; font-weight: 600; line-height: 1; cursor: pointer; transition: background .2s ease, border-color .2s ease, box-shadow .2s ease; }
         .school-load-more:hover { border-color: #cbd1ce; background: #e3e7e5; box-shadow: 0 3px 10px rgba(23, 34, 56, .08); }
         .school-load-more svg { color: #526158; stroke-width: 2.5; }
