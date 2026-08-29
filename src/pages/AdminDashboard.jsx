@@ -2095,6 +2095,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               className="school-shortlist-success-primary"
               onClick={() => {
                 setIsShortlistSuccessOpen(false);
+                setSelectedApplicant(null);
                 setActiveTab("applicants");
               }}
             >
