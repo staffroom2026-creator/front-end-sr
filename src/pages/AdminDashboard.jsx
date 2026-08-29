@@ -2254,6 +2254,115 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
 
 
 
+        @media (max-width: 768px) {
+          .school-job-applicants-page {
+            padding-top: 4px;
+          }
+          .school-job-applicants-breadcrumb {
+            margin-bottom: 8px;
+            font-size: 11px;
+          }
+          .school-job-applicants-title {
+            font-size: 28px;
+            letter-spacing: -0.04em;
+          }
+          .school-job-applicants-subtitle {
+            margin: 8px 0 18px;
+            font-size: 13px;
+          }
+          .school-job-applicants-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            padding: 12px;
+          }
+          .school-job-applicants-filters {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 8px;
+          }
+          .school-job-applicants-filters button,
+          .school-job-filter-button {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+            font-size: 11px;
+          }
+          .school-job-filter-menu-wrap {
+            width: 100%;
+          }
+          .school-job-filter-menu {
+            right: 0;
+            left: auto;
+            width: 100%;
+            min-width: 0;
+          }
+          .school-job-clear-filters {
+            align-self: flex-end;
+            padding: 6px 10px;
+            font-size: 11px;
+          }
+          .school-job-applicants-list {
+            margin-top: 16px;
+            gap: 12px;
+          }
+          .school-job-applicant-card {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 14px;
+            padding: 14px 12px;
+          }
+          .school-job-applicant-main {
+            grid-template-columns: 1fr;
+            gap: 12px;
+          }
+          .school-job-applicant-name-block h4 {
+            font-size: 18px;
+          }
+          .school-job-applicant-role {
+            font-size: 11px;
+          }
+          .school-job-applicant-column {
+            gap: 6px;
+          }
+          .school-job-applicant-label {
+            font-size: 10px;
+            letter-spacing: 0.08em;
+          }
+          .school-job-applicant-column strong {
+            font-size: 12px;
+          }
+          .school-job-applicant-status {
+            min-width: 88px;
+            width: fit-content;
+          }
+          .school-job-applicant-actions {
+            justify-content: stretch;
+            gap: 10px;
+          }
+          .school-job-applicant-view-btn {
+            flex: 1;
+            width: 100%;
+            padding: 11px 12px;
+            font-size: 12px;
+          }
+          .school-job-applicant-more {
+            width: 42px;
+            height: 42px;
+            font-size: 24px;
+          }
+          .school-job-applicants-footer {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+            padding-top: 14px;
+            margin-top: 14px;
+          }
+          .school-job-applicant-pagination {
+            flex-wrap: wrap;
+          }
+        }
+
         .school-overview {
           color: #20252b;
           font-family: 'DM Sans', sans-serif;
