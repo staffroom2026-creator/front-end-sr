@@ -150,6 +150,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [previousTab, setPreviousTab] = useState("overview");
   const [snackbar, setSnackbar] = useState(null);
+  const [isSnackbarClosing, setIsSnackbarClosing] = useState(false);
   const [jobFilter, setJobFilter] = useState("All Jobs");
   const [openJobMenuId, setOpenJobMenuId] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
@@ -162,6 +163,7 @@ export default function AdminDashboard() {
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [isShortlistModalOpen, setIsShortlistModalOpen] = useState(false);
   const [isShortlistSuccessOpen, setIsShortlistSuccessOpen] = useState(false);
+  const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherSearchSubmitted, setTeacherSearchSubmitted] = useState("");
@@ -205,18 +207,32 @@ export default function AdminDashboard() {
     setQualificationMenuOpen(false);
   };
 
+  const dismissSnackbar = () => {
+    if (!snackbar) return;
+    setIsSnackbarClosing(true);
+    window.setTimeout(() => {
+      setSnackbar(null);
+      setIsSnackbarClosing(false);
+    }, 260);
+  };
+
   const showSnackbar = (title, message) => {
+    setIsSnackbarClosing(false);
     setSnackbar({ title, message });
   };
 
   useEffect(() => {
     if (!snackbar) return undefined;
-    const timeoutId = window.setTimeout(() => setSnackbar(null), 4500);
+    const timeoutId = window.setTimeout(() => {
+      dismissSnackbar();
+    }, 4500);
     return () => window.clearTimeout(timeoutId);
   }, [snackbar]);
 
   useEffect(() => {
-    if (!isShortlistModalOpen && !isShortlistSuccessOpen) return undefined;
+    if (!isShortlistModalOpen && !isShortlistSuccessOpen && !isTeacherInviteModalOpen) {
+      return undefined;
+    }
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -224,7 +240,7 @@ export default function AdminDashboard() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isShortlistModalOpen, isShortlistSuccessOpen]);
+  }, [isShortlistModalOpen, isShortlistSuccessOpen, isTeacherInviteModalOpen]);
 
   const currentUserId = useMemo(
     () => user?.user_id || user?.id || user?.school_id || "",
@@ -1367,7 +1383,11 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           <div className="school-summary-content">
             <section className="school-summary-section school-summary-section--first">
               <div className="school-summary-actions">
-                <button type="button" className="school-summary-shortlist-btn">
+                <button
+                  type="button"
+                  className="school-summary-shortlist-btn"
+                  onClick={() => setIsTeacherInviteModalOpen(true)}
+                >
                   Invite
                 </button>
               </div>
@@ -1822,6 +1842,101 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               ›
             </button>
           </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTeacherInviteModal = () => {
+    const teacherName = selectedTeacherProfile?.name || "Tunde Bello";
+    const teacherRole = selectedTeacherProfile?.role || "Senior Mathematics Educator";
+    const teacherAvailability = selectedTeacherProfile?.experience || "10+ Yrs Exp";
+
+    return (
+      <div
+        className="school-teacher-invite-backdrop"
+        onClick={() => setIsTeacherInviteModalOpen(false)}
+        role="presentation"
+      >
+        <div
+          className="school-teacher-invite-modal"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="teacher-invite-modal-title"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <h3 id="teacher-invite-modal-title" className="school-teacher-invite-title">
+            Invite to Apply
+          </h3>
+
+          <p className="school-teacher-invite-subtitle">
+            Send an invitation to <strong>{teacherName}</strong> on behalf of <strong>BrightMind Academy</strong>.
+          </p>
+
+          <div className="school-teacher-invite-profile-card">
+            <div className="school-teacher-invite-avatar" aria-hidden="true">
+              {teacherName
+                .split(" ")
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
+            </div>
+
+            <div className="school-teacher-invite-profile-copy">
+              <div className="school-teacher-invite-name-row">
+                <span className="school-teacher-invite-name">{teacherName}</span>
+              </div>
+              <p className="school-teacher-invite-role">{teacherRole}</p>
+              <div className="school-teacher-invite-meta-wrap">
+                <span className="school-teacher-invite-pill">AVAILABLE</span>
+                <span className="school-teacher-invite-meta">{teacherAvailability}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="school-teacher-invite-school-block">
+            <p className="school-teacher-invite-label">SENDING ON BEHALF OF</p>
+            <div className="school-teacher-invite-school-row">
+              <span className="school-teacher-invite-school-badge" aria-label="School icon" role="img">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M12 3.5 3 8l9 4.5L21 8l-9-4.5Zm-7 6.3v4.28c0 1.1 2.69 2.42 7 2.42s7-1.32 7-2.42V9.8l-7 3.5-7-3.5Zm8.5 5.7v2.5h-1v-2.5a8.83 8.83 0 0 1-5.5-2.2v1.4c0 1.9 3.3 3.6 7 3.6s7-1.7 7-3.6v-1.4a8.83 8.83 0 0 1-5.5 2.2Z"
+                    fill="currentColor"
+                  />
+                </svg>
+              </span>
+              <span>BrightMind Academy</span>
+            </div>
+          </div>
+
+          <div className="school-teacher-invite-details-block">
+            <p className="school-teacher-invite-label">DETAILS</p>
+            <textarea
+              className="school-teacher-invite-textarea"
+              rows="5"
+              defaultValue="Hi Tunde, we were impressed by your profile and would love for you to apply for our open Further Mathematics position. We would be delighted to discuss the opportunity with you and learn more about your teaching experience."
+            />
+          </div>
+
+          <button
+            type="button"
+            className="school-teacher-invite-send-btn"
+            onClick={() => {
+              setIsTeacherInviteModalOpen(false);
+              showSnackbar("Invitation Sent", `${teacherName} has been invited to apply.`);
+            }}
+          >
+            Send Invite
+          </button>
+
+          <button
+            type="button"
+            className="school-teacher-invite-cancel-btn"
+            onClick={() => setIsTeacherInviteModalOpen(false)}
+          >
+            Cancel
+          </button>
         </div>
       </div>
     );
@@ -3101,10 +3216,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           </button>
         ))}
       </nav>
+      {isTeacherInviteModalOpen && renderTeacherInviteModal()}
       {isShortlistModalOpen && renderShortlistModal()}
       {isShortlistSuccessOpen && renderShortlistSuccessModal()}
       {snackbar && (
-        <div className="admin-snackbar" role="status">
+        <div
+          className={`admin-snackbar ${isSnackbarClosing ? "is-closing" : ""}`}
+          role="status"
+        >
           <span className="admin-snackbar-icon">
             <FiCheck size={24} />
           </span>
@@ -3114,7 +3233,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           </div>
           <button
             type="button"
-            onClick={() => setSnackbar(null)}
+            onClick={dismissSnackbar}
             aria-label="Dismiss notification"
           >
             <FiX size={25} />
@@ -3122,13 +3241,187 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         </div>
       )}
       <style>{`
-        .admin-snackbar { position: fixed; z-index: 60; top: 24px; left: 50%; display: flex; align-items: flex-start; gap: 20px; width: min(560px, calc(100vw - 56px)); padding: 30px 28px; border: 2px solid #d2d5d8; border-radius: 26px; background: #f8f8f9; box-shadow: 0 14px 35px rgba(23, 34, 56, .16); transform: translateX(-50%); }
-        .admin-snackbar-icon { display: grid; place-items: center; flex: 0 0 auto; width: 80px; height: 80px; border-radius: 50%; background: #138536; color: #fff; }
-        .admin-snackbar-icon svg { stroke-width: 3; }
-        .admin-snackbar > div { flex: 1; padding-top: 8px; }
-        .admin-snackbar strong { display: block; color: #090b0d; font-size: 24px; font-weight: 700; line-height: 1.25; }
-        .admin-snackbar p { margin: 54px 0 0; color: #090b0d; font-size: 20px; line-height: 1.3; }
+        .admin-snackbar { position: fixed; z-index: 60; top: 18px; left: 50%; display: flex; align-items: flex-start; gap: 12px; width: min(440px, calc(100vw - 28px)); padding: 16px 18px; border: 1px solid #d2d5d8; border-radius: 18px; background: #f8f8f9; box-shadow: 0 10px 22px rgba(23, 34, 56, .14); transform: translateX(-50%) translateY(0); opacity: 1; transition: transform 280ms ease-in-out, opacity 280ms ease-in-out, visibility 280ms ease-in-out; visibility: visible; }
+        .admin-snackbar.is-closing { transform: translateX(-50%) translateY(-12px); opacity: 0; visibility: hidden; }
+        .admin-snackbar-icon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; background: #138536; color: #fff; }
+        .admin-snackbar-icon svg { stroke-width: 3; width: 18px; height: 18px; }
+        .admin-snackbar > div { flex: 1; padding-top: 2px; }
+        .admin-snackbar strong { display: block; color: #090b0d; font-size: 16px; font-weight: 700; line-height: 1.3; }
+        .admin-snackbar p { margin: 8px 0 0; color: #090b0d; font-size: 14px; line-height: 1.35; }
         .admin-snackbar > button { display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #090b0d; cursor: pointer; }
+
+        .school-teacher-invite-backdrop {
+          position: fixed;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          padding: 16px;
+          background: rgba(20, 24, 24, 0.18);
+          backdrop-filter: blur(5px);
+          -webkit-backdrop-filter: blur(5px);
+          z-index: 110;
+        }
+        .school-teacher-invite-modal {
+          width: min(100%, 470px);
+          padding: 14px 16px 12px;
+          border: 1px solid rgba(33, 38, 38, 0.08);
+          border-radius: 16px;
+          background: rgba(246, 247, 246, 0.96);
+          box-shadow: 0 12px 26px rgba(18, 24, 19, 0.12);
+          text-align: left;
+        }
+        .school-teacher-invite-title {
+          margin: 0 0 4px;
+          color: #1a2024;
+          font-size: clamp(1.6rem, 1.8vw, 2rem);
+          font-weight: 700;
+          letter-spacing: -0.05em;
+          text-align: center;
+        }
+        .school-teacher-invite-subtitle {
+          margin: 0 0 10px;
+          color: #49555d;
+          font-size: 0.82rem;
+          font-weight: 400;
+          text-align: center;
+          line-height: 1.45;
+        }
+        .school-teacher-invite-subtitle strong {
+          color: #111b22;
+          font-weight: 700;
+        }
+        .school-teacher-invite-profile-card {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 10px 12px;
+          border: 1px solid #e4e8e6;
+          border-radius: 10px;
+          background: rgba(233, 236, 235, 0.75);
+          margin-bottom: 12px;
+        }
+        .school-teacher-invite-avatar {
+          display: grid;
+          place-items: center;
+          width: 46px;
+          height: 46px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #2b3e39, #7c968d);
+          color: #fff;
+          font-size: 0.78rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+        }
+        .school-teacher-invite-name {
+          color: #121b1d;
+          font-size: 0.88rem;
+          font-weight: 700;
+        }
+        .school-teacher-invite-role {
+          margin: 2px 0 5px;
+          color: #5a666b;
+          font-size: 0.76rem;
+          font-weight: 500;
+        }
+        .school-teacher-invite-meta-wrap {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          flex-wrap: wrap;
+        }
+        .school-teacher-invite-pill {
+          display: inline-flex;
+          align-items: center;
+          min-height: 20px;
+          padding: 3px 7px;
+          border-radius: 999px;
+          background: rgba(18, 170, 98, 0.12);
+          color: #0d7c54;
+          font-size: 0.58rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+        }
+        .school-teacher-invite-meta {
+          color: #58666a;
+          font-size: 0.68rem;
+          font-weight: 600;
+        }
+        .school-teacher-invite-school-block,
+        .school-teacher-invite-details-block {
+          margin-bottom: 10px;
+        }
+        .school-teacher-invite-label {
+          margin: 0 0 6px;
+          color: #1f2a2d;
+          font-size: 0.62rem;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+        }
+        .school-teacher-invite-school-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 40px;
+          padding: 0 10px;
+          border: 1px solid #e3e7e6;
+          border-radius: 10px;
+          background: #eef1f0;
+          color: #1b2327;
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+        .school-teacher-invite-school-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 16px;
+          height: 16px;
+          color: #0e7d55;
+          flex-shrink: 0;
+        }
+        .school-teacher-invite-school-badge svg {
+          display: block;
+          width: 100%;
+          height: 100%;
+        }
+        .school-teacher-invite-textarea {
+          width: 100%;
+          min-height: 80px;
+          padding: 10px 12px;
+          border: 1px solid #e3e7e6;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.18);
+          color: #1f2d31;
+          font: inherit;
+          font-size: 0.8rem;
+          line-height: 1.45;
+          resize: vertical;
+          outline: none;
+        }
+        .school-teacher-invite-send-btn {
+          width: 100%;
+          min-height: 42px;
+          margin-top: 6px;
+          border: 1px solid #2ae156;
+          border-radius: 9px;
+          background: #2ae156;
+          color: #000000;
+          font-size: 0.92rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .school-teacher-invite-cancel-btn {
+          width: 100%;
+          min-height: 40px;
+          margin-top: 8px;
+          border: 1px solid #dfe6e2;
+          border-radius: 9px;
+          background: rgba(255, 255, 255, 0.72);
+          color: #1d2b2f;
+          font-size: 0.86rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
 
         .school-shortlist-modal-backdrop {
           position: fixed;
