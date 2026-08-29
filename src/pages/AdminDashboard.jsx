@@ -3274,27 +3274,80 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                         </button>
                       </div>
                       <div className="admin-mobile-notifications-content">
-                        {notificationItems.map((item) => {
-                          const Icon = item.icon;
-                          return (
-                            <button
-                              key={item.key}
-                              type="button"
-                              className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
-                              onClick={() => handleNotificationItemClick(item)}
-                            >
-                              <span className="school-notification-icon">
-                                <Icon size={16} />
-                              </span>
-                              <div>
-                                <b>{item.label}</b>
-                                <strong>{item.title}</strong>
-                                {item.description && <p>{item.description}</p>}
-                              </div>
-                              <time>{item.time}</time>
-                            </button>
-                          );
-                        })}
+                        <div className="admin-mobile-notification-group">
+                          <h3>Today</h3>
+                          {notificationItems.slice(0, 3).map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                                onClick={() => handleNotificationItemClick(item)}
+                              >
+                                <span className="school-notification-icon">
+                                  <Icon size={16} />
+                                </span>
+                                <div>
+                                  <b>{item.label}</b>
+                                  <strong>{item.title}</strong>
+                                  {item.description && <p>{item.description}</p>}
+                                </div>
+                                <time>{item.time}</time>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="admin-mobile-notification-group">
+                          <h3>Yesterday</h3>
+                          {notificationItems.slice(3, 5).map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                                onClick={() => handleNotificationItemClick(item)}
+                              >
+                                <span className="school-notification-icon">
+                                  <Icon size={16} />
+                                </span>
+                                <div>
+                                  <b>{item.label}</b>
+                                  <strong>{item.title}</strong>
+                                  {item.description && <p>{item.description}</p>}
+                                </div>
+                                <time>{item.time}</time>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="admin-mobile-notification-group">
+                          <h3>Earlier</h3>
+                          {notificationItems.slice(5).map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                                onClick={() => handleNotificationItemClick(item)}
+                              >
+                                <span className="school-notification-icon">
+                                  <Icon size={16} />
+                                </span>
+                                <div>
+                                  <b>{item.label}</b>
+                                  <strong>{item.title}</strong>
+                                  {item.description && <p>{item.description}</p>}
+                                </div>
+                                <time>{item.time}</time>
+                              </button>
+                            );
+                          })}
+                        </div>
                       </div>
                     </>
                   )}
@@ -5136,7 +5189,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .admin-mobile-notification-header button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: #fff; color: #20252b; box-shadow: 0 2px 8px rgba(23, 34, 56, .06); }
         .admin-mobile-notification-header h2 { margin: 0; color: #20252b; font-size: 18px; font-weight: 700; }
         .admin-mobile-notification-mark-read { width: auto !important; min-width: auto; padding: 0 10px !important; border-radius: 999px !important; background: #eafaf0 !important; color: #16843d !important; font-size: 10px !important; font-weight: 700; box-shadow: none !important; }
-        .admin-mobile-notifications-content { display: flex; flex-direction: column; gap: 12px; }
+        .admin-mobile-notifications-content { display: flex; flex-direction: column; gap: 16px; }
+        .admin-mobile-notification-group { display: flex; flex-direction: column; gap: 10px; }
+        .admin-mobile-notification-group h3 { margin: 0 0 2px; color: #5f6f6a; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
         .admin-mobile-notification-item { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 12px; width: 100%; padding: 14px 12px; border: 0; border-radius: 16px; background: #fff; color: inherit; text-align: left; box-shadow: 0 3px 10px rgba(23, 34, 56, .04); cursor: pointer; }
         .admin-mobile-notification-item.is-unread { border: 1px solid rgba(30, 167, 73, 0.18); background: #f7fbf8; }
         .admin-mobile-notification-item .school-notification-icon { width: 28px; height: 28px; }
