@@ -159,9 +159,19 @@ export default function AdminDashboard() {
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [isShortlistModalOpen, setIsShortlistModalOpen] = useState(false);
   const [isShortlistSuccessOpen, setIsShortlistSuccessOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [teacherSearch, setTeacherSearch] = useState("");
+  const [teacherSearchSubmitted, setTeacherSearchSubmitted] = useState("");
+  const [teacherLocation, setTeacherLocation] = useState("All Locations");
+  const [teacherLocationMenuOpen, setTeacherLocationMenuOpen] = useState(false);
+  const [teacherExperience, setTeacherExperience] = useState("Experience");
+  const [teacherExperienceMenuOpen, setTeacherExperienceMenuOpen] =
+    useState(false);
+  const [teacherSubject, setTeacherSubject] = useState("Subject");
+  const [teacherSubjectMenuOpen, setTeacherSubjectMenuOpen] = useState(false);
   const [shortlistForm, setShortlistForm] = useState({
     interviewType: "",
     responseTemplate: "",
@@ -180,7 +190,19 @@ export default function AdminDashboard() {
 
   const openJobForm = (fromTab = activeTab) => {
     setPreviousTab(fromTab === "post-job" ? "overview" : fromTab);
+    setSelectedJob(null);
+    setSelectedApplicant(null);
     setActiveTab("post-job");
+  };
+
+  const handleTabChange = (nextTab) => {
+    setActiveTab(nextTab);
+    setSelectedJob(null);
+    setSelectedApplicant(null);
+    setSelectedTeacherProfile(null);
+    setOpenJobMenuId(null);
+    setExperienceMenuOpen(false);
+    setQualificationMenuOpen(false);
   };
 
   const showSnackbar = (title, message) => {
@@ -316,6 +338,8 @@ export default function AdminDashboard() {
         ...prev,
       ]);
       setJobForm(emptyJobForm);
+      setSelectedJob(null);
+      setSelectedApplicant(null);
       setActiveTab(previousTab);
       showSnackbar(
         "Vacancy published successfully",
@@ -419,7 +443,7 @@ export default function AdminDashboard() {
               <button type="button" onClick={() => openJobForm("overview")}>
                 <FiPlus size={14} /> Post a Job
               </button>
-              <button type="button" onClick={() => setActiveTab("applicants")}>
+              <button type="button" onClick={() => handleTabChange("applicants")}>
                 View Applicants
               </button>
             </div>
@@ -469,7 +493,7 @@ export default function AdminDashboard() {
         <section className="school-overview-section school-applicants-section">
           <div className="school-section-heading">
             <h3>Recent Applicants</h3>
-            <button type="button" onClick={() => setActiveTab("applicants")}>
+            <button type="button" onClick={() => handleTabChange("applicants")}>
               View All <span>→</span>
             </button>
           </div>
@@ -519,7 +543,7 @@ export default function AdminDashboard() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => setActiveTab("applicants")}
+                    onClick={() => handleTabChange("applicants")}
                     className="school-review-button"
                   >
                     Review
@@ -533,7 +557,7 @@ export default function AdminDashboard() {
         <section className="school-overview-section school-postings-section">
           <div className="school-section-heading">
             <h3>Active Postings</h3>
-            <button type="button" onClick={() => setActiveTab("jobs")}>
+            <button type="button" onClick={() => handleTabChange("jobs")}>
               View All <span>→</span>
             </button>
           </div>
@@ -849,6 +873,8 @@ export default function AdminDashboard() {
           <button
             type="button"
             onClick={() => {
+              setSelectedJob(null);
+              setSelectedApplicant(null);
               setActiveTab(previousTab);
               showSnackbar(
                 "Draft saved successfully",
@@ -1000,7 +1026,7 @@ export default function AdminDashboard() {
                           <button
                             type="button"
                             onClick={() => {
-                              setActiveTab("applicants");
+                              handleTabChange("applicants");
                               setOpenJobMenuId(null);
                             }}
                           >
@@ -1323,6 +1349,188 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     </div>
   );
 };
+
+  const renderTeacherProfileSummaryPage = (teacher = {}) => {
+    const profileName = teacher.name || "Chinedu Okeke";
+
+    return (
+      <div className="school-applicant-summary-page">
+        <button
+          type="button"
+          className="school-summary-back-btn"
+          onClick={() => setSelectedTeacherProfile(null)}
+        >
+          <FiArrowLeft /> Back
+        </button>
+
+        <div className="school-summary-container">
+          <div className="school-summary-content">
+            <section className="school-summary-section school-summary-section--first">
+              <div className="school-summary-actions">
+                <button type="button" className="school-summary-shortlist-btn">
+                  Invite
+                </button>
+              </div>
+
+              <div className="school-summary-summary-content">
+                <div className="school-summary-header-title">
+                  <FiFileText className="school-summary-icon" />
+                  <h2>Professional Summary</h2>
+                </div>
+
+                <p className="school-summary-text">
+                  {teacher.summary ||
+                    "Passionate physics educator with a decade of experience simplifying complex concepts for secondary school learners. Dedicated to building confident, curious students through engaging lesson planning and strong classroom management."}
+                </p>
+              </div>
+
+              <div className="school-summary-clearfix" />
+            </section>
+
+            <div className="school-summary-grid-2col">
+              <section className="school-summary-section">
+                <div className="school-summary-section-header">
+                  <FiBook className="school-summary-icon" />
+                  <h2>Teaching Subjects</h2>
+                </div>
+
+                <div className="school-summary-tags">
+                  {(teacher.subject ? [teacher.subject] : [
+                    "Mathematics",
+                    "Further Math",
+                    "Physics (Junior Secondary)",
+                  ])
+                    .filter(Boolean)
+                    .map((subject, idx) => (
+                      <span key={idx} className="school-summary-tag">
+                        {subject}
+                      </span>
+                    ))}
+                </div>
+              </section>
+
+              <section className="school-summary-section">
+                <div className="school-summary-section-header">
+                  <FiAward className="school-summary-icon" />
+                  <h2>Qualifications</h2>
+                </div>
+
+                <div className="school-summary-qualifications">
+                  <div className="school-summary-qualification">
+                    <strong>{teacher.subject || "B.Sc Mathematics"}</strong>
+                    <span className="school-summary-qual-year">
+                      {teacher.location || "UNILAG"}, 2011
+                    </span>
+                  </div>
+
+                  <div className="school-summary-qualification">
+                    <strong>M.Ed Educational Admin</strong>
+                    <span className="school-summary-qual-year">UI, 2015</span>
+                  </div>
+
+                  <div className="school-summary-badge-wrapper">
+                    <span className="school-summary-badge">TRCN VERIFIED</span>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <section className="school-summary-section">
+              <div className="school-summary-section-header">
+                <FiBriefcase className="school-summary-icon" />
+                <h2>Teaching Experience</h2>
+              </div>
+
+              <div className="school-summary-experience-timeline">
+                <div className="school-summary-timeline-item">
+                  <div className="school-summary-timeline-bullet school-summary-timeline-bullet--active" />
+                  <div className="school-summary-job">
+                    <div className="school-summary-job-header">
+                      <div>
+                        <strong>Senior Math Teacher</strong>
+                        <p className="school-summary-job-school">Grange School, Lagos</p>
+                      </div>
+                      <span className="school-summary-date school-summary-date--current">2018 - Present</span>
+                    </div>
+                    <p className="school-summary-job-desc">
+                      Leading the department in curriculum redesign and implementing tech-enabled learning modules for advanced calculus and statistics.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="school-summary-timeline-item">
+                  <div className="school-summary-timeline-bullet" />
+                  <div className="school-summary-job">
+                    <div className="school-summary-job-header">
+                      <div>
+                        <strong>Mathematics Educator</strong>
+                        <p className="school-summary-job-school">Corona Secondary School</p>
+                      </div>
+                      <span className="school-summary-date">2014 - 2018</span>
+                    </div>
+                    <p className="school-summary-job-desc">
+                      Managed standardized testing preparation and extracurricular math Olympiad coaching for senior students.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <div className="school-summary-bottom-row">
+              <section className="school-summary-section school-summary-section--skills">
+                <div className="school-summary-section-header">
+                  <h2>Key Skills</h2>
+                </div>
+
+                <div className="school-summary-skills">
+                  {(teacher.skills || [
+                    "Curriculum Development",
+                    "E-learning Platforms",
+                    "Student Mentorship",
+                    "WAEC Grading",
+                  ]).map((skill, idx) => (
+                    <span key={idx} className="school-summary-skill-tag">
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              </section>
+
+              <div className="school-summary-documents">
+                <div className="school-summary-document">
+                  <div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf">
+                    <span>PDF</span>
+                  </div>
+                  <div className="school-summary-doc-info">
+                    <p className="school-summary-doc-name">{profileName.replace(/\s+/g, "_")}_CV.pdf</p>
+                    <p className="school-summary-doc-size">1.2 MB • Updated 2 days ago</p>
+                  </div>
+                  <div className="school-summary-doc-actions">
+                    <button type="button" title="View" className="school-summary-doc-btn"><FiEye size={18} /></button>
+                    <button type="button" title="Download" className="school-summary-doc-btn"><FiDownload size={18} /></button>
+                  </div>
+                </div>
+
+                <div className="school-summary-document">
+                  <div className="school-summary-doc-icon-box school-summary-doc-icon-box--doc">
+                    <FiFileText size={20} />
+                  </div>
+                  <div className="school-summary-doc-info">
+                    <p className="school-summary-doc-name">Cover_Letter.docx</p>
+                    <p className="school-summary-doc-size">450 KB • Updated 2 days ago</p>
+                  </div>
+                  <div className="school-summary-doc-actions">
+                    <button type="button" title="View" className="school-summary-doc-btn"><FiEye size={18} /></button>
+                    <button type="button" title="Download" className="school-summary-doc-btn"><FiDownload size={18} /></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderJobApplicantsPage = (job) => {
     if (selectedApplicant) {
@@ -2096,7 +2304,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               onClick={() => {
                 setIsShortlistSuccessOpen(false);
                 setSelectedApplicant(null);
-                setActiveTab("applicants");
+                handleTabChange("applicants");
               }}
             >
               Return to Applicants
@@ -2125,61 +2333,313 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     );
   };
 
-  const renderApplicants = () => (
-    <div className="rounded-2xl border border-[#dfe5e1] bg-white p-6 text-left shadow-sm">
-      <div className="mb-5">
-        <h2 className="text-xl font-bold text-[#172238]">Recent Applicants</h2>
-        <p className="mt-1 text-sm text-[#718078]">
-          Review candidates and move them through your hiring process.
-        </p>
-      </div>
-      {allApplicants.length === 0 ? (
-        <p className="py-10 text-center text-sm text-[#718078]">
-          No applicants yet.
-        </p>
-      ) : (
-        <div className="space-y-3">
-          {allApplicants.map((app, index) => {
-            const appId = app.application_id || app.id || index;
-            const currentStatus = (app.status || "pending").toLowerCase();
-            return (
-              <div
-                key={appId}
-                className="grid gap-3 rounded-xl border border-[#e4e9e5] p-4 md:grid-cols-[1fr_1fr_160px] md:items-center"
-              >
-                <div>
-                  <p className="font-semibold text-[#172238]">
-                    {app.teacher_name || app.teacher_email || "Applicant"}
-                  </p>
-                  <p className="text-xs text-[#718078]">
-                    {app.teacher_email || "Teacher profile"}
-                  </p>
-                </div>
-                <p className="text-sm text-[#607064]">
-                  {jobs.find((job) => (job.job_id || job.id) === app.jobId)
-                    ?.title || "Teaching opportunity"}
-                </p>
-                <select
-                  value={currentStatus}
-                  disabled={!!statusUpdating[appId]}
-                  onChange={(e) =>
-                    handleStatusChange(app.jobId, appId, e.target.value)
-                  }
-                  className="rounded-lg border border-[#dfe5e1] bg-[#f8faf8] px-2 py-2 text-xs text-[#172238] outline-none"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="reviewed">Reviewed</option>
-                  <option value="shortlisted">Shortlisted</option>
-                  <option value="rejected">Rejected</option>
-                  <option value="hired">Hired</option>
-                </select>
+  const renderApplicants = () => {
+    const teachers = [
+      {
+        name: "Chinedu Okeke",
+        role: "Physics Teacher",
+        location: "Lagos",
+        experience: "10 Years",
+        subject: "M.Sc. Physics",
+        availability: "Available Immediately",
+        summary:
+          "Passionate physics educator with a decade of experience simplifying complex concepts for secondary school learners.",
+        accent: "#d8ede5",
+      },
+      {
+        name: "Sarah Adebayo",
+        role: "Mathematics Teacher",
+        location: "Abuja",
+        experience: "7 Years",
+        subject: "B.Ed Mathematics",
+        availability: "Available Immediately",
+        summary:
+          "Dedicated mathematics teacher skilled in making algebra and calculus accessible to diverse learning styles.",
+        accent: "#e6f1ec",
+      },
+      {
+        name: "Amina Bello",
+        role: "Early Child Educator",
+        location: "Lagos",
+        experience: "4 Years",
+        subject: "NCE",
+        availability: "Available Immediately",
+        summary:
+          "Enthusiastic early childhood educator with a focus on Montessori principles. Adept at creating safe, engaging classrooms.",
+        accent: "#f3e7d3",
+      },
+      {
+        name: "Grace Nwosu",
+        role: "English Language Teacher",
+        location: "Port Harcourt",
+        experience: "6 Years",
+        subject: "M.A. English",
+        availability: "Available Immediately",
+        summary:
+          "Creative language educator supporting reading fluency, essay writing, and confidence-building across secondary classes.",
+        accent: "#dfeaf9",
+      },
+      {
+        name: "Ifeanyi Eze",
+        role: "Biology Teacher",
+        location: "Abuja",
+        experience: "5 Years",
+        subject: "B.Sc. Biology",
+        availability: "Available Immediately",
+        summary:
+          "Science teacher with a strong practical approach to laboratory teaching and student assessment across senior classes.",
+        accent: "#e7f3e8",
+      },
+    ];
+
+    const teacherOptions = {
+      locations: ["All Locations", "Lagos", "Abuja", "Port Harcourt"],
+      experiences: ["Experience", "10 Years", "7 Years", "6 Years", "5 Years", "4 Years"],
+      subjects: [
+        "Subject",
+        "M.Sc. Physics",
+        "B.Ed Mathematics",
+        "NCE",
+        "M.A. English",
+        "B.Sc. Biology",
+      ],
+    };
+
+    const filteredTeachers = teachers.filter((teacher) => {
+      const query = teacherSearchSubmitted.trim().toLowerCase();
+
+      const matchesQuery =
+        !query ||
+        [
+          teacher.name,
+          teacher.role,
+          teacher.subject,
+          teacher.location,
+          teacher.experience,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query);
+
+      const matchesLocation =
+        teacherLocation === "All Locations" || teacher.location === teacherLocation;
+      const matchesExperience =
+        teacherExperience === "Experience" || teacher.experience === teacherExperience;
+      const matchesSubject =
+        teacherSubject === "Subject" || teacher.subject === teacherSubject;
+
+      return matchesQuery && matchesLocation && matchesExperience && matchesSubject;
+    });
+
+    return (
+      <div className="school-teachers-page">
+        {selectedTeacherProfile ? (
+          renderTeacherProfileSummaryPage(selectedTeacherProfile)
+        ) : (
+          <>
+            <div className="school-teachers-hero">
+              <h1>Find Teachers</h1>
+              <p>Discover qualified teachers for your school&apos;s next opportunity.</p>
+            </div>
+
+            <div className="school-teachers-search-shell">
+              <div className="school-teachers-search">
+                <span className="school-teachers-search-icon">⌕</span>
+                <input
+                  type="text"
+                  placeholder="Name, Subject, or Qualification..."
+                  aria-label="Search teachers"
+                  value={teacherSearch}
+                  onChange={(event) => setTeacherSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      setTeacherSearchSubmitted(teacherSearch);
+                    }
+                  }}
+                />
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
+
+              <div className="school-teachers-dropdown-wrapper">
+                <button
+                  type="button"
+                  className="school-teachers-location-button"
+                  onClick={() => {
+                    setTeacherLocationMenuOpen((prev) => !prev);
+                    setTeacherExperienceMenuOpen(false);
+                    setTeacherSubjectMenuOpen(false);
+                  }}
+                >
+                  <span className="school-teachers-location-dot" />
+                  {teacherLocation}
+                  <span className="school-teachers-caret">▾</span>
+                </button>
+
+                {teacherLocationMenuOpen && (
+                  <div className="school-teachers-menu" role="menu">
+                    {teacherOptions.locations.map((location) => (
+                      <button
+                        key={location}
+                        type="button"
+                        className="school-teachers-menu-item"
+                        onClick={() => {
+                          setTeacherLocation(location);
+                          setTeacherLocationMenuOpen(false);
+                        }}
+                      >
+                        {location}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <button
+                type="button"
+                className="school-teachers-search-btn"
+                onClick={() => setTeacherSearchSubmitted(teacherSearch)}
+              >
+                Search
+              </button>
+            </div>
+
+            <div className="school-teachers-filter-row">
+              <div className="school-teachers-dropdown-wrapper school-teachers-dropdown-wrapper--compact">
+                <button
+                  type="button"
+                  className="school-teachers-filter-tag"
+                  onClick={() => {
+                    setTeacherExperienceMenuOpen((prev) => !prev);
+                    setTeacherSubjectMenuOpen(false);
+                    setTeacherLocationMenuOpen(false);
+                  }}
+                >
+                  {teacherExperience} ▾
+                </button>
+
+                {teacherExperienceMenuOpen && (
+                  <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
+                    {teacherOptions.experiences.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        className="school-teachers-menu-item"
+                        onClick={() => {
+                          setTeacherExperience(option);
+                          setTeacherExperienceMenuOpen(false);
+                        }}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="school-teachers-dropdown-wrapper school-teachers-dropdown-wrapper--compact">
+                <button
+                  type="button"
+                  className="school-teachers-filter-tag"
+                  onClick={() => {
+                    setTeacherSubjectMenuOpen((prev) => !prev);
+                    setTeacherExperienceMenuOpen(false);
+                    setTeacherLocationMenuOpen(false);
+                  }}
+                >
+                  {teacherSubject} ▾
+                </button>
+
+                {teacherSubjectMenuOpen && (
+                  <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
+                    {teacherOptions.subjects.map((option) => (
+                      <button
+                        key={option}
+                        type="button"
+                        className="school-teachers-menu-item"
+                        onClick={() => {
+                          setTeacherSubject(option);
+                          setTeacherSubjectMenuOpen(false);
+                        }}
+                      >
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="school-teachers-header-row">
+              <h2>{filteredTeachers.length} Teachers Found</h2>
+              <button type="button" className="school-teachers-sort-btn">
+                Sort by: Relevance ▾
+              </button>
+            </div>
+
+            <div className="school-teachers-list">
+              {filteredTeachers.map((teacher, index) => (
+                <div className="school-teacher-card" key={`${teacher.name}-${index}`}>
+                  <div className="school-teacher-card-main">
+                    <div className="school-teacher-badge">● Available Immediately</div>
+
+                    <div className="school-teacher-profile-row">
+                      <div
+                        className="school-teacher-avatar"
+                        style={{ background: teacher.accent }}
+                        aria-hidden="true"
+                      >
+                        {teacher.name
+                          .split(" ")
+                          .map((part) => part[0])
+                          .join("")
+                          .slice(0, 2)
+                          .toUpperCase()}
+                      </div>
+
+                      <div className="school-teacher-info">
+                        <div className="school-teacher-name-row">
+                          <span className="school-teacher-name">{teacher.name}</span>
+                          <span className="school-teacher-meta-pill">{teacher.location}</span>
+                          <span className="school-teacher-meta-pill">{teacher.experience}</span>
+                          <span className="school-teacher-meta-pill">{teacher.subject}</span>
+                        </div>
+                        <p className="school-teacher-role">{teacher.role}</p>
+                        <p className="school-teacher-summary">{teacher.summary}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="school-teacher-actions">
+                    <button type="button" className="school-teacher-primary-btn">
+                      Invite to Apply
+                    </button>
+                    <button
+                      type="button"
+                      className="school-teacher-secondary-btn"
+                      onClick={() => setSelectedTeacherProfile(teacher)}
+                    >
+                      View Profile
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {filteredTeachers.length === 0 && (
+              <div className="school-teachers-empty-state">
+                No teachers match your current search and filter selection.
+              </div>
+            )}
+
+            <div className="school-teachers-load-more-wrap">
+              <button type="button" className="school-teachers-load-more">
+                Load More Candidates ▾
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="admin-dashboard-shell min-h-screen bg-[#f6f8f7] text-[#172238]">
@@ -2194,7 +2654,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                 <button
                   key={key}
                   type="button"
-                  onClick={() => setActiveTab(key)}
+                  onClick={() => handleTabChange(key)}
                   className={`admin-sidebar-nav-item ${activeTab === key ? "is-active" : ""}`}
                 >
                   <Icon size={19} />
@@ -2241,7 +2701,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             <div className="admin-topbar-account">
               <button
                 type="button"
-                onClick={() => setActiveTab("notifications")}
+                onClick={() => handleTabChange("notifications")}
                 className="admin-topbar-notifications"
                 aria-label="Notifications"
               >
@@ -2301,7 +2761,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             <BrandLogo />
             <button
               type="button"
-              onClick={() => setActiveTab("notifications")}
+              onClick={() => handleTabChange("notifications")}
               className="admin-mobile-bell"
               aria-label="Notifications"
             >
@@ -2344,7 +2804,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                         {isSchool && (
                           <button
                             type="button"
-                            onClick={() => setActiveTab("post-job")}
+                            onClick={() => openJobForm("overview")}
                             className="inline-flex w-fit items-center gap-2 rounded-full bg-[#1ccb43] px-5 py-3 text-sm font-bold text-[#12331f]"
                           >
                             <FiPlus /> Post a job
@@ -2566,7 +3026,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                       )}
                     </>
                   )}
-                  {selectedJob ? renderJobApplicantsPage(selectedJob) : null}
+                  {selectedJob && activeTab === "jobs" ? renderJobApplicantsPage(selectedJob) : null}
                   {!selectedJob &&
                     activeTab === "post-job" &&
                     isSchool &&
@@ -2587,7 +3047,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                       <div className="admin-mobile-notification-header">
                         <button
                           type="button"
-                          onClick={() => setActiveTab("overview")}
+                          onClick={() => handleTabChange("overview")}
                           aria-label="Back to dashboard"
                         >
                           <FiArrowLeft size={22} />
@@ -2633,7 +3093,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           <button
             key={key}
             type="button"
-            onClick={() => setActiveTab(key)}
+            onClick={() => handleTabChange(key)}
             className={activeTab === key ? "is-active" : ""}
           >
             <Icon size={19} />
@@ -3309,47 +3769,725 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-menu button { width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: #2f3a3d; font: inherit; text-align: left; cursor: pointer; }
         .school-job-menu button:hover { background: #f3f5f4; }
         .school-job-menu-delete { color: #d93025 !important; }
-        .school-job-applicants-page { padding: 8px 0 0; color: #0f172a; }
-        .school-job-applicants-breadcrumb { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: #6b7280; font-size: 12px; }
-        .school-job-applicants-breadcrumb button { border: 0; background: transparent; color: #5a6674; font: inherit; cursor: pointer; }
-        .school-job-applicants-breadcrumb strong { color: #121826; font-weight: 600; }
-        .school-job-applicants-title { margin: 0; font-size: clamp(2.1rem, 3vw, 3rem); font-weight: 800; letter-spacing: -0.05em; }
-        .school-job-applicants-subtitle { margin: 10px 0 26px; color: #5a6674; font-size: 14px; }
-        .school-job-applicants-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border: 1px solid #dfe5e1; border-radius: 14px; background: #f9faf8; }
-        .school-job-applicants-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-        .school-job-applicants-filters button, .school-job-filter-button, .school-job-clear-filters { border: 1px solid #d6ded9; border-radius: 9px; background: #f4f6f4; color: #495863; font: inherit; font-size: 12px; cursor: pointer; }
-        .school-job-applicants-filters button { padding: 8px 14px; }
-        .school-job-applicants-filters button.is-active { border-color: #1d5d3d; background: #1d5d3d; color: #fff; }
-        .school-job-filter-button { padding: 8px 12px; }
-        .school-job-filter-menu-wrap { position: relative; }
-        .school-job-filter-menu { position: absolute; top: calc(100% + 8px); left: 0; z-index: 20; display: flex; flex-direction: column; min-width: 150px; padding: 8px; border: 1px solid #dfe5e1; border-radius: 10px; background: #fff; box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08); }
-        .school-job-filter-menu button { width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #2a3745; font: inherit; text-align: left; cursor: pointer; }
-        .school-job-filter-menu button:hover { background: #f3f5f4; }
-        .school-job-clear-filters { border: 0; background: transparent; color: #2d3748; font-weight: 600; }
-        .school-job-applicants-list { display: flex; flex-direction: column; gap: 18px; margin-top: 22px; }
-        .school-job-applicant-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 18px 16px; border: 1px solid #dfe5e1; border-radius: 14px; background: #fff; }
-        .school-job-applicant-main { display: grid; grid-template-columns: minmax(220px, 1.5fr) 1fr 1fr 1fr; gap: 24px; align-items: center; width: 100%; }
-        .school-job-applicant-name-block h4 { margin: 0; font-size: clamp(0.5rem, 1vw, 1.2rem); font-weight: 700; line-height: 1.1; }
-        .school-job-applicant-role { margin-top: 4px; color: #2f3d3a; font-size: 12px; }
-        .school-job-applicant-meta-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
-        .school-job-applicant-badge { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; background: #eef9f0; color: #2b6b45; font-size: 11px; font-weight: 600; }
-        .school-job-applicant-badge--green { background: #dcfce7; color: #166534; }
-        .school-job-applicant-column { display: flex; flex-direction: column; gap: 8px; }
-        .school-job-applicant-label { color: #66737a; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
-        .school-job-applicant-column strong { display: flex; align-items: center; gap: 6px; color: #202a34; font-size: 13px; font-weight: 600; }
-        .school-job-location-pin { color: #586b6d; font-size: 12px; }
-        .school-job-applicant-status { display: inline-flex; align-items: center; justify-content: center; min-width: 104px; min-height: 30px; padding: 6px 12px; border-radius: 10px; background: #dfeaf5; color: #3d6e85; font-size: 11px; font-weight: 700; }
-        .school-job-applicant-status--shortlisted { background: #d7f4e4; color: #1b6c45; }
-        .school-job-applicant-status--under-review { background: #f0f0f0; color: #5f6468; }
-        .school-job-applicant-actions { display: flex; align-items: center; gap: 12px; }
-        .school-job-applicant-view-btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 18px; border: 1px solid #2d6f4e; border-radius: 10px; background: transparent; color: #2d6f4e; font: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: pointer; }
-        .school-job-applicant-more { width: 38px; height: 38px; border: 1px solid #dfe5e1; border-radius: 10px; background: #fff; color: #2d3748; font-size: 28px; line-height: 1; cursor: pointer; }
-        .school-job-applicants-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; margin-top: 18px; border-top: 1px solid #dfe5e1; color: #6b7280; font-size: 12px; }
-        .school-job-applicant-pagination { display: flex; align-items: center; gap: 8px; }
-        .school-job-applicant-pagination button { width: 32px; height: 32px; border: 1px solid #d9dfd9; border-radius: 8px; background: #fff; color: #2d3748; font: inherit; cursor: pointer; }
-        .school-job-applicant-pagination button.is-active { background: #1d5d3d; border-color: #1d5d3d; color: #fff; }
-        .school-job-pager-nav { background: #f7f7f7 !important; }
-        .school-jobs-empty { margin: 0; padding: 40px; color: #718078; text-align: center; font-size: 14px; }
+        .school-teachers-page {
+          width: 100%;
+          max-width: 1220px;
+          padding: 12px 0 0;
+          color: #1f2a33;
+        }
+        .school-teachers-hero {
+          padding: 18px 18px 0;
+        }
+        .school-teachers-hero h1 {
+          margin: 0;
+          font-size: clamp(2.25rem, 3vw, 4rem);
+          font-weight: 800;
+          letter-spacing: -0.06em;
+          line-height: 1.08;
+          color: #171f29;
+        }
+        .school-teachers-hero p {
+          margin: 10px 0 0;
+          color: #5c6863;
+          font-size: 17px;
+          line-height: 1.4;
+        }
+        .school-teachers-search-shell {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 22px;
+          padding: 14px 16px;
+          border: 1px solid #dfe4df;
+          border-radius: 18px;
+          background: #f8f8f8;
+        }
+        .school-teachers-search {
+          position: relative;
+          display: flex;
+          align-items: center;
+          flex: 1;
+          min-width: 0;
+          height: 52px;
+          border: 1px solid #dfe4df;
+          border-radius: 12px;
+          background: #fff;
+          padding: 0 18px 0 42px;
+        }
+        .school-teachers-search-icon {
+          position: absolute;
+          left: 16px;
+          color: #5c6863;
+          font-size: 20px;
+          line-height: 1;
+        }
+        .school-teachers-search input {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          font: inherit;
+          font-size: 14px;
+          color: #1f2a33;
+          outline: none;
+        }
+        .school-teachers-search input::placeholder {
+          color: #6d7d7b;
+        }
+        .school-teachers-location-button,
+        .school-teachers-search-btn,
+        .school-teachers-filter-tag,
+        .school-teachers-sort-btn,
+        .school-teachers-load-more {
+          font: inherit;
+          cursor: pointer;
+        }
+        .school-teachers-location-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          height: 52px;
+          padding: 0 18px;
+          border: 1px solid #dfe4df;
+          border-radius: 12px;
+          background: #fff;
+          color: #27353d;
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+        .school-teachers-location-dot {
+          display: inline-block;
+          width: 9px;
+          height: 9px;
+          border-radius: 50%;
+          background: #147a49;
+          box-shadow: 0 0 0 3px rgba(20, 122, 73, 0.12);
+        }
+        .school-teachers-caret {
+          color: #5c6863;
+          font-size: 18px;
+          line-height: 1;
+        }
+        .school-teachers-search-btn {
+          height: 52px;
+          padding: 0 28px;
+          border: 0;
+          border-radius: 12px;
+          background: #14792D;
+          color: #ffffff;
+          font-size: 16px;
+          font-weight: 700;
+        }
+        .school-teachers-filter-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 18px;
+          padding: 0 4px;
+        }
+        .school-teachers-menu {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          z-index: 22;
+          display: flex;
+          flex-direction: column;
+          min-width: 180px;
+          padding: 8px;
+          border: 1px solid #dfe4df;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 18px 40px rgba(17, 24, 39, 0.12);
+        }
+        .school-teachers-menu--compact {
+          min-width: 160px;
+        }
+        .school-teachers-menu-item {
+          border: 0;
+          background: transparent;
+          padding: 10px 12px;
+          border-radius: 8px;
+          color: #2c3941;
+          text-align: left;
+          font: inherit;
+          font-size: 14px;
+          cursor: pointer;
+        }
+        .school-teachers-menu-item:hover {
+          background: #f3f6f4;
+        }
+        .school-teachers-filter-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 36px;
+          padding: 0 16px;
+          border: 1px solid #d5dbd7;
+          border-radius: 999px;
+          background: #f4f7f3;
+          color: #3d4a4d;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .school-teachers-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 30px;
+          padding: 0 4px;
+        }
+        .school-teachers-header-row h2 {
+          margin: 0;
+          font-size: clamp(1.7rem, 2.4vw, 3rem);
+          font-weight: 800;
+          letter-spacing: -0.05em;
+          color: #171f29;
+        }
+        .school-teachers-sort-btn {
+          border: 0;
+          background: transparent;
+          color: #46555f;
+          font-size: 16px;
+          font-weight: 500;
+        }
+        .school-teachers-list {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          margin-top: 18px;
+        }
+        .school-teachers-empty-state {
+          margin-top: 18px;
+          border: 1px dashed #d7dcd8;
+          border-radius: 14px;
+          background: #f8faf8;
+          padding: 24px;
+          text-align: center;
+          color: #536267;
+          font-size: 15px;
+        }
+        .school-teacher-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 22px;
+          padding: 22px 18px 18px;
+          border: 1px solid #dfe4df;
+          border-radius: 16px;
+          background: #fff;
+        }
+        .school-teacher-card-main {
+          display: flex;
+          flex: 1;
+          min-width: 0;
+          flex-direction: column;
+          gap: 14px;
+        }
+        .school-teacher-badge {
+          display: inline-flex;
+          align-items: center;
+          width: fit-content;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: #dff1e8;
+          color: #207a4a;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .school-teacher-profile-row {
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        .school-teacher-avatar {
+          display: grid;
+          place-items: center;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          color: #1d2f2c;
+          font-size: 15px;
+          font-weight: 800;
+          box-shadow: inset 0 0 0 1px rgba(15, 35, 50, 0.04);
+        }
+        .school-teacher-info {
+          min-width: 0;
+          flex: 1;
+        }
+        .school-teacher-name-row {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin-bottom: 8px;
+        }
+        .school-teacher-name {
+          font-size: clamp(1.15rem, 1.5vw, 1.7rem);
+          font-weight: 800;
+          line-height: 1.2;
+          color: #171f29;
+        }
+        .school-teacher-meta-pill {
+          display: inline-flex;
+          align-items: center;
+          min-height: 28px;
+          padding: 0 10px;
+          border-radius: 999px;
+          background: #f0f3f1;
+          color: #5e6a61;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .school-teacher-role {
+          margin: 0;
+          color: #2b3a3d;
+          font-size: 16px;
+          font-weight: 600;
+        }
+        .school-teacher-summary {
+          margin: 10px 0 0;
+          max-width: 760px;
+          color: #5f6e6b;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+        .school-teacher-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          min-width: 180px;
+        }
+        .school-teacher-primary-btn,
+        .school-teacher-secondary-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 42px;
+          padding: 0 18px;
+          border-radius: 28px;
+          border: 1px solid transparent;
+          font: inherit;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .school-teacher-primary-btn {
+          background: #2AE156;
+          color: #ffffff;
+          border-color: #2AE156;
+        }
+        .school-teacher-secondary-btn {
+          background: #ffffff;
+          border-color: #dfe4df;
+          color: #206D00;
+        }
+        .school-teachers-load-more-wrap {
+          display: flex;
+          justify-content: center;
+          margin-top: 20px;
+          padding-bottom: 18px;
+        }
+        .school-teachers-load-more {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 190px;
+          min-height: 46px;
+          padding: 0 22px;
+          border: 1px solid #dfe4df;
+          border-radius: 10px;
+          background: #f6f8f7;
+          color: #212d39;
+          font-size: 16px;
+          font-weight: 700;
+        }
+
+        .school-job-applicants-page {
+          width: 100%;
+          color: #1f2a33;
+        }
+        .school-job-applicants-breadcrumb {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #66757d;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .school-job-applicants-breadcrumb button {
+          border: 0;
+          background: transparent;
+          padding: 0;
+          color: #4d5d66;
+          font: inherit;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .school-job-applicants-breadcrumb span {
+          color: #a0acb4;
+        }
+        .school-job-applicants-title {
+          margin: 14px 0 0;
+          font-size: clamp(2rem, 2.6vw, 3rem);
+          font-weight: 800;
+          letter-spacing: -0.05em;
+          color: #171f29;
+        }
+        .school-job-applicants-subtitle {
+          margin: 10px 0 0;
+          color: #5b6c72;
+          font-size: 15px;
+        }
+        .school-job-applicants-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          margin-top: 22px;
+          padding: 14px 16px;
+          border: 1px solid #e2e8e5;
+          border-radius: 16px;
+          background: #ffffff;
+        }
+        .school-job-applicants-filters {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .school-job-applicants-filters button,
+        .school-job-filter-button,
+        .school-job-clear-filters {
+          font: inherit;
+          cursor: pointer;
+        }
+        .school-job-applicants-filters button {
+          min-height: 36px;
+          padding: 0 14px;
+          border: 1px solid #dfe5e3;
+          border-radius: 999px;
+          background: #f6faf7;
+          color: #485d5c;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .school-job-applicants-filters button.is-active {
+          border-color: #1f8f53;
+          background: #1f8f53;
+          color: #ffffff;
+        }
+        .school-job-filter-menu-wrap {
+          position: relative;
+        }
+        .school-job-filter-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 36px;
+          padding: 0 15px;
+          border: 1px solid #dfe5e3;
+          border-radius: 999px;
+          background: #ffffff;
+          color: #46555f;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .school-job-filter-menu {
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 0;
+          z-index: 30;
+          display: flex;
+          flex-direction: column;
+          min-width: 162px;
+          padding: 8px;
+          border: 1px solid #e2e8e5;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 18px 34px rgba(15, 23, 42, 0.12);
+        }
+        .school-job-filter-menu button {
+          border: 0;
+          background: transparent;
+          padding: 10px 12px;
+          border-radius: 10px;
+          color: #2d3a43;
+          font: inherit;
+          font-size: 13px;
+          text-align: left;
+          cursor: pointer;
+        }
+        .school-job-filter-menu button:hover {
+          background: #f3f7f4;
+        }
+        .school-job-clear-filters {
+          border: 0;
+          background: transparent;
+          color: #0f7d4d;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .school-job-applicants-list {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          margin-top: 20px;
+        }
+        .school-job-applicant-card {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 18px 18px 16px;
+          border: 1px solid #e2e8e5;
+          border-radius: 16px;
+          background: #ffffff;
+          box-shadow: 0 10px 24px rgba(17, 24, 39, 0.02);
+        }
+        .school-job-applicant-main {
+          display: grid;
+          grid-template-columns: minmax(0, 1.7fr) minmax(120px, 1fr) minmax(140px, 1fr) minmax(120px, 0.9fr);
+          gap: 18px;
+          align-items: center;
+          flex: 1;
+          min-width: 0;
+        }
+        .school-job-applicant-name-block {
+          min-width: 0;
+        }
+        .school-job-applicant-name-block h4 {
+          margin: 0;
+          color: #1b2430;
+          font-size: 22px;
+          font-weight: 700;
+          letter-spacing: -0.04em;
+        }
+        .school-job-applicant-role {
+          margin-top: 6px;
+          color: #4f5f66;
+          font-size: 12px;
+          font-weight: 600;
+        }
+        .school-job-applicant-meta-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 12px;
+        }
+        .school-job-applicant-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 28px;
+          padding: 0 10px;
+          border-radius: 999px;
+          background: #eef3f2;
+          color: #4a5e69;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .school-job-applicant-badge--green {
+          background: #eafaf1;
+          color: #0f7d52;
+        }
+        .school-job-applicant-column {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          min-width: 0;
+        }
+        .school-job-applicant-label {
+          color: #6f7c83;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        .school-job-applicant-column strong {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          color: #1f2a33;
+          font-size: 14px;
+          font-weight: 700;
+        }
+        .school-job-location-pin {
+          color: #7d8a8d;
+          font-size: 16px;
+          line-height: 1;
+        }
+        .school-job-applicant-column--status {
+          align-items: flex-start;
+        }
+        .school-job-applicant-status {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 32px;
+          padding: 0 12px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+        }
+        .school-job-applicant-status--shortlisted {
+          background: rgba(17, 129, 80, 0.12);
+          color: #0f7d52;
+        }
+        .school-job-applicant-status--under-review,
+        .school-job-applicant-status--reviewed {
+          background: rgba(228, 168, 39, 0.14);
+          color: #a66b00;
+        }
+        .school-job-applicant-status--rejected {
+          background: rgba(217, 48, 37, 0.12);
+          color: #c7342d;
+        }
+        .school-job-applicant-status--pending {
+          background: rgba(77, 93, 101, 0.1);
+          color: #455861;
+        }
+        .school-job-applicant-status--hired {
+          background: rgba(20, 137, 82, 0.12);
+          color: #0a6e4b;
+        }
+        .school-job-applicant-actions {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-shrink: 0;
+        }
+        .school-job-applicant-view-btn {
+          min-height: 42px;
+          padding: 0 18px;
+          border: 1px solid #1a8e53;
+          border-radius: 999px;
+          background: #1a8e53;
+          color: #ffffff;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .school-job-applicant-more {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          border: 1px solid #dfe5e3;
+          border-radius: 50%;
+          background: #ffffff;
+          color: #1b2430;
+          font-size: 22px;
+          cursor: pointer;
+        }
+        .school-job-applicants-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-top: 18px;
+          padding-top: 8px;
+          color: #657581;
+          font-size: 12px;
+        }
+        .school-job-applicant-pagination {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .school-job-applicant-pagination button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 32px;
+          height: 32px;
+          padding: 0 10px;
+          border: 1px solid #dfe5e3;
+          border-radius: 8px;
+          background: #ffffff;
+          color: #4a5d66;
+          font: inherit;
+          font-size: 12px;
+          cursor: pointer;
+        }
+        .school-job-applicant-pagination button.is-active {
+          border-color: #1d8c53;
+          background: #1d8c53;
+          color: #ffffff;
+        }
+        .school-job-pager-nav {
+          min-width: 30px !important;
+          font-size: 18px !important;
+          line-height: 1;
+        }
+
+        @media (max-width: 900px) {
+          .school-teachers-page {
+            padding-top: 8px;
+          }
+          .school-teachers-search-shell {
+            flex-wrap: wrap;
+          }
+          .school-teachers-search {
+            flex-basis: 100%;
+          }
+          .school-teachers-location-button,
+          .school-teachers-search-btn {
+            flex: 1;
+          }
+          .school-teacher-card {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .school-teacher-actions {
+            width: 100%;
+            min-width: 0;
+            flex-direction: row;
+          }
+          .school-teacher-primary-btn,
+          .school-teacher-secondary-btn {
+            flex: 1;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .school-teachers-hero {
+            padding-left: 4px;
+            padding-right: 4px;
+          }
+          .school-teachers-search-shell {
+            padding: 12px;
+          }
+          .school-teachers-header-row {
+            flex-direction: column;
+            align-items: flex-start;
+            margin-top: 22px;
+          }
+          .school-teacher-card {
+            padding: 16px 12px;
+          }
+          .school-teacher-profile-row {
+            gap: 12px;
+          }
+          .school-teacher-name-row {
+            gap: 8px;
+          }
+          .school-teacher-summary {
+            font-size: 13px;
+          }
+          .school-teacher-actions {
+            flex-direction: column;
+          }
+          .school-teacher-primary-btn,
+          .school-teacher-secondary-btn {
+            width: 100%;
+          }
+        }
 
 
         
