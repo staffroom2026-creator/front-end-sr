@@ -1,40 +1,184 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { adminService } from '../services/adminService';
-import { apiErrorMessage } from '../services/api';
-import { jobService } from '../services/jobService';
-import { applicationService } from '../services/applicationService';
-import BrandLogo from '../components/BrandLogo';
-import { FiAlertCircle, FiArrowLeft, FiBell, FiBriefcase, FiCalendar, FiCheckCircle, FiChevronDown, FiClock, FiFileText, FiGrid, FiInfo, FiLogOut, FiMessageSquare, FiPlus, FiSearch, FiSettings, FiTrash2, FiUsers } from 'react-icons/fi';
+import React, { useEffect, useMemo, useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import { adminService } from "../services/adminService";
+import { apiErrorMessage } from "../services/api";
+import { jobService } from "../services/jobService";
+import { applicationService } from "../services/applicationService";
+import BrandLogo from "../components/BrandLogo";
+import {
+  FiAlertCircle,
+  FiArchive,
+  FiArrowLeft,
+  FiBell,
+  FiBriefcase,
+  FiCalendar,
+  FiCheck,
+  FiCheckCircle,
+  FiChevronDown,
+  FiClock,
+  FiFileText,
+  FiGrid,
+  FiInfo,
+  FiLink,
+  FiList,
+  FiLogOut,
+  FiMapPin,
+  FiMessageSquare,
+  FiMoreVertical,
+  FiPlus,
+  FiSearch,
+  FiSettings,
+  FiTrash2,
+  FiUsers,
+  FiX,
+  FiBook,
+  FiAward,
+  FiEye,
+  FiDownload,
+} from "react-icons/fi";
 
 const emptyJobForm = {
-  title: '',
-  description: '',
-  role_type: 'Mathematics Teacher',
-  employment_type: 'full-time',
-  salary_range: '100k-150k',
-  location: '',
-  requirements: '',
+  title: "",
+  description: "",
+  role_type: "Mathematics Teacher",
+  employment_type: "full-time",
+  salary_range: "100k-150k",
+  location: "",
+  requirements: "",
+};
+
+const demoJobs = [
+  {
+    job_id: "demo-job-1",
+    title: "Senior Mathematics Teacher",
+    role_type: "Mathematics Teacher",
+    employment_type: "full-time",
+    salary_range: "₦350,000 - ₦500,000",
+    location: "Lekki, Lagos",
+    status: "active",
+    description:
+      "We are seeking a passionate Mathematics teacher to deliver engaging lessons and guide students toward academic excellence.",
+    requirements:
+      "B.Sc./B.Ed in Mathematics, 5+ years teaching experience, strong classroom management skills.",
+  },
+  {
+    job_id: "demo-job-2",
+    title: "Biology Teacher",
+    role_type: "Biology Teacher",
+    employment_type: "full-time",
+    salary_range: "₦300,000 - ₦450,000",
+    location: "Yaba, Lagos",
+    status: "active",
+    description:
+      "Join our science department to create practical, inquiry-based lessons that inspire curiosity and confidence in students.",
+    requirements:
+      "B.Sc. in Biology Education, TRCN certification, experience with lab instruction.",
+  },
+  {
+    job_id: "demo-job-3",
+    title: "Chemistry Teacher",
+    role_type: "Chemistry Teacher",
+    employment_type: "part-time",
+    salary_range: "₦200,000 - ₦300,000",
+    location: "Abuja",
+    status: "draft",
+    description:
+      "Part-time chemistry position for a teacher who can support both classroom instruction and examination preparation.",
+    requirements:
+      "Degree in Chemistry or Education, excellent communication, ability to work with senior classes.",
+  },
+  {
+    job_id: "demo-job-4",
+    title: "English Language Teacher",
+    role_type: "English Teacher",
+    employment_type: "full-time",
+    salary_range: "₦280,000 - ₦420,000",
+    location: "Port Harcourt",
+    status: "pending",
+    description:
+      "Support students in developing strong reading, writing, comprehension, and speaking skills in a structured school environment.",
+    requirements:
+      "B.A./B.Ed in English, strong grammar and communication skills, 3+ years of classroom experience.",
+  },
+];
+
+const demoApplicantsByJob = {
+  "demo-job-1": [
+    {
+      application_id: "demo-app-1",
+      teacher_name: "Tunde Bello",
+      teacher_email: "tunde.bello@example.com",
+      status: "shortlisted",
+    },
+    {
+      application_id: "demo-app-2",
+      teacher_name: "Sarah Jenkins",
+      teacher_email: "sarah.jenkins@example.com",
+      status: "reviewed",
+    },
+  ],
+  "demo-job-2": [
+    {
+      application_id: "demo-app-3",
+      teacher_name: "David Osa",
+      teacher_email: "david.osa@example.com",
+      status: "pending",
+    },
+  ],
+  "demo-job-4": [
+    {
+      application_id: "demo-app-4",
+      teacher_name: "Ada Okafor",
+      teacher_email: "ada.okafor@example.com",
+      status: "pending",
+    },
+  ],
 };
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState({});
   const [verifications, setVerifications] = useState([]);
-  const [jobs, setJobs] = useState([]);
-  const [applicantsByJob, setApplicantsByJob] = useState({});
+  const [jobs, setJobs] = useState(demoJobs);
+  const [applicantsByJob, setApplicantsByJob] = useState(demoApplicantsByJob);
   const [jobForm, setJobForm] = useState(emptyJobForm);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [statusUpdating, setStatusUpdating] = useState({});
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState("overview");
+  const [previousTab, setPreviousTab] = useState("overview");
+  const [snackbar, setSnackbar] = useState(null);
+  const [jobFilter, setJobFilter] = useState("All Jobs");
+  const [openJobMenuId, setOpenJobMenuId] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [applicantFilter, setApplicantFilter] = useState("All (24)");
+  const [experienceFilter, setExperienceFilter] = useState("Experience");
+  const [qualificationFilter, setQualificationFilter] = useState("Qualification");
+  const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
+  const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
+  const [selectedApplicant, setSelectedApplicant] = useState(null);
 
-  const isSchool = user?.role === 'school';
+  const isSchool = user?.role === "school";
+
+  const openJobForm = (fromTab = activeTab) => {
+    setPreviousTab(fromTab === "post-job" ? "overview" : fromTab);
+    setActiveTab("post-job");
+  };
+
+  const showSnackbar = (title, message) => {
+    setSnackbar({ title, message });
+  };
+
+  useEffect(() => {
+    if (!snackbar) return undefined;
+    const timeoutId = window.setTimeout(() => setSnackbar(null), 4500);
+    return () => window.clearTimeout(timeoutId);
+  }, [snackbar]);
 
   const currentUserId = useMemo(
-    () => user?.user_id || user?.id || user?.school_id || '',
-    [user]
+    () => user?.user_id || user?.id || user?.school_id || "",
+    [user],
   );
 
   const loadSchoolJobs = async () => {
@@ -44,15 +188,26 @@ export default function AdminDashboard() {
 
       if (isSchool && currentUserId) {
         const ownedJobs = jobList.filter((job) => {
-          const candidate = job.school_id || job.user_id || job.created_by || '';
+          const candidate =
+            job.school_id || job.user_id || job.created_by || "";
           return candidate === currentUserId || candidate === user?.id;
         });
-        setJobs(ownedJobs.length ? ownedJobs : jobList.slice(0, 5));
-      } else {
-        setJobs(jobList.slice(0, 5));
+
+        if (ownedJobs.length) {
+          setJobs(ownedJobs);
+          return;
+        }
+      }
+
+      const nextJobs = jobList.length ? jobList.slice(0, 5) : demoJobs;
+      setJobs(nextJobs);
+      if (!jobList.length) {
+        setApplicantsByJob(demoApplicantsByJob);
       }
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to load school jobs.'));
+      setError(apiErrorMessage(err, "Unable to load school jobs."));
+      setJobs(demoJobs);
+      setApplicantsByJob(demoApplicantsByJob);
     }
   };
 
@@ -66,7 +221,10 @@ export default function AdminDashboard() {
         ]);
 
         const statsPayload = statsRes?.data?.data ?? statsRes?.data ?? {};
-        const verificationPayload = verificationsRes?.data?.data?.verifications ?? verificationsRes?.data?.verifications ?? [];
+        const verificationPayload =
+          verificationsRes?.data?.data?.verifications ??
+          verificationsRes?.data?.verifications ??
+          [];
 
         setStats(statsPayload);
         setVerifications(verificationPayload);
@@ -75,7 +233,7 @@ export default function AdminDashboard() {
           await loadSchoolJobs();
         }
       } catch (err) {
-        setError(apiErrorMessage(err, 'Unable to load dashboard data.'));
+        setError(apiErrorMessage(err, "Unable to load dashboard data."));
       } finally {
         setLoading(false);
       }
@@ -89,7 +247,10 @@ export default function AdminDashboard() {
 
     try {
       const response = await applicationService.getApplicantsByJob(jobId);
-      const list = response?.data?.data?.applications || response?.data?.applications || [];
+      const list =
+        response?.data?.data?.applications ||
+        response?.data?.applications ||
+        [];
       setApplicantsByJob((prev) => ({ ...prev, [jobId]: list }));
     } catch (err) {
       setApplicantsByJob((prev) => ({ ...prev, [jobId]: [] }));
@@ -112,7 +273,7 @@ export default function AdminDashboard() {
 
     try {
       setSubmitting(true);
-      setError('');
+      setError("");
       const response = await jobService.createJob(jobForm);
       const newJob = response?.data?.data || response?.data || jobForm;
 
@@ -122,13 +283,18 @@ export default function AdminDashboard() {
           job_id: newJob.job_id || newJob.id || `JOB-${Date.now()}`,
           title: newJob.title || jobForm.title,
           location: newJob.location || jobForm.location,
-          status: newJob.status || 'active',
+          status: newJob.status || "active",
         },
         ...prev,
       ]);
       setJobForm(emptyJobForm);
+      setActiveTab(previousTab);
+      showSnackbar(
+        "Vacancy published successfully",
+        "New job has been published successfully",
+      );
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to create this job.'));
+      setError(apiErrorMessage(err, "Unable to create this job."));
     } finally {
       setSubmitting(false);
     }
@@ -138,7 +304,7 @@ export default function AdminDashboard() {
     if (!jobId) return;
 
     try {
-      setError('');
+      setError("");
       await jobService.deleteJob(jobId);
       setJobs((prev) => prev.filter((job) => (job.job_id || job.id) !== jobId));
       setApplicantsByJob((prev) => {
@@ -147,7 +313,9 @@ export default function AdminDashboard() {
         return next;
       });
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to delete this job.'));
+      setError(apiErrorMessage(err, "Unable to delete this job."));
+    } finally {
+      setOpenJobMenuId(null);
     }
   };
 
@@ -156,78 +324,111 @@ export default function AdminDashboard() {
 
     try {
       setStatusUpdating((prev) => ({ ...prev, [applicationId]: true }));
-      setError('');
-      await applicationService.updateApplicationStatus(applicationId, { status: nextStatus });
+      setError("");
+      await applicationService.updateApplicationStatus(applicationId, {
+        status: nextStatus,
+      });
 
       setApplicantsByJob((prev) => ({
         ...prev,
         [jobId]: (prev[jobId] || []).map((app) => {
           const currentId = app.application_id || app.id;
-          return currentId === applicationId ? { ...app, status: nextStatus } : app;
+          return currentId === applicationId
+            ? { ...app, status: nextStatus }
+            : app;
         }),
       }));
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to update application status.'));
+      setError(apiErrorMessage(err, "Unable to update application status."));
     } finally {
       setStatusUpdating((prev) => ({ ...prev, [applicationId]: false }));
     }
   };
 
-  const adminLabel = user?.role === 'school' ? 'School Dashboard' : 'Admin Dashboard';
+  const adminLabel =
+    user?.role === "school" ? "School Dashboard" : "Admin Dashboard";
 
   const navItems = isSchool
     ? [
-        ['overview', 'Dashboard', FiGrid],
-        ['jobs', 'Jobs', FiBriefcase],
-        ['applicants', 'Applicants', FiUsers],
-        ['notifications', 'Notifications', FiBell],
-        ['settings', 'Settings', FiSettings],
+        ["overview", "Dashboard", FiGrid],
+        ["jobs", "Jobs", FiBriefcase],
+        ["applicants", "Applicants", FiUsers],
+        ["notifications", "Notifications", FiBell],
+        ["settings", "Settings", FiSettings],
       ]
     : [
-        ['overview', 'Dashboard', FiGrid],
-        ['verifications', 'Verifications', FiCheckCircle],
-        ['notifications', 'Notifications', FiBell],
-        ['settings', 'Settings', FiSettings],
+        ["overview", "Dashboard", FiGrid],
+        ["verifications", "Verifications", FiCheckCircle],
+        ["notifications", "Notifications", FiBell],
+        ["settings", "Settings", FiSettings],
       ];
 
-  const allApplicants = Object.entries(applicantsByJob).flatMap(([jobId, applicants]) =>
-    applicants.map((app) => ({ ...app, jobId }))
+  const allApplicants = Object.entries(applicantsByJob).flatMap(
+    ([jobId, applicants]) => applicants.map((app) => ({ ...app, jobId })),
   );
 
   const renderSchoolOverview = () => {
-    const totalApplicants = Number(stats.total_applications ?? allApplicants.length ?? 0);
+    const totalApplicants = Number(
+      stats.total_applications ?? allApplicants.length ?? 0,
+    );
     const activeJobs = Number(stats.active_jobs ?? jobs.length ?? 0);
-    const shortlistedApplicants = allApplicants.filter((app) => String(app.status || '').toLowerCase() === 'shortlisted').length;
+    const shortlistedApplicants = allApplicants.filter(
+      (app) => String(app.status || "").toLowerCase() === "shortlisted",
+    ).length;
 
     return (
       <div className="school-overview">
         <section className="school-overview-hero">
           <div className="school-welcome-panel">
-            <h2>Good morning, {user?.full_name || 'BrightMind Academy'}</h2>
-            <p>Manage your school's hiring and find the right teachers for your team.<br />Review recent applications and schedule upcoming interviews.</p>
+            <h2>Good morning, {user?.full_name || "BrightMind Academy"}</h2>
+            <p>
+              Manage your school's hiring and find the right teachers for your
+              team.
+              <br />
+              Review recent applications and schedule upcoming interviews.
+            </p>
             <div className="school-overview-actions">
-              <button type="button" onClick={() => setActiveTab('post-job')}><FiPlus size={14} /> Post a Job</button>
-              <button type="button" onClick={() => setActiveTab('applicants')}>View Applicants</button>
+              <button type="button" onClick={() => openJobForm("overview")}>
+                <FiPlus size={14} /> Post a Job
+              </button>
+              <button type="button" onClick={() => setActiveTab("applicants")}>
+                View Applicants
+              </button>
             </div>
           </div>
 
           <div className="school-profile-card">
             <div className="school-profile-heading">
-              <span className="school-profile-icon"><FiCheckCircle size={14} /></span>
-              <div><strong>School Profile</strong><span>Attract top educators</span></div>
+              <span className="school-profile-icon">
+                <FiCheckCircle size={14} />
+              </span>
+              <div>
+                <strong>School Profile</strong>
+                <span>Attract top educators</span>
+              </div>
             </div>
-            <div className="school-profile-progress-label"><span>Completeness</span><strong>75%</strong></div>
-            <div className="school-profile-progress"><span /></div>
-            <p><FiInfo size={11} /> Add a cover photo to reach 100%</p>
+            <div className="school-profile-progress-label">
+              <span>Completeness</span>
+              <strong>75%</strong>
+            </div>
+            <div className="school-profile-progress">
+              <span />
+            </div>
+            <p>
+              <FiInfo size={11} /> Add a cover photo to reach 100%
+            </p>
           </div>
         </section>
 
-        <section className="school-stat-grid" aria-label="School recruitment statistics">
+        <section
+          className="school-stat-grid"
+          aria-label="School recruitment statistics"
+        >
           {[
-            ['Active Jobs', activeJobs, FiBriefcase],
-            ['Total Applicants', totalApplicants, FiUsers],
-            ['Shortlisted', shortlistedApplicants, FiCheckCircle],
-            ['Interviews', 0, FiCalendar],
+            ["Active Jobs", activeJobs, FiBriefcase],
+            ["Total Applicants", totalApplicants, FiUsers],
+            ["Shortlisted", shortlistedApplicants, FiCheckCircle],
+            ["Interviews", 0, FiCalendar],
           ].map(([label, value, Icon]) => (
             <div key={label} className="school-stat-card">
               <span>{label}</span>
@@ -238,27 +439,128 @@ export default function AdminDashboard() {
         </section>
 
         <section className="school-overview-section school-applicants-section">
-          <div className="school-section-heading"><h3>Recent Applicants</h3><button type="button" onClick={() => setActiveTab('applicants')}>View All <span>→</span></button></div>
+          <div className="school-section-heading">
+            <h3>Recent Applicants</h3>
+            <button type="button" onClick={() => setActiveTab("applicants")}>
+              View All <span>→</span>
+            </button>
+          </div>
           <div className="school-applicant-table">
-            <div className="school-table-row school-table-head"><span>Applicant Name</span><span>Job Info</span><span>Status</span><span>Action</span></div>
-            {(allApplicants.length ? allApplicants.slice(0, 3) : [{ application_id: 'empty', teacher_name: 'No applicants yet.', status: 'Waiting' }]).map((app, index) => {
-              const status = app.status || 'New';
-              return <div className="school-table-row" key={app.application_id || app.id || index}><span className="school-applicant-name"><i>{String(app.teacher_name || app.teacher_email || 'Applicant').slice(0, 2).toUpperCase()}</i>{app.teacher_name || app.teacher_email || 'Applicant'}</span><span>{jobs.find((job) => (job.job_id || job.id) === app.jobId)?.title || 'Teaching opportunity'}</span><span><b className={`school-status school-status-${String(status).toLowerCase()}`}>{status}</b></span><button type="button" onClick={() => setActiveTab('applicants')} className="school-review-button">Review</button></div>;
+            <div className="school-table-row school-table-head">
+              <span>Applicant Name</span>
+              <span>Job Info</span>
+              <span>Status</span>
+              <span>Action</span>
+            </div>
+            {(allApplicants.length
+              ? allApplicants.slice(0, 3)
+              : [
+                  {
+                    application_id: "empty",
+                    teacher_name: "No applicants yet.",
+                    status: "Waiting",
+                  },
+                ]
+            ).map((app, index) => {
+              const status = app.status || "New";
+              return (
+                <div
+                  className="school-table-row"
+                  key={app.application_id || app.id || index}
+                >
+                  <span className="school-applicant-name">
+                    <i>
+                      {String(
+                        app.teacher_name || app.teacher_email || "Applicant",
+                      )
+                        .slice(0, 2)
+                        .toUpperCase()}
+                    </i>
+                    {app.teacher_name || app.teacher_email || "Applicant"}
+                  </span>
+                  <span>
+                    {jobs.find((job) => (job.job_id || job.id) === app.jobId)
+                      ?.title || "Teaching opportunity"}
+                  </span>
+                  <span>
+                    <b
+                      className={`school-status school-status-${String(status).toLowerCase()}`}
+                    >
+                      {status}
+                    </b>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("applicants")}
+                    className="school-review-button"
+                  >
+                    Review
+                  </button>
+                </div>
+              );
             })}
           </div>
         </section>
 
         <section className="school-overview-section school-postings-section">
-          <div className="school-section-heading"><h3>Active Postings</h3><button type="button" onClick={() => setActiveTab('jobs')}>View All <span>→</span></button></div>
+          <div className="school-section-heading">
+            <h3>Active Postings</h3>
+            <button type="button" onClick={() => setActiveTab("jobs")}>
+              View All <span>→</span>
+            </button>
+          </div>
           <div className="school-posting-grid">
-            {(jobs.length ? jobs.slice(0, 2) : [{ job_id: 'empty', title: 'No active postings', location: 'Create your first job' }]).map((job) => { const jobId = job.job_id || job.id; return <div className="school-posting-card" key={jobId}><div><strong>{job.title || 'Teaching role'}</strong><span>{job.employment_type || 'Full-time'} · {job.location || 'Location pending'}</span></div><FiBriefcase className="school-posting-icon" size={16} /><div className="school-posting-footer"><span><FiUsers size={13} /> {(applicantsByJob[jobId] || []).length} Applicants</span><small>Posted recently</small></div></div>; })}
+            {(jobs.length
+              ? jobs.slice(0, 2)
+              : [
+                  {
+                    job_id: "empty",
+                    title: "No active postings",
+                    location: "Create your first job",
+                  },
+                ]
+            ).map((job) => {
+              const jobId = job.job_id || job.id;
+              return (
+                <div className="school-posting-card" key={jobId}>
+                  <div>
+                    <strong>{job.title || "Teaching role"}</strong>
+                    <span>
+                      {job.employment_type || "Full-time"} ·{" "}
+                      {job.location || "Location pending"}
+                    </span>
+                  </div>
+                  <FiBriefcase className="school-posting-icon" size={16} />
+                  <div className="school-posting-footer">
+                    <span>
+                      <FiUsers size={13} />{" "}
+                      {(applicantsByJob[jobId] || []).length} Applicants
+                    </span>
+                    <small>Posted recently</small>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </section>
 
         <section className="school-overview-section school-interviews-section">
-          <div className="school-section-heading"><h3>Upcoming Interviews</h3><FiCalendar size={15} /></div>
-          <div className="school-empty-interviews"><span><FiCalendar size={15} /></span><div><strong>No upcoming interviews</strong><small>Scheduled interviews will appear here.</small></div></div>
-          <button type="button" className="school-schedule-button">View Full Schedule</button>
+          <div className="school-section-heading">
+            <h3>Upcoming Interviews</h3>
+            <FiCalendar size={15} />
+          </div>
+          <div className="school-empty-interviews">
+            <span>
+              <FiCalendar size={15} />
+            </span>
+            <div>
+              <strong>No upcoming interviews</strong>
+              <small>Scheduled interviews will appear here.</small>
+            </div>
+          </div>
+          <button type="button" className="school-schedule-button">
+            View Full Schedule
+          </button>
         </section>
       </div>
     );
@@ -267,68 +569,1080 @@ export default function AdminDashboard() {
   const renderDesktopNotifications = () => (
     <div className="school-desktop-notifications">
       <div className="school-notifications-heading">
-        <div><h2>Notifications</h2><p><strong>12 UNREAD</strong><span>You have new updates.</span></p></div>
-        <button type="button"><FiCheckCircle size={14} /> Mark all as read</button>
+        <div>
+          <h2>Notifications</h2>
+          <p>
+            <strong>12 UNREAD</strong>
+            <span>You have new updates.</span>
+          </p>
+        </div>
+        <button type="button">
+          <FiCheckCircle size={14} /> Mark all as read
+        </button>
       </div>
       <div className="school-notifications-panel">
         <h3>Today</h3>
-        <div className="school-notification-highlight school-notification-highlight--green"><span className="school-notification-icon"><FiFileText size={17} /></span><div><b>NEW APPLICATION</b><strong>Tunde Bello applied for Senior Mathematics Teacher</strong><p>The applicant has 8 years of experience and matches 90% of your required qualifications. Review their profile to proceed.</p></div><time>2 hours ago</time></div>
-        <div className="school-notification-highlight"><span className="school-notification-icon"><FiMessageSquare size={17} /></span><div><b>RESPONSE</b><strong>Mr. Segun responded to your message</strong><p>"Thank you for the update. I will be available for the interview next Tuesday at 10 AM as requested."</p></div><time>4 hours ago</time></div>
-        <div className="school-notification-highlight school-notification-highlight--red"><span className="school-notification-icon"><FiAlertCircle size={17} /></span><div><b>EXPIRY WARNING</b><strong>Job posting expires in 3 days</strong><p>Your listing for 'Assistant Principal' will be removed soon. Consider extending the duration or reviewing current applicants.</p></div><time>5 hours ago</time></div>
+        <div className="school-notification-highlight school-notification-highlight--green">
+          <span className="school-notification-icon">
+            <FiFileText size={17} />
+          </span>
+          <div>
+            <b>NEW APPLICATION</b>
+            <strong>Tunde Bello applied for Senior Mathematics Teacher</strong>
+            <p>
+              The applicant has 8 years of experience and matches 90% of your
+              required qualifications. Review their profile to proceed.
+            </p>
+          </div>
+          <time>2 hours ago</time>
+        </div>
+        <div className="school-notification-highlight">
+          <span className="school-notification-icon">
+            <FiMessageSquare size={17} />
+          </span>
+          <div>
+            <b>RESPONSE</b>
+            <strong>Mr. Segun responded to your message</strong>
+            <p>
+              "Thank you for the update. I will be available for the interview
+              next Tuesday at 10 AM as requested."
+            </p>
+          </div>
+          <time>4 hours ago</time>
+        </div>
+        <div className="school-notification-highlight school-notification-highlight--red">
+          <span className="school-notification-icon">
+            <FiAlertCircle size={17} />
+          </span>
+          <div>
+            <b>EXPIRY WARNING</b>
+            <strong>Job posting expires in 3 days</strong>
+            <p>
+              Your listing for 'Assistant Principal' will be removed soon.
+              Consider extending the duration or reviewing current applicants.
+            </p>
+          </div>
+          <time>5 hours ago</time>
+        </div>
         <h3>Yesterday</h3>
-        <div className="school-notification-simple"><span className="school-notification-icon"><FiFileText size={17} /></span><div><b>NEW APPLICATION</b><strong>Sarah Jenkins applied for Biology Teacher</strong><p>Profile overview and CV attached for review.</p></div><time>Yesterday, 2:30 PM</time></div>
-        <div className="school-notification-simple"><span className="school-notification-icon"><FiCheckCircle size={17} /></span><div><b>SYSTEM</b><strong>Subscription Renewed Successfully</strong><p>Your 'Premium School' plan has been renewed for another month.</p></div><time>Yesterday, 9:00 AM</time></div>
+        <div className="school-notification-simple">
+          <span className="school-notification-icon">
+            <FiFileText size={17} />
+          </span>
+          <div>
+            <b>NEW APPLICATION</b>
+            <strong>Sarah Jenkins applied for Biology Teacher</strong>
+            <p>Profile overview and CV attached for review.</p>
+          </div>
+          <time>Yesterday, 2:30 PM</time>
+        </div>
+        <div className="school-notification-simple">
+          <span className="school-notification-icon">
+            <FiCheckCircle size={17} />
+          </span>
+          <div>
+            <b>SYSTEM</b>
+            <strong>Subscription Renewed Successfully</strong>
+            <p>
+              Your 'Premium School' plan has been renewed for another month.
+            </p>
+          </div>
+          <time>Yesterday, 9:00 AM</time>
+        </div>
         <h3>Earlier</h3>
-        <div className="school-notification-simple"><span className="school-notification-icon"><FiFileText size={17} /></span><div><b>NEW APPLICATION</b><strong>David Osa applied for Physics Teacher</strong></div><time>Oct 12</time></div>
-        <button type="button" className="school-load-more">Load More <FiChevronDown size={13} /></button>
+        <div className="school-notification-simple">
+          <span className="school-notification-icon">
+            <FiFileText size={17} />
+          </span>
+          <div>
+            <b>NEW APPLICATION</b>
+            <strong>David Osa applied for Physics Teacher</strong>
+          </div>
+          <time>Oct 12</time>
+        </div>
+        <button type="button" className="school-load-more">
+          Load More <FiChevronDown size={13} />
+        </button>
       </div>
     </div>
   );
 
   const renderJobForm = () => (
-    <div className="rounded-2xl border border-[#dfe5e1] bg-white p-6 text-left shadow-sm">
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-bold text-[#172238]">Post a New Job</h2>
-          <p className="mt-1 text-sm text-[#718078]">Create a clear opportunity for qualified educators.</p>
-        </div>
-        <FiBriefcase className="text-[#1ccb43]" size={24} />
+    <div className="school-job-form-page">
+      <div className="school-job-form-breadcrumb">
+        Jobs <span>›</span> Post New Job
       </div>
-      <form onSubmit={handleCreateJob} className="grid gap-3 md:grid-cols-2">
-        <input className="rounded-xl border border-[#dfe5e1] bg-[#f8faf8] px-3 py-3 text-sm outline-none focus:border-[#1ccb43]" placeholder="Job title" value={jobForm.title} onChange={(e) => setJobForm({ ...jobForm, title: e.target.value })} required />
-        <input className="rounded-xl border border-[#dfe5e1] bg-[#f8faf8] px-3 py-3 text-sm outline-none focus:border-[#1ccb43]" placeholder="Location" value={jobForm.location} onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })} required />
-        <input className="rounded-xl border border-[#dfe5e1] bg-[#f8faf8] px-3 py-3 text-sm outline-none focus:border-[#1ccb43]" placeholder="Role type" value={jobForm.role_type} onChange={(e) => setJobForm({ ...jobForm, role_type: e.target.value })} />
-        <input className="rounded-xl border border-[#dfe5e1] bg-[#f8faf8] px-3 py-3 text-sm outline-none focus:border-[#1ccb43]" placeholder="Employment type" value={jobForm.employment_type} onChange={(e) => setJobForm({ ...jobForm, employment_type: e.target.value })} />
-        <input className="rounded-xl border border-[#dfe5e1] bg-[#f8faf8] px-3 py-3 text-sm outline-none focus:border-[#1ccb43] md:col-span-2" placeholder="Salary range" value={jobForm.salary_range} onChange={(e) => setJobForm({ ...jobForm, salary_range: e.target.value })} />
-        <textarea className="rounded-xl border border-[#dfe5e1] bg-[#f8faf8] px-3 py-3 text-sm outline-none focus:border-[#1ccb43] md:col-span-2" placeholder="Job description" rows={4} value={jobForm.description} onChange={(e) => setJobForm({ ...jobForm, description: e.target.value })} required />
-        <textarea className="rounded-xl border border-[#dfe5e1] bg-[#f8faf8] px-3 py-3 text-sm outline-none focus:border-[#1ccb43] md:col-span-2" placeholder="Requirements" rows={3} value={jobForm.requirements} onChange={(e) => setJobForm({ ...jobForm, requirements: e.target.value })} />
-        <button type="submit" disabled={submitting} className="inline-flex w-fit items-center gap-2 rounded-full bg-[#1ccb43] px-5 py-3 text-sm font-bold text-[#12331f] hover:bg-[#17b53a] disabled:opacity-60">
-          <FiPlus /> {submitting ? 'Posting…' : 'Publish Job'}
-        </button>
+      <h2 className="school-job-form-title">Post a New Teaching Opportunity</h2>
+      <p className="school-job-form-subtitle">
+        Reach thousands of qualified educators across the country.
+      </p>
+      <form onSubmit={handleCreateJob} className="school-job-form">
+        <section className="school-job-form-card school-job-basic-fields">
+          <label>
+            Job Title
+            <input
+              placeholder="e.g. Senior Mathematics Teacher"
+              value={jobForm.title}
+              onChange={(e) =>
+                setJobForm({ ...jobForm, title: e.target.value })
+              }
+              required
+            />
+          </label>
+          <label>
+            Subject
+            <input
+              placeholder="e.g. Further Mathematics"
+              value={jobForm.role_type}
+              onChange={(e) =>
+                setJobForm({ ...jobForm, role_type: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            Teaching Level
+            <button type="button" className="school-select-field">
+              SS1 – SS3 (Senior Secondary)
+              <FiChevronDown size={15} />
+            </button>
+          </label>
+          <fieldset>
+            <legend>Employment Type</legend>
+            <div className="school-employment-options">
+              <button
+                type="button"
+                className={
+                  jobForm.employment_type === "full-time" ? "is-selected" : ""
+                }
+                onClick={() =>
+                  setJobForm({ ...jobForm, employment_type: "full-time" })
+                }
+              >
+                Full-time
+              </button>
+              <button
+                type="button"
+                className={
+                  jobForm.employment_type === "part-time" ? "is-selected" : ""
+                }
+                onClick={() =>
+                  setJobForm({ ...jobForm, employment_type: "part-time" })
+                }
+              >
+                Part-time
+              </button>
+            </div>
+          </fieldset>
+          <label>
+            Salary Range (Monthly)
+            <input
+              placeholder="₦ 350,000 – 500,000"
+              value={jobForm.salary_range}
+              onChange={(e) =>
+                setJobForm({ ...jobForm, salary_range: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            School Location
+            <div className="school-input-with-icon">
+              <FiMapPin size={16} />
+              <input
+                placeholder="Lekki, Lagos State"
+                value={jobForm.location}
+                onChange={(e) =>
+                  setJobForm({ ...jobForm, location: e.target.value })
+                }
+                required
+              />
+            </div>
+          </label>
+        </section>
+        <section className="school-job-form-card school-job-description-card">
+          <label>
+            Job Description
+            <div className="school-editor">
+              <div className="school-editor-toolbar">
+                <b>B</b>
+                <i>I</i>
+                <FiList size={14} />
+                <FiLink size={14} />
+              </div>
+              <textarea
+                placeholder="Enter the detailed job overview here..."
+                value={jobForm.description}
+                onChange={(e) =>
+                  setJobForm({ ...jobForm, description: e.target.value })
+                }
+                required
+              />
+            </div>
+          </label>
+          <label>
+            Key Responsibilities
+            <textarea
+              placeholder="List the primary duties for this role..."
+              value={jobForm.requirements}
+              onChange={(e) =>
+                setJobForm({ ...jobForm, requirements: e.target.value })
+              }
+            />
+          </label>
+          <label>
+            Requirements &amp; Qualifications
+            <textarea placeholder="Education, certifications, and skills needed..." />
+          </label>
+        </section>
+        <section className="school-job-form-card school-job-extra-fields">
+          <label>
+            Required Experience
+            <button type="button" className="school-select-field">
+              5+ Years
+              <FiChevronDown size={15} />
+            </button>
+          </label>
+          <label>
+            Required Qualification
+            <input placeholder="e.g. B.Ed, TRCN Certification" />
+          </label>
+          <label>
+            Application Deadline
+            <div className="school-input-with-icon">
+              <FiCalendar size={16} />
+              <input type="date" />
+            </div>
+          </label>
+          <label className="school-feature-option">
+            <input type="checkbox" />
+            Feature this job (pinned at top)
+          </label>
+        </section>
+        <div className="school-job-form-actions">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab(previousTab);
+              showSnackbar(
+                "Draft saved successfully",
+                "Your job draft has been saved successfully",
+              );
+            }}
+          >
+            Save Draft
+          </button>
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Publishing..." : "Publish Job"}
+          </button>
+        </div>
       </form>
     </div>
   );
 
   const renderJobs = () => (
-    <div className="rounded-2xl border border-[#dfe5e1] bg-white p-6 text-left shadow-sm">
-      <div className="mb-5 flex items-center justify-between">
-        <div><h2 className="text-xl font-bold text-[#172238]">Your Job Posts</h2><p className="mt-1 text-sm text-[#718078]">Manage roles and review incoming applications.</p></div>
-        <button type="button" onClick={() => setActiveTab('post-job')} className="inline-flex items-center gap-2 rounded-full bg-[#1ccb43] px-4 py-2 text-xs font-bold text-[#12331f]"><FiPlus /> Post a job</button>
+    <div className="school-jobs-page">
+      <div className="school-jobs-heading">
+        <h2>Jobs</h2>
       </div>
-      {jobs.length === 0 ? <p className="py-10 text-center text-sm text-[#718078]">No jobs published yet.</p> : <div className="grid gap-4 md:grid-cols-2">
-        {jobs.map((job) => { const jobId = job.job_id || job.id; return <div key={jobId} className="rounded-xl border border-[#e4e9e5] p-4">
-          <div className="mb-3 flex items-start justify-between gap-3"><div><h3 className="font-bold text-[#172238]">{job.title || 'Teaching role'}</h3><p className="mt-1 text-xs text-[#718078]">{job.location || 'Location pending'} · {job.employment_type || 'full-time'}</p></div><button type="button" onClick={() => handleDeleteJob(jobId)} className="text-[#dc5b5b]" aria-label="Delete job"><FiTrash2 /></button></div>
-          <p className="mb-4 line-clamp-2 text-sm text-[#607064]">{job.description || 'No description provided.'}</p>
-          <div className="flex items-center justify-between border-t border-[#edf0ed] pt-3 text-xs text-[#718078]"><span><FiUsers className="mr-1 inline" />{(applicantsByJob[jobId] || []).length} applicants</span><button type="button" onClick={() => setActiveTab('applicants')} className="font-bold text-[#16843d]">View applicants</button></div>
-        </div>; })}
-      </div>}
+      <div className="school-jobs-toolbar">
+        <div className="school-job-filters">
+          {[
+            "All Jobs",
+            "Active",
+            "Draft",
+            "Closed",
+            "Filled",
+            "Pending",
+            "Rejected",
+          ].map((filter) => (
+            <button
+              type="button"
+              key={filter}
+              className={jobFilter === filter ? "is-active" : ""}
+              onClick={() => setJobFilter(filter)}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
+        <div className="school-jobs-toolbar-right">
+          <span>{jobs.length} Jobs</span>
+          <button type="button">
+            <FiSettings size={14} /> Advanced Filters
+          </button>
+        </div>
+      </div>
+      <div className="school-job-list-panel">
+        {jobs.length === 0 ? (
+          <p className="school-jobs-empty">No jobs published yet.</p>
+        ) : (
+          jobs
+            .filter((job) => {
+              if (jobFilter === "All Jobs") return true;
+              return (
+                String(job.status || "active").toLowerCase() ===
+                jobFilter.toLowerCase()
+              );
+            })
+            .map((job) => {
+              const jobId = job.job_id || job.id;
+              const status = String(job.status || "active").toLowerCase();
+              const statusKey = status.replace(/\s+/g, "-");
+              const statusLabel =
+                status === "active"
+                  ? "Active"
+                  : status === "under review"
+                    ? "Under Review"
+                    : status.charAt(0).toUpperCase() + status.slice(1);
+              const applicantCount = (applicantsByJob[jobId] || []).length;
+              return (
+                <article className="school-job-row" key={jobId}>
+                  <div
+                    className={`school-job-row-icon school-job-row-icon--${status}`}
+                  >
+                    <FiBriefcase size={22} />
+                  </div>
+                  <div className="school-job-row-main">
+                    <div className="school-job-row-title">
+                      <h3>{job.title || "Teaching role"}</h3>
+                      <b
+                        className={`school-job-row-status school-job-row-status--${statusKey}`}
+                      >
+                        {statusLabel}
+                      </b>
+                    </div>
+                    <div className="school-job-row-meta">
+                      <span>
+                        <FiMapPin size={14} />
+                        {job.location || "Location pending"}
+                      </span>
+                      <span>
+                        <FiClock size={14} />
+                        {job.employment_type || "Full-time"}
+                      </span>
+                      <span className="school-job-applicants">
+                        <FiUsers size={14} />
+                        {applicantCount} Applicants
+                      </span>
+                      <span>
+                        <FiCalendar size={14} />
+                        Posted recently
+                      </span>
+                    </div>
+                  </div>
+                  <div className="school-job-row-actions">
+                    {status === "draft" && (
+                      <button
+                        type="button"
+                        onClick={() => openJobForm("jobs")}
+                        className="school-job-continue"
+                      >
+                        Continue
+                      </button>
+                    )}
+                    {status === "filled" && (
+                      <button type="button" className="school-job-archive">
+                        <FiArchive size={15} /> Archives
+                      </button>
+                    )}
+                    {status !== "draft" && status !== "filled" && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedJob(job)}
+                        className="school-job-view"
+                      >
+                        View
+                      </button>
+                    )}
+                    <div className="school-job-more-wrap">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenJobMenuId((prev) =>
+                            prev === jobId ? null : jobId,
+                          )
+                        }
+                        className="school-job-more"
+                        aria-label="Open job options"
+                      >
+                        <FiMoreVertical size={18} />
+                      </button>
+
+                      {openJobMenuId === jobId && (
+                        <div className="school-job-menu">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveTab("applicants");
+                              setOpenJobMenuId(null);
+                            }}
+                          >
+                            Close Application
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleDeleteJob(jobId);
+                            }}
+                            className="school-job-menu-delete"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              );
+            })
+        )}
+      </div>
     </div>
   );
 
+const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
+  return (
+    <div className="school-applicant-summary-page">
+      <button
+        type="button"
+        className="school-summary-back-btn"
+        onClick={() => setSelectedApplicant(null)}
+      >
+        <FiArrowLeft /> Back
+      </button>
+
+      <div className="school-summary-container">
+        <div className="school-summary-content">
+
+          {/* 1. Professional Summary */}
+          <section className="school-summary-section school-summary-section--first">
+
+            {/* Action Buttons - Right Side */}
+            <div className="school-summary-actions">
+              <button
+                type="button"
+                className="school-summary-shortlist-btn"
+              >
+                Shortlist Candidate
+              </button>
+
+              <button
+                type="button"
+                className="school-summary-reject-btn"
+              >
+                Reject Applicant
+              </button>
+            </div>
+
+            {/* Professional Summary Content */}
+            <div className="school-summary-summary-content">
+              <div className="school-summary-header-title">
+                <FiFileText className="school-summary-icon" />
+                <h2>Professional Summary</h2>
+              </div>
+
+              <p className="school-summary-text">
+                {applicant.summary ||
+                  "Seasoned Mathematics educator with over 12 years of experience in preparing students for WAEC, NECO, and IGCSE examinations. Proven track record of improving student performance by 35% through innovative teaching methodologies and personalized learning paths. Dedicated to fostering a deep understanding of complex mathematical concepts and further mathematics logic."}
+              </p>
+            </div>
+
+            {/* Clear floated buttons */}
+            <div className="school-summary-clearfix" />
+          </section>
+
+          {/* 2. Teaching Subjects & Qualifications (2-Column Grid) */}
+          <div className="school-summary-grid-2col">
+
+            <section className="school-summary-section">
+              <div className="school-summary-section-header">
+                <FiBook className="school-summary-icon" />
+                <h2>Teaching Subjects</h2>
+              </div>
+
+              <div className="school-summary-tags">
+                {(applicant.subjects || [
+                  "Mathematics",
+                  "Further Math",
+                  "Physics (Junior Secondary)",
+                ]).map((subject, idx) => (
+                  <span
+                    key={idx}
+                    className="school-summary-tag"
+                  >
+                    {subject}
+                  </span>
+                ))}
+              </div>
+            </section>
+
+            <section className="school-summary-section">
+              <div className="school-summary-section-header">
+                <FiAward className="school-summary-icon" />
+                <h2>Qualifications</h2>
+              </div>
+
+              <div className="school-summary-qualifications">
+                <div className="school-summary-qualification">
+                  <strong>B.Sc Mathematics</strong>
+                  <span className="school-summary-qual-year">
+                    UNILAG, 2011
+                  </span>
+                </div>
+
+                <div className="school-summary-qualification">
+                  <strong>M.Ed Educational Admin</strong>
+                  <span className="school-summary-qual-year">
+                    UI, 2015
+                  </span>
+                </div>
+
+                <div className="school-summary-badge-wrapper">
+                  <span className="school-summary-badge">
+                    TRCN VERIFIED
+                  </span>
+                </div>
+              </div>
+            </section>
+
+          </div>
+
+          {/* 3. Teaching Experience */}
+          <section className="school-summary-section">
+
+            <div className="school-summary-section-header">
+              <FiBriefcase className="school-summary-icon" />
+              <h2>Teaching Experience</h2>
+            </div>
+
+            <div className="school-summary-experience-timeline">
+
+              {/* Experience 1 */}
+              <div className="school-summary-timeline-item">
+
+                <div className="school-summary-timeline-bullet school-summary-timeline-bullet--active" />
+
+                <div className="school-summary-job">
+
+                  <div className="school-summary-job-header">
+                    <div>
+                      <strong>Senior Math Teacher</strong>
+
+                      <p className="school-summary-job-school">
+                        Grange School, Lagos
+                      </p>
+                    </div>
+
+                    <span className="school-summary-date school-summary-date--current">
+                      2018 - Present
+                    </span>
+                  </div>
+
+                  <p className="school-summary-job-desc">
+                    Leading the department in curriculum redesign and
+                    implementing tech-enabled learning modules for
+                    advanced calculus and statistics.
+                  </p>
+
+                </div>
+              </div>
+
+              {/* Experience 2 */}
+              <div className="school-summary-timeline-item">
+
+                <div className="school-summary-timeline-bullet" />
+
+                <div className="school-summary-job">
+
+                  <div className="school-summary-job-header">
+                    <div>
+                      <strong>Mathematics Educator</strong>
+
+                      <p className="school-summary-job-school">
+                        Corona Secondary School
+                      </p>
+                    </div>
+
+                    <span className="school-summary-date">
+                      2014 - 2018
+                    </span>
+                  </div>
+
+                  <p className="school-summary-job-desc">
+                    Managed standardized testing preparation and
+                    extracurricular math Olympiad coaching for senior
+                    students.
+                  </p>
+
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          {/* 4. Key Skills & Uploaded Documents */}
+          <div className="school-summary-bottom-row">
+
+            {/* Key Skills */}
+            <section className="school-summary-section school-summary-section--skills">
+
+              <div className="school-summary-section-header">
+                <h2>Key Skills</h2>
+              </div>
+
+              <div className="school-summary-skills">
+                {(applicant.skills || [
+                  "Curriculum Development",
+                  "E-learning Platforms",
+                  "Student Mentorship",
+                  "WAEC Grading",
+                ]).map((skill, idx) => (
+                  <span
+                    key={idx}
+                    className="school-summary-skill-tag"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+
+            </section>
+
+            {/* Uploaded Documents */}
+            <div className="school-summary-documents">
+
+              {/* CV */}
+              <div className="school-summary-document">
+
+                <div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf">
+                  <span>PDF</span>
+                </div>
+
+                <div className="school-summary-doc-info">
+                  <p className="school-summary-doc-name">
+                    Tunde_Bello_CV.pdf
+                  </p>
+
+                  <p className="school-summary-doc-size">
+                    1.2 MB • Updated 2 days ago
+                  </p>
+                </div>
+
+                <div className="school-summary-doc-actions">
+
+                  <button
+                    type="button"
+                    title="View"
+                    className="school-summary-doc-btn"
+                  >
+                    <FiEye size={18} />
+                  </button>
+
+                  <button
+                    type="button"
+                    title="Download"
+                    className="school-summary-doc-btn"
+                  >
+                    <FiDownload size={18} />
+                  </button>
+
+                </div>
+              </div>
+
+              {/* Cover Letter */}
+              <div className="school-summary-document">
+
+                <div className="school-summary-doc-icon-box school-summary-doc-icon-box--doc">
+                  <FiFileText size={20} />
+                </div>
+
+                <div className="school-summary-doc-info">
+                  <p className="school-summary-doc-name">
+                    Cover_Letter.docx
+                  </p>
+
+                  <p className="school-summary-doc-size">
+                    450 KB • Updated 2 days ago
+                  </p>
+                </div>
+
+                <div className="school-summary-doc-actions">
+
+                  <button
+                    type="button"
+                    title="View"
+                    className="school-summary-doc-btn"
+                  >
+                    <FiEye size={18} />
+                  </button>
+
+                  <button
+                    type="button"
+                    title="Download"
+                    className="school-summary-doc-btn"
+                  >
+                    <FiDownload size={18} />
+                  </button>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
+
+  const renderJobApplicantsPage = (job) => {
+    if (selectedApplicant) {
+      return renderApplicantSummaryPage(selectedApplicant, job);
+    }
+
+    const jobId = job.job_id || job.id;
+    const applicants = (applicantsByJob[jobId] || []).length
+      ? applicantsByJob[jobId]
+      : [
+          {
+            application_id: "demo-app-1",
+            teacher_name: "Tunde Bello",
+            teacher_email: "tunde.bello@example.com",
+            status: "shortlisted",
+            qualification: "M.Ed",
+            location: "Lagos, NG",
+            experience: "8 yrs exp",
+            trcn: true,
+          },
+          {
+            application_id: "demo-app-2",
+            teacher_name: "Chioma Okoro",
+            teacher_email: "chioma.okoro@example.com",
+            status: "under review",
+            qualification: "B.Sc Math",
+            location: "Abuja, NG",
+            experience: "3 yrs exp",
+            trcn: false,
+          },
+          {
+            application_id: "demo-app-3",
+            teacher_name: "Adeola Johnson",
+            teacher_email: "adeola.johnson@example.com",
+            status: "shortlisted",
+            qualification: "PhD Education",
+            location: "Ibadan, NG",
+            experience: "15 yrs exp",
+            trcn: true,
+          },
+        ];
+
+    const statusFilters = [
+      "All (24)",
+      "Under Review",
+      "Shortlisted",
+      "Rejected",
+    ];
+
+    const filteredApplicants = applicants.filter((app) => {
+      const status = String(app.status || "pending").toLowerCase();
+      const experience = String(app.experience || "");
+      const qualification = String(app.qualification || "");
+
+      const matchesStatus = (() => {
+        switch (applicantFilter) {
+          case "Under Review":
+            return status === "under review" || status === "reviewed";
+          case "Shortlisted":
+            return status === "shortlisted";
+          case "Rejected":
+            return status === "rejected";
+          case "All (24)":
+          default:
+            return true;
+        }
+      })();
+
+      const matchesExperience =
+        experienceFilter === "Experience" ||
+        (experienceFilter === "3+ years" && experience.includes("3")) ||
+        (experienceFilter === "5+ years" && experience.includes("5")) ||
+        (experienceFilter === "8+ years" && experience.includes("8")) ||
+        (experienceFilter === "15+ years" && experience.includes("15"));
+
+      const matchesQualification =
+        qualificationFilter === "Qualification" ||
+        (qualificationFilter === "M.Ed" && qualification.includes("M.Ed")) ||
+        (qualificationFilter === "B.Sc" && qualification.includes("B.Sc")) ||
+        (qualificationFilter === "PhD" && qualification.includes("PhD"));
+
+      return matchesStatus && matchesExperience && matchesQualification;
+    });
+
+    return (
+      <div className="school-job-applicants-page">
+        <div className="school-job-applicants-breadcrumb">
+          <button type="button" onClick={() => setSelectedJob(null)}>
+            Jobs
+          </button>
+          <span>›</span>
+          <strong>{job.title || "Mathematics Teacher"}</strong>
+        </div>
+
+        <h2 className="school-job-applicants-title">Applicants List</h2>
+        <p className="school-job-applicants-subtitle">
+          Reviewing {applicants.length} candidates for the{" "}
+          {job.title || "Senior Mathematics"} position
+        </p>
+
+        <div className="school-job-applicants-toolbar">
+          <div className="school-job-applicants-filters">
+            {statusFilters.map((filter) => (
+              <button
+                type="button"
+                key={filter}
+                className={applicantFilter === filter ? "is-active" : ""}
+                onClick={() => setApplicantFilter(filter)}
+              >
+                {filter}
+              </button>
+            ))}
+
+            <div className="school-job-filter-menu-wrap">
+              <button
+                type="button"
+                className="school-job-filter-button"
+                onClick={() => setExperienceMenuOpen(!experienceMenuOpen)}
+              >
+                {experienceFilter} <span>▾</span>
+              </button>
+              {experienceMenuOpen && (
+                <div className="school-job-filter-menu">
+                  {[
+                    "Experience",
+                    "3+ years",
+                    "5+ years",
+                    "8+ years",
+                    "15+ years",
+                  ].map((option) => (
+                    <button
+                      type="button"
+                      key={option}
+                      onClick={() => {
+                        setExperienceFilter(option);
+                        setExperienceMenuOpen(false);
+                      }}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="school-job-filter-menu-wrap">
+              <button
+                type="button"
+                className="school-job-filter-button"
+                onClick={() => setQualificationMenuOpen(!qualificationMenuOpen)}
+              >
+                {qualificationFilter} <span>▾</span>
+              </button>
+              {qualificationMenuOpen && (
+                <div className="school-job-filter-menu">
+                  {[
+                    "Qualification",
+                    "M.Ed",
+                    "B.Sc",
+                    "PhD",
+                  ].map((option) => (
+                    <button
+                      type="button"
+                      key={option}
+                      onClick={() => {
+                        setQualificationFilter(option);
+                        setQualificationMenuOpen(false);
+                      }}
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <button
+            type="button"
+            className="school-job-clear-filters"
+            onClick={() => {
+              setApplicantFilter("All (24)");
+              setExperienceFilter("Experience");
+              setQualificationFilter("Qualification");
+              setExperienceMenuOpen(false);
+              setQualificationMenuOpen(false);
+            }}
+          >
+            Clear all
+          </button>
+        </div>
+
+        <div className="school-job-applicants-list">
+          {filteredApplicants.map((app, index) => {
+            const appId = app.application_id || app.id || index;
+            const currentStatus = String(app.status || "pending").toLowerCase();
+            const statusMap = {
+              shortlisted: "SHORTLISTED",
+              "under review": "UNDER REVIEW",
+              pending: "PENDING",
+              rejected: "REJECTED",
+              hired: "HIRED",
+            };
+            const displayStatus = statusMap[currentStatus] || "PENDING";
+
+            return (
+              <div className="school-job-applicant-card" key={appId}>
+                <div className="school-job-applicant-main">
+                  <div className="school-job-applicant-name-block">
+                    <h4>
+                      {app.teacher_name || app.teacher_email || "Applicant"}
+                    </h4>
+                    <div className="school-job-applicant-role">
+                      {app.role_title || job.role_type || "Mathematics Teacher"}
+                    </div>
+                    {app.experience || "8 yrs exp" ? (
+                      <div className="school-job-applicant-meta-row">
+                        <span className="school-job-applicant-badge">
+                          {app.experience || "8 yrs exp"}
+                        </span>
+                        {app.trcn || app.verified ? (
+                          <span className="school-job-applicant-badge school-job-applicant-badge--green">
+                            TRCN
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="school-job-applicant-column">
+                    <span className="school-job-applicant-label">
+                      Qualification
+                    </span>
+                    <strong>{app.qualification || "M.Ed"}</strong>
+                  </div>
+
+                  <div className="school-job-applicant-column">
+                    <span className="school-job-applicant-label">Location</span>
+                    <strong>
+                      <span className="school-job-location-pin">◌</span>
+                      {app.location || "Lagos, NG"}
+                    </strong>
+                  </div>
+
+                  <div className="school-job-applicant-column school-job-applicant-column--status">
+                    <span className="school-job-applicant-label">Status</span>
+                    <span
+                      className={`school-job-applicant-status school-job-applicant-status--${currentStatus.replace(/\s+/g, "-")}`}
+                    >
+                      {displayStatus}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="school-job-applicant-actions">
+                  <button
+                    type="button"
+                    className="school-job-applicant-view-btn"
+                    onClick={() => setSelectedApplicant(app)}
+                  >
+                    View Application
+                  </button>
+                  <button
+                    type="button"
+                    className="school-job-applicant-more"
+                    aria-label="Applicant options"
+                  >
+                    ⋮
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="school-job-applicants-footer">
+          <span>Showing 1-3 of 24 applicants</span>
+          <div className="school-job-applicant-pagination">
+            <button type="button" className="school-job-pager-nav">
+              ‹
+            </button>
+            <button type="button" className="is-active">
+              1
+            </button>
+            <button type="button">2</button>
+            <button type="button">3</button>
+            <button type="button">…</button>
+            <button type="button">6</button>
+            <button type="button" className="school-job-pager-nav">
+              ›
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderApplicants = () => (
     <div className="rounded-2xl border border-[#dfe5e1] bg-white p-6 text-left shadow-sm">
-      <div className="mb-5"><h2 className="text-xl font-bold text-[#172238]">Recent Applicants</h2><p className="mt-1 text-sm text-[#718078]">Review candidates and move them through your hiring process.</p></div>
-      {allApplicants.length === 0 ? <p className="py-10 text-center text-sm text-[#718078]">No applicants yet.</p> : <div className="space-y-3">{allApplicants.map((app, index) => { const appId = app.application_id || app.id || index; const currentStatus = (app.status || 'pending').toLowerCase(); return <div key={appId} className="grid gap-3 rounded-xl border border-[#e4e9e5] p-4 md:grid-cols-[1fr_1fr_160px] md:items-center"><div><p className="font-semibold text-[#172238]">{app.teacher_name || app.teacher_email || 'Applicant'}</p><p className="text-xs text-[#718078]">{app.teacher_email || 'Teacher profile'}</p></div><p className="text-sm text-[#607064]">{jobs.find((job) => (job.job_id || job.id) === app.jobId)?.title || 'Teaching opportunity'}</p><select value={currentStatus} disabled={!!statusUpdating[appId]} onChange={(e) => handleStatusChange(app.jobId, appId, e.target.value)} className="rounded-lg border border-[#dfe5e1] bg-[#f8faf8] px-2 py-2 text-xs text-[#172238] outline-none"><option value="pending">Pending</option><option value="reviewed">Reviewed</option><option value="shortlisted">Shortlisted</option><option value="rejected">Rejected</option><option value="hired">Hired</option></select></div>; })}</div>}
+      <div className="mb-5">
+        <h2 className="text-xl font-bold text-[#172238]">Recent Applicants</h2>
+        <p className="mt-1 text-sm text-[#718078]">
+          Review candidates and move them through your hiring process.
+        </p>
+      </div>
+      {allApplicants.length === 0 ? (
+        <p className="py-10 text-center text-sm text-[#718078]">
+          No applicants yet.
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {allApplicants.map((app, index) => {
+            const appId = app.application_id || app.id || index;
+            const currentStatus = (app.status || "pending").toLowerCase();
+            return (
+              <div
+                key={appId}
+                className="grid gap-3 rounded-xl border border-[#e4e9e5] p-4 md:grid-cols-[1fr_1fr_160px] md:items-center"
+              >
+                <div>
+                  <p className="font-semibold text-[#172238]">
+                    {app.teacher_name || app.teacher_email || "Applicant"}
+                  </p>
+                  <p className="text-xs text-[#718078]">
+                    {app.teacher_email || "Teacher profile"}
+                  </p>
+                </div>
+                <p className="text-sm text-[#607064]">
+                  {jobs.find((job) => (job.job_id || job.id) === app.jobId)
+                    ?.title || "Teaching opportunity"}
+                </p>
+                <select
+                  value={currentStatus}
+                  disabled={!!statusUpdating[appId]}
+                  onChange={(e) =>
+                    handleStatusChange(app.jobId, appId, e.target.value)
+                  }
+                  className="rounded-lg border border-[#dfe5e1] bg-[#f8faf8] px-2 py-2 text-xs text-[#172238] outline-none"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="reviewed">Reviewed</option>
+                  <option value="shortlisted">Shortlisted</option>
+                  <option value="rejected">Rejected</option>
+                  <option value="hired">Hired</option>
+                </select>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 
@@ -337,18 +1651,44 @@ export default function AdminDashboard() {
       <div className="flex min-h-screen">
         <aside className="admin-desktop-sidebar hidden w-56 shrink-0 border-r border-[#e3e8e4] bg-white p-5 md:block">
           <div className="admin-sidebar-inner">
-            <div className="admin-sidebar-brand"><BrandLogo /></div>
+            <div className="admin-sidebar-brand">
+              <BrandLogo />
+            </div>
             <nav className="admin-sidebar-nav">
               {navItems.map(([key, label, Icon]) => (
-                <button key={key} type="button" onClick={() => setActiveTab(key)} className={`admin-sidebar-nav-item ${activeTab === key ? 'is-active' : ''}`}>
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setActiveTab(key)}
+                  className={`admin-sidebar-nav-item ${activeTab === key ? "is-active" : ""}`}
+                >
                   <Icon size={19} />
-                  <span>{isSchool && key === 'applicants' ? 'Teachers' : label}</span>
-                  {key === 'notifications' && <i className="admin-sidebar-notification-dot" />}
+                  <span>
+                    {isSchool && key === "applicants" ? "Teachers" : label}
+                  </span>
+                  {key === "notifications" && (
+                    <i className="admin-sidebar-notification-dot" />
+                  )}
                 </button>
               ))}
             </nav>
-            {isSchool && <div className="admin-sidebar-help"><strong>Need help recruiting?</strong><button type="button" onClick={() => setActiveTab('post-job')}><FiPlus size={14} />Post a Job</button></div>}
-            <button type="button" onClick={logout} className="admin-sidebar-logout"><FiLogOut size={17} />Log out</button>
+            {isSchool && (
+              <div className="admin-sidebar-help">
+                <strong>Need help recruiting?</strong>
+                <button type="button" onClick={() => openJobForm("overview")}>
+                  <FiPlus size={14} />
+                  Post a Job
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={logout}
+              className="admin-sidebar-logout"
+            >
+              <FiLogOut size={17} />
+              Log out
+            </button>
           </div>
         </aside>
 
@@ -357,24 +1697,79 @@ export default function AdminDashboard() {
             <div className="admin-topbar-spacer" />
             <label className="admin-topbar-search">
               <FiSearch size={18} />
-              <input type="search" placeholder="Search vacancies in Lagos..." aria-label="Search vacancies" />
+              <input
+                type="search"
+                placeholder="Search vacancies in Lagos..."
+                aria-label="Search vacancies"
+              />
             </label>
             <div className="admin-topbar-account">
-              <button type="button" onClick={() => setActiveTab('notifications')} className="admin-topbar-notifications" aria-label="Notifications"><FiBell size={18} /><span /></button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("notifications")}
+                className="admin-topbar-notifications"
+                aria-label="Notifications"
+              >
+                <FiBell size={18} />
+                <span />
+              </button>
               <div className="admin-topbar-divider" />
-              <div className="admin-topbar-user"><strong>{user?.admin_name || 'Admin User'}</strong><span>{user?.school_name || user?.full_name || 'BrightMind Academy'}</span></div>
-              <button type="button" onClick={logout} className="admin-topbar-avatar" aria-label="Log out">
-                {user?.profile_image || user?.avatar_url || user?.profile_picture ? <img src={user.profile_image || user.avatar_url || user.profile_picture} alt="" /> : <span>{(user?.full_name || 'BM').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}</span>}
+              <div className="admin-topbar-user">
+                <strong>{user?.admin_name || "Admin User"}</strong>
+                <span>
+                  {user?.school_name || user?.full_name || "BrightMind Academy"}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={logout}
+                className="admin-topbar-avatar"
+                aria-label="Log out"
+              >
+                {user?.profile_image ||
+                user?.avatar_url ||
+                user?.profile_picture ? (
+                  <img
+                    src={
+                      user.profile_image ||
+                      user.avatar_url ||
+                      user.profile_picture
+                    }
+                    alt=""
+                  />
+                ) : (
+                  <span>
+                    {(user?.full_name || "BM")
+                      .split(/\s+/)
+                      .map((part) => part[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
+                  </span>
+                )}
               </button>
             </div>
           </header>
 
           <header className="admin-mobile-header">
-            <div className="admin-mobile-avatar" aria-label={user?.full_name || 'School administrator'}>
-              {(user?.full_name || 'School').split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase()}
+            <div
+              className="admin-mobile-avatar"
+              aria-label={user?.full_name || "School administrator"}
+            >
+              {(user?.full_name || "School")
+                .split(/\s+/)
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+                .toUpperCase()}
             </div>
             <BrandLogo />
-            <button type="button" onClick={() => setActiveTab('notifications')} className="admin-mobile-bell" aria-label="Notifications">
+            <button
+              type="button"
+              onClick={() => setActiveTab("notifications")}
+              className="admin-mobile-bell"
+              aria-label="Notifications"
+            >
               <FiBell size={20} />
               <span />
             </button>
@@ -382,168 +1777,483 @@ export default function AdminDashboard() {
 
           <main className="admin-dashboard-main w-full flex-1 px-4 py-6 md:px-8 md:py-8">
             <div className="mx-auto max-w-6xl">
-
-        {error && (
-          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="rounded-2xl border border-gray-200 bg-white p-12 text-gray-600 shadow-sm">
-            Loading dashboard data…
-          </div>
-        ) : (
-          <>
-            {isSchool && activeTab === 'overview' && renderSchoolOverview()}
-            {activeTab === 'overview' && !isSchool && <>
-              <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center"><div><h2 className="text-2xl font-bold">Good morning, {user?.full_name || (isSchool ? 'School Administrator' : 'Admin')}</h2><p className="mt-1 text-sm text-[#718078]">Manage your school's hiring and recruitment activity.</p></div>{isSchool && <button type="button" onClick={() => setActiveTab('post-job')} className="inline-flex w-fit items-center gap-2 rounded-full bg-[#1ccb43] px-5 py-3 text-sm font-bold text-[#12331f]"><FiPlus /> Post a job</button>}</div>
-            <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              {[
-                ['total_users', 'Total Users'],
-                ['total_teachers', 'Teachers'],
-                ['total_schools', 'Schools'],
-                ['total_jobs', 'Jobs'],
-                ['active_jobs', 'Active Jobs'],
-                ['total_applications', 'Applications'],
-                ['pending_verifications', 'Pending Verifications'],
-              ].map(([key, label]) => (
-                <div key={key} className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm">
-                  <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</div>
-                  <div className="mt-3 text-3xl font-bold text-gray-900">{stats[key] ?? 0}</div>
+              {error && (
+                <div className="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-left text-sm text-red-700">
+                  {error}
                 </div>
-              ))}
-            </div>
+              )}
 
-            {isSchool && <div className="mb-6 grid gap-4 md:grid-cols-3">{[['active_jobs', 'Active Jobs', FiBriefcase], ['total_applications', 'Total Applicants', FiUsers], ['pending_verifications', 'Pending Reviews', FiClock]].map(([key, label, Icon]) => <div key={key} className="rounded-2xl border border-[#dfe5e1] bg-white p-5 shadow-sm"><Icon className="mb-4 text-[#8ca49a]" /><p className="text-xs text-[#718078]">{label}</p><p className="mt-2 text-3xl font-bold">{stats[key] ?? 0}</p></div>)}</div>}
-
-            {isSchool && activeTab === 'overview' && (
-              <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm">
-                <h2 className="mb-4 text-xl font-bold text-gray-800">Your Job Posts</h2>
-                {jobs.length === 0 ? (
-                  <p className="text-gray-600">No jobs published yet.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {jobs.map((job) => {
-                      const jobId = job.job_id || job.id;
-                      const applicants = applicantsByJob[jobId] || [];
-
-                      return (
-                        <div key={jobId} className="rounded-xl border border-gray-200 p-4">
-                          <div className="mb-2 flex items-center justify-between gap-3">
-                            <div>
-                              <div className="font-semibold text-gray-800">{job.title || 'Teaching role'}</div>
-                              <div className="text-sm text-gray-500">{job.location || 'Location pending'} • {job.employment_type || 'full-time'}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteJob(jobId)}
-                              className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
-                            >
-                              Delete
-                            </button>
-                          </div>
-
-                          <div className="text-sm text-gray-600">
-                            {job.description || 'No description provided.'}
-                          </div>
-
-                          <div className="mt-3 rounded-lg bg-gray-50 p-3">
-                            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">Applicants</div>
-                            {applicants.length === 0 ? (
-                              <div className="text-sm text-gray-500">No applicants yet.</div>
-                            ) : (
-                              <div className="space-y-2">
-                                {applicants.slice(0, 6).map((app, idx) => {
-                                  const appId = app.application_id || app.id || idx;
-                                  const currentStatus = (app.status || 'pending').toLowerCase();
-
-                                  return (
-                                    <div key={appId} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm">
-                                      <div className="flex items-center justify-between gap-3">
-                                        <span className="text-gray-700">{app.teacher_name || app.teacher_email || 'Applicant'}</span>
-                                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700">
-                                          {currentStatus}
-                                        </span>
-                                      </div>
-
-                                      <div className="mt-2">
-                                        <select
-                                          value={currentStatus}
-                                          disabled={!!statusUpdating[appId]}
-                                          onChange={(e) => handleStatusChange(jobId, appId, e.target.value)}
-                                          className="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 outline-none"
-                                        >
-                                          <option value="pending">Pending</option>
-                                          <option value="reviewed">Reviewed</option>
-                                          <option value="shortlisted">Shortlisted</option>
-                                          <option value="rejected">Rejected</option>
-                                          <option value="hired">Hired</option>
-                                        </select>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
+              {loading ? (
+                <div className="rounded-2xl border border-gray-200 bg-white p-12 text-gray-600 shadow-sm">
+                  Loading dashboard data…
+                </div>
+              ) : (
+                <>
+                  {isSchool &&
+                    activeTab === "overview" &&
+                    renderSchoolOverview()}
+                  {activeTab === "overview" && !isSchool && (
+                    <>
+                      <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-center">
+                        <div>
+                          <h2 className="text-2xl font-bold">
+                            Good morning,{" "}
+                            {user?.full_name ||
+                              (isSchool ? "School Administrator" : "Admin")}
+                          </h2>
+                          <p className="mt-1 text-sm text-[#718078]">
+                            Manage your school's hiring and recruitment
+                            activity.
+                          </p>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!isSchool && activeTab === 'verifications' && (
-              <div className="rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm">
-                <h2 className="mb-4 text-xl font-bold text-gray-800">Pending Verifications</h2>
-                {verifications.length === 0 ? (
-                  <p className="text-gray-600">No pending verification requests right now.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {verifications.map((item) => (
-                      <div key={item.profile_id || item.user_id || item.school_name} className="rounded-xl border border-gray-200 p-3">
-                        <div className="font-semibold text-gray-800">{item.school_name || 'School Profile'}</div>
-                        <div className="text-sm text-gray-500">{item.state || item.address || 'Location pending'}</div>
-                        <span className="mt-2 inline-block rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700 uppercase">
-                          {item.verification_status || 'pending'}
-                        </span>
+                        {isSchool && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab("post-job")}
+                            className="inline-flex w-fit items-center gap-2 rounded-full bg-[#1ccb43] px-5 py-3 text-sm font-bold text-[#12331f]"
+                          >
+                            <FiPlus /> Post a job
+                          </button>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-            </>}
-            {activeTab === 'post-job' && isSchool && renderJobForm()}
-            {activeTab === 'jobs' && isSchool && renderJobs()}
-            {activeTab === 'applicants' && isSchool && renderApplicants()}
-            {isSchool && activeTab === 'notifications' && renderDesktopNotifications()}
-            {activeTab === 'notifications' && <>
-              <div className="admin-mobile-notification-header">
-                <button type="button" onClick={() => setActiveTab('overview')} aria-label="Back to dashboard"><FiArrowLeft size={22} /></button>
-                <h2>Notifications</h2>
-                <span />
-              </div>
-              <div className="admin-mobile-notifications-content rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm"><FiBell className="mx-auto mb-4 text-[#1ccb43]" size={32} /><h2 className="text-xl font-bold">Notifications</h2><p className="mt-2 text-sm text-[#718078]">You are all caught up.</p></div>
-            </>}
-            {activeTab === 'settings' && <div className="rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm"><FiSettings className="mx-auto mb-4 text-[#1ccb43]" size={32} /><h2 className="text-xl font-bold">Settings</h2><p className="mt-2 text-sm text-[#718078]">Dashboard preferences will appear here.</p></div>}
-          </>
-        )}
+                      <div className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {[
+                          ["total_users", "Total Users"],
+                          ["total_teachers", "Teachers"],
+                          ["total_schools", "Schools"],
+                          ["total_jobs", "Jobs"],
+                          ["active_jobs", "Active Jobs"],
+                          ["total_applications", "Applications"],
+                          ["pending_verifications", "Pending Verifications"],
+                        ].map(([key, label]) => (
+                          <div
+                            key={key}
+                            className="rounded-2xl border border-gray-200 bg-white p-5 text-left shadow-sm"
+                          >
+                            <div className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              {label}
+                            </div>
+                            <div className="mt-3 text-3xl font-bold text-gray-900">
+                              {stats[key] ?? 0}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {isSchool && (
+                        <div className="mb-6 grid gap-4 md:grid-cols-3">
+                          {[
+                            ["active_jobs", "Active Jobs", FiBriefcase],
+                            ["total_applications", "Total Applicants", FiUsers],
+                            [
+                              "pending_verifications",
+                              "Pending Reviews",
+                              FiClock,
+                            ],
+                          ].map(([key, label, Icon]) => (
+                            <div
+                              key={key}
+                              className="rounded-2xl border border-[#dfe5e1] bg-white p-5 shadow-sm"
+                            >
+                              <Icon className="mb-4 text-[#8ca49a]" />
+                              <p className="text-xs text-[#718078]">{label}</p>
+                              <p className="mt-2 text-3xl font-bold">
+                                {stats[key] ?? 0}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {isSchool && activeTab === "overview" && (
+                        <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm">
+                          <h2 className="mb-4 text-xl font-bold text-gray-800">
+                            Your Job Posts
+                          </h2>
+                          {jobs.length === 0 ? (
+                            <p className="text-gray-600">
+                              No jobs published yet.
+                            </p>
+                          ) : (
+                            <div className="space-y-4">
+                              {jobs.map((job) => {
+                                const jobId = job.job_id || job.id;
+                                const applicants = applicantsByJob[jobId] || [];
+
+                                return (
+                                  <div
+                                    key={jobId}
+                                    className="rounded-xl border border-gray-200 p-4"
+                                  >
+                                    <div className="mb-2 flex items-center justify-between gap-3">
+                                      <div>
+                                        <div className="font-semibold text-gray-800">
+                                          {job.title || "Teaching role"}
+                                        </div>
+                                        <div className="text-sm text-gray-500">
+                                          {job.location || "Location pending"} •{" "}
+                                          {job.employment_type || "full-time"}
+                                        </div>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteJob(jobId)}
+                                        className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+                                      >
+                                        Delete
+                                      </button>
+                                    </div>
+
+                                    <div className="text-sm text-gray-600">
+                                      {job.description ||
+                                        "No description provided."}
+                                    </div>
+
+                                    <div className="mt-3 rounded-lg bg-gray-50 p-3">
+                                      <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                                        Applicants
+                                      </div>
+                                      {applicants.length === 0 ? (
+                                        <div className="text-sm text-gray-500">
+                                          No applicants yet.
+                                        </div>
+                                      ) : (
+                                        <div className="space-y-2">
+                                          {applicants
+                                            .slice(0, 6)
+                                            .map((app, idx) => {
+                                              const appId =
+                                                app.application_id ||
+                                                app.id ||
+                                                idx;
+                                              const currentStatus = (
+                                                app.status || "pending"
+                                              ).toLowerCase();
+
+                                              return (
+                                                <div
+                                                  key={appId}
+                                                  className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm"
+                                                >
+                                                  <div className="flex items-center justify-between gap-3">
+                                                    <span className="text-gray-700">
+                                                      {app.teacher_name ||
+                                                        app.teacher_email ||
+                                                        "Applicant"}
+                                                    </span>
+                                                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold uppercase text-emerald-700">
+                                                      {currentStatus}
+                                                    </span>
+                                                  </div>
+
+                                                  <div className="mt-2">
+                                                    <select
+                                                      value={currentStatus}
+                                                      disabled={
+                                                        !!statusUpdating[appId]
+                                                      }
+                                                      onChange={(e) =>
+                                                        handleStatusChange(
+                                                          jobId,
+                                                          appId,
+                                                          e.target.value,
+                                                        )
+                                                      }
+                                                      className="w-full rounded-lg border border-gray-200 bg-gray-50 px-2 py-1.5 text-xs text-gray-700 outline-none"
+                                                    >
+                                                      <option value="pending">
+                                                        Pending
+                                                      </option>
+                                                      <option value="reviewed">
+                                                        Reviewed
+                                                      </option>
+                                                      <option value="shortlisted">
+                                                        Shortlisted
+                                                      </option>
+                                                      <option value="rejected">
+                                                        Rejected
+                                                      </option>
+                                                      <option value="hired">
+                                                        Hired
+                                                      </option>
+                                                    </select>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {!isSchool && activeTab === "verifications" && (
+                        <div className="rounded-2xl border border-gray-200 bg-white p-6 text-left shadow-sm">
+                          <h2 className="mb-4 text-xl font-bold text-gray-800">
+                            Pending Verifications
+                          </h2>
+                          {verifications.length === 0 ? (
+                            <p className="text-gray-600">
+                              No pending verification requests right now.
+                            </p>
+                          ) : (
+                            <div className="space-y-3">
+                              {verifications.map((item) => (
+                                <div
+                                  key={
+                                    item.profile_id ||
+                                    item.user_id ||
+                                    item.school_name
+                                  }
+                                  className="rounded-xl border border-gray-200 p-3"
+                                >
+                                  <div className="font-semibold text-gray-800">
+                                    {item.school_name || "School Profile"}
+                                  </div>
+                                  <div className="text-sm text-gray-500">
+                                    {item.state ||
+                                      item.address ||
+                                      "Location pending"}
+                                  </div>
+                                  <span className="mt-2 inline-block rounded-full bg-yellow-100 px-2 py-1 text-xs font-semibold text-yellow-700 uppercase">
+                                    {item.verification_status || "pending"}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {selectedJob ? renderJobApplicantsPage(selectedJob) : null}
+                  {!selectedJob &&
+                    activeTab === "post-job" &&
+                    isSchool &&
+                    renderJobForm()}
+                  {!selectedJob &&
+                    activeTab === "jobs" &&
+                    isSchool &&
+                    renderJobs()}
+                  {!selectedJob &&
+                    activeTab === "applicants" &&
+                    isSchool &&
+                    renderApplicants()}
+                  {isSchool &&
+                    activeTab === "notifications" &&
+                    renderDesktopNotifications()}
+                  {activeTab === "notifications" && (
+                    <>
+                      <div className="admin-mobile-notification-header">
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab("overview")}
+                          aria-label="Back to dashboard"
+                        >
+                          <FiArrowLeft size={22} />
+                        </button>
+                        <h2>Notifications</h2>
+                        <span />
+                      </div>
+                      <div className="admin-mobile-notifications-content rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm">
+                        <FiBell
+                          className="mx-auto mb-4 text-[#1ccb43]"
+                          size={32}
+                        />
+                        <h2 className="text-xl font-bold">Notifications</h2>
+                        <p className="mt-2 text-sm text-[#718078]">
+                          You are all caught up.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {activeTab === "settings" && (
+                    <div className="rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm">
+                      <FiSettings
+                        className="mx-auto mb-4 text-[#1ccb43]"
+                        size={32}
+                      />
+                      <h2 className="text-xl font-bold">Settings</h2>
+                      <p className="mt-2 text-sm text-[#718078]">
+                        Dashboard preferences will appear here.
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </main>
         </div>
       </div>
-      <nav className="admin-mobile-bottomnav" aria-label="Mobile dashboard navigation">
+      <nav
+        className="admin-mobile-bottomnav"
+        aria-label="Mobile dashboard navigation"
+      >
         {navItems.map(([key, label, Icon]) => (
-          <button key={key} type="button" onClick={() => setActiveTab(key)} className={activeTab === key ? 'is-active' : ''}>
+          <button
+            key={key}
+            type="button"
+            onClick={() => setActiveTab(key)}
+            className={activeTab === key ? "is-active" : ""}
+          >
             <Icon size={19} />
             <span>{label}</span>
           </button>
         ))}
       </nav>
+      {snackbar && (
+        <div className="admin-snackbar" role="status">
+          <span className="admin-snackbar-icon">
+            <FiCheck size={24} />
+          </span>
+          <div>
+            <strong>{snackbar.title}</strong>
+            <p>{snackbar.message}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSnackbar(null)}
+            aria-label="Dismiss notification"
+          >
+            <FiX size={25} />
+          </button>
+        </div>
+      )}
       <style>{`
+        .admin-snackbar { position: fixed; z-index: 60; top: 24px; left: 50%; display: flex; align-items: flex-start; gap: 20px; width: min(560px, calc(100vw - 56px)); padding: 30px 28px; border: 2px solid #d2d5d8; border-radius: 26px; background: #f8f8f9; box-shadow: 0 14px 35px rgba(23, 34, 56, .16); transform: translateX(-50%); }
+        .admin-snackbar-icon { display: grid; place-items: center; flex: 0 0 auto; width: 80px; height: 80px; border-radius: 50%; background: #138536; color: #fff; }
+        .admin-snackbar-icon svg { stroke-width: 3; }
+        .admin-snackbar > div { flex: 1; padding-top: 8px; }
+        .admin-snackbar strong { display: block; color: #090b0d; font-size: 24px; font-weight: 700; line-height: 1.25; }
+        .admin-snackbar p { margin: 54px 0 0; color: #090b0d; font-size: 20px; line-height: 1.3; }
+        .admin-snackbar > button { display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #090b0d; cursor: pointer; }
+
+        .school-job-form-page { color: #252b3d; }
+        .school-job-form-breadcrumb { color: #7b8490; font-size: 11px; }
+        .school-job-form-breadcrumb span { padding: 0 5px; color: #b1b8bd; }
+        .school-job-form-title { margin: 7px 0 3px; font-size: 25px; font-weight: 600; line-height: 1.2; }
+        .school-job-form-subtitle { margin: 0 0 23px; color: #68727b; font-size: 12px; }
+        .school-job-form { display: flex; flex-direction: column; gap: 16px; }
+        .school-job-form-card { display: grid; gap: 18px 16px; padding: 19px 17px; border: 1px solid #e4e9ee; border-radius: 13px; background: #fff; }
+        .school-job-basic-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .school-job-extra-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .school-job-form label, .school-job-form legend { display: block; color: #384056; font-size: 11px; font-weight: 500; }
+        .school-job-form input, .school-job-form textarea, .school-select-field { box-sizing: border-box; width: 100%; margin-top: 6px; border: 1px solid #dce4eb; border-radius: 11px; background: #fff; color: #384056; font: inherit; font-size: 11px; outline: none; }
+        .school-job-form input { height: 40px; padding: 0 12px; }
+        .school-job-form textarea { min-height: 72px; padding: 12px; resize: vertical; }
+        .school-job-form input::placeholder, .school-job-form textarea::placeholder { color: #8993a0; }
+        .school-job-form input:focus, .school-job-form textarea:focus, .school-select-field:focus { border-color: #1a873c; box-shadow: 0 0 0 3px rgba(28, 203, 67, .1); }
+        .school-select-field { display: flex; align-items: center; justify-content: space-between; height: 40px; padding: 0 12px; text-align: left; cursor: pointer; }
+        .school-job-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+        .school-employment-options { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-top: 6px; }
+        .school-employment-options button { height: 40px; border: 1px solid #dce4eb; border-radius: 11px; background: #fff; color: #384056; font: inherit; font-size: 10px; cursor: pointer; }
+        .school-employment-options button.is-selected { border-color: #148038; background: #148038; color: #fff; }
+        .school-input-with-icon { position: relative; }
+        .school-input-with-icon > svg { position: absolute; top: 18px; left: 12px; z-index: 1; color: #526158; }
+        .school-input-with-icon input { padding-left: 32px; }
+        .school-job-description-card { gap: 17px; }
+        .school-editor { margin-top: 6px; overflow: hidden; border: 1px solid #dce4eb; border-radius: 11px; }
+        .school-editor-toolbar { display: flex; align-items: center; gap: 13px; height: 29px; padding: 0 9px; border-bottom: 1px solid #dce4eb; background: #f6f8fa; color: #384056; font-size: 11px; }
+        .school-editor-toolbar b { font-size: 11px; }
+        .school-editor-toolbar i { font-size: 11px; }
+        .school-editor textarea { display: block; min-height: 103px; margin: 0; border: 0; border-radius: 0; }
+        .school-editor textarea:focus { box-shadow: none; }
+        .school-feature-option { display: flex !important; align-items: center; gap: 9px; align-self: end; padding-top: 23px; color: #5b665f !important; }
+        .school-feature-option input { width: 14px; height: 14px; margin: 0; accent-color: #148038; }
+        .school-job-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 17px 0 0; }
+        .school-job-form-actions button { min-width: 98px; height: 40px; padding: 0 16px; border: 1px solid #dce4eb; border-radius: 999px; background: #fff; color: #384056; font: inherit; font-size: 11px; cursor: pointer; }
+        .school-job-form-actions button:last-child { border-color: #1ccb43; background: #1ccb43; color: #07331b; }
+        .school-job-form-actions button:disabled { cursor: wait; opacity: .6; }
+
+        .school-jobs-page { color: #252b3d; }
+        .school-jobs-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 38px; }
+        .school-jobs-heading h2 { margin: 0; font-size: 29px; font-weight: 700; }
+        .school-jobs-heading button { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border: 0; border-radius: 999px; background: #1ccb43; color: #07331b; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .school-jobs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 22px; padding: 0 0 10px; border-bottom: 1px solid #edf0f2; }
+        .school-job-filters { display: flex; gap: 8px; flex-wrap: wrap; }
+        .school-job-filters button { padding: 8px 17px; border: 1px solid #d7ded7; border-radius: 999px; background: #fff; color: #718078; font: inherit; font-size: 11px; cursor: pointer; }
+        .school-job-filters button.is-active { border-color: #117b35; background: #117b35; color: #fff; }
+        .school-jobs-toolbar-right { display: flex; align-items: center; gap: 28px; color: #718078; font-size: 11px; white-space: nowrap; }
+        .school-jobs-toolbar-right button { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: #718078; font: inherit; font-size: 11px; cursor: pointer; }
+        .school-job-list-panel { padding: 0 0 14px; background: #fbfbfb; }
+        .school-job-row { display: grid; grid-template-columns: 58px minmax(0, 1fr) auto; gap: 17px; align-items: center; min-height: 98px; margin-bottom: 14px; padding: 18px 22px; border: 1px solid #e2e8ec; border-radius: 16px; background: #fff; }
+        .school-job-row-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #e2f0e3; color: #176e39; }
+        .school-job-row-icon--draft { background: #e5edff; color: #697b9b; }
+        .school-job-row-icon--filled { background: #edf0f0; color: #7d898c; }
+        .school-job-row-main { min-width: 0; }
+        .school-job-row-title { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .school-job-row-title h3 { overflow: hidden; margin: 0; color: #384056; font-size: 18px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+        .school-job-row-status { padding: 4px 10px; border-radius: 999px; background: #dff3e5; color: #247544; font-size: 10px; font-weight: 700; white-space: nowrap; }
+        .school-job-row-status--under-review { background: #fff1bd; color: #a66a11; }
+        .school-job-row-status--draft { background: #edf0f5; color: #687686; }
+        .school-job-row-status--filled { background: #ffe1e1; color: #c55e5e; }
+        .school-job-row-meta { display: flex; align-items: center; gap: 17px; color: #718078; font-size: 11px; }
+        .school-job-row-meta span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .school-job-row-meta .school-job-applicants { color: #247544; font-weight: 700; }
+        .school-job-row-actions { display: flex; align-items: center; gap: 19px; }
+        .school-job-row-actions button { border: 0; background: transparent; font: inherit; cursor: pointer; }
+        .school-job-view, .school-job-continue { color: #3b8b50; font-size: 13px; font-weight: 500; }
+        .school-job-archive { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border: 1px solid #d8e0d8 !important; border-radius: 999px; color: #899399; font-size: 12px; }
+        .school-job-more-wrap { position: relative; }
+        .school-job-more { padding: 3px; color: #252b3d; }
+        .school-job-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; display: flex; flex-direction: column; min-width: 180px; padding: 8px; border: 1px solid #e0e5e8; border-radius: 12px; background: #fff; box-shadow: 0 16px 28px rgba(17, 24, 39, 0.12); }
+        .school-job-menu button { width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: #2f3a3d; font: inherit; text-align: left; cursor: pointer; }
+        .school-job-menu button:hover { background: #f3f5f4; }
+        .school-job-menu-delete { color: #d93025 !important; }
+        .school-job-applicants-page { padding: 8px 0 0; color: #0f172a; }
+        .school-job-applicants-breadcrumb { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; color: #6b7280; font-size: 12px; }
+        .school-job-applicants-breadcrumb button { border: 0; background: transparent; color: #5a6674; font: inherit; cursor: pointer; }
+        .school-job-applicants-breadcrumb strong { color: #121826; font-weight: 600; }
+        .school-job-applicants-title { margin: 0; font-size: clamp(2.1rem, 3vw, 3rem); font-weight: 800; letter-spacing: -0.05em; }
+        .school-job-applicants-subtitle { margin: 10px 0 26px; color: #5a6674; font-size: 14px; }
+        .school-job-applicants-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 14px 18px; border: 1px solid #dfe5e1; border-radius: 14px; background: #f9faf8; }
+        .school-job-applicants-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+        .school-job-applicants-filters button, .school-job-filter-button, .school-job-clear-filters { border: 1px solid #d6ded9; border-radius: 9px; background: #f4f6f4; color: #495863; font: inherit; font-size: 12px; cursor: pointer; }
+        .school-job-applicants-filters button { padding: 8px 14px; }
+        .school-job-applicants-filters button.is-active { border-color: #1d5d3d; background: #1d5d3d; color: #fff; }
+        .school-job-filter-button { padding: 8px 12px; }
+        .school-job-filter-menu-wrap { position: relative; }
+        .school-job-filter-menu { position: absolute; top: calc(100% + 8px); left: 0; z-index: 20; display: flex; flex-direction: column; min-width: 150px; padding: 8px; border: 1px solid #dfe5e1; border-radius: 10px; background: #fff; box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08); }
+        .school-job-filter-menu button { width: 100%; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: #2a3745; font: inherit; text-align: left; cursor: pointer; }
+        .school-job-filter-menu button:hover { background: #f3f5f4; }
+        .school-job-clear-filters { border: 0; background: transparent; color: #2d3748; font-weight: 600; }
+        .school-job-applicants-list { display: flex; flex-direction: column; gap: 18px; margin-top: 22px; }
+        .school-job-applicant-card { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 18px 18px 16px; border: 1px solid #dfe5e1; border-radius: 14px; background: #fff; }
+        .school-job-applicant-main { display: grid; grid-template-columns: minmax(220px, 1.5fr) 1fr 1fr 1fr; gap: 24px; align-items: center; width: 100%; }
+        .school-job-applicant-name-block h4 { margin: 0; font-size: clamp(0.5rem, 1vw, 1.2rem); font-weight: 700; line-height: 1.1; }
+        .school-job-applicant-role { margin-top: 4px; color: #2f3d3a; font-size: 12px; }
+        .school-job-applicant-meta-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+        .school-job-applicant-badge { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 999px; background: #eef9f0; color: #2b6b45; font-size: 11px; font-weight: 600; }
+        .school-job-applicant-badge--green { background: #dcfce7; color: #166534; }
+        .school-job-applicant-column { display: flex; flex-direction: column; gap: 8px; }
+        .school-job-applicant-label { color: #66737a; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+        .school-job-applicant-column strong { display: flex; align-items: center; gap: 6px; color: #202a34; font-size: 13px; font-weight: 600; }
+        .school-job-location-pin { color: #586b6d; font-size: 12px; }
+        .school-job-applicant-status { display: inline-flex; align-items: center; justify-content: center; min-width: 104px; min-height: 30px; padding: 6px 12px; border-radius: 10px; background: #dfeaf5; color: #3d6e85; font-size: 11px; font-weight: 700; }
+        .school-job-applicant-status--shortlisted { background: #d7f4e4; color: #1b6c45; }
+        .school-job-applicant-status--under-review { background: #f0f0f0; color: #5f6468; }
+        .school-job-applicant-actions { display: flex; align-items: center; gap: 12px; }
+        .school-job-applicant-view-btn { display: inline-flex; align-items: center; justify-content: center; padding: 9px 18px; border: 1px solid #2d6f4e; border-radius: 10px; background: transparent; color: #2d6f4e; font: inherit; font-size: 13px; font-weight: 600; line-height: 1.2; white-space: nowrap; cursor: pointer; }
+        .school-job-applicant-more { width: 38px; height: 38px; border: 1px solid #dfe5e1; border-radius: 10px; background: #fff; color: #2d3748; font-size: 28px; line-height: 1; cursor: pointer; }
+        .school-job-applicants-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 18px; margin-top: 18px; border-top: 1px solid #dfe5e1; color: #6b7280; font-size: 12px; }
+        .school-job-applicant-pagination { display: flex; align-items: center; gap: 8px; }
+        .school-job-applicant-pagination button { width: 32px; height: 32px; border: 1px solid #d9dfd9; border-radius: 8px; background: #fff; color: #2d3748; font: inherit; cursor: pointer; }
+        .school-job-applicant-pagination button.is-active { background: #1d5d3d; border-color: #1d5d3d; color: #fff; }
+        .school-job-pager-nav { background: #f7f7f7 !important; }
+        .school-jobs-empty { margin: 0; padding: 40px; color: #718078; text-align: center; font-size: 14px; }
+
+
+        
+
+
+
+
+
         .school-overview {
           color: #20252b;
           font-family: 'DM Sans', sans-serif;
@@ -728,7 +2438,33 @@ export default function AdminDashboard() {
         @media (max-width: 768px) {
           .admin-dashboard-shell { background: #f4f5f7; padding-bottom: 78px; }
           .admin-dashboard-shell > .flex { min-height: 0; }
+          .admin-snackbar { top: 82px; width: calc(100vw - 32px); gap: 12px; padding: 20px 16px; border-radius: 20px; }
+          .admin-snackbar-icon { width: 48px; height: 48px; }
+          .admin-snackbar > div { padding-top: 2px; }
+          .admin-snackbar strong { font-size: 16px; }
+          .admin-snackbar p { margin-top: 14px; font-size: 14px; }
           .school-overview-hero { grid-template-columns: 1fr; gap: 12px; }
+          .school-job-form-title { font-size: 22px; }
+          .school-job-form-subtitle { line-height: 1.45; }
+          .school-job-basic-fields, .school-job-extra-fields { grid-template-columns: 1fr; }
+          .school-job-form-card { padding: 17px 14px; }
+          .school-job-form-actions { position: sticky; bottom: 78px; z-index: 2; margin: 0 -18px; padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); background: rgba(244, 245, 247, .94); backdrop-filter: blur(10px); }
+          .school-job-form-actions button { flex: 1; }
+          .school-jobs-heading { margin-bottom: 24px; }
+          .school-jobs-heading h2 { font-size: 25px; }
+          .school-jobs-heading button { padding: 9px 13px; }
+          .school-jobs-toolbar { display: block; margin-bottom: 16px; }
+          .school-job-filters { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 10px; }
+          .school-job-filters button { flex: 0 0 auto; padding: 8px 14px; }
+          .school-jobs-toolbar-right { justify-content: space-between; padding-top: 8px; }
+          .school-job-row { grid-template-columns: 42px minmax(0, 1fr); gap: 11px; min-height: 0; padding: 15px 13px; }
+          .school-job-row-icon { width: 40px; height: 40px; }
+          .school-job-row-icon svg { width: 18px; }
+          .school-job-row-title { display: block; margin-bottom: 7px; }
+          .school-job-row-title h3 { margin-bottom: 6px; font-size: 15px; }
+          .school-job-row-meta { flex-wrap: wrap; gap: 7px 11px; font-size: 10px; }
+          .school-job-row-actions { grid-column: 2; justify-content: flex-end; gap: 13px; margin-top: -2px; }
+          .school-job-row-actions button { font-size: 11px; }
           .school-welcome-panel { padding: 22px 18px; }
           .school-welcome-panel h2 { font-size: 21px; }
           .school-profile-card { padding: 18px 16px; }
@@ -844,6 +2580,1537 @@ export default function AdminDashboard() {
           }
           .admin-mobile-bottomnav button.is-active { color: #16843d; }
         }
+
+
+
+      /* ============================================================
+   APPLICANT SUMMARY PAGE
+   Fully scoped to .school-applicant-summary-page
+   ============================================================ */
+
+.school-applicant-summary-page {
+  width: 100%;
+  min-height: 100%;
+  background: transparent;
+  color: #52605b;
+  box-sizing: border-box;
+}
+
+.school-applicant-summary-page *,
+.school-applicant-summary-page *::before,
+.school-applicant-summary-page *::after {
+  box-sizing: border-box;
+}
+
+
+/* ============================================================
+   MAIN CONTAINER
+   ============================================================ */
+
+.school-applicant-summary-page .school-summary-container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.school-applicant-summary-page .school-summary-content {
+  width: 100%;
+}
+
+
+/* ============================================================
+   BACK BUTTON
+   ============================================================ */
+
+.school-applicant-summary-page .school-summary-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+
+  margin: 0 0 16px 0;
+  padding: 9px 14px;
+
+  border: 1px solid #d7dfdc;
+  border-radius: 8px;
+
+  background: #ffffff;
+  color: #10233d;
+
+  font-size: 14px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    border-color 0.2s ease,
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+.school-applicant-summary-page .school-summary-back-btn:hover {
+  border-color: #006b4f;
+  color: #006b4f;
+  background: #f7faf9;
+}
+
+
+/* ============================================================
+   GENERAL SECTIONS
+   ============================================================ */
+
+.school-applicant-summary-page .school-summary-section {
+  padding: 36px 42px;
+
+  border-bottom: 1px solid #dfe3e2;
+
+  background: #ffffff;
+}
+
+.school-applicant-summary-page
+.school-summary-section--first {
+  padding-top: 34px;
+  padding-bottom: 36px;
+}
+
+
+/* ============================================================
+   PROFESSIONAL SUMMARY
+   ============================================================ */
+
+/*
+   The action buttons float to the right.
+   The heading and paragraph remain one continuous
+   text/content area and the paragraph wraps around
+   the button area.
+*/
+
+.school-applicant-summary-page
+.school-summary-section--first
+.school-summary-actions {
+  float: right;
+
+  width: 185px;
+
+  margin-left: 45px;
+  margin-bottom: 10px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.school-applicant-summary-page
+.school-summary-summary-content {
+  width: 100%;
+}
+
+
+/* Professional Summary heading */
+
+.school-applicant-summary-page
+.school-summary-section--first
+.school-summary-header-title {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  margin-bottom: 18px;
+}
+
+.school-applicant-summary-page
+.school-summary-section--first
+.school-summary-header-title h2 {
+  margin: 0;
+
+  color: #10233d;
+
+  font-size: 23px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+}
+
+
+/* Professional Summary icon */
+
+.school-applicant-summary-page
+.school-summary-section--first
+.school-summary-icon {
+  width: 24px;
+  height: 24px;
+
+  flex-shrink: 0;
+
+  color: #006b4f;
+
+  stroke-width: 2;
+}
+
+
+/* Professional Summary body */
+
+.school-applicant-summary-page
+.school-summary-section--first
+.school-summary-text {
+  width: auto;
+  max-width: none;
+
+  margin: 0;
+
+  color: #56615d;
+
+  font-size: 17px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+
+
+/* Clear floated buttons */
+
+.school-applicant-summary-page
+.school-summary-clearfix {
+  clear: both;
+}
+
+
+/* ============================================================
+   ACTION BUTTONS
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-shortlist-btn,
+.school-applicant-summary-page
+.school-summary-reject-btn {
+  width: 100%;
+  min-height: 44px;
+
+  padding: 0 16px;
+
+  border-radius: 9px;
+
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    transform 0.15s ease;
+}
+
+.school-applicant-summary-page
+.school-summary-shortlist-btn {
+  border: 1px solid #006b4f;
+
+  background: #006b4f;
+  color: #ffffff;
+}
+
+.school-applicant-summary-page
+.school-summary-shortlist-btn:hover {
+  background: #00583f;
+  border-color: #00583f;
+}
+
+.school-applicant-summary-page
+.school-summary-shortlist-btn:active,
+.school-applicant-summary-page
+.school-summary-reject-btn:active {
+  transform: translateY(1px);
+}
+
+.school-applicant-summary-page
+.school-summary-reject-btn {
+  border: 1px solid #df2525;
+
+  background: #ffffff;
+  color: #df2525;
+}
+
+.school-applicant-summary-page
+.school-summary-reject-btn:hover {
+  background: #fff7f7;
+  border-color: #d51e1e;
+}
+
+
+/* ============================================================
+   SECTION HEADERS
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-section-header {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+
+  margin-bottom: 20px;
+}
+
+.school-applicant-summary-page
+.school-summary-section-header h2 {
+  margin: 0;
+
+  color: #10233d;
+
+  font-size: 23px;
+  line-height: 1.25;
+  font-weight: 650;
+  letter-spacing: -0.3px;
+}
+
+.school-applicant-summary-page
+.school-summary-icon {
+  width: 24px;
+  height: 24px;
+
+  flex-shrink: 0;
+
+  color: #006b4f;
+
+  stroke-width: 2;
+}
+
+
+/* ============================================================
+   TEACHING SUBJECTS + QUALIFICATIONS
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-grid-2col {
+  display: grid;
+
+  grid-template-columns: 1fr 1fr;
+
+  width: 100%;
+
+  border-bottom: 1px solid #dfe3e2;
+
+  background: #ffffff;
+}
+
+.school-applicant-summary-page
+.school-summary-grid-2col
+> .school-summary-section {
+  border-bottom: 0;
+}
+
+.school-applicant-summary-page
+.school-summary-grid-2col
+> .school-summary-section:first-child {
+  border-right: 1px solid #dfe3e2;
+}
+
+
+/* ============================================================
+   SUBJECT TAGS
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-tags {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 6px;
+}
+
+.school-applicant-summary-page
+.school-summary-tag {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 28px;
+
+  padding: 4px 13px;
+
+  border-radius: 16px;
+
+  background: #e5f2ed;
+
+  color: #075f48;
+
+  font-size: 13px;
+  line-height: 1;
+  font-weight: 650;
+}
+
+
+/* ============================================================
+   QUALIFICATIONS
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-qualifications {
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 12px;
+}
+
+.school-applicant-summary-page
+.school-summary-qualification {
+  display: grid;
+
+  grid-template-columns: 1fr auto;
+
+  align-items: center;
+
+  gap: 25px;
+}
+
+.school-applicant-summary-page
+.school-summary-qualification strong {
+  color: #53605c;
+
+  font-size: 16px;
+  line-height: 1.4;
+  font-weight: 450;
+}
+
+.school-applicant-summary-page
+.school-summary-qual-year {
+  color: #737b78;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  white-space: nowrap;
+}
+
+.school-applicant-summary-page
+.school-summary-badge-wrapper {
+  margin-top: 1px;
+}
+
+.school-applicant-summary-page
+.school-summary-badge {
+  display: inline-flex;
+  align-items: center;
+
+  min-height: 26px;
+
+  padding: 0 13px;
+
+  border-radius: 14px;
+
+  background: #006b4f;
+
+  color: #ffffff;
+
+  font-size: 10px;
+  line-height: 1;
+  font-weight: 700;
+
+  letter-spacing: 0.3px;
+}
+
+
+/* ============================================================
+   TEACHING EXPERIENCE
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-experience-timeline {
+  position: relative;
+
+  margin-top: 26px;
+
+  padding-left: 35px;
+}
+
+
+/* Timeline vertical line */
+
+.school-applicant-summary-page
+.school-summary-experience-timeline::before {
+  content: "";
+
+  position: absolute;
+
+  top: 6px;
+  bottom: 8px;
+
+  left: 7px;
+
+  width: 2px;
+
+  background: #e0e8e5;
+}
+
+
+/* Timeline item */
+
+.school-applicant-summary-page
+.school-summary-timeline-item {
+  position: relative;
+
+  display: flex;
+
+  padding-bottom: 42px;
+}
+
+.school-applicant-summary-page
+.school-summary-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+
+/* Timeline bullet */
+
+.school-applicant-summary-page
+.school-summary-timeline-bullet {
+  position: absolute;
+
+  top: 2px;
+  left: -35px;
+
+  width: 18px;
+  height: 18px;
+
+  border: 2px solid #7d8884;
+
+  border-radius: 50%;
+
+  background: #ffffff;
+
+  z-index: 2;
+}
+
+.school-applicant-summary-page
+.school-summary-timeline-bullet--active {
+  border-color: #006b4f;
+}
+
+
+/* ============================================================
+   JOB INFORMATION
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-job {
+  width: 100%;
+}
+
+.school-applicant-summary-page
+.school-summary-job-header {
+  display: flex;
+
+  align-items: flex-start;
+
+  justify-content: space-between;
+
+  gap: 25px;
+}
+
+.school-applicant-summary-page
+.school-summary-job-header strong {
+  display: block;
+
+  color: #10233d;
+
+  font-size: 20px;
+  line-height: 1.25;
+  font-weight: 650;
+
+  letter-spacing: -0.2px;
+}
+
+.school-applicant-summary-page
+.school-summary-job-school {
+  margin: 7px 0 0;
+
+  color: #006b4f;
+
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+.school-applicant-summary-page
+.school-summary-timeline-item:nth-child(2)
+.school-summary-job-school {
+  color: #68706d;
+}
+
+.school-applicant-summary-page
+.school-summary-job-desc {
+  max-width: 1100px;
+
+  margin: 17px 0 0;
+
+  color: #59635f;
+
+  font-size: 15px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+
+/* ============================================================
+   EXPERIENCE DATE BADGES
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-date {
+  display: inline-flex;
+
+  align-items: center;
+
+  min-height: 29px;
+
+  padding: 0 13px;
+
+  border-radius: 5px;
+
+  background: #e2e5e5;
+
+  color: #495451;
+
+  font-size: 13px;
+  font-weight: 500;
+
+  white-space: nowrap;
+
+  flex-shrink: 0;
+}
+
+.school-applicant-summary-page
+.school-summary-date--current {
+  background: #dce8fb;
+
+  color: #495b70;
+}
+
+
+/* ============================================================
+   BOTTOM ROW
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-bottom-row {
+  display: grid;
+
+  grid-template-columns:
+    minmax(300px, 1fr)
+    minmax(400px, 1fr);
+
+  gap: 55px;
+
+  padding: 12px 0 0;
+
+  background: #ffffff;
+}
+
+
+/* ============================================================
+   KEY SKILLS CARD
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-section--skills {
+  margin: 0 0 30px 0;
+
+  padding: 25px 26px;
+
+  border: 1px solid #e0e7e4;
+
+  border-radius: 13px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 9px rgba(15, 35, 50, 0.05);
+}
+
+.school-applicant-summary-page
+.school-summary-section--skills
+.school-summary-section-header {
+  margin-bottom: 16px;
+}
+
+.school-applicant-summary-page
+.school-summary-section--skills
+.school-summary-section-header h2 {
+  font-size: 21px;
+}
+
+
+/* Skills */
+
+.school-applicant-summary-page
+.school-summary-skills {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 5px;
+}
+
+.school-applicant-summary-page
+.school-summary-skill-tag {
+  display: inline-flex;
+
+  align-items: center;
+
+  min-height: 35px;
+
+  padding: 5px 13px;
+
+  border: 1px solid #becac6;
+
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #27394f;
+
+  font-size: 14px;
+
+  line-height: 1.2;
+}
+
+
+/* ============================================================
+   DOCUMENTS
+   ============================================================ */
+
+.school-applicant-summary-page
+.school-summary-documents {
+  display: flex;
+
+  flex-direction: column;
+
+  justify-content: center;
+
+  gap: 12px;
+
+  padding: 0 42px 30px 0;
+}
+
+
+/* Document card */
+
+.school-applicant-summary-page
+.school-summary-document {
+  display: flex;
+
+  align-items: center;
+
+  gap: 13px;
+
+  min-height: 70px;
+
+  padding: 11px 16px;
+
+  border: 1px solid #e1e8e5;
+
+  border-radius: 12px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 3px 9px rgba(15, 35, 50, 0.05);
+}
+
+
+/* Document icon */
+
+.school-applicant-summary-page
+.school-summary-doc-icon-box {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 39px;
+  height: 39px;
+
+  flex-shrink: 0;
+
+  border-radius: 5px;
+}
+
+.school-applicant-summary-page
+.school-summary-doc-icon-box--pdf {
+  background: #ffe1dd;
+
+  color: #e53935;
+}
+
+.school-applicant-summary-page
+.school-summary-doc-icon-box--pdf span {
+  font-size: 9px;
+
+  line-height: 1;
+
+  font-weight: 800;
+}
+
+.school-applicant-summary-page
+.school-summary-doc-icon-box--doc {
+  background: #dce7fb;
+
+  color: #4c6180;
+}
+
+
+/* Document information */
+
+.school-applicant-summary-page
+.school-summary-doc-info {
+  min-width: 0;
+
+  flex: 1;
+}
+
+.school-applicant-summary-page
+.school-summary-doc-name {
+  overflow: hidden;
+
+  margin: 0 0 3px;
+
+  color: #25364c;
+
+  font-size: 16px;
+
+  line-height: 1.25;
+
+  font-weight: 500;
+
+  text-overflow: ellipsis;
+
+  white-space: nowrap;
+}
+
+.school-applicant-summary-page
+.school-summary-doc-size {
+  margin: 0;
+
+  color: #8a9490;
+
+  font-size: 11px;
+
+  line-height: 1.3;
+}
+
+
+/* Document buttons */
+
+.school-applicant-summary-page
+.school-summary-doc-actions {
+  display: flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  flex-shrink: 0;
+}
+
+.school-applicant-summary-page
+.school-summary-doc-btn {
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 26px;
+  height: 26px;
+
+  padding: 0;
+
+  border: 0;
+
+  background: transparent;
+
+  color: #52605b;
+
+  cursor: pointer;
+
+  transition: color 0.2s ease;
+}
+
+.school-applicant-summary-page
+.school-summary-doc-btn:hover {
+  color: #006b4f;
+}
+
+
+/* ============================================================
+   TABLET
+   ============================================================ */
+
+@media (max-width: 1100px) {
+
+  .school-applicant-summary-page
+  .school-summary-section {
+    padding-left: 30px;
+    padding-right: 30px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first {
+    padding-top: 30px;
+    padding-bottom: 32px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-text {
+    font-size: 16px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section-header h2 {
+    font-size: 21px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-actions {
+    width: 175px;
+
+    margin-left: 35px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-bottom-row {
+    grid-template-columns:
+      minmax(260px, 1fr)
+      minmax(320px, 1fr);
+
+    gap: 30px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-documents {
+    padding-right: 30px;
+  }
+
+}
+
+
+/* ============================================================
+   TABLET / SMALL LAPTOP
+   ============================================================ */
+
+@media (max-width: 900px) {
+
+  .school-applicant-summary-page
+  .school-summary-section-header--with-actions {
+    flex-direction: column;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-actions {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-bottom-row {
+    grid-template-columns: 1fr;
+
+    gap: 0;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-documents {
+    padding:
+      0
+      30px
+      30px;
+  }
+
+}
+
+
+/* ============================================================
+   MOBILE — 700px
+   ============================================================ */
+
+@media (max-width: 700px) {
+
+  /* ----------------------------------------------------------
+     Main sections
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-section {
+    padding:
+      28px
+      22px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first {
+    padding:
+      28px
+      22px
+      30px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Professional Summary
+     ---------------------------------------------------------- */
+
+  /*
+     Stop floating on mobile.
+     Buttons become a normal block above the summary.
+  */
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-actions {
+    float: none;
+
+    width: 100%;
+    max-width: 300px;
+
+    margin:
+      0
+      0
+      25px
+      0;
+
+    gap: 10px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-shortlist-btn,
+  .school-applicant-summary-page
+  .school-summary-reject-btn {
+    min-height: 44px;
+
+    font-size: 14px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Professional Summary title
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-header-title {
+    gap: 10px;
+
+    margin-bottom: 15px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-header-title h2 {
+    font-size: 20px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-icon {
+    width: 21px;
+    height: 21px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Professional Summary text
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-text {
+    font-size: 15px;
+
+    line-height: 1.55;
+  }
+
+
+  /* ----------------------------------------------------------
+     Subjects + Qualifications
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-grid-2col {
+    grid-template-columns: 1fr;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-grid-2col
+  > .school-summary-section:first-child {
+    border-right: 0;
+
+    border-bottom: 1px solid #dfe3e2;
+  }
+
+
+  /* ----------------------------------------------------------
+     Section headings
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-section-header {
+    gap: 10px;
+
+    margin-bottom: 17px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section-header h2 {
+    font-size: 20px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-icon {
+    width: 21px;
+    height: 21px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Qualifications
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-qualification {
+    grid-template-columns: 1fr;
+
+    gap: 3px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-qualification strong {
+    font-size: 15px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-qual-year {
+    font-size: 12px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Teaching Experience
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-experience-timeline {
+    margin-top: 22px;
+
+    padding-left: 30px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-experience-timeline::before {
+    left: 6px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-timeline-bullet {
+    left: -30px;
+
+    width: 17px;
+    height: 17px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-timeline-item {
+    padding-bottom: 35px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Job
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-job-header {
+    flex-direction: column;
+
+    gap: 10px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-job-header strong {
+    font-size: 19px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-job-school {
+    font-size: 15px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-job-desc {
+    margin-top: 14px;
+
+    font-size: 14px;
+
+    line-height: 1.55;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-date {
+    align-self: flex-start;
+
+    min-height: 27px;
+
+    padding: 0 11px;
+
+    font-size: 12px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Bottom row
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-bottom-row {
+    grid-template-columns: 1fr;
+
+    gap: 0;
+
+    padding-top: 0;
+  }
+
+
+  /* ----------------------------------------------------------
+     Key Skills
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-section--skills {
+    margin:
+      20px
+      20px
+      20px;
+
+    padding:
+      22px
+      18px;
+
+    border-radius: 12px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--skills
+  .school-summary-section-header {
+    margin-bottom: 15px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--skills
+  .school-summary-section-header h2 {
+    font-size: 19px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-skill-tag {
+    min-height: 34px;
+
+    padding:
+      5px
+      11px;
+
+    font-size: 13px;
+  }
+
+
+  /* ----------------------------------------------------------
+     Documents
+     ---------------------------------------------------------- */
+
+  .school-applicant-summary-page
+  .school-summary-documents {
+    width: 100%;
+
+    padding:
+      0
+      20px
+      25px;
+
+    gap: 10px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-document {
+    min-height: 65px;
+
+    padding:
+      10px
+      12px;
+
+    gap: 10px;
+
+    border-radius: 10px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-icon-box {
+    width: 36px;
+    height: 36px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-name {
+    font-size: 14px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-size {
+    font-size: 10px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-actions {
+    gap: 3px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-btn {
+    width: 24px;
+    height: 24px;
+  }
+
+}
+
+
+/* ============================================================
+   SMALL MOBILE — 480px
+   ============================================================ */
+
+@media (max-width: 480px) {
+
+  .school-applicant-summary-page
+  .school-summary-section {
+    padding:
+      24px
+      18px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first {
+    padding:
+      24px
+      18px
+      27px;
+  }
+
+
+  /* Professional Summary */
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-actions {
+    max-width: none;
+
+    margin-bottom: 22px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-header-title {
+    gap: 9px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-header-title h2 {
+    font-size: 19px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-text {
+    font-size: 14px;
+
+    line-height: 1.6;
+  }
+
+
+  /* Section headers */
+
+  .school-applicant-summary-page
+  .school-summary-section-header h2 {
+    font-size: 19px;
+  }
+
+
+  /* Subject tags */
+
+  .school-applicant-summary-page
+  .school-summary-tag {
+    min-height: 27px;
+
+    padding:
+      4px
+      11px;
+
+    font-size: 12px;
+  }
+
+
+  /* Timeline */
+
+  .school-applicant-summary-page
+  .school-summary-experience-timeline {
+    padding-left: 28px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-experience-timeline::before {
+    left: 5px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-timeline-bullet {
+    left: -28px;
+
+    width: 16px;
+    height: 16px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-job-header strong {
+    font-size: 18px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-job-school {
+    font-size: 14px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-job-desc {
+    font-size: 13px;
+  }
+
+
+  /* Skills */
+
+  .school-applicant-summary-page
+  .school-summary-section--skills {
+    margin:
+      18px
+      18px
+      18px;
+
+    padding:
+      20px
+      15px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-skill-tag {
+    font-size: 12px;
+  }
+
+
+  /* Documents */
+
+  .school-applicant-summary-page
+  .school-summary-documents {
+    padding:
+      0
+      18px
+      20px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-document {
+    gap: 8px;
+
+    padding:
+      9px
+      10px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-icon-box {
+    width: 34px;
+    height: 34px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-name {
+    font-size: 13px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-size {
+    font-size: 9px;
+  }
+
+}
+
+
+/* ============================================================
+   VERY SMALL PHONES — 360px
+   ============================================================ */
+
+@media (max-width: 360px) {
+
+  .school-applicant-summary-page
+  .school-summary-section {
+    padding:
+      22px
+      15px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first {
+    padding:
+      22px
+      15px
+      25px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-header-title h2 {
+    font-size: 18px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section--first
+  .school-summary-text {
+    font-size: 13px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-section-header h2 {
+    font-size: 18px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-document {
+    min-height: 60px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-icon-box {
+    width: 32px;
+    height: 32px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-name {
+    font-size: 12px;
+  }
+
+  .school-applicant-summary-page
+  .school-summary-doc-size {
+    font-size: 8px;
+  }
+
+}  
       `}</style>
     </div>
   );
