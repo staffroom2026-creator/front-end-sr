@@ -19,9 +19,11 @@ import {
   FiClock,
   FiFileText,
   FiGrid,
+  FiHome,
   FiInfo,
   FiLink,
   FiList,
+  FiLock,
   FiLogOut,
   FiMapPin,
   FiMessageSquare,
@@ -29,7 +31,9 @@ import {
   FiPlus,
   FiSearch,
   FiSettings,
+  FiShield,
   FiTrash2,
+  FiUser,
   FiUsers,
   FiX,
   FiBook,
@@ -149,13 +153,16 @@ export default function AdminDashboard() {
   const [statusUpdating, setStatusUpdating] = useState({});
   const [activeTab, setActiveTab] = useState("overview");
   const [previousTab, setPreviousTab] = useState("overview");
+  const [settingsSection, setSettingsSection] = useState("overview");
   const [snackbar, setSnackbar] = useState(null);
   const [isSnackbarClosing, setIsSnackbarClosing] = useState(false);
   const [jobFilter, setJobFilter] = useState("All Jobs");
   const [openJobMenuId, setOpenJobMenuId] = useState(null);
+  const [openApplicantMenuId, setOpenApplicantMenuId] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetailView, setJobDetailView] = useState("detail");
   const [applicantFilter, setApplicantFilter] = useState("All (24)");
+  const [applicantPage, setApplicantPage] = useState(1);
   const [experienceFilter, setExperienceFilter] = useState("Experience");
   const [qualificationFilter, setQualificationFilter] = useState("Qualification");
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
@@ -490,6 +497,43 @@ export default function AdminDashboard() {
       setError(apiErrorMessage(err, "Unable to delete this job."));
     } finally {
       setOpenJobMenuId(null);
+    }
+  };
+
+  const handleShortlistApplicant = (applicant) => {
+    if (!applicant) return;
+
+    setSelectedApplicant(applicant);
+    setIsShortlistModalOpen(true);
+    setOpenApplicantMenuId(null);
+  };
+
+  const handleRejectApplicant = (jobId, applicantId) => {
+    if (!jobId || !applicantId) return;
+
+    setApplicantsByJob((prev) => ({
+      ...prev,
+      [jobId]: (prev[jobId] || []).map((app) => {
+        const currentId = app.application_id || app.id;
+        return currentId === applicantId ? { ...app, status: "rejected" } : app;
+      }),
+    }));
+    setOpenApplicantMenuId(null);
+  };
+
+  const handleCloseJob = async (jobId) => {
+    if (!jobId) return;
+
+    try {
+      setError("");
+      setJobs((prev) =>
+        prev.map((job) =>
+          (job.job_id || job.id) === jobId ? { ...job, status: "closed" } : job,
+        ),
+      );
+      setOpenJobMenuId(null);
+    } catch (err) {
+      setError(apiErrorMessage(err, "Unable to close this job."));
     }
   };
 
@@ -1095,7 +1139,25 @@ export default function AdminDashboard() {
                   <FiUsers size={15} />
                   View Applicants
                 </button>
-                <button type="button" className="school-job-detail-secondary">
+                <button
+                  type="button"
+                  className="school-job-detail-secondary"
+                  onClick={() => {
+                    setJobForm({
+                      title: job.title || "",
+                      description: job.description || "",
+                      role_type: job.role_type || "",
+                      employment_type: job.employment_type || "full-time",
+                      salary_range: job.salary_range || "",
+                      location: job.location || "",
+                      requirements: job.requirements || "",
+                    });
+                    setPreviousTab("jobs");
+                    setSelectedJob(null);
+                    setSelectedApplicant(null);
+                    setActiveTab("post-job");
+                  }}
+                >
                   Edit Job
                 </button>
                 <button type="button" className="school-job-detail-secondary school-job-detail-secondary--danger">
@@ -1308,22 +1370,88 @@ export default function AdminDashboard() {
                       </>
                     )}
                     {status === "filled" && (
-                      <button type="button" className="school-job-archive">
-                        <FiArchive size={15} /> Archives
-                      </button>
+                      <>
+                        <button type="button" className="school-job-archive">
+                          <FiArchive size={15} /> Archives
+                        </button>
+                        <div className="school-job-more-wrap">
+                          <button
+                            type="button"
+                            className="school-job-more"
+                            aria-label="More job actions"
+                            onClick={() =>
+                              setOpenJobMenuId(openJobMenuId === jobId ? null : jobId)
+                            }
+                          >
+                            <FiMoreVertical size={18} />
+                          </button>
+                          {openJobMenuId === jobId && (
+                            <div className="school-job-menu">
+                              <button
+                                type="button"
+                                onClick={() => handleCloseJob(jobId)}
+                              >
+                                <span className="school-job-menu-icon"><FiX size={18} /></span>
+                                <span>Close Application</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="school-job-menu-delete"
+                                onClick={() => handleDeleteJob(jobId)}
+                              >
+                                <span className="school-job-menu-icon"><FiTrash2 size={18} /></span>
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                     {status !== "draft" && status !== "filled" && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedJob(job);
-                          setSelectedApplicant(null);
-                          setJobDetailView("applicants");
-                        }}
-                        className="school-job-view"
-                      >
-                        View
-                      </button>
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedJob(job);
+                            setSelectedApplicant(null);
+                            setJobDetailView("applicants");
+                          }}
+                          className="school-job-view"
+                        >
+                          View
+                        </button>
+                        <div className="school-job-more-wrap">
+                          <button
+                            type="button"
+                            className="school-job-more"
+                            aria-label="More job actions"
+                            onClick={() =>
+                              setOpenJobMenuId(openJobMenuId === jobId ? null : jobId)
+                            }
+                          >
+                            <FiMoreVertical size={18} />
+                          </button>
+                          {openJobMenuId === jobId && (
+                            <div className="school-job-menu">
+                              <button
+                                type="button"
+                                onClick={() => handleCloseJob(jobId)}
+                              >
+                                <span className="school-job-menu-icon"><FiX size={18} /></span>
+                                <span>Close Application</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="school-job-menu-delete"
+                                onClick={() => handleDeleteJob(jobId)}
+                              >
+                                <span className="school-job-menu-icon"><FiTrash2 size={18} /></span>
+                                <span>Delete</span>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
                     )}
                   </div>
                 </article>
@@ -1900,6 +2028,32 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
       return matchesStatus && matchesExperience && matchesQualification;
     });
 
+    const applicantsPerPage = 3;
+    const totalApplicantCount = Math.max(24, filteredApplicants.length);
+    const totalApplicantPages = Math.max(1, Math.ceil(totalApplicantCount / applicantsPerPage));
+    const safeApplicantPage = Math.min(Math.max(1, applicantPage), totalApplicantPages);
+    const applicantPageStart = (safeApplicantPage - 1) * applicantsPerPage;
+    const paginatedApplicants = filteredApplicants.slice(
+      applicantPageStart,
+      applicantPageStart + applicantsPerPage,
+    );
+
+    const paginationItems = (() => {
+      if (totalApplicantPages <= 7) {
+        return Array.from({ length: totalApplicantPages }, (_, index) => index + 1);
+      }
+
+      if (safeApplicantPage <= 3) {
+        return [1, 2, 3, "…", totalApplicantPages];
+      }
+
+      if (safeApplicantPage >= totalApplicantPages - 2) {
+        return [1, "…", totalApplicantPages - 2, totalApplicantPages - 1, totalApplicantPages];
+      }
+
+      return [1, "…", safeApplicantPage - 1, safeApplicantPage, safeApplicantPage + 1, "…", totalApplicantPages];
+    })();
+
     return (
       <div className="school-job-applicants-page">
         <div className="school-job-applicants-breadcrumb">
@@ -1923,7 +2077,10 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                 type="button"
                 key={filter}
                 className={applicantFilter === filter ? "is-active" : ""}
-                onClick={() => setApplicantFilter(filter)}
+                onClick={() => {
+                  setApplicantFilter(filter);
+                  setApplicantPage(1);
+                }}
               >
                 {filter}
               </button>
@@ -1952,6 +2109,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                       onClick={() => {
                         setExperienceFilter(option);
                         setExperienceMenuOpen(false);
+                        setApplicantPage(1);
                       }}
                     >
                       {option}
@@ -1983,6 +2141,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                       onClick={() => {
                         setQualificationFilter(option);
                         setQualificationMenuOpen(false);
+                        setApplicantPage(1);
                       }}
                     >
                       {option}
@@ -2001,6 +2160,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               setQualificationFilter("Qualification");
               setExperienceMenuOpen(false);
               setQualificationMenuOpen(false);
+              setApplicantPage(1);
             }}
           >
             Clear all
@@ -2008,7 +2168,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         </div>
 
         <div className="school-job-applicants-list">
-          {filteredApplicants.map((app, index) => {
+          {paginatedApplicants.map((app, index) => {
             const appId = app.application_id || app.id || index;
             const currentStatus = String(app.status || "pending").toLowerCase();
             const statusMap = {
@@ -2077,13 +2237,43 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                   >
                     View Application
                   </button>
-                  <button
-                    type="button"
-                    className="school-job-applicant-more"
-                    aria-label="Applicant options"
-                  >
-                    ⋮
-                  </button>
+                  <div className="school-job-applicant-more-wrap">
+                    <button
+                      type="button"
+                      className="school-job-applicant-more"
+                      aria-label="Applicant options"
+                      onClick={() =>
+                        setOpenApplicantMenuId(
+                          openApplicantMenuId === appId ? null : appId,
+                        )
+                      }
+                    >
+                      ⋮
+                    </button>
+                    {openApplicantMenuId === appId && (
+                      <div className="school-job-applicant-menu">
+                        <button
+                          type="button"
+                          onClick={() => handleShortlistApplicant(app)}
+                        >
+                          <span className="school-job-applicant-menu-icon">
+                            <FiCheckCircle size={18} />
+                          </span>
+                          <span>Shortlist</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="school-job-applicant-menu-delete"
+                          onClick={() => handleRejectApplicant(jobId, appId)}
+                        >
+                          <span className="school-job-applicant-menu-icon">
+                            <FiX size={18} />
+                          </span>
+                          <span>Rejected</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -2091,19 +2281,41 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         </div>
 
         <div className="school-job-applicants-footer">
-          <span>Showing 1-3 of 24 applicants</span>
+          <span>
+            Showing {Math.min(filteredApplicants.length, applicantPageStart + 1)}-
+            {Math.min(filteredApplicants.length, applicantPageStart + paginatedApplicants.length)} of {totalApplicantCount} applicants
+          </span>
           <div className="school-job-applicant-pagination">
-            <button type="button" className="school-job-pager-nav">
+            <button
+              type="button"
+              className="school-job-pager-nav"
+              onClick={() => setApplicantPage((current) => Math.max(current - 1, 1))}
+              disabled={safeApplicantPage === 1}
+            >
               ‹
             </button>
-            <button type="button" className="is-active">
-              1
-            </button>
-            <button type="button">2</button>
-            <button type="button">3</button>
-            <button type="button">…</button>
-            <button type="button">6</button>
-            <button type="button" className="school-job-pager-nav">
+            {paginationItems.map((pageNumber, index) =>
+              pageNumber === "…" ? (
+                <button key={`ellipsis-${index}`} type="button" disabled>
+                  …
+                </button>
+              ) : (
+                <button
+                  key={pageNumber}
+                  type="button"
+                  className={safeApplicantPage === pageNumber ? "is-active" : ""}
+                  onClick={() => setApplicantPage(Number(pageNumber))}
+                >
+                  {pageNumber}
+                </button>
+              ),
+            )}
+            <button
+              type="button"
+              className="school-job-pager-nav"
+              onClick={() => setApplicantPage((current) => Math.min(current + 1, totalApplicantPages))}
+              disabled={safeApplicantPage === totalApplicantPages}
+            >
               ›
             </button>
           </div>
@@ -3539,16 +3751,150 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     </>
                   )}
                   {activeTab === "settings" && (
-                    <div className="rounded-2xl border border-[#dfe5e1] bg-white p-10 text-center shadow-sm">
-                      <FiSettings
-                        className="mx-auto mb-4 text-[#1ccb43]"
-                        size={32}
-                      />
-                      <h2 className="text-xl font-bold">Settings</h2>
-                      <p className="mt-2 text-sm text-[#718078]">
-                        Dashboard preferences will appear here.
-                      </p>
-                    </div>
+                    settingsSection === "account-security" ? (
+                      <div className="admin-settings-shell admin-settings-subpage">
+                        <div className="admin-settings-breadcrumb-row">
+                          <button
+                            type="button"
+                            className="admin-settings-back-link"
+                            onClick={() => setSettingsSection("overview")}
+                          >
+                            Settings
+                          </button>
+                          <span className="admin-settings-breadcrumb-separator">›</span>
+                          <span>Account and settings</span>
+                        </div>
+
+                        <div className="admin-settings-panel">
+                          <h1 className="admin-settings-subpage-title">Account &amp; Security</h1>
+                          <p className="admin-settings-subpage-subtitle">
+                            Manage your password, 2FA, and recovery options to keep your administrative access secure.
+                          </p>
+
+                          <div className="admin-security-grid">
+                            <div className="admin-security-card">
+                              <div className="admin-security-card-header">
+                                <div className="admin-security-card-icon">
+                                  <FiLock size={18} />
+                                </div>
+                                <h2>Password</h2>
+                              </div>
+
+                              <div className="admin-security-password-box">
+                                <div className="admin-security-password-row">
+                                  <span className="admin-security-label">Current Password</span>
+                                  <span className="admin-security-label muted">Last changed: Oct 12, 2023</span>
+                                </div>
+                                <div className="admin-security-password-mask">••••••••••••••••</div>
+                              </div>
+
+                              <button type="button" className="admin-security-action-btn">
+                                <FiLock size={14} />
+                                Change Password
+                              </button>
+                            </div>
+
+                            <div className="admin-security-card">
+                              <div className="admin-security-card-header">
+                                <div className="admin-security-card-icon">
+                                  <FiShield size={18} />
+                                </div>
+                                <h2>Two-Factor Authentication</h2>
+                                <button type="button" className="admin-security-toggle" aria-label="Toggle two-factor authentication">
+                                  <span className="admin-security-toggle-thumb" />
+                                </button>
+                              </div>
+
+                              <p className="admin-security-card-copy">
+                                Add an extra layer of security to your Staffroom account. Once enabled, you&apos;ll be required to enter a unique code sent to your device alongside your password when signing in.
+                              </p>
+
+                              <div className="admin-security-method-row">
+                                <div className="admin-security-method-box">
+                                  <span className="admin-security-method-box-checkbox" />
+                                  <span>Authenticator App</span>
+                                </div>
+                                <span className="admin-security-method-set">Set Up</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="admin-settings-shell">
+                        <div className="admin-settings-header-row">
+                          <span className="admin-settings-breadcrumb">Settings</span>
+                        </div>
+
+                        <h1 className="admin-settings-title">Settings Overview</h1>
+                        <p className="admin-settings-subtitle">
+                          Manage your personal administrator profile and oversee institutional configurations
+                          for your school from this central hub.
+                        </p>
+
+                        <section className="admin-settings-group">
+                          <div className="admin-settings-section-head">
+                            <div className="admin-settings-section-icon green">
+                              <FiUser size={18} />
+                            </div>
+                            <span>Personal Settings</span>
+                          </div>
+
+                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("profile")}>
+                            <div className="admin-settings-card-icon green">
+                              <FiUser size={20} />
+                            </div>
+                            <div className="admin-settings-card-copy">
+                              <h3>Profile</h3>
+                              <p>Update your administrator details, contact information, and professional credentials.</p>
+                            </div>
+                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
+                          </button>
+
+                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("account-security")}>
+                            <div className="admin-settings-card-icon green">
+                              <FiShield size={20} />
+                            </div>
+                            <div className="admin-settings-card-copy">
+                              <h3>Account &amp; Security</h3>
+                              <p>Manage your password, two-factor authentication, and active sessions.</p>
+                            </div>
+                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
+                          </button>
+                        </section>
+
+                        <section className="admin-settings-group">
+                          <div className="admin-settings-section-head">
+                            <div className="admin-settings-section-icon gray">
+                              <FiHome size={18} />
+                            </div>
+                            <span>Institutional Settings</span>
+                          </div>
+
+                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("school-info")}>
+                            <div className="admin-settings-card-icon gray">
+                              <FiBriefcase size={20} />
+                            </div>
+                            <div className="admin-settings-card-copy">
+                              <h3>School Information</h3>
+                              <p>Configure institutional details, academic calendars, grading systems, and global contact information for external communications.</p>
+                            </div>
+                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
+                          </button>
+
+                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("notifications-privacy")}>
+                            <div className="admin-settings-card-icon gray">
+                              <FiBell size={20} />
+                            </div>
+                            <div className="admin-settings-card-copy">
+                              <h3>Notifications &amp; Privacy</h3>
+                              <p>Configure system alerts, email digests, and data privacy policies for the institution.</p>
+                            </div>
+                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
+                          </button>
+                        </section>
+                      </div>
+                    )
                   )}
                 </>
               )}
@@ -3597,6 +3943,464 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         </div>
       )}
       <style>{`
+.admin-settings-shell {
+          max-width: 1120px;
+          margin: 0 auto;
+          padding: 0 0 24px;
+          color: #1d2d2d;
+        }
+        .admin-settings-header-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding-top: 4px;
+          color: #6d7672;
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: -0.02em;
+        }
+        .admin-settings-breadcrumb {
+          color: #6d7672;
+        }
+        .admin-settings-title {
+          margin: 12px 0 8px;
+          color: #1f2e2d;
+          font-family: 'Sora', sans-serif;
+          font-size: 48px;
+          font-weight: 700;
+          letter-spacing: -0.096px;
+          line-height: 56px;
+        }
+        .admin-settings-subtitle {
+          max-width: 840px;
+          margin: 0 0 16px;
+          color: #5e6967;
+          font-size: 18px;
+          font-weight: 400;
+          line-height: 1.45;
+        }
+        .admin-settings-group {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          margin-top: 22px;
+          padding-top: 18px;
+          border-top: 1px solid #dfe3df;
+        }
+        .admin-settings-group:first-of-type {
+          margin-top: 0;
+          padding-top: 0;
+          border-top: 0;
+        }
+        .admin-settings-section-head {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 2px;
+          color: #1f2d2d;
+          font-size: 17px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+        }
+        .admin-settings-section-icon {
+          display: grid;
+          place-items: center;
+          width: 22px;
+          height: 22px;
+          border-radius: 7px;
+          background: rgba(39, 176, 110, 0.08);
+          color: #1a9f63;
+        }
+        .admin-settings-section-icon.gray {
+          background: rgba(72, 86, 90, 0.08);
+          color: #495b5a;
+        }
+        .admin-settings-card {
+          display: grid;
+          grid-template-columns: 34px minmax(0, 1fr) 18px;
+          align-items: center;
+          gap: 16px;
+          width: 100%;
+          min-height: 120px;
+          padding: 14px 16px 14px 14px;
+          border: 1px solid #dfe3df;
+          border-radius: 12px;
+          background: #f3f5f4;
+          cursor: pointer;
+          text-align: left;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+        }
+        .admin-settings-card:hover {
+          border-color: #ccd6d2;
+          box-shadow: 0 8px 18px rgba(19, 30, 28, 0.04);
+          transform: translateY(-1px);
+        }
+        .admin-settings-card-icon {
+          display: grid;
+          place-items: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          background: rgba(33, 164, 99, 0.12);
+          color: #1b9c63;
+        }
+        .admin-settings-card-icon.gray {
+          background: rgba(72, 86, 90, 0.08);
+          color: #46575a;
+        }
+        .admin-settings-card-copy {
+          min-width: 0;
+        }
+        .admin-settings-card-copy h3 {
+          margin: 0 0 6px;
+          color: #1f2d2d;
+          font-size: 25px;
+          font-weight: 700;
+          line-height: 1.25;
+          letter-spacing: -0.04em;
+        }
+        .admin-settings-card-copy p {
+          margin: 0;
+          color: #697875;
+          font-size: 16px;
+          line-height: 1.45;
+          max-width: 640px;
+        }
+        .admin-settings-card-arrow {
+          justify-self: end;
+          color: #5a6966;
+          width: 18px;
+          height: 18px;
+        }
+        @media (max-width: 768px) {
+          .admin-settings-shell {
+            max-width: 100%;
+          }
+          .admin-settings-title {
+            margin: 10px 0 8px;
+            font-size: 36px;
+            line-height: 44px;
+          }
+          .admin-settings-subtitle {
+            margin-bottom: 12px;
+            font-size: 15px;
+            line-height: 1.5;
+          }
+          .admin-settings-group {
+            gap: 10px;
+            margin-top: 16px;
+            padding-top: 12px;
+          }
+          .admin-settings-section-head {
+            font-size: 15px;
+          }
+          .admin-settings-card {
+            grid-template-columns: 28px minmax(0, 1fr) 16px;
+            gap: 12px;
+            min-height: 110px;
+            padding: 12px 12px 12px 10px;
+          }
+          .admin-settings-card-copy h3 {
+            font-size: 22px;
+          }
+          .admin-settings-card-copy p {
+            font-size: 14px;
+          }
+          .admin-settings-subpage {
+            padding-top: 4px;
+          }
+          .admin-settings-panel {
+            padding-top: 18px;
+          }
+          .admin-settings-subpage-title {
+            font-size: 30px;
+          }
+          .admin-settings-subpage-subtitle {
+            font-size: 15px;
+          }
+          .admin-security-grid {
+            grid-template-columns: 1fr;
+            gap: 18px;
+          }
+          .admin-security-card {
+            min-height: auto;
+            padding: 14px;
+            gap: 14px;
+          }
+          .admin-security-card-header {
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .admin-security-card-header h2 {
+            font-size: 15px;
+            line-height: 1.35;
+          }
+          .admin-security-password-box {
+            padding: 10px 12px 12px;
+          }
+          .admin-security-password-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+          }
+          .admin-security-label {
+            font-size: 12px;
+          }
+          .admin-security-label.muted {
+            font-size: 11px;
+          }
+          .admin-security-password-mask {
+            font-size: 20px;
+            letter-spacing: 0.14em;
+          }
+          .admin-security-action-btn {
+            min-height: 42px;
+          }
+          .admin-security-card-copy {
+            font-size: 13px;
+          }
+          .admin-security-method-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+          }
+          .admin-security-method-box {
+            width: 100%;
+          }
+          .admin-security-method-set {
+            align-self: flex-end;
+          }
+        }
+        @media (max-width: 480px) {
+          .admin-settings-header-row,
+          .admin-settings-breadcrumb-row {
+            font-size: 10px;
+          }
+          .admin-settings-title {
+            font-size: 30px;
+            line-height: 38px;
+          }
+          .admin-settings-subtitle {
+            font-size: 14px;
+          }
+          .admin-settings-section-head {
+            font-size: 14px;
+          }
+          .admin-settings-card-copy h3 {
+            font-size: 20px;
+          }
+          .admin-settings-card-copy p {
+            font-size: 13px;
+          }
+          .admin-settings-card-icon {
+            width: 28px;
+            height: 28px;
+          }
+          .admin-security-card-header h2 {
+            font-size: 15px;
+          }
+          .admin-security-method-row {
+            flex-direction: column;
+            align-items: stretch;
+          }
+          .admin-security-method-box {
+            width: 100%;
+          }
+        }
+        .admin-settings-subpage {
+          padding-top: 8px;
+        }
+        .admin-settings-breadcrumb-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding-top: 4px;
+          color: #6d7672;
+          font-size: 12px;
+          font-weight: 500;
+          letter-spacing: -0.02em;
+        }
+        .admin-settings-back-link {
+          border: 0;
+          background: transparent;
+          padding: 0;
+          color: #6d7672;
+          font: inherit;
+          cursor: pointer;
+        }
+        .admin-settings-breadcrumb-separator {
+          color: #7d8a87;
+        }
+        .admin-settings-panel {
+          margin-top: 8px;
+          padding: 26px 0 0;
+          border-top: 1px solid #dfe3df;
+        }
+        .admin-settings-subpage-title {
+          margin: 0 0 6px;
+          color: #1f2e2d;
+          font-family: 'Sora', sans-serif;
+          font-size: 42px;
+          font-weight: 700;
+          letter-spacing: -0.085px;
+          line-height: 1.15;
+        }
+        .admin-settings-subpage-subtitle {
+          margin: 0 0 18px;
+          color: #5d6d69;
+          font-size: 17px;
+          line-height: 1.5;
+        }
+        .admin-security-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 28px;
+          margin-top: 10px;
+        }
+        .admin-security-card {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          min-height: 220px;
+          padding: 18px 18px 16px;
+          border: 1px solid #dfe3df;
+          border-radius: 12px;
+          background: #f4f5f4;
+        }
+        .admin-security-card-header {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-height: 24px;
+          color: #1d2d2d;
+        }
+        .admin-security-card-icon {
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 24px;
+          border-radius: 7px;
+          background: rgba(29, 161, 102, 0.08);
+          color: #1b9c63;
+        }
+        .admin-security-card-header h2 {
+          margin: 0;
+          flex: 1;
+          color: #1f2d2d;
+          font-size: 17px;
+          font-weight: 700;
+          letter-spacing: -0.03em;
+        }
+        .admin-security-password-box {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 12px 14px 14px;
+          border: 1px solid #dfe3df;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.28);
+        }
+        .admin-security-password-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          font-size: 13px;
+        }
+        .admin-security-label {
+          color: #2c3c3b;
+          font-weight: 600;
+        }
+        .admin-security-label.muted {
+          color: #778680;
+          font-weight: 500;
+        }
+        .admin-security-password-mask {
+          color: #252d2e;
+          font-size: 26px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          line-height: 1;
+        }
+        .admin-security-action-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          min-height: 38px;
+          border: 1px solid #dfe3df;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.18);
+          color: #1b242a;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .admin-security-toggle {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+          width: 40px;
+          height: 22px;
+          padding: 0;
+          border: 0;
+          border-radius: 999px;
+          background: #d1d6d3;
+          cursor: pointer;
+          outline: none;
+        }
+        .admin-security-toggle-thumb {
+          position: absolute;
+          left: 3px;
+          width: 16px;
+          height: 16px;
+          border-radius: 50%;
+          background: #ffffff;
+          box-shadow: 0 1px 3px rgba(17, 24, 24, 0.22);
+          transition: transform 0.2s ease;
+        }
+        .admin-security-card-copy {
+          margin: 0;
+          color: #5d6d69;
+          font-size: 14px;
+          line-height: 1.55;
+        }
+        .admin-security-method-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          width: 100%;
+          margin-top: auto;
+          padding-top: 6px;
+        }
+        .admin-security-method-box {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex: 1;
+          min-height: 34px;
+          padding: 0 12px;
+          border: 1px solid #dfe3df;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.18);
+          color: #2a3938;
+          font-size: 14px;
+        }
+        .admin-security-method-box-checkbox {
+          display: inline-block;
+          width: 14px;
+          height: 14px;
+          border: 1px solid #d0d6d3;
+          border-radius: 4px;
+          background: #f9faf9;
+        }
+        .admin-security-method-set {
+          color: #4e5b59;
+          font-size: 14px;
+          font-weight: 600;
+        }
         .admin-snackbar { position: fixed; z-index: 60; top: 18px; left: 50%; display: flex; align-items: flex-start; gap: 12px; width: min(440px, calc(100vw - 28px)); padding: 16px 18px; border: 1px solid #d2d5d8; border-radius: 18px; background: #f8f8f9; box-shadow: 0 10px 22px rgba(23, 34, 56, .14); transform: translateX(-50%) translateY(0); opacity: 1; transition: transform 280ms ease-in-out, opacity 280ms ease-in-out, visibility 280ms ease-in-out; visibility: visible; }
         .admin-snackbar.is-closing { transform: translateX(-50%) translateY(-12px); opacity: 0; visibility: hidden; }
         .admin-snackbar-icon { display: grid; place-items: center; flex: 0 0 auto; width: 42px; height: 42px; border-radius: 50%; background: #138536; color: #fff; }
@@ -4774,11 +5578,65 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           font-size: 12px;
         }
         .school-job-more-wrap { position: relative; }
-        .school-job-more { padding: 3px; color: #252b3d; }
-        .school-job-menu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; display: flex; flex-direction: column; min-width: 180px; padding: 8px; border: 1px solid #e0e5e8; border-radius: 12px; background: #fff; box-shadow: 0 16px 28px rgba(17, 24, 39, 0.12); }
-        .school-job-menu button { width: 100%; padding: 10px 12px; border: 0; border-radius: 10px; background: transparent; color: #2f3a3d; font: inherit; text-align: left; cursor: pointer; }
-        .school-job-menu button:hover { background: #f3f5f4; }
-        .school-job-menu-delete { color: #d93025 !important; }
+        .school-job-more {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          padding: 0;
+          border: 1px solid transparent;
+          border-radius: 999px;
+          background: transparent;
+          color: #252b3d;
+          cursor: pointer;
+        }
+        .school-job-menu {
+          position: absolute;
+          right: 0;
+          top: calc(100% + 10px);
+          z-index: 30;
+          display: flex;
+          flex-direction: column;
+          width: 220px;
+          padding: 8px;
+          border: 1px solid #eceef0;
+          border-radius: 18px;
+          background: #ffffff;
+          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+        }
+        .school-job-menu button {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          padding: 14px 14px;
+          border: 0;
+          border-radius: 12px;
+          background: transparent;
+          color: #1d2433;
+          font: inherit;
+          font-size: 16px;
+          font-weight: 500;
+          text-align: left;
+          cursor: pointer;
+        }
+        .school-job-menu button:hover { background: #f5f7f6; }
+        .school-job-menu-delete { color: #d93c3c !important; }
+        .school-job-menu-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: #f6f7f7;
+          color: inherit;
+        }
+        .school-job-menu-delete .school-job-menu-icon {
+          background: rgba(217, 60, 60, 0.08);
+          color: #d93c3c;
+        }
         .school-teachers-page {
           width: 100%;
           max-width: 1220px;
@@ -5374,6 +6232,59 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           align-items: center;
           gap: 10px;
           flex-shrink: 0;
+        }
+        .school-job-applicant-more-wrap {
+          position: relative;
+        }
+        .school-job-applicant-menu {
+          position: absolute;
+          right: 0;
+          top: calc(100% + 12px);
+          z-index: 30;
+          display: flex;
+          flex-direction: column;
+          width: 220px;
+          padding: 8px;
+          border: 1px solid #eceef0;
+          border-radius: 18px;
+          background: #ffffff;
+          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+        }
+        .school-job-applicant-menu button {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
+          padding: 14px 14px;
+          border: 0;
+          border-radius: 12px;
+          background: transparent;
+          color: #1d2433;
+          font: inherit;
+          font-size: 16px;
+          font-weight: 500;
+          text-align: left;
+          cursor: pointer;
+        }
+        .school-job-applicant-menu button:hover {
+          background: #f5f7f6;
+        }
+        .school-job-applicant-menu-delete {
+          color: #d93c3c !important;
+        }
+        .school-job-applicant-menu-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: #f6f7f7;
+          color: #1d2433;
+        }
+        .school-job-applicant-menu-delete .school-job-applicant-menu-icon {
+          background: rgba(217, 60, 60, 0.08);
+          color: #d93c3c;
         }
         .school-job-applicant-view-btn {
           min-height: 42px;
