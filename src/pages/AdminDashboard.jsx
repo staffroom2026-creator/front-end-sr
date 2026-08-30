@@ -3820,6 +3820,154 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                           </div>
                         </div>
                       </div>
+                    ) : settingsSection === "school-info" ? (
+                      <div className="admin-settings-shell admin-settings-subpage">
+                        <div className="admin-settings-breadcrumb-row">
+                          <button
+                            type="button"
+                            className="admin-settings-back-link"
+                            onClick={() => setSettingsSection("overview")}
+                          >
+                            Settings
+                          </button>
+                          <span className="admin-settings-breadcrumb-separator">›</span>
+                          <span>School information</span>
+                        </div>
+
+                        <div className="admin-settings-panel admin-school-info-panel">
+                          <div className="admin-school-info-header">
+                            <div>
+                              <h1 className="admin-settings-subpage-title">School Information</h1>
+                              <p className="admin-settings-subpage-subtitle admin-school-info-subtitle">
+                                Manage the core organizational details and public-facing contact information for BrightMind Academy.
+                              </p>
+                            </div>
+                            <button type="button" className="admin-school-save-btn">
+                              <FiCheck size={14} />
+                              Save Changes
+                            </button>
+                          </div>
+
+                          <div className="admin-school-info-layout">
+                            <div className="admin-school-main-column">
+                              <section className="admin-school-section">
+                                <div className="admin-school-section-head">
+                                  <div className="admin-school-section-icon">
+                                    <FiBriefcase size={16} />
+                                  </div>
+                                  <span>Institutional Identity</span>
+                                </div>
+
+                                <div className="admin-school-identity-box">
+                                  <div className="admin-school-logo-upload-block">
+                                    <div className="admin-school-logo-box">
+                                      <FiBriefcase size={28} />
+                                    </div>
+                                    <div className="admin-school-logo-meta">
+                                      <div className="admin-school-logo-label">School Logo</div>
+                                      <div className="admin-school-logo-help">
+                                        Upload a high-resolution logo (PNG or SVG). Recommended size: 512x512px.
+                                      </div>
+                                      <button type="button" className="admin-school-upload-btn">
+                                        Update Logo
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="admin-school-form-grid two-col">
+                                  <label className="admin-school-field">
+                                    <span>School Name</span>
+                                    <input type="text" value="BrightMind Academy" readOnly />
+                                  </label>
+
+                                  <label className="admin-school-field">
+                                    <span>Institution Type</span>
+                                    <div className="admin-school-select-wrap">
+                                      <select defaultValue="Private Secondary">
+                                        <option>Private Secondary</option>
+                                        <option>Public Secondary</option>
+                                        <option>Primary School</option>
+                                      </select>
+                                    </div>
+                                    <small>Contact support to change institution type.</small>
+                                  </label>
+                                </div>
+                              </section>
+
+                              <section className="admin-school-section">
+                                <div className="admin-school-section-head">
+                                  <div className="admin-school-section-icon">
+                                    <FiMapPin size={16} />
+                                  </div>
+                                  <span>Contact &amp; Location</span>
+                                </div>
+
+                                <div className="admin-school-form-grid two-col">
+                                  <label className="admin-school-field">
+                                    <span>Official Email</span>
+                                    <input type="email" value="admin@brightmind.edu.ng" readOnly />
+                                  </label>
+
+                                  <label className="admin-school-field">
+                                    <span>Primary Phone</span>
+                                    <input type="text" value="+234 800 123 4567" readOnly />
+                                  </label>
+                                </div>
+
+                                <div className="admin-school-form-grid single-col">
+                                  <label className="admin-school-field">
+                                    <span>Website URL</span>
+                                    <input type="url" value="https://www.brightmind.edu.ng" readOnly />
+                                  </label>
+                                </div>
+
+                                <div className="admin-school-form-grid single-col">
+                                  <label className="admin-school-field address-field">
+                                    <span>Location / Address</span>
+                                    <div className="admin-school-address-box">
+                                      <div>14 Adeola Okedun Street, Victoria Island</div>
+                                      <div>Lagos, Nigeria</div>
+                                      <div>Postal: 101241</div>
+                                    </div>
+                                  </label>
+                                </div>
+                              </section>
+                            </div>
+
+                            <aside className="admin-school-side-column">
+                              <div className="admin-school-side-card admin-school-verified-card">
+                                <div className="admin-school-side-card-top">
+                                  <div className="admin-school-side-icon-box">
+                                    <FiCheckCircle size={18} />
+                                  </div>
+                                  <span>Verified Institution</span>
+                                </div>
+
+                                <div className="admin-school-side-body">
+                                  <p>BrightMind Academy is fully verified with the Ministry of Education.</p>
+                                  <div className="admin-school-status-row">
+                                    <span className="admin-school-status-dot" />
+                                    Active Status
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="admin-school-side-card admin-school-actions-card">
+                                <div className="admin-school-side-card-title">Administrative Actions</div>
+                                <p>Actions here require secondary authentication and may affect all staff.</p>
+
+                                <button type="button" className="admin-school-side-action-btn">
+                                  <span>Request Name Change</span>
+                                  <FiArrowRight size={16} />
+                                </button>
+
+                                <div className="admin-school-danger-action">Deactivate School Account</div>
+                              </div>
+                            </aside>
+                          </div>
+                        </div>
+                      </div>
                     ) : (
                       <div className="admin-settings-shell">
                         <div className="admin-settings-header-row">
@@ -4119,7 +4267,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             font-size: 15px;
           }
           .admin-security-grid {
-            grid-template-columns: 1fr;
+            display: flex;
+            flex-direction: column;
+            grid-template-columns: none;
             gap: 18px;
           }
           .admin-security-card {
@@ -4400,6 +4550,368 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           color: #4e5b59;
           font-size: 14px;
           font-weight: 600;
+        }
+        .admin-school-info-panel {
+          padding-top: 18px;
+        }
+        .admin-school-info-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          margin-bottom: 18px;
+        }
+        .admin-school-info-subtitle {
+          max-width: 760px;
+          margin-bottom: 0;
+        }
+        .admin-school-save-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: 140px;
+          min-height: 42px;
+          border: 0;
+          border-radius: 10px;
+          background: linear-gradient(180deg, #1f9c67 0%, #1c8d61 100%);
+          color: #fff;
+          font-size: 14px;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(32, 148, 93, 0.15);
+        }
+        .admin-school-info-layout {
+          display: grid;
+          grid-template-columns: minmax(0, 1.75fr) minmax(260px, 0.78fr);
+          gap: 28px;
+          align-items: flex-start;
+        }
+        .admin-school-main-column,
+        .admin-school-side-column {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .admin-school-section {
+          border: 1px solid #dfe4df;
+          border-radius: 16px;
+          background: #f3f4f3;
+          overflow: hidden;
+        }
+        .admin-school-section-head {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-height: 52px;
+          padding: 0 18px;
+          background: linear-gradient(180deg, #eaf4ef 0%, #edf3ef 100%);
+          border-bottom: 1px solid #dfe4df;
+          color: #1d2d2d;
+          font-size: 17px;
+          font-weight: 700;
+          letter-spacing: -0.02em;
+        }
+        .admin-school-section-icon {
+          display: grid;
+          place-items: center;
+          width: 22px;
+          height: 22px;
+          border-radius: 7px;
+          background: rgba(23, 146, 88, 0.08);
+          color: #1b9c63;
+        }
+        .admin-school-identity-box {
+          padding: 18px 18px 0;
+        }
+        .admin-school-logo-upload-block {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          width: 100%;
+          min-height: 112px;
+          padding: 14px 16px;
+          border: 1px solid #dde4df;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.28);
+        }
+        .admin-school-logo-box {
+          display: grid;
+          place-items: center;
+          width: 72px;
+          height: 72px;
+          border: 1px solid #d8dddd;
+          border-radius: 10px;
+          background: linear-gradient(180deg, #f6f8f7 0%, #eef2f1 100%);
+          color: #1d9a66;
+          flex-shrink: 0;
+        }
+        .admin-school-logo-meta {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 5px;
+          min-width: 0;
+        }
+        .admin-school-logo-label {
+          color: #203431;
+          font-size: 15px;
+          font-weight: 700;
+        }
+        .admin-school-logo-help {
+          color: #5c6d68;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+        .admin-school-upload-btn {
+          align-self: flex-start;
+          margin-top: 2px;
+          min-height: 34px;
+          padding: 0 14px;
+          border: 1px solid #cfe0d9;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.34);
+          color: #245a4b;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-school-form-grid {
+          display: grid;
+          gap: 18px;
+          padding: 18px;
+        }
+        .admin-school-form-grid.two-col {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .admin-school-form-grid.single-col {
+          grid-template-columns: 1fr;
+        }
+        .admin-school-field {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          color: #213533;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .admin-school-field input,
+        .admin-school-field select {
+          width: 100%;
+          min-height: 46px;
+          border: 1px solid #dfe3df;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.32);
+          color: #22312e;
+          font-size: 15px;
+          padding: 0 14px;
+          outline: none;
+          box-sizing: border-box;
+        }
+        .admin-school-select-wrap {
+          position: relative;
+        }
+        .admin-school-select-wrap select {
+          appearance: none;
+          padding-right: 36px;
+        }
+        .admin-school-select-wrap::after {
+          content: "▾";
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          color: #4c5b59;
+          pointer-events: none;
+          font-size: 16px;
+        }
+        .admin-school-field small {
+          color: #6a7775;
+          font-size: 11px;
+          font-weight: 500;
+        }
+        .admin-school-address-box {
+          display: flex;
+          flex-direction: column;
+          min-height: 102px;
+          padding: 14px 14px 12px;
+          border: 1px solid #dfe3df;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.22);
+          color: #2a3c3b;
+          font-size: 15px;
+          line-height: 1.6;
+        }
+        .admin-school-side-card {
+          padding: 18px 18px 16px;
+          border: 1px solid #dfe4df;
+          border-radius: 12px;
+          background: #f3f4f3;
+          color: #213533;
+        }
+        .admin-school-side-card-top {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-bottom: 12px;
+          color: #1e2d2d;
+          font-size: 17px;
+          font-weight: 700;
+        }
+        .admin-school-side-icon-box {
+          display: grid;
+          place-items: center;
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          background: rgba(23, 146, 88, 0.08);
+          color: #1c9a63;
+        }
+        .admin-school-side-body p {
+          margin: 0;
+          color: #536461;
+          font-size: 14px;
+          line-height: 1.55;
+        }
+        .admin-school-status-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 12px;
+          color: #1d7d58;
+          font-size: 13px;
+          font-weight: 600;
+        }
+        .admin-school-status-dot {
+          display: inline-block;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #1d9a66;
+        }
+        .admin-school-side-card-title {
+          margin: 0 0 8px;
+          color: #1b2928;
+          font-size: 17px;
+          font-weight: 700;
+        }
+        .admin-school-actions-card p {
+          margin: 0 0 16px;
+          color: #5d6d69;
+          font-size: 13px;
+          line-height: 1.5;
+        }
+        .admin-school-side-action-btn {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          min-height: 44px;
+          padding: 0 14px;
+          border: 1px solid #dfe4df;
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.18);
+          color: #2b3d3a;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+        .admin-school-danger-action {
+          margin-top: 12px;
+          padding: 12px 0 0;
+          border-top: 1px solid #e0e4e1;
+          color: #d45d5d;
+          font-size: 14px;
+          font-weight: 600;
+        }
+        @media (max-width: 768px) {
+          .admin-school-info-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .admin-school-save-btn {
+            width: 100%;
+          }
+          .admin-school-info-layout {
+            grid-template-columns: 1fr;
+          }
+          .admin-school-form-grid.two-col {
+            grid-template-columns: 1fr;
+          }
+          .admin-school-logo-upload-block {
+            align-items: flex-start;
+            flex-direction: column;
+          }
+          .admin-school-logo-box {
+            width: 64px;
+            height: 64px;
+          }
+          .admin-school-upload-btn {
+            width: 100%;
+          }
+          .admin-school-side-card {
+            padding: 14px;
+          }
+          .admin-school-side-card-top {
+            font-size: 15px;
+          }
+        }
+        @media (max-width: 768px) {
+          .admin-security-grid {
+            display: flex;
+            flex-direction: column;
+            grid-template-columns: none;
+            gap: 18px;
+          }
+          .admin-security-card {
+            width: 100%;
+            min-height: auto;
+            padding: 14px;
+            gap: 14px;
+          }
+          .admin-security-card-header {
+            align-items: flex-start;
+            gap: 10px;
+          }
+          .admin-security-card-header h2 {
+            font-size: 15px;
+            line-height: 1.35;
+          }
+          .admin-security-password-box {
+            padding: 10px 12px 12px;
+          }
+          .admin-security-password-row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 4px;
+          }
+          .admin-security-label {
+            font-size: 12px;
+          }
+          .admin-security-label.muted {
+            font-size: 11px;
+          }
+          .admin-security-password-mask {
+            font-size: 20px;
+            letter-spacing: 0.14em;
+          }
+          .admin-security-action-btn {
+            min-height: 42px;
+          }
+          .admin-security-card-copy {
+            font-size: 13px;
+          }
+          .admin-security-method-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+          }
+          .admin-security-method-box {
+            width: 100%;
+          }
+          .admin-security-method-set {
+            align-self: flex-end;
+          }
         }
         .admin-snackbar { position: fixed; z-index: 60; top: 18px; left: 50%; display: flex; align-items: flex-start; gap: 12px; width: min(440px, calc(100vw - 28px)); padding: 16px 18px; border: 1px solid #d2d5d8; border-radius: 18px; background: #f8f8f9; box-shadow: 0 10px 22px rgba(23, 34, 56, .14); transform: translateX(-50%) translateY(0); opacity: 1; transition: transform 280ms ease-in-out, opacity 280ms ease-in-out, visibility 280ms ease-in-out; visibility: visible; }
         .admin-snackbar.is-closing { transform: translateX(-50%) translateY(-12px); opacity: 0; visibility: hidden; }
