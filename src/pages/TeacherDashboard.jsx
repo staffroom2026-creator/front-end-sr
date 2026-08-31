@@ -45,7 +45,18 @@ const normalizeProfileValue = (value, fallback = 'Not provided') => {
 };
 
 const normalizeJobData = (job = {}, index = 0) => {
-  const salaryValue = Number(job.salary || job.salary_monthly || job.salaryMonthly || 0);
+  // Extract numeric salary value
+  let salaryValue = Number(job.salary || job.salary_monthly || job.salaryMonthly || 0);
+  
+  // If no direct salary value, try to extract from salary_range (e.g., "250k-360k")
+  if (salaryValue === 0 && job.salary_range) {
+    const salaryRangeStr = String(job.salary_range);
+    const match = salaryRangeStr.match(/(\d+)/);
+    if (match) {
+      salaryValue = parseInt(match[1]) * 1000; // Convert "250k" to 250000
+    }
+  }
+  
   const salaryStr = salaryValue > 0
     ? `₦${salaryValue.toLocaleString()} / month`
     : (job.salaryStr || job.salary_range || 'Competitive');
@@ -260,7 +271,19 @@ export default function TeacherDashboard() {
         featureService.getNotifications(),
         featureService.getSavedJobs(),
       ]);
-      const jobList = (jobsRes?.data?.data?.jobs || jobsRes?.data?.jobs || []).map(normalizeJobData);
+      
+      // Handle multiple possible response structures for jobs
+      let jobsArray = [];
+      if (Array.isArray(jobsRes?.data?.data?.jobs)) {
+        jobsArray = jobsRes.data.data.jobs;
+      } else if (Array.isArray(jobsRes?.data?.jobs)) {
+        jobsArray = jobsRes.data.jobs;
+      } else if (Array.isArray(jobsRes?.data)) {
+        jobsArray = jobsRes.data;
+      } else if (Array.isArray(jobsRes)) {
+        jobsArray = jobsRes;
+      }
+      const jobList = jobsArray.map(normalizeJobData);
       const applicationList = (applicationsRes?.data?.data?.applications || applicationsRes?.data?.applications || []).map((app, idx) => normalizeApplicationData(app, idx));
       const profileData = profileRes?.data?.data || {};
       const profile = profileData?.profile || {};
@@ -708,7 +731,7 @@ export default function TeacherDashboard() {
                         <span className="td-desktop-label">Active Job Feeds</span>
                         <span className="td-mobile-label">Priority Job Feeds</span>
                       </h2>
-                      <a href="#" className="td-view-all-link">
+                      <a onClick={() => setActiveTab('jobs')} className="td-view-all-link">
                         <span className="td-desktop-text">View All Vacancies</span>
                         <span className="td-mobile-text">View All</span>
                       </a>
@@ -750,7 +773,7 @@ export default function TeacherDashboard() {
 
                           <div className="td-job-footer">
                             <span className="td-job-salary">{job.salaryStr || 'Salary available on request'}</span>
-                            <button type="button" className="td-quick-apply" onClick={() => setSelectedJob(job)}>Quick Apply →</button>
+                            <button type="button" className="td-quick-apply" onClick={() => { setActiveTab('jobs'); setSelectedJob(job); }}>Quick Apply →</button>
                           </div>
                         </motion.div>
                       )) : (
@@ -4846,80 +4869,171 @@ export default function TeacherDashboard() {
         .td-sort-by { font-size: 13.5px; color: #6C757D; display: flex; align-items: center; }
         .td-mobile-showing { display: none; }
 
-        .td-feed-list { display: flex; flex-direction: column; gap: 16px; }
+        .td-feed-list { display: flex; flex-direction: column; gap: 12px; }
         .td-feed-card {
           background: #FFFFFF;
-          border-radius: 16px;
-          padding: 24px;
+          border-radius: 12px;
+          padding: 12px 14px;
           border: 1px solid #E9ECEF;
           display: flex;
-          flex-direction: column;
-          gap: 14px;
+          flex-wrap: wrap;
+          align-items: center;
+          gap: 12px;
+          min-height: 88px;
+          position: relative;
         }
 
-        /* Card header */
-        .td-fc-header { display: flex; align-items: flex-start; gap: 16px; }
-        .td-fc-icon-wrapper { flex-shrink: 0; }
+        /* Card header - icon + info */
+        .td-fc-header { 
+          display: flex;
+          align-items: flex-start;
+          gap: 10px;
+          flex: 1;
+          min-width: 250px;
+        }
+        .td-fc-icon-wrapper { flex-shrink: 0; margin-top: 2px; }
         .td-fc-icon {
-          width: 48px;
-          height: 48px;
-          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #F3F4F6;
+          background: #E8F5E9;
+          color: #15803D;
+          font-size: 20px;
         }
-        .td-bg-gray { background: #F3F4F6; }
-        .td-fc-main-info { flex: 1; min-width: 0; }
-        .td-fc-main-info h3 { font-size: 17px; font-weight: 700; color: #111; margin: 0 0 4px; }
-        .td-fc-school { font-size: 13px; color: #6C757D; margin: 0; }
-        .td-fc-school strong { color: #374151; font-weight: 600; }
-        .td-dot { margin: 0 6px; color: #D1D5DB; }
-        .td-fc-badge-desktop { flex-shrink: 0; }
+        .td-bg-gray { background: #E8F5E9; }
+        
+        /* Main info container */
+        .td-fc-main-info { 
+          flex: 1;
+          min-width: 180px;
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+        }
+        .td-fc-main-info h3 { 
+          font-size: 14px;
+          font-weight: 700;
+          color: #111;
+          margin: 0;
+          line-height: 1.25;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: normal;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
+        }
+        .td-fc-school { 
+          font-size: 11px;
+          color: #999;
+          margin: 0;
+          line-height: 1.2;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .td-fc-school strong { color: #666; font-weight: 600; }
+        .td-dot { margin: 0 3px; color: #CCC; }
+        
+        /* Featured badge */
+        .td-fc-badge-desktop { 
+          position: absolute;
+          top: 10px;
+          right: 14px;
+          flex-shrink: 0;
+        }
         .td-badge-featured {
           background: #DCFCE7;
           color: #15803D;
-          font-size: 12px;
+          font-size: 10px;
           font-weight: 700;
-          padding: 5px 12px;
+          padding: 3px 8px;
           border-radius: 50px;
           display: inline-flex;
           align-items: center;
-          gap: 4px;
+          gap: 3px;
         }
 
-        /* Meta row */
-        .td-fc-meta { display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
-        .td-fc-meta-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: #374151; font-weight: 500; }
+        /* Meta badges - job type and time */
+        .td-fc-meta { 
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          flex-wrap: nowrap;
+          order: 2;
+          flex-basis: auto;
+          margin: 0;
+        }
+        .td-fc-meta-item { 
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          color: #666;
+          font-weight: 500;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        /* Salary display */
+        .td-fc-salary {
+          font-size: 13px;
+          font-weight: 700;
+          color: #111;
+          white-space: nowrap;
+          flex-shrink: 0;
+          order: 3;
+          margin-left: auto;
+        }
+        .td-fc-salary span { 
+          font-size: 10px;
+          font-weight: 500;
+          color: #999;
+        }
 
         /* Footer actions */
-        .td-fc-footer { display: flex; align-items: center; }
-        .td-fc-footer-actions { display: flex; align-items: center; gap: 12px; }
+        .td-fc-footer { 
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-shrink: 0;
+          order: 4;
+        }
+        .td-fc-footer-actions { 
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
         .td-fc-action {
           background: #15803D;
           color: white;
           border: none;
-          padding: 10px 22px;
+          padding: 7px 16px;
           border-radius: 50px;
           font-weight: 700;
-          font-size: 13.5px;
+          font-size: 12px;
           cursor: pointer;
           transition: background 0.2s;
           font-family: inherit;
+          white-space: nowrap;
         }
         .td-fc-action:hover { background: #166534; }
         .td-bookmark-btn {
           background: #FFFFFF;
           border: 1.5px solid #E5E7EB;
           color: #9CA3AF;
-          border-radius: 50px;
-          width: 42px;
-          height: 38px;
+          border-radius: 50%;
+          width: 34px;
+          height: 34px;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           transition: all 0.2s ease;
+          flex-shrink: 0;
         }
         .td-bookmark-btn:hover {
           border-color: #15803D;
