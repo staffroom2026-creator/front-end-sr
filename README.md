@@ -1,0 +1,1 @@
+We solve this with a dedicated digital platform for teacher recruitment, helping schools and teachers connect, match, and hire faster and more reliably. So, Teachers get the jobs they deserve, schools find the best fit for their needs, and students receive quality education.
