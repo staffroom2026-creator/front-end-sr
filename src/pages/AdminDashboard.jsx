@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/adminService";
 import { apiErrorMessage } from "../services/api";
@@ -7,6 +7,7 @@ import { applicationService } from "../services/applicationService";
 import BrandLogo from "../components/BrandLogo";
 import {
   FiAlertCircle,
+  FiAlertTriangle,
   FiArchive,
   FiArrowLeft,
   FiArrowRight,
@@ -15,8 +16,10 @@ import {
   FiCalendar,
   FiCheck,
   FiCheckCircle,
+  FiBookOpen,
   FiChevronDown,
   FiClock,
+  FiEdit,
   FiFileText,
   FiGrid,
   FiHome,
@@ -169,6 +172,23 @@ export default function AdminDashboard() {
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
+  const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
+  const [isSchoolNameEditing, setIsSchoolNameEditing] = useState(false);
+  const [schoolNameValue, setSchoolNameValue] = useState("BrightMind Academy");
+  const [isEmailEditing, setIsEmailEditing] = useState(false);
+  const [emailValue, setEmailValue] = useState("admin@brightmind.edu.ng");
+  const [isPhoneEditing, setIsPhoneEditing] = useState(false);
+  const [phoneValue, setPhoneValue] = useState("+234 800 123 4567");
+  const [isWebsiteEditing, setIsWebsiteEditing] = useState(false);
+  const [websiteValue, setWebsiteValue] = useState("https://www.brightmind.edu.ng");
+  const [isAddressEditing, setIsAddressEditing] = useState(false);
+  const [addressValue, setAddressValue] = useState("14 Adeola Okedun Street, Victoria Island\nLagos, Nigeria\nPostal: 101241");
+  const schoolLogoInputRef = useRef(null);
+  const schoolNameInputRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
+  const websiteInputRef = useRef(null);
+  const addressTextareaRef = useRef(null);
   const [notificationItems, setNotificationItems] = useState([
     {
       key: "applicant-tunde",
@@ -305,6 +325,17 @@ export default function AdminDashboard() {
   const showSnackbar = (title, message) => {
     setIsSnackbarClosing(false);
     setSnackbar({ title, message });
+  };
+
+  const handleSchoolLogoSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSchoolLogoPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
   };
 
   const markAllNotificationsAsRead = () => {
@@ -3853,7 +3884,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                               <section className="admin-school-section">
                                 <div className="admin-school-section-head">
                                   <div className="admin-school-section-icon">
-                                    <FiBriefcase size={16} />
+                                    <FiBookOpen size={16} />
                                   </div>
                                   <span>Institutional Identity</span>
                                 </div>
@@ -3861,14 +3892,33 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                 <div className="admin-school-identity-box">
                                   <div className="admin-school-logo-upload-block">
                                     <div className="admin-school-logo-box">
-                                      <FiBriefcase size={28} />
+                                      {schoolLogoPreview ? (
+                                        <img
+                                          src={schoolLogoPreview}
+                                          alt="Selected school logo preview"
+                                          className="admin-school-logo-preview"
+                                        />
+                                      ) : (
+                                        <FiBriefcase size={28} />
+                                      )}
                                     </div>
                                     <div className="admin-school-logo-meta">
                                       <div className="admin-school-logo-label">School Logo</div>
                                       <div className="admin-school-logo-help">
                                         Upload a high-resolution logo (PNG or SVG). Recommended size: 512x512px.
                                       </div>
-                                      <button type="button" className="admin-school-upload-btn">
+                                      <input
+                                        ref={schoolLogoInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        hidden
+                                        onChange={handleSchoolLogoSelect}
+                                      />
+                                      <button
+                                        type="button"
+                                        className="admin-school-upload-btn"
+                                        onClick={() => schoolLogoInputRef.current?.click()}
+                                      >
                                         Update Logo
                                       </button>
                                     </div>
@@ -3878,7 +3928,25 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                 <div className="admin-school-form-grid two-col">
                                   <label className="admin-school-field">
                                     <span>School Name</span>
-                                    <input type="text" value="BrightMind Academy" readOnly />
+                                    <div className="admin-school-input-wrap">
+                                      <input
+                                        ref={schoolNameInputRef}
+                                        type="text"
+                                        value={schoolNameValue}
+                                        onChange={(e) => setSchoolNameValue(e.target.value)}
+                                        readOnly={!isSchoolNameEditing}
+                                      />
+                                      <FiEdit
+                                        size={18}
+                                        onClick={() => {
+                                          setIsSchoolNameEditing(!isSchoolNameEditing);
+                                          if (!isSchoolNameEditing) {
+                                            setTimeout(() => schoolNameInputRef.current?.focus(), 0);
+                                          }
+                                        }}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                    </div>
                                   </label>
 
                                   <label className="admin-school-field">
@@ -3906,19 +3974,73 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                 <div className="admin-school-form-grid two-col">
                                   <label className="admin-school-field">
                                     <span>Official Email</span>
-                                    <input type="email" value="admin@brightmind.edu.ng" readOnly />
+                                    <div className="admin-school-input-wrap">
+                                      <input
+                                        ref={emailInputRef}
+                                        type="email"
+                                        value={emailValue}
+                                        onChange={(e) => setEmailValue(e.target.value)}
+                                        readOnly={!isEmailEditing}
+                                      />
+                                      <FiEdit
+                                        size={18}
+                                        onClick={() => {
+                                          setIsEmailEditing(!isEmailEditing);
+                                          if (!isEmailEditing) {
+                                            setTimeout(() => emailInputRef.current?.focus(), 0);
+                                          }
+                                        }}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                    </div>
                                   </label>
 
                                   <label className="admin-school-field">
                                     <span>Primary Phone</span>
-                                    <input type="text" value="+234 800 123 4567" readOnly />
+                                    <div className="admin-school-input-wrap">
+                                      <input
+                                        ref={phoneInputRef}
+                                        type="text"
+                                        value={phoneValue}
+                                        onChange={(e) => setPhoneValue(e.target.value)}
+                                        readOnly={!isPhoneEditing}
+                                      />
+                                      <FiEdit
+                                        size={18}
+                                        onClick={() => {
+                                          setIsPhoneEditing(!isPhoneEditing);
+                                          if (!isPhoneEditing) {
+                                            setTimeout(() => phoneInputRef.current?.focus(), 0);
+                                          }
+                                        }}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                    </div>
                                   </label>
                                 </div>
 
                                 <div className="admin-school-form-grid single-col">
                                   <label className="admin-school-field">
                                     <span>Website URL</span>
-                                    <input type="url" value="https://www.brightmind.edu.ng" readOnly />
+                                    <div className="admin-school-input-wrap">
+                                      <input
+                                        ref={websiteInputRef}
+                                        type="url"
+                                        value={websiteValue}
+                                        onChange={(e) => setWebsiteValue(e.target.value)}
+                                        readOnly={!isWebsiteEditing}
+                                      />
+                                      <FiEdit
+                                        size={18}
+                                        onClick={() => {
+                                          setIsWebsiteEditing(!isWebsiteEditing);
+                                          if (!isWebsiteEditing) {
+                                            setTimeout(() => websiteInputRef.current?.focus(), 0);
+                                          }
+                                        }}
+                                        style={{ cursor: "pointer" }}
+                                      />
+                                    </div>
                                   </label>
                                 </div>
 
@@ -3926,9 +4048,51 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                   <label className="admin-school-field address-field">
                                     <span>Location / Address</span>
                                     <div className="admin-school-address-box">
-                                      <div>14 Adeola Okedun Street, Victoria Island</div>
-                                      <div>Lagos, Nigeria</div>
-                                      <div>Postal: 101241</div>
+                                      {!isAddressEditing ? (
+                                        <div className="admin-school-address-display">
+                                          <div className="admin-school-address-content">
+                                            {addressValue.split('\n').map((line, index) => (
+                                              <div key={index}>{line}</div>
+                                            ))}
+                                          </div>
+                                          <button
+                                            className="admin-school-address-edit-btn"
+                                            onClick={() => {
+                                              setIsAddressEditing(true);
+                                              setTimeout(() => addressTextareaRef.current?.focus(), 0);
+                                            }}
+                                          >
+                                            <FiEdit size={16} />
+                                            Edit Address
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <>
+                                          <textarea
+                                            ref={addressTextareaRef}
+                                            className="admin-school-address-textarea"
+                                            value={addressValue}
+                                            onChange={(e) => setAddressValue(e.target.value)}
+                                          />
+                                          <div className="admin-school-address-actions">
+                                            <button
+                                              className="admin-school-address-btn save"
+                                              onClick={() => setIsAddressEditing(false)}
+                                            >
+                                              Save
+                                            </button>
+                                            <button
+                                              className="admin-school-address-btn cancel"
+                                              onClick={() => {
+                                                setIsAddressEditing(false);
+                                                setAddressValue("14 Adeola Okedun Street, Victoria Island\nLagos, Nigeria\nPostal: 101241");
+                                              }}
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </>
+                                      )}
                                     </div>
                                   </label>
                                 </div>
@@ -3954,7 +4118,10 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                               </div>
 
                               <div className="admin-school-side-card admin-school-actions-card">
-                                <div className="admin-school-side-card-title">Administrative Actions</div>
+                                <div className="admin-school-actions-title">
+                                  <FiAlertTriangle size={20} />
+                                  <span>Administrative Actions</span>
+                                </div>
                                 <p>Actions here require secondary authentication and may affect all staff.</p>
 
                                 <button type="button" className="admin-school-side-action-btn">
@@ -3962,7 +4129,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                   <FiArrowRight size={16} />
                                 </button>
 
-                                <div className="admin-school-danger-action">Deactivate School Account</div>
+                                <button type="button" className="admin-school-danger-action">Deactivate School Account</button>
                               </div>
                             </aside>
                           </div>
@@ -3988,7 +4155,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                             <span>Personal Settings</span>
                           </div>
 
-                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("profile")}>
+                          <button type="button" className={`admin-settings-card ${settingsSection === "profile" ? "is-selected" : ""}`} onClick={() => setSettingsSection("profile")}>
                             <div className="admin-settings-card-icon green">
                               <FiUser size={20} />
                             </div>
@@ -3999,7 +4166,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
                           </button>
 
-                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("account-security")}>
+                          <button type="button" className={`admin-settings-card ${settingsSection === "account-security" ? "is-selected" : ""}`} onClick={() => setSettingsSection("account-security")}>
                             <div className="admin-settings-card-icon green">
                               <FiShield size={20} />
                             </div>
@@ -4019,7 +4186,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                             <span>Institutional Settings</span>
                           </div>
 
-                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("school-info")}>
+                          <button type="button" className={`admin-settings-card ${settingsSection === "school-info" ? "is-selected" : ""}`} onClick={() => setSettingsSection("school-info")}>
                             <div className="admin-settings-card-icon gray">
                               <FiBriefcase size={20} />
                             </div>
@@ -4030,7 +4197,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
                           </button>
 
-                          <button type="button" className="admin-settings-card" onClick={() => setSettingsSection("notifications-privacy")}>
+                          <button type="button" className={`admin-settings-card ${settingsSection === "notifications-privacy" ? "is-selected" : ""}`} onClick={() => setSettingsSection("notifications-privacy")}>
                             <div className="admin-settings-card-icon gray">
                               <FiBell size={20} />
                             </div>
@@ -4182,6 +4349,11 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           border-color: #ccd6d2;
           box-shadow: 0 8px 18px rgba(19, 30, 28, 0.04);
           transform: translateY(-1px);
+        }
+        .admin-settings-card.is-selected {
+          border-color: #9cd1b7;
+          background: #edf8f2;
+          box-shadow: inset 0 0 0 1px rgba(28, 154, 99, 0.08), 0 8px 18px rgba(19, 30, 28, 0.04);
         }
         .admin-settings-card-icon {
           display: grid;
@@ -4605,9 +4777,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           gap: 10px;
           min-height: 52px;
           padding: 0 18px;
-          background: linear-gradient(180deg, #eaf4ef 0%, #edf3ef 100%);
-          border-bottom: 1px solid #dfe4df;
-          color: #1d2d2d;
+          background: #14792D;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+          color: #fff;
           font-size: 17px;
           font-weight: 700;
           letter-spacing: -0.02em;
@@ -4618,8 +4790,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           width: 22px;
           height: 22px;
           border-radius: 7px;
-          background: rgba(23, 146, 88, 0.08);
-          color: #1b9c63;
+          background: rgba(255, 255, 255, 0.15);
+          color: #fff;
+          border: 1px solid rgba(255, 255, 255, 0.22);
         }
         .admin-school-identity-box {
           padding: 18px 18px 0;
@@ -4645,6 +4818,16 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           background: linear-gradient(180deg, #f6f8f7 0%, #eef2f1 100%);
           color: #1d9a66;
           flex-shrink: 0;
+          overflow: hidden;
+        }
+        .admin-school-logo-preview {
+          display: block;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          background: #fff;
+          padding: 6px;
+          box-sizing: border-box;
         }
         .admin-school-logo-meta {
           display: flex;
@@ -4668,7 +4851,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           margin-top: 2px;
           min-height: 34px;
           padding: 0 14px;
-          border: 1px solid #cfe0d9;
+          border: 1px solid #1d9a66;
           border-radius: 8px;
           background: rgba(255, 255, 255, 0.34);
           color: #245a4b;
@@ -4695,18 +4878,46 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           font-size: 13px;
           font-weight: 600;
         }
+        .admin-school-input-wrap {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+        .admin-school-input-wrap input {
+          flex: 1;
+        }
+        .admin-school-input-wrap svg {
+          position: absolute;
+          right: 14px;
+          color: #7a8784;
+          cursor: pointer;
+          transition: color 0.2s ease;
+          pointer-events: auto;
+        }
+        .admin-school-input-wrap svg:hover {
+          color: #1d9a66;
+        }
         .admin-school-field input,
         .admin-school-field select {
           width: 100%;
           min-height: 46px;
-          border: 1px solid #dfe3df;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.32);
+          border: 1px solid #c5ccc9;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.8);
           color: #22312e;
           font-size: 15px;
           padding: 0 14px;
           outline: none;
           box-sizing: border-box;
+          transition: all 0.2s ease;
+        }
+        .admin-school-field input:not([readonly]):focus {
+          border-color: #1d9a66;
+          background: rgba(255, 255, 255, 1);
+          box-shadow: 0 0 0 3px rgba(29, 154, 102, 0.1);
+        }
+        .admin-school-input-wrap input {
+          padding-right: 40px;
         }
         .admin-school-select-wrap {
           position: relative;
@@ -4733,51 +4944,157 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .admin-school-address-box {
           display: flex;
           flex-direction: column;
-          min-height: 102px;
-          padding: 14px 14px 12px;
-          border: 1px solid #dfe3df;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.22);
+          gap: 12px;
+          min-height: auto;
+          padding: 18px;
+          border: 1px solid #c5ccc9;
+          border-radius: 12px;
+          background: rgba(255, 255, 255, 0.8);
           color: #2a3c3b;
           font-size: 15px;
           line-height: 1.6;
         }
+        .admin-school-address-display {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          gap: 16px;
+        }
+        .admin-school-address-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          color: #22312e;
+          font-size: 15px;
+          font-weight: 500;
+        }
+        .admin-school-address-edit-btn {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: none;
+          border: none;
+          color: #1d9a66;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          padding: 0;
+          white-space: nowrap;
+          transition: color 0.2s ease;
+        }
+        .admin-school-address-edit-btn:hover {
+          color: #0f6642;
+        }
+        .admin-school-address-textarea {
+          flex: 1;
+          min-height: 120px;
+          padding: 12px 14px;
+          border: 1px solid #c5ccc9;
+          border-radius: 8px;
+          background: rgba(255, 255, 255, 0.9);
+          color: #22312e;
+          font-size: 14px;
+          font-family: "DM Sans", sans-serif;
+          line-height: 1.6;
+          resize: vertical;
+          outline: none;
+          transition: all 0.2s ease;
+        }
+        .admin-school-address-textarea:focus {
+          border-color: #1d9a66;
+          box-shadow: 0 0 0 3px rgba(29, 154, 102, 0.1);
+        }
+        .admin-school-address-actions {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+        .admin-school-address-btn {
+          padding: 8px 16px;
+          border: 1px solid #c5ccc9;
+          border-radius: 8px;
+          background: white;
+          color: #22312e;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          white-space: nowrap;
+        }
+        .admin-school-address-btn.save {
+          border-color: #1d9a66;
+          background: #1d9a66;
+          color: white;
+        }
+        .admin-school-address-btn.save:hover {
+          background: #0f6642;
+          border-color: #0f6642;
+        }
+        .admin-school-address-btn.cancel {
+          border-color: #ddd;
+          background: #f5f5f5;
+        }
+        .admin-school-address-btn.cancel:hover {
+          background: #eeeeee;
+        }
         .admin-school-side-card {
-          padding: 18px 18px 16px;
+          padding: 28px 18px 24px;
           border: 1px solid #dfe4df;
           border-radius: 12px;
           background: #f3f4f3;
           color: #213533;
         }
+        .admin-school-verified-card {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          text-align: center;
+          gap: 16px;
+        }
         .admin-school-side-card-top {
           display: flex;
+          flex-direction: column;
           align-items: center;
-          gap: 10px;
-          margin-bottom: 12px;
+          gap: 12px;
+          width: 100%;
+          margin-bottom: 0;
           color: #1e2d2d;
-          font-size: 17px;
+          font-size: 18px;
           font-weight: 700;
         }
         .admin-school-side-icon-box {
           display: grid;
           place-items: center;
-          width: 26px;
-          height: 26px;
+          width: 60px;
+          height: 60px;
           border-radius: 50%;
-          background: rgba(23, 146, 88, 0.08);
+          background: rgba(23, 146, 88, 0.2);
           color: #1c9a63;
+          flex-shrink: 0;
+        }
+        .admin-school-side-icon-box svg {
+          width: 28px;
+          height: 28px;
+        }
+        .admin-school-side-body {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 12px;
+          width: 100%;
         }
         .admin-school-side-body p {
           margin: 0;
           color: #536461;
-          font-size: 14px;
-          line-height: 1.55;
+          font-size: 13px;
+          line-height: 1.6;
         }
         .admin-school-status-row {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
-          margin-top: 12px;
+          gap: 6px;
+          margin-top: 0;
           color: #1d7d58;
           font-size: 13px;
           font-weight: 600;
@@ -4795,9 +5112,26 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           font-size: 17px;
           font-weight: 700;
         }
+        .admin-school-actions-card {
+          background: #fff8f8 !important;
+          border-color: #f0d4d4 !important;
+        }
+        .admin-school-actions-title {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 0 0 12px;
+          color: #d45d5d;
+          font-size: 17px;
+          font-weight: 700;
+        }
+        .admin-school-actions-title svg {
+          color: #d45d5d;
+          flex-shrink: 0;
+        }
         .admin-school-actions-card p {
           margin: 0 0 16px;
-          color: #5d6d69;
+          color: #666;
           font-size: 13px;
           line-height: 1.5;
         }
@@ -4808,21 +5142,36 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           width: 100%;
           min-height: 44px;
           padding: 0 14px;
-          border: 1px solid #dfe4df;
-          border-radius: 10px;
-          background: rgba(255, 255, 255, 0.18);
-          color: #2b3d3a;
+          border: 1px solid #ddd;
+          border-radius: 8px;
+          background: white;
+          color: #22312e;
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .admin-school-side-action-btn:hover {
+          border-color: #bbb;
+          background: #fafafa;
         }
         .admin-school-danger-action {
-          margin-top: 12px;
+          display: block;
+          width: 100%;
+          margin-top: 16px;
           padding: 12px 0 0;
-          border-top: 1px solid #e0e4e1;
+          border: none;
+          border-top: 1px solid #f0d4d4;
+          background: none;
           color: #d45d5d;
           font-size: 14px;
           font-weight: 600;
+          cursor: pointer;
+          transition: color 0.2s ease;
+          text-align: left;
+        }
+        .admin-school-danger-action:hover {
+          color: #c0494d;
         }
         @media (max-width: 768px) {
           .admin-school-info-header {
