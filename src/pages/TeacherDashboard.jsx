@@ -459,6 +459,7 @@ export default function TeacherDashboard() {
   const [salaryRange, setSalaryRange] = useState(50000);
   const [sortBy, setSortBy] = useState('Newest First');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
+  const [displayedJobsCount, setDisplayedJobsCount] = useState(10);
 
   // Filter Helpers
   const toggleEducation = (level) => {
@@ -476,6 +477,11 @@ export default function TeacherDashboard() {
     setSubjectSearch('');
     setLocationSearch('');
     setKeywordSearch('');
+    setDisplayedJobsCount(10);
+  };
+
+  const handleLoadMore = () => {
+    setDisplayedJobsCount(prev => prev + 10);
   };
 
   const filteredJobs = jobs.filter(job => {
@@ -1007,7 +1013,7 @@ export default function TeacherDashboard() {
                   </div>
 
                   <div className="td-feed-list">
-                    {filteredJobs.length > 0 ? filteredJobs.map(job => {
+                    {filteredJobs.length > 0 ? filteredJobs.slice(0, displayedJobsCount).map(job => {
                       if (job.hot) {
                         return (
                           <motion.div key={job.id} variants={cardVariants} className="td-feed-card td-feed-card-hot">
@@ -1101,10 +1107,15 @@ export default function TeacherDashboard() {
                     )}
                   </div>
 
-                  {filteredJobs.length > 0 && (
+                  {filteredJobs.length > 0 && displayedJobsCount < filteredJobs.length && (
                     <div className="td-load-more-container td-desktop-only">
-                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn">Load More Jobs</motion.button>
-                      <p>Showing {filteredJobs.length > 3 ? 3 : filteredJobs.length} of 124 results</p>
+                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn" onClick={handleLoadMore}>Load More Jobs</motion.button>
+                      <p>Showing {Math.min(displayedJobsCount, filteredJobs.length)} of {filteredJobs.length} results</p>
+                    </div>
+                  )}
+                  {filteredJobs.length > 0 && displayedJobsCount >= filteredJobs.length && (
+                    <div className="td-load-more-container td-desktop-only">
+                      <p>Showing all {filteredJobs.length} results</p>
                     </div>
                   )}
                 </div>
