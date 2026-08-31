@@ -4,6 +4,7 @@ import { adminService } from "../services/adminService";
 import { apiErrorMessage } from "../services/api";
 import { jobService } from "../services/jobService";
 import { applicationService } from "../services/applicationService";
+import { featureService } from "../services/featureService";
 import BrandLogo from "../components/BrandLogo";
 import {
   FiAlertCircle,
@@ -55,100 +56,16 @@ const emptyJobForm = {
   requirements: "",
 };
 
-const demoJobs = [
-  {
-    job_id: "demo-job-1",
-    title: "Senior Mathematics Teacher",
-    role_type: "Mathematics Teacher",
-    employment_type: "full-time",
-    salary_range: "₦350,000 - ₦500,000",
-    location: "Lekki, Lagos",
-    status: "active",
-    description:
-      "We are seeking a passionate Mathematics teacher to deliver engaging lessons and guide students toward academic excellence.",
-    requirements:
-      "B.Sc./B.Ed in Mathematics, 5+ years teaching experience, strong classroom management skills.",
-  },
-  {
-    job_id: "demo-job-2",
-    title: "Biology Teacher",
-    role_type: "Biology Teacher",
-    employment_type: "full-time",
-    salary_range: "₦300,000 - ₦450,000",
-    location: "Yaba, Lagos",
-    status: "active",
-    description:
-      "Join our science department to create practical, inquiry-based lessons that inspire curiosity and confidence in students.",
-    requirements:
-      "B.Sc. in Biology Education, TRCN certification, experience with lab instruction.",
-  },
-  {
-    job_id: "demo-job-3",
-    title: "Chemistry Teacher",
-    role_type: "Chemistry Teacher",
-    employment_type: "part-time",
-    salary_range: "₦200,000 - ₦300,000",
-    location: "Abuja",
-    status: "draft",
-    description:
-      "Part-time chemistry position for a teacher who can support both classroom instruction and examination preparation.",
-    requirements:
-      "Degree in Chemistry or Education, excellent communication, ability to work with senior classes.",
-  },
-  {
-    job_id: "demo-job-4",
-    title: "English Language Teacher",
-    role_type: "English Teacher",
-    employment_type: "full-time",
-    salary_range: "₦280,000 - ₦420,000",
-    location: "Port Harcourt",
-    status: "pending",
-    description:
-      "Support students in developing strong reading, writing, comprehension, and speaking skills in a structured school environment.",
-    requirements:
-      "B.A./B.Ed in English, strong grammar and communication skills, 3+ years of classroom experience.",
-  },
-];
 
-const demoApplicantsByJob = {
-  "demo-job-1": [
-    {
-      application_id: "demo-app-1",
-      teacher_name: "Tunde Bello",
-      teacher_email: "tunde.bello@example.com",
-      status: "shortlisted",
-    },
-    {
-      application_id: "demo-app-2",
-      teacher_name: "Sarah Jenkins",
-      teacher_email: "sarah.jenkins@example.com",
-      status: "reviewed",
-    },
-  ],
-  "demo-job-2": [
-    {
-      application_id: "demo-app-3",
-      teacher_name: "David Osa",
-      teacher_email: "david.osa@example.com",
-      status: "pending",
-    },
-  ],
-  "demo-job-4": [
-    {
-      application_id: "demo-app-4",
-      teacher_name: "Ada Okafor",
-      teacher_email: "ada.okafor@example.com",
-      status: "pending",
-    },
-  ],
-};
+
+
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
   const [stats, setStats] = useState({});
   const [verifications, setVerifications] = useState([]);
-  const [jobs, setJobs] = useState(demoJobs);
-  const [applicantsByJob, setApplicantsByJob] = useState(demoApplicantsByJob);
+  const [jobs, setJobs] = useState([]);
+  const [applicantsByJob, setApplicantsByJob] = useState({});
   const [jobForm, setJobForm] = useState(emptyJobForm);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -189,83 +106,8 @@ export default function AdminDashboard() {
   const phoneInputRef = useRef(null);
   const websiteInputRef = useRef(null);
   const addressTextareaRef = useRef(null);
-  const [notificationItems, setNotificationItems] = useState([
-    {
-      key: "applicant-tunde",
-      tab: "applicants",
-      type: "highlight",
-      accent: "green",
-      icon: FiFileText,
-      label: "NEW APPLICATION",
-      title: "Tunde Bello applied for Senior Mathematics Teacher",
-      applicantName: "Tunde Bello",
-      unread: true,
-      description:
-        "The applicant has 8 years of experience and matches 90% of your required qualifications. Review their profile to proceed.",
-      time: "2 hours ago",
-    },
-    {
-      key: "response-segun",
-      tab: "notifications",
-      type: "highlight",
-      accent: "",
-      icon: FiMessageSquare,
-      label: "RESPONSE",
-      title: "Mr. Segun responded to your message",
-      unread: true,
-      description:
-        '"Thank you for the update. I will be available for the interview next Tuesday at 10 AM as requested."',
-      time: "4 hours ago",
-    },
-    {
-      key: "job-expiry",
-      tab: "jobs",
-      type: "highlight",
-      accent: "red",
-      icon: FiAlertCircle,
-      label: "EXPIRY WARNING",
-      title: "Job posting expires in 3 days",
-      unread: true,
-      description:
-        "Your listing for 'Assistant Principal' will be removed soon. Consider extending the duration or reviewing current applicants.",
-      time: "5 hours ago",
-    },
-    {
-      key: "applicant-sarah",
-      tab: "applicants",
-      type: "simple",
-      icon: FiFileText,
-      label: "NEW APPLICATION",
-      title: "Sarah Jenkins applied for Biology Teacher",
-      applicantName: "Sarah Jenkins",
-      unread: true,
-      description: "Profile overview and CV attached for review.",
-      time: "Yesterday, 2:30 PM",
-    },
-    {
-      key: "system-renewal",
-      tab: "settings",
-      type: "simple",
-      icon: FiCheckCircle,
-      label: "SYSTEM",
-      title: "Subscription Renewed Successfully",
-      unread: false,
-      description: "Your 'Premium School' plan has been renewed for another month.",
-      time: "Yesterday, 9:00 AM",
-    },
-    {
-      key: "applicant-david",
-      tab: "applicants",
-      type: "simple",
-      icon: FiFileText,
-      label: "NEW APPLICATION",
-      title: "David Osa applied for Physics Teacher",
-      applicantName: "David Osa",
-      unread: true,
-      description: "",
-      time: "Oct 12",
-    },
-  ]);
+  const [notificationItems, setNotificationItems] = useState([]);
+  const [editingJobId, setEditingJobId] = useState(null);
   const [isShortlistModalOpen, setIsShortlistModalOpen] = useState(false);
   const [isShortlistSuccessOpen, setIsShortlistSuccessOpen] = useState(false);
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
@@ -295,8 +137,34 @@ export default function AdminDashboard() {
 
   const isSchool = user?.role === "school";
 
+  const normalizeJobPayload = (payload = {}) => {
+    const title = String(payload.title ?? "").trim();
+    const description = String(payload.description ?? "").trim();
+    const roleType = String(payload.role_type ?? "").trim() || "General Teacher";
+    const employmentType = String(payload.employment_type ?? "full-time")
+      .trim()
+      .toLowerCase();
+    const location = String(payload.location ?? "").trim();
+    const requirements = String(payload.requirements ?? "").trim() || description;
+
+    return {
+      title,
+      description,
+      role_type: roleType,
+      employment_type: ["full-time", "part-time", "contract", "temporary"].includes(
+        employmentType,
+      )
+        ? employmentType
+        : "full-time",
+      salary_range: String(payload.salary_range ?? "").trim() || "Competitive",
+      location,
+      requirements,
+    };
+  };
+
   const openJobForm = (fromTab = activeTab) => {
     setPreviousTab(fromTab === "post-job" ? "overview" : fromTab);
+    setEditingJobId(null);
     setSelectedJob(null);
     setSelectedApplicant(null);
     setActiveTab("post-job");
@@ -391,6 +259,42 @@ export default function AdminDashboard() {
     [user],
   );
 
+  const loadSchoolNotifications = async () => {
+    try {
+      const response = await featureService.getNotifications();
+      const notifList = response?.data?.data?.notifications || response?.data?.notifications || [];
+
+      const iconMap = {
+        application_status: FiFileText,
+        message: FiMessageSquare,
+        job_expiry: FiAlertCircle,
+        system: FiCheckCircle,
+      };
+
+      const mapped = notifList.map((n) => {
+        const isApplication = n.type === "application_status";
+        return {
+          key: n.notification_id || n.id || `notif-${Date.now()}-${Math.random()}`,
+          tab: isApplication ? "applicants" : "notifications",
+          type: Number(n.is_read) === 0 ? "highlight" : "simple",
+          accent: isApplication ? "green" : "",
+          icon: iconMap[n.type] || FiBell,
+          label: (n.type || "notification").toUpperCase().replace(/_/g, " "),
+          title: n.title || "Notification",
+          unread: Number(n.is_read) === 0,
+          description: n.message || n.description || "",
+          time: n.created_at
+            ? new Date(n.created_at).toLocaleDateString()
+            : "Recently",
+        };
+      });
+
+      setNotificationItems(mapped);
+    } catch (_err) {
+      // Notifications are non-critical — silently keep whatever is already loaded
+    }
+  };
+
   const loadSchoolJobs = async () => {
     try {
       const response = await jobService.getJobs({});
@@ -409,15 +313,9 @@ export default function AdminDashboard() {
         }
       }
 
-      const nextJobs = jobList.length ? jobList.slice(0, 5) : demoJobs;
-      setJobs(nextJobs);
-      if (!jobList.length) {
-        setApplicantsByJob(demoApplicantsByJob);
-      }
+      setJobs(jobList);
     } catch (err) {
       setError(apiErrorMessage(err, "Unable to load school jobs."));
-      setJobs(demoJobs);
-      setApplicantsByJob(demoApplicantsByJob);
     }
   };
 
@@ -425,22 +323,24 @@ export default function AdminDashboard() {
     const loadDashboard = async () => {
       try {
         setLoading(true);
-        const [statsRes, verificationsRes] = await Promise.all([
-          adminService.getStats(),
-          adminService.getVerifications(),
-        ]);
-
-        const statsPayload = statsRes?.data?.data ?? statsRes?.data ?? {};
-        const verificationPayload =
-          verificationsRes?.data?.data?.verifications ??
-          verificationsRes?.data?.verifications ??
-          [];
-
-        setStats(statsPayload);
-        setVerifications(verificationPayload);
 
         if (isSchool) {
           await loadSchoolJobs();
+          loadSchoolNotifications();
+        } else {
+          const [statsRes, verificationsRes] = await Promise.all([
+            adminService.getStats(),
+            adminService.getVerifications(),
+          ]);
+
+          const statsPayload = statsRes?.data?.data ?? statsRes?.data ?? {};
+          const verificationPayload =
+            verificationsRes?.data?.data?.verifications ??
+            verificationsRes?.data?.verifications ??
+            [];
+
+          setStats(statsPayload);
+          setVerifications(verificationPayload);
         }
       } catch (err) {
         setError(apiErrorMessage(err, "Unable to load dashboard data."));
@@ -481,32 +381,60 @@ export default function AdminDashboard() {
   const handleCreateJob = async (e) => {
     e.preventDefault();
 
+    const payload = normalizeJobPayload(jobForm);
+
+    if (!payload.title || !payload.description || !payload.location) {
+      setError("Please add a title, description, and location before publishing the job.");
+      return;
+    }
+
     try {
       setSubmitting(true);
       setError("");
-      const response = await jobService.createJob(jobForm);
-      const newJob = response?.data?.data || response?.data || jobForm;
 
-      setJobs((prev) => [
-        {
-          ...(newJob.job || newJob),
-          job_id: newJob.job_id || newJob.id || `JOB-${Date.now()}`,
-          title: newJob.title || jobForm.title,
-          location: newJob.location || jobForm.location,
-          status: newJob.status || "active",
-        },
-        ...prev,
-      ]);
+      let response;
+      if (editingJobId) {
+        response = await jobService.updateJob(editingJobId, payload);
+      } else {
+        response = await jobService.createJob(payload);
+      }
+
+      const rawResponse = response?.data?.data ?? response?.data ?? {};
+      const jobPayload = rawResponse?.job ?? rawResponse ?? payload;
+
+      const savedJob = {
+        ...(jobPayload && typeof jobPayload === "object" ? jobPayload : {}),
+        ...payload,
+        job_id: editingJobId || jobPayload?.job_id || jobPayload?.id || rawResponse?.job_id || rawResponse?.id || `JOB-${Date.now()}`,
+        title: jobPayload?.title || payload.title,
+        description: jobPayload?.description || payload.description,
+        role_type: jobPayload?.role_type || payload.role_type,
+        employment_type: jobPayload?.employment_type || payload.employment_type,
+        salary_range: jobPayload?.salary_range || payload.salary_range,
+        location: jobPayload?.location || payload.location,
+        requirements: jobPayload?.requirements || payload.requirements,
+        status: jobPayload?.status || "active",
+      };
+
+      if (editingJobId) {
+        setJobs((prev) => prev.map((job) =>
+          (job.job_id || job.id) === editingJobId ? { ...job, ...savedJob } : job
+        ));
+      } else {
+        setJobs((prev) => [savedJob, ...prev.filter((job) => (job.job_id || job.id) !== savedJob.job_id)]);
+      }
+
       setJobForm(emptyJobForm);
+      setEditingJobId(null);
       setSelectedJob(null);
       setSelectedApplicant(null);
       setActiveTab(previousTab);
       showSnackbar(
-        "Vacancy published successfully",
-        "New job has been published successfully",
+        editingJobId ? "Job updated successfully" : "Vacancy published successfully",
+        editingJobId ? "Your job posting has been updated" : "New job has been published successfully",
       );
     } catch (err) {
-      setError(apiErrorMessage(err, "Unable to create this job."));
+      setError(apiErrorMessage(err, editingJobId ? "Unable to update this job." : "Unable to create this job."));
     } finally {
       setSubmitting(false);
     }
@@ -912,11 +840,11 @@ export default function AdminDashboard() {
   const renderJobForm = () => (
     <div className="school-job-form-page">
       <div className="school-job-form-breadcrumb">
-        Jobs <span>›</span> Post New Job
+        Jobs <span>›</span> {editingJobId ? "Edit Job" : "Post New Job"}
       </div>
-      <h2 className="school-job-form-title">Post a New Teaching Opportunity</h2>
+      <h2 className="school-job-form-title">{editingJobId ? "Edit Job Posting" : "Post a New Teaching Opportunity"}</h2>
       <p className="school-job-form-subtitle">
-        Reach thousands of qualified educators across the country.
+        {editingJobId ? "Update the details of your job listing below." : "Reach thousands of qualified educators across the country."}
       </p>
       <form onSubmit={handleCreateJob} className="school-job-form">
         <section className="school-job-form-card school-job-basic-fields">
@@ -1075,7 +1003,9 @@ export default function AdminDashboard() {
             Save Draft
           </button>
           <button type="submit" disabled={submitting}>
-            {submitting ? "Publishing..." : "Publish Job"}
+            {submitting
+              ? (editingJobId ? "Updating..." : "Publishing...")
+              : (editingJobId ? "Update Job" : "Publish Job")}
           </button>
         </div>
       </form>
@@ -1183,6 +1113,7 @@ export default function AdminDashboard() {
                       location: job.location || "",
                       requirements: job.requirements || "",
                     });
+                    setEditingJobId(job.job_id || job.id);
                     setPreviousTab("jobs");
                     setSelectedJob(null);
                     setSelectedApplicant(null);
@@ -1191,7 +1122,11 @@ export default function AdminDashboard() {
                 >
                   Edit Job
                 </button>
-                <button type="button" className="school-job-detail-secondary school-job-detail-secondary--danger">
+                <button
+                  type="button"
+                  className="school-job-detail-secondary school-job-detail-secondary--danger"
+                  onClick={() => handleCloseJob(job.job_id || job.id)}
+                >
                   Close Job
                 </button>
               </div>
@@ -2964,75 +2899,61 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
   };
 
   const renderApplicants = () => {
-    const teachers = [
-      {
-        name: "Chinedu Okeke",
-        role: "Physics Teacher",
-        location: "Lagos",
-        experience: "10 Years",
-        subject: "M.Sc. Physics",
-        availability: "Available Immediately",
-        summary:
-          "Passionate physics educator with a decade of experience simplifying complex concepts for secondary school learners.",
-        accent: "#d8ede5",
-      },
-      {
-        name: "Sarah Adebayo",
-        role: "Mathematics Teacher",
-        location: "Abuja",
-        experience: "7 Years",
-        subject: "B.Ed Mathematics",
-        availability: "Available Immediately",
-        summary:
-          "Dedicated mathematics teacher skilled in making algebra and calculus accessible to diverse learning styles.",
-        accent: "#e6f1ec",
-      },
-      {
-        name: "Amina Bello",
-        role: "Early Child Educator",
-        location: "Lagos",
-        experience: "4 Years",
-        subject: "NCE",
-        availability: "Available Immediately",
-        summary:
-          "Enthusiastic early childhood educator with a focus on Montessori principles. Adept at creating safe, engaging classrooms.",
-        accent: "#f3e7d3",
-      },
-      {
-        name: "Grace Nwosu",
-        role: "English Language Teacher",
-        location: "Port Harcourt",
-        experience: "6 Years",
-        subject: "M.A. English",
-        availability: "Available Immediately",
-        summary:
-          "Creative language educator supporting reading fluency, essay writing, and confidence-building across secondary classes.",
-        accent: "#dfeaf9",
-      },
-      {
-        name: "Ifeanyi Eze",
-        role: "Biology Teacher",
-        location: "Abuja",
-        experience: "5 Years",
-        subject: "B.Sc. Biology",
-        availability: "Available Immediately",
-        summary:
-          "Science teacher with a strong practical approach to laboratory teaching and student assessment across senior classes.",
-        accent: "#e7f3e8",
-      },
+    const accentColors = ["#d8ede5", "#e6f1ec", "#f3e7d3", "#dfeaf9", "#e7f3e8", "#f0e6f6", "#fce4d6"];
+
+    const seenTeachers = new Set();
+    const teachers = allApplicants
+      .map((app) => {
+        const name = app.teacher_name || app.teacher_email || "Teacher";
+        const dedupeKey = (app.teacher_email || name).toLowerCase();
+        if (seenTeachers.has(dedupeKey)) return null;
+        seenTeachers.add(dedupeKey);
+
+        const matchedJob = jobs.find(
+          (job) => (job.job_id || job.id) === app.jobId,
+        );
+
+        return {
+          name,
+          role: matchedJob?.title || matchedJob?.role_type || "Teaching Professional",
+          location: matchedJob?.location || app.location || "Nigeria",
+          experience: app.experience_years
+            ? `${app.experience_years} Years`
+            : "Not specified",
+          subject: app.skills || matchedJob?.role_type || "General",
+          availability: app.availability || "Available",
+          summary:
+            app.cover_letter ||
+            app.bio ||
+            `Applied for ${matchedJob?.title || "a teaching position"} at your school.`,
+          accent: accentColors[seenTeachers.size % accentColors.length],
+          email: app.teacher_email || "",
+          phone: app.teacher_phone || "",
+          cv_url: app.cv_url || "",
+          status: app.status || "pending",
+          application_id: app.application_id || app.id,
+          teacher_id: app.teacher_id || "",
+        };
+      })
+      .filter(Boolean);
+
+    const uniqueLocations = [
+      "All Locations",
+      ...new Set(teachers.map((t) => t.location).filter(Boolean)),
+    ];
+    const uniqueExperiences = [
+      "Experience",
+      ...new Set(teachers.map((t) => t.experience).filter((e) => e !== "Not specified")),
+    ];
+    const uniqueSubjects = [
+      "Subject",
+      ...new Set(teachers.map((t) => t.subject).filter((s) => s !== "General")),
     ];
 
     const teacherOptions = {
-      locations: ["All Locations", "Lagos", "Abuja", "Port Harcourt"],
-      experiences: ["Experience", "10 Years", "7 Years", "6 Years", "5 Years", "4 Years"],
-      subjects: [
-        "Subject",
-        "M.Sc. Physics",
-        "B.Ed Mathematics",
-        "NCE",
-        "M.A. English",
-        "B.Sc. Biology",
-      ],
+      locations: uniqueLocations,
+      experiences: uniqueExperiences,
+      subjects: uniqueSubjects,
     };
 
     const filteredTeachers = teachers.filter((teacher) => {
@@ -3212,7 +3133,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               {filteredTeachers.map((teacher, index) => (
                 <div className="school-teacher-card" key={`${teacher.name}-${index}`}>
                   <div className="school-teacher-card-main">
-                    <div className="school-teacher-badge">● Available Immediately</div>
+                    <div className="school-teacher-badge">● {teacher.availability}</div>
 
                     <div className="school-teacher-profile-row">
                       <div
@@ -3266,7 +3187,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
 
             {filteredTeachers.length === 0 && (
               <div className="school-teachers-empty-state">
-                No teachers match your current search and filter selection.
+                {allApplicants.length === 0
+                  ? "No teachers have applied to your jobs yet. Post a job to start receiving applications."
+                  : "No teachers match your current search and filter selection."}
               </div>
             )}
 

@@ -254,12 +254,12 @@ export default function TeacherDashboard() {
     try {
       const [jobsRes, applicationsRes, profileRes, notificationsRes, savedRes] = await Promise.all([
         jobService.getJobs({}),
+
         applicationService.getMyApplications(),
         profileService.getMe(),
         featureService.getNotifications(),
         featureService.getSavedJobs(),
       ]);
-
       const jobList = (jobsRes?.data?.data?.jobs || jobsRes?.data?.jobs || []).map(normalizeJobData);
       const applicationList = (applicationsRes?.data?.data?.applications || applicationsRes?.data?.applications || []).map((app, idx) => normalizeApplicationData(app, idx));
       const profileData = profileRes?.data?.data || {};
@@ -360,7 +360,7 @@ export default function TeacherDashboard() {
       contentRef.current.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, [activeTab]);
-  
+
   const openApplyModal = () => {
     setApplicationStep(1);
     setShowApplyModal(true);
@@ -430,7 +430,7 @@ export default function TeacherDashboard() {
   const [subjectSearch, setSubjectSearch] = useState('');
   const [locationSearch, setLocationSearch] = useState('');
   const [keywordSearch, setKeywordSearch] = useState('');
-  
+
   const [selectedEducation, setSelectedEducation] = useState([]);
   const [selectedJobTypes, setSelectedJobTypes] = useState([]);
   const [salaryRange, setSalaryRange] = useState(50000);
@@ -598,227 +598,227 @@ export default function TeacherDashboard() {
 
           {activeTab === 'dashboard' && (
             <>
-          {/* ── Welcome Area ── */}
-          <div className="td-welcome-header">
-            <div>
-              <h1 className="td-welcome-title">Welcome, {profileFullName}</h1>
-              {/* Desktop subtitle */}
-              <p className="td-subtitle">Your academic career overview for today.</p>
-              {/* Mobile location */}
-              <div className="td-mobile-location">
-                <FiMapPin size={13} color="#4A5568" />
-                <span>{profileLocation}</span>
-              </div>
-            </div>
-            <div className="td-location-badge">
-              <FiMapPin size={14} color="#1CCB43" />
-              <span>{profileLocation}</span>
-            </div>
-          </div>
-
-          <div className="td-grid-main">
-            {/* Left Content / Main Feed */}
-            <div className="td-left-col">
-
-              {/* ── Stats Overview ── */}
-              <div className="td-stats-row">
-                {/* Profile Strength Card */}
-                <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
-                  <div className="td-card-header">
-                    <span className="td-profile-title">Profile Strength</span>
-                    <span className="td-percent-badge">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
+              {/* ── Welcome Area ── */}
+              <div className="td-welcome-header">
+                <div>
+                  <h1 className="td-welcome-title">Welcome, {profileFullName}</h1>
+                  {/* Desktop subtitle */}
+                  <p className="td-subtitle">Your academic career overview for today.</p>
+                  {/* Mobile location */}
+                  <div className="td-mobile-location">
+                    <FiMapPin size={13} color="#4A5568" />
+                    <span>{profileLocation}</span>
                   </div>
-                  {/* Mobile profile strength layout */}
-                  <div className="td-mobile-profile-strength">
-                    <div className="td-mobile-ps-top">
-                      <div className="td-mobile-ps-left">
-                        <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
-                        <span className="td-mobile-ps-value">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
-                      </div>
-                      <div className="td-mobile-ps-icon"><FiZap size={20} /></div>
-                    </div>
-                    <div className="td-progress-bar">
-                      <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
-                    </div>
-                    <p className="td-card-hint">{profileState?.bio ? 'Your profile is ready for school applications.' : 'Complete your profile to improve visibility to schools.'}</p>
-                  </div>
-                  {/* Desktop layout */}
-                  <div className="td-desktop-profile-strength">
-                    <div className="td-progress-bar">
-                      <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
-                    </div>
-                    <p className="td-card-hint">
-                      {profileState?.bio ? 'Your profile is ready for job applications.' : 'Complete your profile to unlock more opportunities.'}
-                    </p>
-                    <button className="td-complete-profile-btn" onClick={() => setActiveTab('profile')}>Complete Profile →</button>
-                  </div>
-                </motion.div>
-
-                {/* Mini cards wrapper */}
-                <div className="td-stats-mini-wrapper">
-                  {/* Profile Views */}
-                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--views">
-                    <div className="td-mini-icon-circle">
-                      <FiEye size={18} />
-                    </div>
-                    <span className="td-mobile-stat-number">{Math.max(0, jobs.length * 12)}</span>
-                    <p className="td-mini-label">PROFILE VIEWS</p>
-                    <div className="td-mini-value-row">
-                      <span className="td-mini-value td-desktop-stat-val">{Math.max(0, jobs.length * 12)}</span>
-                      <span className="td-mini-growth">{jobs.length > 0 ? '+12%' : '0%'}</span>
-                    </div>
-                    <span className="td-mobile-subtext">{jobs.length > 0 ? 'Based on active listings' : 'No active listings yet'}</span>
-                  </motion.div>
-
-                  {/* Jobs Applied */}
-                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--applied">
-                    <div className="td-mini-icon-circle">
-                      <FiSend size={18} className="td-desktop-icon" />
-                      <FiBriefcase size={18} className="td-mobile-icon" />
-                    </div>
-                    <span className="td-mobile-stat-number">{totalApplications}</span>
-                    <p className="td-mini-label">
-                      <span>JOBS APPLIED</span>
-                    </p>
-                    <div className="td-mini-value-row td-desktop-val-row">
-                      <span className="td-mini-value">{totalApplications}</span>
-                      <span className="td-mini-unit">Total</span>
-                    </div>
-                    <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
-                  </motion.div>
-
-                  {/* Pending Review (desktop only) */}
-                  <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
-                    <div className="td-mini-icon-circle">
-                      <FiFileText size={18} />
-                    </div>
-                    <p className="td-mini-label">PENDING REVIEW</p>
-                    <div className="td-mini-value-row">
-                      <span className="td-mini-value">{pendingApplications}</span>
-                      <span className="td-mini-action">Action Req.</span>
-                    </div>
-                  </motion.div>
+                </div>
+                <div className="td-location-badge">
+                  <FiMapPin size={14} color="#1CCB43" />
+                  <span>{profileLocation}</span>
                 </div>
               </div>
 
-              {/* ── Active / Priority Job Feeds ── */}
-              <div className="td-jobs-section">
-                <div className="td-section-header">
-                  <h2>
-                    <span className="td-desktop-label">Active Job Feeds</span>
-                    <span className="td-mobile-label">Priority Job Feeds</span>
-                  </h2>
-                  <a href="#" className="td-view-all-link">
-                    <span className="td-desktop-text">View All Vacancies</span>
-                    <span className="td-mobile-text">View All</span>
-                  </a>
-                </div>
+              <div className="td-grid-main">
+                {/* Left Content / Main Feed */}
+                <div className="td-left-col">
 
-                <div className="td-job-list">
-                  {dashboardJobs.length > 0 ? dashboardJobs.map((job) => (
-                    <motion.div key={job.id} variants={cardVariants} className="td-job-item">
-                      <div className="td-job-header-row">
-                        <div className="td-job-avatar td-job-avatar--math">
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
-                            <path d="M9 12h6" />
-                            <path d="M12 9v6" />
-                          </svg>
-                        </div>
-                        <div className="td-job-info-main">
-                          <div className="td-job-title-line">
-                            <h3>{job.title}</h3>
-                            <div className="td-job-badge-col td-desktop-badge-col">
-                              <span className="td-job-type-badge td-job-type-badge--full">{String(job.type || 'FULL-TIME').toUpperCase()}</span>
-                              <span className="td-job-time-ago">{job.timeLabel}</span>
-                            </div>
-                          </div>
-                          <p className="td-job-school">{job.school} <span className="td-job-bullet">•</span> {job.location}</p>
-
-                          <div className="td-job-tags td-mobile-only-tags">
-                            <span className="td-mobile-tag--green">{String(job.location || '').toUpperCase()}</span>
-                            <span className="td-mobile-tag--gray">{job.timeLabel}</span>
-                          </div>
-
-                          <div className="td-job-tags td-desktop-tags">
-                            <span>{job.subject || 'Teaching'}</span>
-                            <span>{job.type || 'Full-time'}</span>
-                            <span>{job.salaryStr || 'Competitive'}</span>
-                          </div>
-                        </div>
+                  {/* ── Stats Overview ── */}
+                  <div className="td-stats-row">
+                    {/* Profile Strength Card */}
+                    <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
+                      <div className="td-card-header">
+                        <span className="td-profile-title">Profile Strength</span>
+                        <span className="td-percent-badge">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
                       </div>
-
-                      <div className="td-job-footer">
-                        <span className="td-job-salary">{job.salaryStr || 'Salary available on request'}</span>
-                        <button type="button" className="td-quick-apply" onClick={() => setSelectedJob(job)}>Quick Apply →</button>
+                      {/* Mobile profile strength layout */}
+                      <div className="td-mobile-profile-strength">
+                        <div className="td-mobile-ps-top">
+                          <div className="td-mobile-ps-left">
+                            <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
+                            <span className="td-mobile-ps-value">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
+                          </div>
+                          <div className="td-mobile-ps-icon"><FiZap size={20} /></div>
+                        </div>
+                        <div className="td-progress-bar">
+                          <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
+                        </div>
+                        <p className="td-card-hint">{profileState?.bio ? 'Your profile is ready for school applications.' : 'Complete your profile to improve visibility to schools.'}</p>
+                      </div>
+                      {/* Desktop layout */}
+                      <div className="td-desktop-profile-strength">
+                        <div className="td-progress-bar">
+                          <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
+                        </div>
+                        <p className="td-card-hint">
+                          {profileState?.bio ? 'Your profile is ready for job applications.' : 'Complete your profile to unlock more opportunities.'}
+                        </p>
+                        <button className="td-complete-profile-btn" onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                       </div>
                     </motion.div>
-                  )) : (
-                    <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>No active jobs available right now.</div>
-                  )}
+
+                    {/* Mini cards wrapper */}
+                    <div className="td-stats-mini-wrapper">
+                      {/* Profile Views */}
+                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--views">
+                        <div className="td-mini-icon-circle">
+                          <FiEye size={18} />
+                        </div>
+                        <span className="td-mobile-stat-number">{Math.max(0, jobs.length * 12)}</span>
+                        <p className="td-mini-label">PROFILE VIEWS</p>
+                        <div className="td-mini-value-row">
+                          <span className="td-mini-value td-desktop-stat-val">{Math.max(0, jobs.length * 12)}</span>
+                          <span className="td-mini-growth">{jobs.length > 0 ? '+12%' : '0%'}</span>
+                        </div>
+                        <span className="td-mobile-subtext">{jobs.length > 0 ? 'Based on active listings' : 'No active listings yet'}</span>
+                      </motion.div>
+
+                      {/* Jobs Applied */}
+                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--applied">
+                        <div className="td-mini-icon-circle">
+                          <FiSend size={18} className="td-desktop-icon" />
+                          <FiBriefcase size={18} className="td-mobile-icon" />
+                        </div>
+                        <span className="td-mobile-stat-number">{totalApplications}</span>
+                        <p className="td-mini-label">
+                          <span>JOBS APPLIED</span>
+                        </p>
+                        <div className="td-mini-value-row td-desktop-val-row">
+                          <span className="td-mini-value">{totalApplications}</span>
+                          <span className="td-mini-unit">Total</span>
+                        </div>
+                        <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
+                      </motion.div>
+
+                      {/* Pending Review (desktop only) */}
+                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
+                        <div className="td-mini-icon-circle">
+                          <FiFileText size={18} />
+                        </div>
+                        <p className="td-mini-label">PENDING REVIEW</p>
+                        <div className="td-mini-value-row">
+                          <span className="td-mini-value">{pendingApplications}</span>
+                          <span className="td-mini-action">Action Req.</span>
+                        </div>
+                      </motion.div>
+                    </div>
+                  </div>
+
+                  {/* ── Active / Priority Job Feeds ── */}
+                  <div className="td-jobs-section">
+                    <div className="td-section-header">
+                      <h2>
+                        <span className="td-desktop-label">Active Job Feeds</span>
+                        <span className="td-mobile-label">Priority Job Feeds</span>
+                      </h2>
+                      <a href="#" className="td-view-all-link">
+                        <span className="td-desktop-text">View All Vacancies</span>
+                        <span className="td-mobile-text">View All</span>
+                      </a>
+                    </div>
+
+                    <div className="td-job-list">
+                      {dashboardJobs.length > 0 ? dashboardJobs.map((job) => (
+                        <motion.div key={job.id} variants={cardVariants} className="td-job-item">
+                          <div className="td-job-header-row">
+                            <div className="td-job-avatar td-job-avatar--math">
+                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
+                                <path d="M9 12h6" />
+                                <path d="M12 9v6" />
+                              </svg>
+                            </div>
+                            <div className="td-job-info-main">
+                              <div className="td-job-title-line">
+                                <h3>{job.title}</h3>
+                                <div className="td-job-badge-col td-desktop-badge-col">
+                                  <span className="td-job-type-badge td-job-type-badge--full">{String(job.type || 'FULL-TIME').toUpperCase()}</span>
+                                  <span className="td-job-time-ago">{job.timeLabel}</span>
+                                </div>
+                              </div>
+                              <p className="td-job-school">{job.school} <span className="td-job-bullet">•</span> {job.location}</p>
+
+                              <div className="td-job-tags td-mobile-only-tags">
+                                <span className="td-mobile-tag--green">{String(job.location || '').toUpperCase()}</span>
+                                <span className="td-mobile-tag--gray">{job.timeLabel}</span>
+                              </div>
+
+                              <div className="td-job-tags td-desktop-tags">
+                                <span>{job.subject || 'Teaching'}</span>
+                                <span>{job.type || 'Full-time'}</span>
+                                <span>{job.salaryStr || 'Competitive'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="td-job-footer">
+                            <span className="td-job-salary">{job.salaryStr || 'Salary available on request'}</span>
+                            <button type="button" className="td-quick-apply" onClick={() => setSelectedJob(job)}>Quick Apply →</button>
+                          </div>
+                        </motion.div>
+                      )) : (
+                        <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>No active jobs available right now.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Mobile CTA Card ── */}
+                  <motion.div variants={cardVariants} className="td-mobile-cta-card">
+                    <div className="td-mobile-cta-text">
+                      <h3>Enhance Your<br />Visibility</h3>
+                      <p>Schools in Victoria Island are looking for certified teachers.</p>
+                    </div>
+                    <button className="td-mobile-cta-btn">UPDATE CV</button>
+                  </motion.div>
+
+                </div>
+
+                {/* ── Right Sidebar (Desktop Only - hidden in clean single column layout or kept empty) ── */}
+                <div className="td-right-col">
+                  <motion.div variants={cardVariants} className="td-side-section">
+                    <h3>Upcoming Interviews</h3>
+                    {applications.length > 0 ? (
+                      applications.slice(0, 2).map((app) => (
+                        <div key={app.id} className="td-interview-item">
+                          <div className="td-date-box">
+                            <span className="td-day">{new Date().getDate()}</span>
+                            <span className="td-month">{new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase()}</span>
+                          </div>
+                          <div className="td-int-info">
+                            <h4>{app.school}</h4>
+                            <p>{app.title} • {app.status}</p>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="td-interview-item">
+                        <div className="td-int-info">
+                          <h4>No interviews scheduled</h4>
+                          <p>Your application pipeline will appear here.</p>
+                        </div>
+                      </div>
+                    )}
+                  </motion.div>
+
+                  <motion.div variants={cardVariants} className="td-pro-card">
+                    <div className="td-pro-badge">★</div>
+                    <h3>School Match Status</h3>
+                    <p>{jobs.length > 0 ? `${jobs.length} active opportunities are matching your profile.` : 'No active school matches yet.'}</p>
+                    <button className="td-upgrade-btn" onClick={() => setActiveTab('jobs')}>View Jobs</button>
+                  </motion.div>
+
+                  <motion.div variants={cardVariants} className="td-shortcuts-section">
+                    <h3>QUICK SHORTCUTS</h3>
+                    <div className="td-shortcuts-row">
+                      <div className="td-shortcut">
+                        <FiFileText />
+                        <span>Update CV</span>
+                      </div>
+                      <div className="td-shortcut">
+                        <FiMessageSquare />
+                        <span>Messages</span>
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
               </div>
-
-              {/* ── Mobile CTA Card ── */}
-              <motion.div variants={cardVariants} className="td-mobile-cta-card">
-                <div className="td-mobile-cta-text">
-                  <h3>Enhance Your<br />Visibility</h3>
-                  <p>Schools in Victoria Island are looking for certified teachers.</p>
-                </div>
-                <button className="td-mobile-cta-btn">UPDATE CV</button>
-              </motion.div>
-
-            </div>
-
-            {/* ── Right Sidebar (Desktop Only - hidden in clean single column layout or kept empty) ── */}
-            <div className="td-right-col">
-              <motion.div variants={cardVariants} className="td-side-section">
-                <h3>Upcoming Interviews</h3>
-                {applications.length > 0 ? (
-                  applications.slice(0, 2).map((app) => (
-                    <div key={app.id} className="td-interview-item">
-                      <div className="td-date-box">
-                        <span className="td-day">{new Date().getDate()}</span>
-                        <span className="td-month">{new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase()}</span>
-                      </div>
-                      <div className="td-int-info">
-                        <h4>{app.school}</h4>
-                        <p>{app.title} • {app.status}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="td-interview-item">
-                    <div className="td-int-info">
-                      <h4>No interviews scheduled</h4>
-                      <p>Your application pipeline will appear here.</p>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-
-              <motion.div variants={cardVariants} className="td-pro-card">
-                <div className="td-pro-badge">★</div>
-                <h3>School Match Status</h3>
-                <p>{jobs.length > 0 ? `${jobs.length} active opportunities are matching your profile.` : 'No active school matches yet.'}</p>
-                <button className="td-upgrade-btn" onClick={() => setActiveTab('jobs')}>View Jobs</button>
-              </motion.div>
-
-              <motion.div variants={cardVariants} className="td-shortcuts-section">
-                <h3>QUICK SHORTCUTS</h3>
-                <div className="td-shortcuts-row">
-                  <div className="td-shortcut">
-                    <FiFileText />
-                    <span>Update CV</span>
-                  </div>
-                  <div className="td-shortcut">
-                    <FiMessageSquare />
-                    <span>Messages</span>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </div>
             </>
           )}
 
@@ -904,7 +904,7 @@ export default function TeacherDashboard() {
                     {['Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'].map(level => (
                       <label key={level} className="td-checkbox-label" onClick={() => toggleEducation(level)}>
                         <div className={`td-checkbox-custom ${selectedEducation.includes(level) ? 'td-checked' : ''}`}>
-                          {selectedEducation.includes(level) && <FiCheck size={12}/>}
+                          {selectedEducation.includes(level) && <FiCheck size={12} />}
                         </div>
                         {level}
                       </label>
@@ -1012,8 +1012,8 @@ export default function TeacherDashboard() {
                             <div className="td-fc-icon-wrapper">
                               <div className={`td-fc-icon ${job.color || 'td-bg-darkgreen'}`}>
                                 {job.iconType === 'academic' ? <FiBook size={20} /> :
-                                 job.iconType === 'science' ? <FiZap size={20} /> :
-                                 <FiBriefcase size={20} />}
+                                  job.iconType === 'science' ? <FiZap size={20} /> :
+                                    <FiBriefcase size={20} />}
                               </div>
                             </div>
                             <div className="td-fc-main-info">
@@ -1038,7 +1038,7 @@ export default function TeacherDashboard() {
                             </div>
                             {job.featured && (
                               <div className="td-fc-badge-desktop">
-                                <span className="td-badge-featured"><FiCheck size={12}/> Featured</span>
+                                <span className="td-badge-featured"><FiCheck size={12} /> Featured</span>
                               </div>
                             )}
                           </div>
@@ -1100,7 +1100,7 @@ export default function TeacherDashboard() {
                   <div className="td-jd-badge-row">
                     {selectedJob.featured && <span className="td-jd-featured-tag">FEATURED ROLE</span>}
                   </div>
-                  
+
                   <div className="td-jd-header-block">
                     <div className="td-jd-logo-placeholder">
                       {selectedJob.employerImage ? (
@@ -1216,71 +1216,71 @@ export default function TeacherDashboard() {
                   </div>
                 </div>
 
-                  {/* Right Sidebar */}
-                  <div className="td-jd-sidebar">
-                    <div className="td-jd-apply-card">
-                      <div className="td-jd-deadline">
-                        <span>APPLICATION DEADLINE</span>
-                        <strong>{selectedJob.deadline || 'October 24th, 2024'}</strong>
-                      </div>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className="td-jd-apply-btn"
-                        onClick={() => {
-                          setShowApplyModal(false);
-                          setActiveTab('application-submitted');
+                {/* Right Sidebar */}
+                <div className="td-jd-sidebar">
+                  <div className="td-jd-apply-card">
+                    <div className="td-jd-deadline">
+                      <span>APPLICATION DEADLINE</span>
+                      <strong>{selectedJob.deadline || 'October 24th, 2024'}</strong>
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="td-jd-apply-btn"
+                      onClick={() => {
+                        setShowApplyModal(false);
+                        setActiveTab('application-submitted');
+                      }}
+                    >
+                      Apply Now
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className={`td-jd-save-btn ${selectedJob && savedJobIds.includes(selectedJob.id) ? 'td-jd-save-btn--saved' : ''}`}
+                      onClick={() => selectedJob && handleToggleSaveJob(selectedJob.id)}
+                    >
+                      <FiBookmark
+                        size={18}
+                        style={{
+                          strokeWidth: 2.5,
+                          fill: selectedJob && savedJobIds.includes(selectedJob.id) ? 'currentColor' : 'none'
                         }}
-                      >
-                        Apply Now
-                      </motion.button>
-                      <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        className={`td-jd-save-btn ${selectedJob && savedJobIds.includes(selectedJob.id) ? 'td-jd-save-btn--saved' : ''}`}
-                        onClick={() => selectedJob && handleToggleSaveJob(selectedJob.id)}
-                      >
-                        <FiBookmark
-                          size={18}
-                          style={{
-                            strokeWidth: 2.5,
-                            fill: selectedJob && savedJobIds.includes(selectedJob.id) ? 'currentColor' : 'none'
-                          }}
-                        />
-                        {selectedJob && savedJobIds.includes(selectedJob.id) ? 'Saved' : 'Save Job'}
-                      </motion.button>
-                      
-                      <div className="td-jd-share">
-                        <span>Share this role with your network:</span>
-                        <div className="td-jd-share-icons">
-                          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn">
-                            <FiShare2 size={18} style={{ strokeWidth: 2.2 }} />
-                          </motion.button>
-                          <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn">
-                            <FiLink size={18} style={{ strokeWidth: 2.2 }} />
-                          </motion.button>
-                        </div>
+                      />
+                      {selectedJob && savedJobIds.includes(selectedJob.id) ? 'Saved' : 'Save Job'}
+                    </motion.button>
+
+                    <div className="td-jd-share">
+                      <span>Share this role with your network:</span>
+                      <div className="td-jd-share-icons">
+                        <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn">
+                          <FiShare2 size={18} style={{ strokeWidth: 2.2 }} />
+                        </motion.button>
+                        <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn">
+                          <FiLink size={18} style={{ strokeWidth: 2.2 }} />
+                        </motion.button>
                       </div>
                     </div>
-
-                    {selectedJob.verifiedRecruiter && (
-                      <div className="td-jd-verified-card">
-                        <div className="td-jd-vc-header">
-                          <div className="td-jd-vc-badge-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                              <path d="M8.5 12L11 14.5L16 9.5" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                          </div>
-                          <div className="td-jd-vc-titles">
-                            <span>Verified</span>
-                            <span>Recruiter</span>
-                          </div>
-                        </div>
-                        <p>This school has a 94% response rate for applicants via Staffroom in the last 30 days.</p>
-                      </div>
-                    )}
                   </div>
+
+                  {selectedJob.verifiedRecruiter && (
+                    <div className="td-jd-verified-card">
+                      <div className="td-jd-vc-header">
+                        <div className="td-jd-vc-badge-icon">
+                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                            <path d="M8.5 12L11 14.5L16 9.5" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                          </svg>
+                        </div>
+                        <div className="td-jd-vc-titles">
+                          <span>Verified</span>
+                          <span>Recruiter</span>
+                        </div>
+                      </div>
+                      <p>This school has a 94% response rate for applicants via Staffroom in the last 30 days.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
@@ -1301,8 +1301,8 @@ export default function TeacherDashboard() {
                       <img src={selectedJob.employerImage} alt="School Logo" className="td-app-logo-img" />
                     ) : (
                       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M12 2L4 6V11C4 16.55 7.42 21.74 12 23C16.58 21.74 20 16.55 20 11V6L12 2Z" stroke="#D97706" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
-                        <path d="M9 12L11 14L15 10" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M12 2L4 6V11C4 16.55 7.42 21.74 12 23C16.58 21.74 20 16.55 20 11V6L12 2Z" stroke="#D97706" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                        <path d="M9 12L11 14L15 10" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </div>
@@ -1514,7 +1514,7 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                     </div>
-                    
+
                     <div className="td-app-card-footer">
                       <div className="td-app-footer-left">
                         <span className="td-app-date"><FiCalendar size={14} /> Applied: {app.appliedDate}</span>
@@ -2099,8 +2099,8 @@ export default function TeacherDashboard() {
                         <div className="td-profile-name-row">
                           <h2>{profileFullName}</h2>
                           <svg className="td-profile-verified-badge" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <path d="M8.5 12L11 14.5L16 9.5" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            <path d="M8.5 12L11 14.5L16 9.5" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
                         <p className="td-profile-role-title">{profileRoleTitle}</p>
@@ -2111,15 +2111,15 @@ export default function TeacherDashboard() {
                           </div>
                           <div className="td-profile-meta-item">
                             <svg className="td-profile-meta-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                              <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                              <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
                             </svg>
                             <span>{profYearsExp}</span>
                           </div>
                           <div className="td-profile-trcn-pill" onClick={() => setProfileSubTab('trcn-certification')} style={{ cursor: 'pointer' }}>
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z"/>
-                              <path d="M9 12l2 2 4-4"/>
+                              <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" />
+                              <path d="M9 12l2 2 4-4" />
                             </svg>
                             <span>TRCN Verified</span>
                           </div>
@@ -2168,8 +2168,8 @@ export default function TeacherDashboard() {
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
                           </svg>
                         </div>
                         <FiArrowRight size={18} className="td-psc-arrow" />
@@ -2182,9 +2182,9 @@ export default function TeacherDashboard() {
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-                            <path d="M3 3v5h5"/>
-                            <path d="M12 7v5l4 2"/>
+                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                            <path d="M3 3v5h5" />
+                            <path d="M12 7v5l4 2" />
                           </svg>
                         </div>
                         <FiArrowRight size={18} className="td-psc-arrow" />
@@ -2197,8 +2197,8 @@ export default function TeacherDashboard() {
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-green">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z"/>
-                            <path d="M9 12l2 2 4-4"/>
+                            <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" />
+                            <path d="M9 12l2 2 4-4" />
                           </svg>
                         </div>
                         <FiArrowRight size={18} className="td-psc-arrow" />
@@ -2505,8 +2505,8 @@ export default function TeacherDashboard() {
                                 </div>
                                 <div className="td-prof-exp-cap-badge">
                                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                    <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                                    <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
                                   </svg>
                                 </div>
                               </div>
@@ -2521,8 +2521,8 @@ export default function TeacherDashboard() {
                             <div className="td-prof-card-head">
                               <div className="td-prof-card-icon-wrap">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                  <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                                  <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
                                 </svg>
                               </div>
                               <h2>Education</h2>
@@ -2532,7 +2532,7 @@ export default function TeacherDashboard() {
                               <div key={index} className="td-prof-edu-item">
                                 <div className="td-prof-edu-icon-box">
                                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z"/>
+                                    <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z" />
                                   </svg>
                                 </div>
                                 <div className="td-prof-edu-info">
@@ -2549,8 +2549,8 @@ export default function TeacherDashboard() {
                             <div className="td-prof-card-head">
                               <div className="td-prof-card-icon-wrap">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="8" r="7"/>
-                                  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                                  <circle cx="12" cy="8" r="7" />
+                                  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
                                 </svg>
                               </div>
                               <h2>Certification & Documents</h2>
@@ -2559,8 +2559,8 @@ export default function TeacherDashboard() {
                             <div className="td-prof-trcn-box">
                               <div className="td-prof-trcn-left">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                                  <path d="m9 12 2 2 4-4"/>
+                                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                                  <path d="m9 12 2 2 4-4" />
                                 </svg>
                                 <div>
                                   <h4>{profileState?.trcn_number ? 'TRCN Registered Educator' : 'TRCN certificate not provided'}</h4>
@@ -2630,8 +2630,8 @@ export default function TeacherDashboard() {
                             {/* Degree Icon */}
                             <div className="td-edu-icon-badge">
                               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                                <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5"/>
+                                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+                                <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
                               </svg>
                             </div>
 
@@ -2640,7 +2640,7 @@ export default function TeacherDashboard() {
                               <h2 className="td-edu-degree">{edu.degree}</h2>
                               <div className="td-edu-inst-row">
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z"/>
+                                  <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z" />
                                 </svg>
                                 <span>{edu.institution}</span>
                               </div>
@@ -2666,9 +2666,9 @@ export default function TeacherDashboard() {
                         >
                           <div className="td-edu-add-icon-circle">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10"/>
-                              <line x1="12" y1="8" x2="12" y2="16"/>
-                              <line x1="8" y1="12" x2="16" y2="12"/>
+                              <circle cx="12" cy="12" r="10" />
+                              <line x1="12" y1="8" x2="12" y2="16" />
+                              <line x1="8" y1="12" x2="16" y2="12" />
                             </svg>
                           </div>
                           <h3 className="td-edu-add-title">Add Qualification</h3>
@@ -3107,8 +3107,8 @@ export default function TeacherDashboard() {
                             <div className="td-trcn-why-header">
                               <div className="td-trcn-why-icon-box">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <circle cx="12" cy="8" r="7"/>
-                                  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+                                  <circle cx="12" cy="8" r="7" />
+                                  <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
                                 </svg>
                               </div>
                               <h2>Why this matters</h2>
@@ -3178,11 +3178,11 @@ export default function TeacherDashboard() {
                             <div className="td-cv-active-header">
                               <div className="td-cv-title-wrap">
                                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                  <polyline points="14 2 14 8 20 8"/>
-                                  <line x1="16" y1="13" x2="8" y2="13"/>
-                                  <line x1="16" y1="17" x2="8" y2="17"/>
-                                  <polyline points="10 9 9 9 8 9"/>
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <polyline points="14 2 14 8 20 8" />
+                                  <line x1="16" y1="13" x2="8" y2="13" />
+                                  <line x1="16" y1="17" x2="8" y2="17" />
+                                  <polyline points="10 9 9 9 8 9" />
                                 </svg>
                                 <h2>Current Active Resume</h2>
                               </div>
@@ -3196,8 +3196,8 @@ export default function TeacherDashboard() {
                             <div className="td-cv-file-box">
                               <div className="td-cv-pdf-icon-box">
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                  <polyline points="14 2 14 8 20 8"/>
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                  <polyline points="14 2 14 8 20 8" />
                                   <text x="7.5" y="17" fontSize="6.5" fontWeight="bold" fill="#15803D" stroke="none" fontFamily="sans-serif">PDF</text>
                                 </svg>
                               </div>
@@ -3233,8 +3233,8 @@ export default function TeacherDashboard() {
                           {/* Privacy Assured Card */}
                           <div className="td-cv-privacy-card">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1E40AF" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="td-cv-shield-icon">
-                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                              <path d="m9 12 2 2 4-4"/>
+                              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                              <path d="m9 12 2 2 4-4" />
                             </svg>
                             <div className="td-cv-privacy-info">
                               <h3>Privacy Assured</h3>
@@ -3266,10 +3266,10 @@ export default function TeacherDashboard() {
                               />
                               <div className="td-cv-cloud-icon-box">
                                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="16 16 12 12 8 16"/>
-                                  <line x1="12" y1="12" x2="12" y2="21"/>
-                                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>
-                                  <polyline points="16 16 12 12 8 16"/>
+                                  <polyline points="16 16 12 12 8 16" />
+                                  <line x1="12" y1="12" x2="12" y2="21" />
+                                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+                                  <polyline points="16 16 12 12 8 16" />
                                 </svg>
                               </div>
                               <strong className="td-cv-drop-prompt">Drag and drop your new CV here</strong>
@@ -3571,7 +3571,7 @@ export default function TeacherDashboard() {
                 </span>
                 Page in progress
               </div>
-              
+
               <div className="mb-10">
                 <div className="relative mx-auto w-48 h-48">
                   <div className="absolute inset-0 rounded-full border-4 border-dashed border-[#1CCB43]/20 animate-spin" style={{ animationDuration: '20s' }}></div>
