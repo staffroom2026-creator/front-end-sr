@@ -170,6 +170,13 @@ export default function AdminDashboard() {
     setActiveTab("post-job");
   };
 
+  const openJobDetails = (job) => {
+    setSelectedJob(job);
+    setSelectedApplicant(null);
+    setJobDetailView("detail");
+    setOpenJobMenuId(null);
+  };
+
   const handleTabChange = (nextTab) => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
     setActiveTab(nextTab);
@@ -1264,7 +1271,19 @@ export default function AdminDashboard() {
                     : status.charAt(0).toUpperCase() + status.slice(1);
               const applicantCount = (applicantsByJob[jobId] || []).length;
               return (
-                <article className="school-job-row" key={jobId}>
+                <article
+                  className="school-job-row"
+                  key={jobId}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openJobDetails(job)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      openJobDetails(job);
+                    }
+                  }}
+                >
                   <div
                     className={`school-job-row-icon school-job-row-icon--${status}`}
                   >
@@ -1275,10 +1294,9 @@ export default function AdminDashboard() {
                       <button
                         type="button"
                         className="school-job-row-title-button"
-                        onClick={() => {
-                          setSelectedJob(job);
-                          setSelectedApplicant(null);
-                          setJobDetailView("detail");
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          openJobDetails(job);
                         }}
                       >
                         {job.title || "Teaching role"}
@@ -1377,10 +1395,9 @@ export default function AdminDashboard() {
                       <>
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedJob(job);
-                            setSelectedApplicant(null);
-                            setJobDetailView("applicants");
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openJobDetails(job);
                           }}
                           className="school-job-view"
                         >
