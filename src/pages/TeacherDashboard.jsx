@@ -45,6 +45,11 @@ const normalizeProfileValue = (value, fallback = 'Not provided') => {
   return value;
 };
 
+const normalizeJobId = (value, fallback = '') => {
+  if (value === null || value === undefined || value === '') return fallback;
+  return String(value).trim();
+};
+
 const normalizeJobData = (job = {}, index = 0) => {
   // Extract numeric salary value
   let salaryValue = Number(job.salary || job.salary_monthly || job.salaryMonthly || 0);
@@ -65,8 +70,11 @@ const normalizeJobData = (job = {}, index = 0) => {
   const timePosted = job.timePosted || job.created_at || job.posted_at || new Date().toISOString();
   const createdDate = timePosted ? new Date(timePosted) : new Date();
 
+  const realJobId = normalizeJobId(job.job_id || job.id || index, String(index));
+
   return {
-    id: job.id || job.job_id || index,
+    id: realJobId,
+    job_id: realJobId,
     title: job.title || job.role || job.position || 'Teaching Opportunity',
     school: job.school || job.school_name || job.employer || 'School',
     location: job.location || job.city || job.state || 'Nigeria',
@@ -266,16 +274,23 @@ export default function TeacherDashboard() {
   };
 
   const handleToggleSaveJob = async (jobId) => {
+    const realJobId = normalizeJobId(jobId);
+
+    if (!realJobId) {
+      console.error('Save job failed: missing job id', jobId);
+      return;
+    }
+
     try {
-      if (savedJobIds.includes(jobId)) {
-        await featureService.deleteSavedJob(jobId);
-        setSavedJobIds(prev => prev.filter(id => id !== jobId));
+      if (savedJobIds.includes(realJobId)) {
+        await featureService.deleteSavedJob(realJobId);
+        setSavedJobIds(prev => prev.filter(id => id !== realJobId));
       } else {
-        await featureService.saveJob(jobId);
-        setSavedJobIds(prev => [...prev, jobId]);
+        await featureService.saveJob(realJobId);
+        setSavedJobIds(prev => [...prev, realJobId]);
       }
     } catch (err) {
-      console.error(apiErrorMessage(err, 'Unable to update saved jobs.'));
+      console.error('Save job failed:', realJobId, apiErrorMessage(err, 'Unable to update saved jobs.'));
     }
   };
 
@@ -306,7 +321,9 @@ export default function TeacherDashboard() {
       const profileData = profileRes?.data?.data || {};
       const profile = profileData?.profile || {};
       const notificationList = notificationsRes?.data?.data?.notifications || notificationsRes?.data?.notifications || [];
-      const savedJobs = (savedRes?.data?.data?.saved_jobs || savedRes?.data?.saved_jobs || []).map(item => item.job_id);
+      const savedJobs = (savedRes?.data?.data?.saved_jobs || savedRes?.data?.saved_jobs || [])
+        .map(item => normalizeJobId(item.job_id ?? item.id))
+        .filter(Boolean);
       const { firstName, lastName } = splitFullName(profileData?.user?.full_name || user?.full_name || 'Teacher');
 
       setJobs(jobList);
@@ -510,26 +527,31 @@ export default function TeacherDashboard() {
     setApplicationStep(prev => Math.max(prev - 1, 1));
   };
 
-  const handleSubmitApplication = async (e) => {
-    e.preventDefault();
-
+  const submitJobApplication = async ({ customNote } = {}) => {
     if (!selectedJob) {
       setApplicationError('Please select a job before applying.');
       return;
     }
 
+    const jobId = normalizeJobId(selectedJob.job_id || selectedJob.id);
+    const coverLetter = customNote || applicationForm.motivation || applicationNote || 'I am highly interested in this role.';
+
     try {
       setApplicationError('');
-      await applicationService.applyToJob(selectedJob.id, {
-        cover_letter: applicationForm.motivation || applicationNote || 'I am highly interested in this role.'
+      await applicationService.applyToJob(jobId, {
+        cover_letter: coverLetter
       });
 
       setShowApplyModal(false);
       setActiveTab('application-submitted');
-      navigate('/application-submitted');
     } catch (err) {
       setApplicationError(apiErrorMessage(err, 'Unable to submit your application right now.'));
     }
+  };
+
+  const handleSubmitApplication = async (e) => {
+    e.preventDefault();
+    await submitJobApplication();
   };
 
   const handleNoteChange = (e) => {
@@ -559,6 +581,7 @@ export default function TeacherDashboard() {
   const [sortBy, setSortBy] = useState('Newest First');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [displayedJobsCount, setDisplayedJobsCount] = useState(10);
+  const [showSavedOnly, setShowSavedOnly] = useState(false);
 
   // Filter Helpers
   const toggleEducation = (level) => {
@@ -598,6 +621,12 @@ export default function TeacherDashboard() {
     if (selectedEducation.length > 0 && !selectedEducation.includes(job.education)) return false;
     if (selectedJobTypes.length > 0 && !selectedJobTypes.some(type => String(job.type).toLowerCase().includes(type.toLowerCase()))) return false;
     if (Number(job.salaryMonthly || 0) < Number(salaryRange || 0)) return false;
+
+    // Filter by saved jobs if showSavedOnly is true
+    if (showSavedOnly) {
+      const jobId = normalizeJobId(job.job_id || job.id);
+      if (!savedJobIds.includes(jobId)) return false;
+    }
 
     return true;
   }).sort((a, b) => {
@@ -844,7 +873,16 @@ export default function TeacherDashboard() {
 
                     <div className="td-job-list">
                       {dashboardJobs.length > 0 ? dashboardJobs.map((job) => (
-                        <motion.div key={job.id} variants={cardVariants} className="td-job-item">
+                        <motion.div
+                          key={job.id}
+                          variants={cardVariants}
+                          className="td-job-item"
+                          onClick={() => {
+                            setActiveTab('jobs');
+                            setSelectedJob(job);
+                          }}
+                          style={{ cursor: 'pointer' }}
+                        >
                           <div className="td-job-header-row">
                             <div className="td-job-avatar td-job-avatar--math">
                               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -878,7 +916,17 @@ export default function TeacherDashboard() {
 
                           <div className="td-job-footer">
                             <span className="td-job-salary">{job.salaryStr || 'Salary available on request'}</span>
-                            <button type="button" className="td-quick-apply" onClick={() => { setActiveTab('jobs'); setSelectedJob(job); }}>Quick Apply →</button>
+                            <button
+                              type="button"
+                              className="td-quick-apply"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveTab('jobs');
+                                setSelectedJob(job);
+                              }}
+                            >
+                              Quick Apply →
+                            </button>
                           </div>
                         </motion.div>
                       )) : (
@@ -960,7 +1008,13 @@ export default function TeacherDashboard() {
                     <h1>Find your next <span className="td-highlight">teaching milestone.</span></h1>
                     <p>Connecting Nigeria's finest educators with prestigious academic institutions.</p>
                   </div>
-                  <button className="td-saved-jobs-btn">
+                  <button 
+                    className={`td-saved-jobs-btn ${showSavedOnly ? 'td-saved-jobs-btn--active' : ''}`}
+                    onClick={() => {
+                      setShowSavedOnly(!showSavedOnly);
+                      setDisplayedJobsCount(10);
+                    }}
+                  >
                     <FiBookmark size={14} /> Saved Jobs
                   </button>
                 </div>
@@ -1083,7 +1137,13 @@ export default function TeacherDashboard() {
                         <h3>Recommended for you</h3>
                         <span>124 JOBS FOUND</span>
                       </div>
-                      <button className="td-mobile-saved-btn">
+                      <button 
+                        className={`td-mobile-saved-btn ${showSavedOnly ? 'td-mobile-saved-btn--active' : ''}`}
+                        onClick={() => {
+                          setShowSavedOnly(!showSavedOnly);
+                          setDisplayedJobsCount(10);
+                        }}
+                      >
                         <FiBookmark size={14} /> Saved
                       </button>
                     </div>
@@ -1147,28 +1207,30 @@ export default function TeacherDashboard() {
                             <div className="td-fc-main-info">
                               <div className="td-fc-title-row">
                                 <h3>{job.title}</h3>
-                                <motion.button
-                                  whileHover={{ scale: 1.1 }}
-                                  whileTap={{ scale: 0.9 }}
-                                  className={`td-bookmark-btn ${savedJobIds.includes(job.id) ? 'td-bookmark-btn--saved' : ''}`}
-                                  onClick={() => handleToggleSaveJob(job.id)}
-                                  title={savedJobIds.includes(job.id) ? 'Remove from saved' : 'Save job'}
-                                >
-                                  <FiBookmark
-                                    size={18}
-                                    style={{ fill: savedJobIds.includes(job.id) ? '#15803D' : 'none' }}
-                                  />
-                                </motion.button>
+                                <div className="td-fc-title-actions">
+                                  <motion.button
+                                    whileHover={{ scale: 1.1 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    className={`td-bookmark-btn ${savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'td-bookmark-btn--saved' : ''}`}
+                                    onClick={() => handleToggleSaveJob(job.job_id || job.id)}
+                                    title={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved' : 'Save job'}
+                                  >
+                                    <FiBookmark
+                                      size={18}
+                                      style={{ fill: savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? '#15803D' : 'none' }}
+                                    />
+                                  </motion.button>
+                                  {job.featured && (
+                                    <div className="td-fc-badge-desktop">
+                                      <span className="td-badge-featured"><FiCheck size={12} /> Featured</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                               <p className="td-fc-school">
                                 {job.school} {job.location && <><span className="td-dot">•</span> {job.location}</>}
                               </p>
                             </div>
-                            {job.featured && (
-                              <div className="td-fc-badge-desktop">
-                                <span className="td-badge-featured"><FiCheck size={12} /> Featured</span>
-                              </div>
-                            )}
                           </div>
 
                           {/* Meta row */}
@@ -1360,27 +1422,26 @@ export default function TeacherDashboard() {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       className="td-jd-apply-btn"
-                      onClick={() => {
-                        setShowApplyModal(false);
-                        setActiveTab('application-submitted');
-                      }}
+                      onClick={() => submitJobApplication({
+                        customNote: applicationForm.motivation || applicationNote || 'I am highly interested in this role.'
+                      })}
                     >
                       Apply Now
                     </motion.button>
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`td-jd-save-btn ${selectedJob && savedJobIds.includes(selectedJob.id) ? 'td-jd-save-btn--saved' : ''}`}
-                      onClick={() => selectedJob && handleToggleSaveJob(selectedJob.id)}
+                      className={`td-jd-save-btn ${selectedJob && savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'td-jd-save-btn--saved' : ''}`}
+                      onClick={() => selectedJob && handleToggleSaveJob(selectedJob.job_id || selectedJob.id)}
                     >
                       <FiBookmark
                         size={18}
                         style={{
                           strokeWidth: 2.5,
-                          fill: selectedJob && savedJobIds.includes(selectedJob.id) ? 'currentColor' : 'none'
+                          fill: selectedJob && savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'currentColor' : 'none'
                         }}
                       />
-                      {selectedJob && savedJobIds.includes(selectedJob.id) ? 'Saved' : 'Save Job'}
+                      {selectedJob && savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'Saved' : 'Save Job'}
                     </motion.button>
 
                     <div className="td-jd-share">
@@ -4951,6 +5012,12 @@ export default function TeacherDashboard() {
           transition: background 0.15s ease;
         }
         .td-saved-jobs-btn:hover { background: #BBF7D0; }
+        .td-saved-jobs-btn--active {
+          background: #BBF7D0;
+          color: #15803D;
+          font-weight: 700;
+        }
+        .td-saved-jobs-btn--active:hover { background: #86EFAC; }
 
         /* Search Bar */
         .td-desktop-search {
@@ -5115,10 +5182,17 @@ export default function TeacherDashboard() {
         .td-dot { margin: 0 3px; color: #CCC; }
         
         /* Featured badge */
-        .td-fc-badge-desktop { 
-          position: absolute;
-          top: 10px;
-          right: 14px;
+        .td-fc-title-actions {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 6px;
+          margin-left: 8px;
+          flex-shrink: 0;
+        }
+        .td-fc-badge-desktop {
+          display: flex;
+          justify-content: flex-end;
           flex-shrink: 0;
         }
         .td-badge-featured {
@@ -5370,6 +5444,18 @@ export default function TeacherDashboard() {
             gap: 6px;
             cursor: pointer;
             font-family: inherit;
+            transition: all 0.3s ease;
+          }
+          .td-mobile-saved-btn:hover {
+            background: #BBF7D0;
+            transform: scale(1.05);
+          }
+          .td-mobile-saved-btn--active {
+            background: #15803D;
+            color: #DCFCE7;
+          }
+          .td-mobile-saved-btn--active:hover {
+            background: #166534;
           }
 
           /* Job Cards list on Mobile */
@@ -5387,6 +5473,9 @@ export default function TeacherDashboard() {
             display: flex;
             flex-direction: column;
             gap: 12px;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
           }
           .td-feed-card-standard .td-fc-header {
             display: flex;
@@ -5487,6 +5576,7 @@ export default function TeacherDashboard() {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: nowrap;
           }
           .td-feed-card-standard .td-fc-salary {
             font-size: 17px;
@@ -5891,6 +5981,176 @@ export default function TeacherDashboard() {
           }
           .td-bottomnav-tab--active .td-bottomnav-label {
             color: #1CCB43;
+          }
+        }
+
+        /* ═══════════════════════════════════════
+           EXTRA SMALL SCREENS ≤ 360px
+        ═══════════════════════════════════════ */
+        @media (max-width: 360px) {
+          /* Content spacing */
+          .td-content { padding: 20px 16px; }
+
+          /* Hero Section */
+          .td-jobs-hero { margin-bottom: 18px; }
+          .td-jobs-hero h1 { font-size: 26px; font-weight: 800; margin-bottom: 14px; }
+          .td-jobs-hero-top { flex-direction: column-reverse; gap: 14px; }
+
+          /* Saved Jobs Button */
+          .td-saved-jobs-btn {
+            width: 100%;
+            justify-content: center;
+            padding: 8px 14px;
+            font-size: 12px;
+          }
+
+          /* Search Bar Mobile */
+          .td-search-box-mobile {
+            padding: 11px 16px;
+            margin-bottom: 12px;
+            border-radius: 40px;
+          }
+          .td-search-box-mobile input {
+            margin-left: 8px;
+            font-size: 13px;
+          }
+
+          /* Filter Chips */
+          .td-mobile-filter-chips {
+            gap: 8px;
+            margin-bottom: 14px;
+          }
+          .td-filter-chip {
+            padding: 7px 14px;
+            font-size: 12px;
+          }
+
+          /* Job Cards */
+          .td-feed-card-standard {
+            padding: 16px 14px;
+            border-radius: 20px;
+            gap: 10px;
+            margin-bottom: 12px;
+            max-width: 100%;
+            width: 100%;
+            box-sizing: border-box;
+          }
+
+          /* Card Header */
+          .td-feed-card-standard .td-fc-header {
+            gap: 10px;
+          }
+          .td-feed-card-standard .td-fc-icon-wrapper {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+          }
+          .td-feed-card-standard .td-fc-icon {
+            width: 28px;
+            height: 28px;
+          }
+
+          /* Title Row */
+          .td-feed-card-standard .td-fc-title-row {
+            gap: 6px;
+          }
+          .td-feed-card-standard .td-fc-title-row h3 {
+            font-size: 14px;
+            line-height: 1.3;
+          }
+          .td-feed-card-standard .td-bookmark-btn {
+            margin-left: 0;
+            min-width: 24px;
+          }
+
+          /* School Info */
+          .td-feed-card-standard .td-fc-school {
+            font-size: 12px;
+            margin-bottom: 4px;
+          }
+
+          /* Meta Info */
+          .td-feed-card-standard .td-fc-meta {
+            gap: 10px;
+            margin-bottom: 4px;
+          }
+          .td-feed-card-standard .td-fc-meta-item {
+            font-size: 11px;
+            gap: 4px;
+          }
+
+          /* Salary & Footer */
+          .td-feed-card-standard .td-fc-footer {
+            gap: 8px;
+            flex-wrap: wrap !important;
+          }
+          .td-feed-card-standard .td-fc-salary {
+            font-size: 15px;
+            flex-basis: auto;
+          }
+          .td-feed-card-standard .td-fc-salary span {
+            font-size: 10px;
+          }
+          .td-feed-card-standard .td-fc-action {
+            padding: 8px 16px;
+            font-size: 12px;
+            flex-grow: 1;
+            min-width: 100px;
+          }
+
+          /* Hot Card */
+          .td-feed-card-hot {
+            padding: 18px 16px;
+            gap: 6px;
+          }
+          .td-hot-title {
+            font-size: 16px;
+            margin-bottom: 2px;
+          }
+          .td-hot-school {
+            font-size: 12px;
+          }
+          .td-hot-footer {
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+          .td-hot-salary-value {
+            font-size: 16px;
+          }
+          .td-hot-action {
+            padding: 8px 18px;
+            font-size: 12px;
+            flex-grow: 1;
+          }
+
+          /* Mobile showing info */
+          .td-mobile-showing {
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+          .td-mobile-rec-info h3 {
+            font-size: 15px;
+          }
+
+          /* Load More Button */
+          .td-load-more-btn {
+            padding: 10px 20px;
+            font-size: 12px;
+          }
+
+          /* Bottom Nav */
+          .td-mobile-bottomnav {
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            padding: 6px 0;
+          }
+          .td-bottomnav-tab {
+            padding: 4px 8px;
+            gap: 2px;
+          }
+          .td-bottomnav-label {
+            font-size: 8px;
           }
         }
 
