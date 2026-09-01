@@ -91,15 +91,15 @@ export default function AdminDashboard() {
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [isSchoolNameEditing, setIsSchoolNameEditing] = useState(false);
-  const [schoolNameValue, setSchoolNameValue] = useState("BrightMind Academy");
+  const [schoolNameValue, setSchoolNameValue] = useState("");
   const [isEmailEditing, setIsEmailEditing] = useState(false);
-  const [emailValue, setEmailValue] = useState("admin@brightmind.edu.ng");
+  const [emailValue, setEmailValue] = useState("");
   const [isPhoneEditing, setIsPhoneEditing] = useState(false);
-  const [phoneValue, setPhoneValue] = useState("+234 800 123 4567");
+  const [phoneValue, setPhoneValue] = useState("");
   const [isWebsiteEditing, setIsWebsiteEditing] = useState(false);
-  const [websiteValue, setWebsiteValue] = useState("https://www.brightmind.edu.ng");
+  const [websiteValue, setWebsiteValue] = useState("");
   const [isAddressEditing, setIsAddressEditing] = useState(false);
-  const [addressValue, setAddressValue] = useState("14 Adeola Okedun Street, Victoria Island\nLagos, Nigeria\nPostal: 101241");
+  const [addressValue, setAddressValue] = useState("");
   const schoolLogoInputRef = useRef(null);
   const schoolNameInputRef = useRef(null);
   const emailInputRef = useRef(null);
@@ -124,13 +124,12 @@ export default function AdminDashboard() {
   const [shortlistForm, setShortlistForm] = useState({
     interviewType: "",
     responseTemplate: "",
-    candidateMessage:
-      "Dear Elena,\n\nWe are pleased to inform you that you have been shortlisted for the Senior Literature Educator position. We would like to invite you for an interview to discuss your experience and pedagogical approach in further detail.\n\nKind regards,\nStaffroom Team",
+    candidateMessage: "Dear Candidate,\n\nYou have been shortlisted for the next stage of the selection process. Please review the interview details and respond at your earliest convenience.\n\nKind regards,\nStaffroom Team",
     saveTemplate: true,
-    interviewDate: "2024-05-24",
-    interviewTime: "10:30",
-    interviewVenue: "BrightMind Academy, 24 Airport Road, GRA, Benin City, Edo State",
-    interviewLink: "https://meet.google.com/abc-defg-hij",
+    interviewDate: "",
+    interviewTime: "",
+    interviewVenue: "",
+    interviewLink: "",
     recipientName: "",
     recipientPhone: "",
   });
@@ -564,7 +563,7 @@ export default function AdminDashboard() {
       <div className="school-overview">
         <section className="school-overview-hero">
           <div className="school-welcome-panel">
-            <h2>Good morning, {user?.full_name || "BrightMind Academy"}</h2>
+            <h2>Good morning, {user?.full_name || "School"}</h2>
             <p>
               Manage your school's hiring and find the right teachers for your
               team.
@@ -638,13 +637,7 @@ export default function AdminDashboard() {
             </div>
             {(allApplicants.length
               ? allApplicants.slice(0, 3)
-              : [
-                  {
-                    application_id: "empty",
-                    teacher_name: "No applicants yet.",
-                    status: "Waiting",
-                  },
-                ]
+              : []
             ).map((app, index) => {
               const status = app.status || "New";
               return (
@@ -1934,40 +1927,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     }
 
     const jobId = job.job_id || job.id;
-    const applicants = (applicantsByJob[jobId] || []).length
-      ? applicantsByJob[jobId]
-      : [
-          {
-            application_id: "demo-app-1",
-            teacher_name: "Tunde Bello",
-            teacher_email: "tunde.bello@example.com",
-            status: "shortlisted",
-            qualification: "M.Ed",
-            location: "Lagos, NG",
-            experience: "8 yrs exp",
-            trcn: true,
-          },
-          {
-            application_id: "demo-app-2",
-            teacher_name: "Chioma Okoro",
-            teacher_email: "chioma.okoro@example.com",
-            status: "under review",
-            qualification: "B.Sc Math",
-            location: "Abuja, NG",
-            experience: "3 yrs exp",
-            trcn: false,
-          },
-          {
-            application_id: "demo-app-3",
-            teacher_name: "Adeola Johnson",
-            teacher_email: "adeola.johnson@example.com",
-            status: "shortlisted",
-            qualification: "PhD Education",
-            location: "Ibadan, NG",
-            experience: "15 yrs exp",
-            trcn: true,
-          },
-        ];
+    const applicants = applicantsByJob[jobId] || [];
 
     const statusFilters = [
       "All (24)",
@@ -2308,9 +2268,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
   };
 
   const renderTeacherInviteModal = () => {
-    const teacherName = selectedTeacherProfile?.name || "Tunde Bello";
-    const teacherRole = selectedTeacherProfile?.role || "Senior Mathematics Educator";
-    const teacherAvailability = selectedTeacherProfile?.experience || "10+ Yrs Exp";
+    const teacherName = selectedTeacherProfile?.name || "Teacher";
+    const teacherRole = selectedTeacherProfile?.role || "Teacher";
+    const teacherAvailability = selectedTeacherProfile?.experience || "Experience available";
 
     return (
       <div
@@ -2330,7 +2290,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           </h3>
 
           <p className="school-teacher-invite-subtitle">
-            Send an invitation to <strong>{teacherName}</strong> on behalf of <strong>BrightMind Academy</strong>.
+            Send an invitation to <strong>{teacherName}</strong> on behalf of <strong>{user?.school_name || user?.full_name || "Your school"}</strong>.
           </p>
 
           <div className="school-teacher-invite-profile-card">
@@ -2366,7 +2326,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                   />
                 </svg>
               </span>
-              <span>BrightMind Academy</span>
+              <span>{user?.school_name || user?.full_name || "Your school"}</span>
             </div>
           </div>
 
@@ -2406,7 +2366,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     const isAlreadyShortlisted =
       String(selectedApplicant?.status || "").toLowerCase() === "shortlisted";
     const modalSubtitle =
-      selectedApplicant?.teacher_name || "Dr. Elena Sterling";
+      selectedApplicant?.teacher_name || "Applicant";
 
     return (
       <div
@@ -2844,7 +2804,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
   };
 
   const renderShortlistSuccessModal = () => {
-    const successName = selectedApplicant?.teacher_name || "Tunde Bello";
+    const successName = selectedApplicant?.teacher_name || "Candidate";
 
     return (
       <div
@@ -3292,7 +3252,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               <div className="admin-topbar-user">
                 <strong>{user?.admin_name || "Admin User"}</strong>
                 <span>
-                  {user?.school_name || user?.full_name || "BrightMind Academy"}
+                  {user?.school_name || user?.full_name || "School"}
                 </span>
               </div>
               <button
@@ -3810,7 +3770,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                             <div>
                               <h1 className="admin-settings-subpage-title">School Information</h1>
                               <p className="admin-settings-subpage-subtitle admin-school-info-subtitle">
-                                Manage the core organizational details and public-facing contact information for BrightMind Academy.
+                                Manage the core organizational details and public-facing contact information for your school.
                               </p>
                             </div>
                             <button type="button" className="admin-school-save-btn">
@@ -4049,7 +4009,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                 </div>
 
                                 <div className="admin-school-side-body">
-                                  <p>BrightMind Academy is fully verified with the Ministry of Education.</p>
+                                  <p>Your school is fully verified with the relevant education authority.</p>
                                   <div className="admin-school-status-row">
                                     <span className="admin-school-status-dot" />
                                     Active Status

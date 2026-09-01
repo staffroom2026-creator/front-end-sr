@@ -17,7 +17,19 @@ StaffRoom is a premier teaching job marketplace API built on a clean, custom PHP
 - **String User Identifiers (`user_id`)**: The platform strictly uses `user_id` (e.g., `USR-2026-000001`) as the primary public and database identifier across all entities. Auto-increment integer `id` keys (`users.id`) are never exposed or relied upon in business logic or API responses.
 - **6-Digit Email Verification Code**: When a user registers, a secure 6-digit verification code is generated, hashed with bcrypt (`password_hash`), stored in the database with a 10-minute expiration, and sent to the recipient's email address via PHPMailer (`SMTP/SSL`). Users enter this code on the frontend (`POST /auth/verify-email`) before login is permitted.
 - **Zero Password Exposure**: Passwords, hashed verification codes, and internal auto-increment IDs are excluded (`unset`) from all user object representations across all endpoints.
-- **Stateless JWT Authentication**: Authenticated sessions rely on JSON Web Tokens (`JWT`) signed securely with `HMAC-SHA256` and expire after 24 hours (`JWT_EXPIRES_IN=1d`).
+- **Stateless JWT Authentication**: Authenticated sessions rely on JSON Web Tokens (`JWT`) signed securely with `HMAC-SHA256` and expire according to `JWT_EXPIRES_IN` (the example configuration is 30 days).
+
+### Demo Database Accounts
+
+The supplied SQL dump includes verified demo accounts for immediate testing:
+
+| Role | Email | Password |
+|---|---|---|
+| Teacher | `teacher@staffroom.test` | `TeacherPass123!` |
+| School | `school@staffroom.test` | `SchoolPass123!` |
+| Admin | `admin@staffroom.test` | `AdminPass123!` |
+
+These credentials are for local/development testing only and must not be used in production.
 
 ---
 
@@ -313,11 +325,11 @@ Deletes the currently authenticated user's account using a soft delete.
 ## 6. Jobs Endpoints
 
 ### `GET /jobs`
-Retrieves a paginated list of active job vacancies. Supports optional query filters by `subject` and `state`.
+Retrieves open job vacancies. Teachers can view all open jobs; schools can view only their own open jobs. Supports optional query filters by `subject` and `state`.
 - **Method:** `GET`
 - **URL:** `https://api.staffroomng.com/api/jobs?subject=Mathematics&state=Lagos`
-- **Authentication Requirement:** No (Public)
-- **Allowed Role:** Any
+- **Authentication Requirement:** Yes (`Authorization: Bearer <token>`)
+- **Allowed Role:** `teacher` or `school`
 
 #### Sample Success Response (`200 OK`)
 ```json
@@ -336,7 +348,7 @@ Retrieves a paginated list of active job vacancies. Supports optional query filt
         "salary_range": "100k-150k",
         "location": "Lagos",
         "requirements": "BSc Mathematics with at least 3 years teaching experience.",
-        "status": "active",
+        "status": "open",
         "created_at": "2026-07-10 00:10:00",
         "updated_at": "2026-07-10 00:10:00",
         "school_name": "Bright Future Academy",
@@ -364,11 +376,11 @@ Retrieves a paginated list of active job vacancies. Supports optional query filt
 ---
 
 ### `GET /jobs/{job_id}`
-Retrieves full details for a single job vacancy identified by `job_id`.
+Retrieves full details for a single job vacancy identified by `job_id`. Teachers can view open jobs from any school; schools can view only jobs they created.
 - **Method:** `GET`
 - **URL:** `https://api.staffroomng.com/api/jobs/1`
-- **Authentication Requirement:** No (Public)
-- **Allowed Role:** Any
+- **Authentication Requirement:** Yes (`Authorization: Bearer <token>`)
+- **Allowed Role:** `teacher` or `school`
 
 #### Sample Success Response (`200 OK`)
 ```json
@@ -420,7 +432,13 @@ Creates and publishes a new job vacancy.
   "employment_type": "full-time",
   "salary_range": "100k-150k",
   "location": "Lagos",
-  "requirements": "BSc Mathematics"
+  "requirements": "BSc Mathematics",
+  "teaching_level": "SS1 - SS3",
+  "required_experience": "5+ years",
+  "required_qualification": "B.Ed, TRCN Certification",
+  "application_deadline": "2026-10-31",
+  "is_featured": false,
+  "status": "open"
 }
 ```
 
@@ -548,19 +566,18 @@ Submits a teacher's application for a specific job vacancy (`job_id`). Prevents 
 ```json
 {
   "success": false,
-  "message": "You have already applied for this job"
+  "message": "You have already applied for this job."
 }
 ```
 
 ---
 
 ### `GET /applications/my-applications`
-Retrieves applications submitted by the authenticated teacher, optionally filtered by the status tabs used in the teacher dashboard. Each application includes a chronological status timeline.
+Retrieves all applications submitted by the authenticated teacher.
 - **Method:** `GET`
 - **URL:** `https://api.staffroomng.com/api/applications/my-applications`
 - **Authentication Requirement:** Yes (`Authorization: Bearer <teacherToken>`)
 - **Allowed Role:** `teacher`
-- **Optional Query Parameter:** `status` = `submitted`, `reviewed`, `shortlisted`, `rejected`, or `accepted`
 
 #### Sample Success Response (`200 OK`)
 ```json
@@ -575,10 +592,6 @@ Retrieves applications submitted by the authenticated teacher, optionally filter
         "teacher_id": "USR-2026-000001",
         "cover_letter": "I am highly interested in this role...",
         "status": "shortlisted",
-        "status_timeline": [
-          { "status": "submitted", "created_at": "2026-07-10 00:15:00" },
-          { "status": "shortlisted", "created_at": "2026-07-11 10:00:00" }
-        ],
         "created_at": "2026-07-10 00:15:00",
         "job_title": "Math Teacher",
         "school_name": "Bright Future Academy",
@@ -597,9 +610,6 @@ Retrieves applications submitted by the authenticated teacher, optionally filter
   "message": "Invalid or expired token"
 }
 ```
-
-### Teacher Application Workflow
-The teacher application review screen displays the job title, school, location, employment type, the current CV, and the selected cover letter. The teacher may replace the CV through `POST /profiles/upload-cv`, then submit the cover letter through `POST /applications/apply/{job_id}`. A successful submission returns the application with status `submitted`; subsequent school status changes appear in `status_timeline` and generate a notification.
 
 ---
 
@@ -650,7 +660,7 @@ Updates the recruitment workflow status of an application.
 - **URL:** `https://api.staffroomng.com/api/applications/1/status`
 - **Authentication Requirement:** Yes (`Authorization: Bearer <schoolToken>`)
 - **Allowed Role:** `school` (Must own the job associated with the application)
-- **Allowed Statuses:** `submitted`, `reviewed`, `shortlisted`, `rejected`, `accepted`
+- **Allowed Statuses:** `pending`, `reviewed`, `shortlisted`, `rejected`, `hired`
 
 #### Request Body (`application/json`)
 ```json
@@ -741,12 +751,7 @@ Updates the authenticated teacher's professional profile information.
   "bio": "Passionate educator",
   "skills": "Math, Science",
   "experience_years": 5,
-  "location": "Lagos",
-  "trcn_number": "TRCN/NP/123456",
-  "availability": "available",
-  "preferred_employment_type": "full-time",
-  "preferred_location": "Lagos",
-  "available_from": "2026-09-01"
+  "location": "Lagos"
 }
 ```
 
@@ -829,14 +834,6 @@ Uploads a curriculum vitae (`cv`) for the authenticated teacher. Validates file 
   }
 }
 ```
-
-### `POST /profiles/upload-trcn-certificate`
-Uploads or replaces the authenticated teacher's TRCN certificate.
-- **Authentication:** Bearer token required; role `teacher`
-- **Content-Type:** `multipart/form-data`
-- **Form Field:** `certificate`
-- **Allowed Types:** PDF, JPG, JPEG, PNG; maximum 5MB
-- **Success:** Returns `certificate_url` and the updated teacher profile.
 
 #### Sample Error Response (`400 Validation Error`)
 ```json
@@ -985,7 +982,7 @@ Retrieves all system alerts and recruitment notifications for the authenticated 
 ```json
 {
   "success": true,
-  "message": "Notifications fetched successfully",
+  "message": "Notifications retrieved successfully",
   "data": {
     "notifications": [
       {
@@ -998,6 +995,7 @@ Retrieves all system alerts and recruitment notifications for the authenticated 
         "created_at": "2026-07-10 00:22:00"
       }
     ],
+    "unread_count": 1
   }
 }
 ```
@@ -1154,14 +1152,101 @@ Processes a school verification review, changing institutional trust status.
 
 ---
 
+## 10A. Teacher Directory, Invitations, and Interviews
+
+### `GET /teachers`
+School-only teacher directory. Searches active teachers by `search`, `location`, `qualification`, and minimum `experience_years`.
+
+- **Authentication Requirement:** Yes
+- **Allowed Role:** `school`
+
+### `GET /teachers/{user_id}`
+Returns an active teacher profile, including qualifications, skills, experience, location, CV, and contact details.
+
+- **Authentication Requirement:** Yes
+- **Allowed Role:** `school`
+
+### `POST /teachers/{user_id}/invite`
+Sends a school invitation to a teacher. Optionally provide `job_id` to attach the invitation to one of the school’s open jobs.
+
+```json
+{
+  "job_id": "<job_id>",
+  "message": "We would love for you to apply for this position."
+}
+```
+
+- **Authentication Requirement:** Yes
+- **Allowed Role:** `school`
+
+### Teacher Profile Sections
+
+`PUT /profiles/teacher` accepts professional profile data including `education`, `teaching_experience`, `trcn_number`, `availability`, `available_from`, and `profile_visibility`. Visibility may be `schools`, `applying_schools`, or `nobody`; only `schools` profiles appear in the school directory.
+
+### `DELETE /applications/{application_id}`
+Withdraws an active application belonging to the authenticated teacher. Applications that are already accepted, rejected, hired, or withdrawn cannot be withdrawn again.
+
+- **Authentication Requirement:** Yes
+- **Allowed Role:** `teacher`
+
+### `GET /applications/{application_id}/interview`
+Returns interviews scheduled for an application. Only the owning school can access them.
+
+### `POST /applications/{application_id}/interview`
+Schedules a virtual or physical interview for an owned application.
+
+```json
+{
+  "interview_type": "virtual",
+  "interview_date": "2026-09-15",
+  "interview_time": "10:30:00",
+  "meeting_link": "https://meet.google.com/example",
+  "instructions": "Please prepare a short teaching demonstration.",
+  "candidate_message": "We look forward to meeting you.",
+  "template_name": "Mathematics Interview Invitation"
+}
+```
+
+Use `venue` instead of `meeting_link` for a `physical` interview. Scheduling updates the application to `interviewing` and notifies the teacher.
+
+---
+
+## 10B. Account and Settings Endpoints
+
+### `GET|PUT|PATCH /account/profile`
+Reads or updates the authenticated user’s first name, last name, full name, and phone number.
+
+### `POST /account/password`
+Changes the authenticated user’s password. Requires `current_password`, `new_password`, and `confirm_password`. New passwords must contain at least eight characters, one letter, and one number.
+
+### `GET|PUT|PATCH /account/preferences`
+Reads or saves notification preferences as a JSON object. Security notifications remain mandatory at the product level.
+
+### `POST /account/email` and `PATCH /account/email`
+Starts and completes a verified email change. `POST` accepts `{ "email": "new@example.com" }`; `PATCH` accepts `{ "code": "123456" }`. The code is valid for ten minutes.
+
+All account and settings endpoints require a valid JWT.
+
+---
+
+## 10C. Dashboard
+
+### `GET /dashboard`
+Returns role-specific home-screen metrics. Schools receive active jobs, draft jobs, total applicants, shortlisted candidates, and scheduled interviews. Teachers receive applications, shortlisted applications, and saved jobs.
+
+- **Authentication Requirement:** Yes
+- **Allowed Role:** Any authenticated user
+
+---
+
 ## 11. Health Endpoint
 
 ### `GET /health`
-Public liveness and health verification check for load balancers and monitoring systems.
+Authenticated liveness and health verification check for authorized clients and monitoring systems.
 - **Method:** `GET`
 - **URL:** `https://api.staffroomng.com/health`
-- **Authentication Requirement:** No (Public)
-- **Allowed Role:** Any
+- **Authentication Requirement:** Yes (`Authorization: Bearer <token>`)
+- **Allowed Role:** Any authenticated user
 
 #### Sample Success Response (`200 OK`)
 ```json

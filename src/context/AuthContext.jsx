@@ -69,26 +69,23 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const logout = () => {
-    // Clear authentication tokens and user data from all storage
+  const clearSession = () => {
     sessionStorage.removeItem('staffroom_token');
     sessionStorage.removeItem('staffroom_user');
     localStorage.removeItem('staffroom_token');
     localStorage.removeItem('staffroom_user');
     localStorage.removeItem('staffroom_verification_email');
     sessionStorage.removeItem('staffroom_verification_email');
-
-    // Clear any profile/dashboard cache that should not survive logout
     sessionStorage.removeItem('staffroom_teacher_profile');
     sessionStorage.removeItem('staffroom_school_profile');
     sessionStorage.removeItem('staffroom_jobs_cache');
     sessionStorage.removeItem('staffroom_applications_cache');
-
-    // Reset authentication state
     setToken('');
     setUser(null);
+  };
 
-    // Redirect to signin page
+  const logout = () => {
+    clearSession();
     window.location.href = '/signin';
   };
 

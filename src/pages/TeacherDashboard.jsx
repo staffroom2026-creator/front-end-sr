@@ -8,6 +8,7 @@ import { jobService } from '../services/jobService';
 import { applicationService } from '../services/applicationService';
 import { featureService } from '../services/featureService';
 import { profileService } from '../services/profileService';
+import { accountService } from '../services/accountService';
 import { apiErrorMessage } from '../services/api';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
@@ -180,6 +181,23 @@ export default function TeacherDashboard() {
   const [settingsSubTab, setSettingsSubTab] = useState('overview');
   const [visibilitySetting, setVisibilitySetting] = useState('schools');
   const [personalInfoOrigin, setPersonalInfoOrigin] = useState('profile');
+  const [passwordForm, setPasswordForm] = useState({
+    current_password: '',
+    new_password: '',
+    confirm_password: '',
+  });
+  const [passwordMessage, setPasswordMessage] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [updatingPassword, setUpdatingPassword] = useState(false);
+  const [accountPreferences, setAccountPreferences] = useState({
+    job_matches: true,
+    application_status: true,
+    direct_messages: true,
+    system_updates: false,
+  });
+  const [savingPreferences, setSavingPreferences] = useState(false);
+  const [preferencesMessage, setPreferencesMessage] = useState('');
+  const [preferencesError, setPreferencesError] = useState('');
 
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Teacher');
@@ -346,6 +364,7 @@ export default function TeacherDashboard() {
 
   useEffect(() => {
     refreshTeacherProfile();
+    loadAccountPreferences();
   }, []);
 
   // ── Settings state ──
@@ -367,6 +386,86 @@ export default function TeacherDashboard() {
 
   const toggleNotif = (key) => {
     setNotifToggles(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const loadAccountPreferences = async () => {
+    try {
+      const response = await accountService.getPreferences();
+      const payload = response?.data?.data ?? response?.data?.preferences ?? response?.data ?? {};
+      const normalized = payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? payload
+        : {};
+
+      setAccountPreferences({
+        job_matches: Boolean(normalized.job_matches ?? normalized.jobMatch ?? true),
+        application_status: Boolean(normalized.application_status ?? normalized.appStatus ?? true),
+        direct_messages: Boolean(normalized.direct_messages ?? normalized.directMsg ?? true),
+        system_updates: Boolean(normalized.system_updates ?? normalized.sysAnnounce ?? false),
+      });
+    } catch (err) {
+      setPreferencesError(apiErrorMessage(err, 'Unable to load notification preferences.'));
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordMessage('');
+
+    const { current_password, new_password, confirm_password } = passwordForm;
+    if (!current_password || !new_password || !confirm_password) {
+      setPasswordError('Please complete all password fields.');
+      return;
+    }
+    if (new_password !== confirm_password) {
+      setPasswordError('New password and confirmation do not match.');
+      return;
+    }
+
+    try {
+      setUpdatingPassword(true);
+      await accountService.updatePassword({ current_password, new_password, confirm_password });
+      setPasswordMessage('Password updated successfully.');
+      setPasswordForm({ current_password: '', new_password: '', confirm_password: '' });
+    } catch (err) {
+      setPasswordError(apiErrorMessage(err, 'Unable to update password.'));
+    } finally {
+      setUpdatingPassword(false);
+    }
+  };
+
+  const handlePreferenceToggle = async (key) => {
+    const nextValue = !accountPreferences[key];
+    const nextPreferences = { ...accountPreferences, [key]: nextValue };
+    setAccountPreferences(nextPreferences);
+    setPreferencesError('');
+    setPreferencesMessage('');
+
+    try {
+      setSavingPreferences(true);
+      await accountService.updatePreferences(nextPreferences);
+      setPreferencesMessage('Notification preferences saved.');
+    } catch (err) {
+      setPreferencesError(apiErrorMessage(err, 'Unable to save notification preferences.'));
+      setAccountPreferences(accountPreferences);
+    } finally {
+      setSavingPreferences(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const passwordValue = passwordForm.current_password || window.prompt('Enter your password to confirm account deletion:');
+    if (!passwordValue) return;
+
+    const confirmed = window.confirm('This action will delete your Staffroom account. This cannot be undone. Continue?');
+    if (!confirmed) return;
+
+    try {
+      await accountService.deleteAccount({ password: passwordValue });
+      logout();
+    } catch (err) {
+      setPasswordError(apiErrorMessage(err, 'Unable to delete account.'));
+    }
   };
 
   useEffect(() => {
@@ -1345,7 +1444,7 @@ export default function TeacherDashboard() {
                     <h2>{selectedJob?.title || 'Mathematics Tutor'}</h2>
                     <div className="td-app-meta-line">
                       <FiBook size={13} className="td-app-meta-icon" />
-                      <span>{selectedJob?.school || 'BrightMind Academy'}</span>
+                      <span>{selectedJob?.school || 'School'}</span>
                       <span className="td-app-dot">·</span>
                       <FiMapPin size={13} className="td-app-meta-icon" />
                       <span>{selectedJob?.location === 'Benin' ? 'Benin, Edo' : (selectedJob?.location || 'Lagos, Nigeria')}</span>
@@ -1837,14 +1936,13 @@ export default function TeacherDashboard() {
                         <span className="td-sec-pwd-title">Password</span>
                       </div>
                       <div className="td-sec-pwd-dots">••••••••••••</div>
-                      <span className="td-sec-pwd-last">Last changed 3 months ago</span>
+                      <span className="td-sec-pwd-last">Secure your account with a fresh password.</span>
                     </div>
-                    <button className="td-sec-btn td-sec-btn--green">
+                    <button type="button" className="td-sec-btn td-sec-btn--green" onClick={() => document.getElementById('change-password-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
                       Change Password
                     </button>
                   </div>
 
-                  {/* Secure Account Updates Card */}
                   <div className="td-sec-info-banner">
                     <div className="td-sec-info-icon-wrap">
                       <FiShield size={16} />
@@ -1857,16 +1955,129 @@ export default function TeacherDashboard() {
                     </div>
                   </div>
 
-                  {/* Spacer */}
+                  <form id="change-password-form" className="td-sec-card" onSubmit={handlePasswordChange} style={{ padding: 24, marginTop: 16 }}>
+                    <div className="td-sec-card-title-row" style={{ marginBottom: 18 }}>
+                      <FiKey size={18} className="td-sec-green-icon" />
+                      <h3 className="td-sec-card-heading">Change Password</h3>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+                      <label style={{ display: 'grid', gap: 8 }}>
+                        <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#4b5563', letterSpacing: 0.8 }}>Current password</span>
+                        <input
+                          type="password"
+                          value={passwordForm.current_password}
+                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, current_password: e.target.value }))}
+                          style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 10 }}
+                        />
+                      </label>
+
+                      <label style={{ display: 'grid', gap: 8 }}>
+                        <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#4b5563', letterSpacing: 0.8 }}>New password</span>
+                        <input
+                          type="password"
+                          value={passwordForm.new_password}
+                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, new_password: e.target.value }))}
+                          style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 10 }}
+                        />
+                      </label>
+
+                      <label style={{ display: 'grid', gap: 8 }}>
+                        <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#4b5563', letterSpacing: 0.8 }}>Confirm password</span>
+                        <input
+                          type="password"
+                          value={passwordForm.confirm_password}
+                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
+                          style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 10 }}
+                        />
+                      </label>
+                    </div>
+
+                    {passwordError && <p style={{ color: '#b91c1c', marginTop: 12 }}>{passwordError}</p>}
+                    {passwordMessage && <p style={{ color: '#166534', marginTop: 12 }}>{passwordMessage}</p>}
+
+                    <div style={{ display: 'flex', gap: 12, marginTop: 18, flexWrap: 'wrap' }}>
+                      <button type="submit" className="td-sec-btn td-sec-btn--darkgreen" disabled={updatingPassword}>
+                        {updatingPassword ? 'Updating...' : 'Update Password'}
+                      </button>
+                      <button type="button" className="td-sec-btn" onClick={() => setPasswordForm({ current_password: '', new_password: '', confirm_password: '' })}>
+                        Clear
+                      </button>
+                    </div>
+                  </form>
+
+                  <div className="td-sec-card" style={{ padding: 24, marginTop: 16 }}>
+                    <div className="td-sec-card-title-row" style={{ marginBottom: 18 }}>
+                      <FiBell size={18} className="td-sec-green-icon" />
+                      <h3 className="td-sec-card-heading">Notification Preferences</h3>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {Object.entries({
+                        job_matches: 'Job matches',
+                        application_status: 'Application status updates',
+                        direct_messages: 'Direct messages',
+                        system_updates: 'System announcements',
+                      }).map(([key, label]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => handlePreferenceToggle(key)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '14px 16px',
+                            borderRadius: 12,
+                            border: '1px solid #d1d5db',
+                            background: accountPreferences[key] ? '#ecfdf5' : '#f9fafb',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span>{label}</span>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            width: 46,
+                            height: 24,
+                            borderRadius: 999,
+                            background: accountPreferences[key] ? '#10b981' : '#cbd5e1',
+                            color: 'white',
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}>
+                            {accountPreferences[key] ? 'ON' : 'OFF'}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {preferencesError && <p style={{ color: '#b91c1c', marginTop: 12 }}>{preferencesError}</p>}
+                    {preferencesMessage && <p style={{ color: '#166534', marginTop: 12 }}>{preferencesMessage}</p>}
+                    {savingPreferences && <p style={{ color: '#2563eb', marginTop: 12 }}>Saving preferences...</p>}
+                  </div>
+
+                  <div className="td-sec-card" style={{ padding: 24, marginTop: 16 }}>
+                    <div className="td-sec-card-title-row" style={{ marginBottom: 8 }}>
+                      <FiTrash2 size={18} className="td-sec-green-icon" />
+                      <h3 className="td-sec-card-heading">Delete Account</h3>
+                    </div>
+                    <p style={{ color: '#4b5563', marginBottom: 16 }}>
+                      This will permanently remove your Staffroom account and associated profile data.
+                    </p>
+                    <button type="button" className="td-sec-btn td-sec-btn--darkgreen" onClick={handleDeleteAccount}>
+                      Delete My Account
+                    </button>
+                  </div>
+
                   <div className="td-sec-section-spacer" />
 
-                  {/* Lower Section: Security & Login Activity */}
                   <div className="td-sec-main-header">
                     <h2 className="td-sec-main-title">Security &amp; Login Activity</h2>
                     <p className="td-sec-main-subtitle">Manage your account security, passwords, and active sessions.</p>
                   </div>
 
-                  {/* Card 1: Authentication */}
                   <div className="td-sec-auth-card">
                     <div className="td-sec-auth-header">
                       <div className="td-sec-card-title-row">
@@ -1875,16 +2086,15 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
 
-                    {/* Watermark Lock Icon */}
                     <div className="td-sec-watermark-lock">
-                      <FiLock size={84} /><svg stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                      <FiLock size={84} /><svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
                     </div>
 
                     <div className="td-sec-auth-body">
                       <div className="td-sec-auth-col">
                         <span className="td-sec-col-label">LAST PASSWORD CHANGE</span>
-                        <strong className="td-sec-col-value">October 12, 2023</strong>
-                        <span className="td-sec-col-hint">approx. 2 months ago</span>
+                        <strong className="td-sec-col-value">Updated from the dashboard</strong>
+                        <span className="td-sec-col-hint">Password updates are synced to the live backend</span>
                       </div>
 
                       <div className="td-sec-auth-col">
@@ -1900,14 +2110,13 @@ export default function TeacherDashboard() {
                       </div>
 
                       <div className="td-sec-auth-action">
-                        <button className="td-sec-btn td-sec-btn--darkgreen">
+                        <button type="button" className="td-sec-btn td-sec-btn--darkgreen" onClick={() => document.getElementById('change-password-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
                           Change Password
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card 2: Active Sessions */}
                   <div className="td-sec-card">
                     <div className="td-sec-card-title-row">
                       <div className="td-sec-green-icon">
@@ -1921,95 +2130,44 @@ export default function TeacherDashboard() {
                     </div>
 
                     <div className="td-sec-sessions-list">
-                      {/* Session 1: Windows PC */}
                       <div className="td-sec-session-item td-sec-session-item--current">
                         <div className="td-sec-session-icon">
                           <FiMonitor size={18} />
                         </div>
                         <div className="td-sec-session-info">
                           <div className="td-sec-session-name-row">
-                            <strong className="td-sec-session-name">Windows PC - Chrome</strong>
+                            <strong className="td-sec-session-name">Current Session</strong>
                             <span className="td-sec-curr-badge">CURRENT</span>
                           </div>
-                          <span className="td-sec-session-ip">Lagos, Nigeria • IP: 197.210.64.12</span>
-                          <span className="td-sec-session-status">Active now</span>
+                          <span className="td-sec-session-ip">{user?.email || 'Teacher account'} • Active now</span>
+                          <span className="td-sec-session-status">Secure login using JWT session</span>
                         </div>
-                      </div>
-
-                      {/* Session 2: Android Phone */}
-                      <div className="td-sec-session-item">
-                        <div className="td-sec-session-icon">
-                          <FiSmartphone size={18} />
-                        </div>
-                        <div className="td-sec-session-info">
-                          <strong className="td-sec-session-name">Android Phone - Chrome</strong>
-                          <span className="td-sec-session-ip">Abuja, Nigeria • IP: 105.112.44.8</span>
-                          <span className="td-sec-session-status">Active 2 hours ago</span>
-                        </div>
-                        <button className="td-sec-signout-btn">
-                          <FiLogOut size={13} />
-                          <span>Sign Out</span>
-                        </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* Card 3: Recent Login Activity */}
                   <div className="td-sec-card">
                     <div className="td-sec-recent-header">
                       <div className="td-sec-card-title-row">
                         <FiClock size={18} className="td-sec-green-icon" />
                         <h3 className="td-sec-card-heading">Recent Login Activity</h3>
                       </div>
-                      <button className="td-sec-view-log-btn">View Full Log</button>
+                      <button type="button" className="td-sec-view-log-btn">View Full Log</button>
                     </div>
 
                     <div className="td-sec-timeline">
-                      {/* Item 1 */}
                       <div className="td-sec-timeline-item">
                         <div className="td-sec-timeline-dot td-sec-dot--green" />
                         <div className="td-sec-timeline-content">
                           <strong className="td-sec-log-title">Successful Login</strong>
-                          <span className="td-sec-log-device">Windows PC - Chrome</span>
+                          <span className="td-sec-log-device">{user?.full_name || 'Teacher'} account</span>
                           <span className="td-sec-log-location">
-                            <FiMapPin size={12} /> Benin City, Nigeria
+                            <FiMapPin size={12} /> Live Staffroom session
                           </span>
                         </div>
                         <div className="td-sec-timeline-meta">
-                          <span className="td-sec-log-time">Today, 08:45 AM</span>
-                          <span className="td-sec-ip-pill">197.210.88.3</span>
-                        </div>
-                      </div>
-
-                      {/* Item 2 */}
-                      <div className="td-sec-timeline-item">
-                        <div className="td-sec-timeline-dot td-sec-dot--green" />
-                        <div className="td-sec-timeline-content">
-                          <strong className="td-sec-log-title">Successful Login</strong>
-                          <span className="td-sec-log-device">Android Phone - Chrome</span>
-                          <span className="td-sec-log-location">
-                            <FiMapPin size={12} /> Abuja, Nigeria
-                          </span>
-                        </div>
-                        <div className="td-sec-timeline-meta">
-                          <span className="td-sec-log-time">Yesterday, 14:30 PM</span>
-                          <span className="td-sec-ip-pill">105.112.44.8</span>
-                        </div>
-                      </div>
-
-                      {/* Item 3 */}
-                      <div className="td-sec-timeline-item td-sec-timeline-item--last">
-                        <div className="td-sec-timeline-dot td-sec-dot--red" />
-                        <div className="td-sec-timeline-content">
-                          <strong className="td-sec-log-title td-sec-log-title--red">Failed Login Attempt</strong>
-                          <span className="td-sec-log-device">MacBook Pro - Safari</span>
-                          <span className="td-sec-log-location">
-                            <FiMapPin size={12} /> Unknown Location
-                          </span>
-                        </div>
-                        <div className="td-sec-timeline-meta">
-                          <span className="td-sec-log-time">Dec 10, 2023, 11:20 PM</span>
-                          <span className="td-sec-ip-pill td-sec-ip-pill--red">192.168.1.1</span>
+                          <span className="td-sec-log-time">Just now</span>
+                          <span className="td-sec-ip-pill">Protected</span>
                         </div>
                       </div>
                     </div>

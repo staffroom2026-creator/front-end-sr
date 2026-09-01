@@ -55,7 +55,7 @@ export default function ApplicationSubmitted() {
               <p className="text-sm font-semibold text-[#111827]">Add a short note to the recruiter (Optional)</p>
               <textarea
                 className="w-full min-h-[150px] rounded-3xl border border-[#E5E7EB] bg-[#F8FAFC] px-5 py-4 text-sm text-[#111827] outline-none focus:border-[#1CCB43] focus:ring-2 focus:ring-[#DCFCE7]"
-                placeholder="Highlight a specific teaching achievement or personal motivation for BrightMind..."
+                placeholder="Highlight a specific teaching achievement or personal motivation for the school..."
               />
             </div>
 
