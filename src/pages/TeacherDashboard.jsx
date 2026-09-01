@@ -2273,6 +2273,13 @@ export default function TeacherDashboard() {
                 </div>
               )}
 
+              <div className="td-mobile-settings-logout-wrap">
+                <button type="button" className="td-mobile-settings-logout-btn" onClick={() => logout()}>
+                  <FiLogOut size={18} />
+                  Log out
+                </button>
+              </div>
+
             </motion.div>
           )}
           {activeTab === 'profile' && (
@@ -8730,6 +8737,33 @@ export default function TeacherDashboard() {
           }
           .td-settings-degree-row {
             grid-template-columns: 1fr;
+          }
+          .td-mobile-settings-logout-wrap {
+            display: flex;
+            width: 100%;
+            margin-top: 24px;
+          }
+          .td-mobile-settings-logout-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+            border-radius: 14px;
+            background: #FF5E3A;
+            color: #fff;
+            padding: 14px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 8px 20px rgba(255, 94, 58, 0.2);
+          }
+        }
+
+        @media (min-width: 769px) {
+          .td-mobile-settings-logout-wrap {
+            display: none;
           }
         }
 
