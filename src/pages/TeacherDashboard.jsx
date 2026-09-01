@@ -9088,15 +9088,15 @@ export default function TeacherDashboard() {
 
         .td-profile-header-card {
           background: #FFFFFF;
-          border-radius: 24px;
-          border: 1px solid #F1F5F9;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-          padding: 32px;
+          border-radius: 22px;
+          border: 1px solid #E5E7EB;
+          box-shadow: 0 8px 28px rgba(15, 23, 42, 0.04);
+          padding: 26px 28px;
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 24px;
-          margin-bottom: 24px;
+          gap: 20px;
+          margin-bottom: 26px;
         }
 
         .td-profile-header-left {
@@ -9163,8 +9163,9 @@ export default function TeacherDashboard() {
         .td-profile-meta-row {
           display: flex;
           align-items: center;
-          gap: 18px;
+          gap: 16px;
           flex-wrap: wrap;
+          margin-top: 2px;
         }
 
         .td-profile-meta-item {
@@ -9187,10 +9188,12 @@ export default function TeacherDashboard() {
           gap: 6px;
           background: #DCFCE7;
           color: #15803D;
-          padding: 4px 12px;
+          padding: 5px 12px;
           border-radius: 9999px;
           font-size: 12px;
           font-weight: 700;
+          border: 1px solid #BBF7D0;
+          line-height: 1.2;
         }
 
         .td-profile-header-actions {
@@ -9248,14 +9251,14 @@ export default function TeacherDashboard() {
 
         .td-profile-section-card {
           background: #FFFFFF;
-          border-radius: 20px;
-          border: 1px solid #F1F5F9;
-          box-shadow: 0 2px 12px rgba(0, 0, 0, 0.02);
-          padding: 24px 22px;
+          border-radius: 18px;
+          border: 1px solid #E5E7EB;
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
+          padding: 22px 20px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          min-height: 145px;
+          min-height: 150px;
           cursor: pointer;
           transition: all 0.2s ease;
         }
@@ -10011,10 +10014,10 @@ export default function TeacherDashboard() {
 
         .td-prof-card {
           background: #FFFFFF;
-          border-radius: 16px;
-          border: 1px solid #E2E8F0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
-          padding: 24px 28px;
+          border-radius: 18px;
+          border: 1px solid #E5E7EB;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.03);
+          padding: 22px 24px;
         }
 
         .td-prof-card-head {
@@ -10215,10 +10218,10 @@ export default function TeacherDashboard() {
 
         .td-pers-card {
           background: #FFFFFF;
-          border-radius: 16px;
-          border: 1px solid #E9ECEF;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-          padding: 32px 32px 28px;
+          border-radius: 18px;
+          border: 1px solid #E5E7EB;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.03);
+          padding: 30px 30px 28px;
         }
 
         .td-pers-grid {
@@ -10962,10 +10965,10 @@ export default function TeacherDashboard() {
 
         .td-trcn-status-card {
           background: #FFFFFF;
-          border-radius: 16px;
-          border: 1px solid #E2E8F0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
-          padding: 26px 28px;
+          border-radius: 18px;
+          border: 1px solid #E5E7EB;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.03);
+          padding: 24px 26px;
           display: flex;
           align-items: center;
           justify-content: space-between;
