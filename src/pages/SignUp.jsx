@@ -64,9 +64,20 @@ export default function SignUp() {
 
       const result = await register(payload);
       const emailToVerify = form.email;
+      const schoolDraft = role === 'school'
+        ? {
+            schoolName: form.schoolName,
+            email: form.email,
+            phone: form.phone,
+          }
+        : null;
+
       // Store email and role so the verification flow can route school signups correctly.
       localStorage.setItem('staffroom_verification_email', emailToVerify);
       localStorage.setItem('staffroom_verification_role', role);
+      if (schoolDraft) {
+        localStorage.setItem('staffroom_school_signup_draft', JSON.stringify(schoolDraft));
+      }
       // Redirect user to email verification step before login
       navigate('/verify-email', { state: { email: emailToVerify, role } });
     } catch (err) {

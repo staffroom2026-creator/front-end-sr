@@ -106,7 +106,7 @@ export default function VerifyEmail() {
       setSuccess(true);
       setTimeout(() => {
         if (role === 'school') {
-          navigate('/sch-info', { replace: true });
+          navigate('/sch-info', { replace: true, state: { email, role } });
         } else {
           navigate('/signin', { replace: true });
         }
