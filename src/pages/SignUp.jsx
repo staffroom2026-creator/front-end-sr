@@ -663,7 +663,7 @@ export default function SignUp() {
             font-family: 'Sora', sans-serif;
             font-weight: 400;
             font-style: normal;
-            font-size: 48px;
+            font-size: 28px;
             line-height: 55px;
             letter-spacing: 0;
             margin: 0;

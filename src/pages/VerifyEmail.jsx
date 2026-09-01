@@ -500,10 +500,15 @@ export default function VerifyEmail() {
           display: flex;
           gap: 10px;
           justify-content: center;
+          width: 100%;
+          max-width: 320px;
+          margin: 0 auto;
         }
 
         .otp-input {
-          width: 50px;
+          flex: 1 1 0;
+          width: 100%;
+          min-width: 0;
           height: 56px;
           text-align: center;
           font-size: 22px;
@@ -517,6 +522,7 @@ export default function VerifyEmail() {
           caret-color: #1CCB43;
           font-family: 'DM Sans', sans-serif;
           letter-spacing: 2px;
+          box-sizing: border-box;
         }
 
         .otp-input::placeholder {
@@ -826,9 +832,9 @@ export default function VerifyEmail() {
         @media (max-width: 380px) {
           .otp-container {
             gap: 6px;
+            max-width: 100%;
           }
           .otp-input {
-            width: 42px;
             height: 48px;
             font-size: 18px;
             border-radius: 10px;
@@ -887,11 +893,11 @@ export default function VerifyEmail() {
           }
 
           .otp-container {
-            gap: 10px;
+            gap: 8px;
+            max-width: 280px;
           }
 
           .otp-input {
-            width: 50px;
             height: 52px;
             border: 1.5px solid #b9c4c0;
             border-radius: 16px;
