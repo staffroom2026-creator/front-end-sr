@@ -146,6 +146,7 @@ export default function TeacherDashboard() {
   const [personalFirstName, setPersonalFirstName] = useState('Teacher');
   const [personalLastName, setPersonalLastName] = useState('');
   const [personalPhone, setPersonalPhone] = useState('');
+  const [personalEmail, setPersonalEmail] = useState('');
   const [personalCity, setPersonalCity] = useState('');
   const [personalState, setPersonalState] = useState('');
 
@@ -223,12 +224,35 @@ export default function TeacherDashboard() {
   const profileFullName = (user?.full_name || [personalFirstName, personalLastName].filter(Boolean).join(' ') || 'Teacher').trim() || 'Teacher';
   const profileLocation = profileState?.location || [personalCity, personalState].filter(Boolean).join(', ') || 'Location not set';
   const profileRoleTitle = profileState?.role_title || profTitle || 'Teacher';
+  const isTrcnVerified = Boolean(
+    profileState?.trcn_verified ||
+    profileState?.is_trcn_verified ||
+    profileState?.trcn_verified_at ||
+    (typeof profileState?.trcn_status === 'string' && /verified|validated|active/i.test(profileState.trcn_status))
+  );
+  const trcnStatusLabel = isTrcnVerified
+    ? 'TRCN Verified'
+    : (profileState?.trcn_number ? 'TRCN Pending Verification' : 'TRCN Not Verified');
+  const trcnStatusBadge = isTrcnVerified ? 'ACTIVE' : (profileState?.trcn_number ? 'PENDING' : 'NOT VERIFIED');
+  const trcnStatusCardText = isTrcnVerified ? 'Active & Validated' : (profileState?.trcn_number ? 'Pending Verification' : 'Not Verified');
   const totalApplications = applications.length || 0;
   const pendingApplications = applications.filter(app => {
     const s = String(app?.status || '').toLowerCase();
     return s === 'pending' || s === 'under review' || s === 'reviewed';
   }).length;
   const dashboardJobs = jobs.slice(0, 2);
+  const getProfileStrengthValue = () => {
+    const strength = Number(profileState?.profile_strength ?? 0);
+    if (!Number.isFinite(strength)) return 0;
+    return Math.min(100, Math.max(0, strength));
+  };
+  const getProfileViewsValue = () => {
+    const views = Number(profileState?.profile_views ?? profileState?.views ?? profileState?.view_count ?? 0);
+    if (!Number.isFinite(views)) return 0;
+    return Math.max(0, views);
+  };
+  const profileStrengthValue = getProfileStrengthValue();
+  const profileViewsValue = getProfileViewsValue();
   const [applicationForm, setApplicationForm] = useState({
     name: '',
     email: '',
@@ -332,6 +356,7 @@ export default function TeacherDashboard() {
       setPersonalFirstName(firstName);
       setPersonalLastName(lastName);
       setPersonalPhone(profileData?.user?.phone || '');
+      setPersonalEmail(profileData?.user?.email || user?.email || '');
       setPersonalCity(profile.location?.split(',')[0] || '');
       setPersonalState(profile.location?.includes(',') ? profile.location.split(',').slice(1).join(',').trim() : '');
       setAvailLocation(profile.preferred_location || profile.location || '');
@@ -783,26 +808,26 @@ export default function TeacherDashboard() {
                     <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
                       <div className="td-card-header">
                         <span className="td-profile-title">Profile Strength</span>
-                        <span className="td-percent-badge">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
+                        <span className="td-percent-badge">{profileStrengthValue}%</span>
                       </div>
                       {/* Mobile profile strength layout */}
                       <div className="td-mobile-profile-strength">
                         <div className="td-mobile-ps-top">
                           <div className="td-mobile-ps-left">
                             <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
-                            <span className="td-mobile-ps-value">{Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%</span>
+                            <span className="td-mobile-ps-value">{profileStrengthValue}%</span>
                           </div>
                           <div className="td-mobile-ps-icon"><FiZap size={20} /></div>
                         </div>
                         <div className="td-progress-bar">
-                          <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
+                          <div className="td-progress-fill" style={{ width: `${profileStrengthValue}%` }}></div>
                         </div>
                         <p className="td-card-hint">{profileState?.bio ? 'Your profile is ready for school applications.' : 'Complete your profile to improve visibility to schools.'}</p>
                       </div>
                       {/* Desktop layout */}
                       <div className="td-desktop-profile-strength">
                         <div className="td-progress-bar">
-                          <div className="td-progress-fill" style={{ width: `${Math.min(100, Math.max(20, profileState?.profile_strength || 75))}%` }}></div>
+                          <div className="td-progress-fill" style={{ width: `${profileStrengthValue}%` }}></div>
                         </div>
                         <p className="td-card-hint">
                           {profileState?.bio ? 'Your profile is ready for job applications.' : 'Complete your profile to unlock more opportunities.'}
@@ -818,13 +843,13 @@ export default function TeacherDashboard() {
                         <div className="td-mini-icon-circle">
                           <FiEye size={18} />
                         </div>
-                        <span className="td-mobile-stat-number">{Math.max(0, jobs.length * 12)}</span>
+                        <span className="td-mobile-stat-number">{profileViewsValue}</span>
                         <p className="td-mini-label">PROFILE VIEWS</p>
                         <div className="td-mini-value-row">
-                          <span className="td-mini-value td-desktop-stat-val">{Math.max(0, jobs.length * 12)}</span>
-                          <span className="td-mini-growth">{jobs.length > 0 ? '+12%' : '0%'}</span>
+                          <span className="td-mini-value td-desktop-stat-val">{profileViewsValue}</span>
+                          <span className="td-mini-growth">{profileViewsValue > 0 ? '+0%' : '0%'}</span>
                         </div>
-                        <span className="td-mobile-subtext">{jobs.length > 0 ? 'Based on active listings' : 'No active listings yet'}</span>
+                        <span className="td-mobile-subtext">{profileViewsValue > 0 ? 'Based on profile analytics' : 'No profile views yet'}</span>
                       </motion.div>
 
                       {/* Jobs Applied */}
@@ -2376,12 +2401,21 @@ export default function TeacherDashboard() {
                             </svg>
                             <span>{profYearsExp}</span>
                           </div>
-                          <div className="td-profile-trcn-pill" onClick={() => setProfileSubTab('trcn-certification')} style={{ cursor: 'pointer' }}>
+                          <div
+                            className="td-profile-trcn-pill"
+                            onClick={() => setProfileSubTab('trcn-certification')}
+                            style={{
+                              cursor: 'pointer',
+                              background: isTrcnVerified ? '#ecfdf5' : '#f8fafc',
+                              color: isTrcnVerified ? '#166534' : '#475569',
+                              borderColor: isTrcnVerified ? '#bbf7d0' : '#dfe7f1'
+                            }}
+                          >
                             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" />
                               <path d="M9 12l2 2 4-4" />
                             </svg>
-                            <span>TRCN Verified</span>
+                            <span>{trcnStatusLabel}</span>
                           </div>
                         </div>
                       </div>
@@ -2604,7 +2638,7 @@ export default function TeacherDashboard() {
                               <FiMail size={15} className="td-pers-contact-icon" />
                               <span className="td-pers-contact-label">Email Address</span>
                             </div>
-                            <div className="td-pers-contact-value">esther.egharevba@email.com</div>
+                            <div className="td-pers-contact-value">{personalEmail || 'No email available'}</div>
                             <div className="td-pers-contact-badge td-pers-badge--verified">
                               <FiCheckCircle size={13} />
                               <span>Verified</span>
@@ -2682,11 +2716,18 @@ export default function TeacherDashboard() {
                           <div className="td-prof-hero-details">
                             <div className="td-prof-hero-name-row">
                               <h1 className="td-prof-hero-name">{profileFullName}</h1>
-                              <span className="td-prof-trcn-verified-badge">
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <span
+                                className="td-prof-trcn-verified-badge"
+                                style={{
+                                  background: isTrcnVerified ? '#ecfdf5' : '#f8fafc',
+                                  color: isTrcnVerified ? '#166534' : '#475569',
+                                  borderColor: isTrcnVerified ? '#bbf7d0' : '#dfe7f1'
+                                }}
+                              >
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isTrcnVerified ? '#15803D' : '#64748B'} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                   <polyline points="20 6 9 17 4 12" />
                                 </svg>
-                                <span>TRCN Verified</span>
+                                <span>{trcnStatusLabel}</span>
                               </span>
                             </div>
                             <p className="td-prof-hero-role">{profileRoleTitle}</p>
@@ -2827,7 +2868,7 @@ export default function TeacherDashboard() {
                                   <p>{profileState?.trcn_number ? `Registration No: ${profileState.trcn_number}` : 'No TRCN number added yet.'}</p>
                                 </div>
                               </div>
-                              <span className="td-prof-active-badge">{profileState?.trcn_number ? 'ACTIVE' : 'PENDING'}</span>
+                              <span className="td-prof-active-badge">{trcnStatusBadge}</span>
                             </div>
 
                             <div className="td-prof-downloads-col">
@@ -3273,7 +3314,7 @@ export default function TeacherDashboard() {
                                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                                     <polyline points="20 6 9 17 4 12" />
                                   </svg>
-                                  <span>{profileState?.trcn_number ? 'Active & Validated' : 'Not Provided'}</span>
+                                  <span>{trcnStatusCardText}</span>
                                 </span>
                               </div>
 
