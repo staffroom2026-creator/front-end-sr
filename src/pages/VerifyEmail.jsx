@@ -18,6 +18,7 @@ export default function VerifyEmail() {
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef([]);
   const email = location.state?.email || localStorage.getItem('staffroom_verification_email') || '';
+  const role = location.state?.role || localStorage.getItem('staffroom_verification_role') || 'teacher';
   const arrivalMessage = location.state?.message || '';
   const fromLogin = Boolean(location.state?.fromLogin);
 
@@ -104,7 +105,11 @@ export default function VerifyEmail() {
       await authService.verifyEmail({ email, code: fullCode });
       setSuccess(true);
       setTimeout(() => {
-        navigate('/signin');
+        if (role === 'school') {
+          navigate('/sch-info', { replace: true });
+        } else {
+          navigate('/signin', { replace: true });
+        }
       }, 1800);
     } catch (err) {
       setError(apiErrorMessage(err, 'Verification failed. Please check your code and try again.'));

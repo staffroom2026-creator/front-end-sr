@@ -90,7 +90,8 @@ export function AuthProvider({ children }) {
   };
 
   const register = async (payload) => {
-    const response = await authService.register(payload);
+    const method = payload?.role === 'school' ? authService.register_sch : authService.register;
+    const response = await method(payload);
     const result = response?.data ?? {};
     const userData = result?.data?.user ?? null;
 

@@ -64,8 +64,9 @@ export default function SignUp() {
 
       const result = await register(payload);
       const emailToVerify = form.email;
-      // Store email so user can retrieve verification instructions if needed
+      // Store email and role so the verification flow can route school signups correctly.
       localStorage.setItem('staffroom_verification_email', emailToVerify);
+      localStorage.setItem('staffroom_verification_role', role);
       // Redirect user to email verification step before login
       navigate('/verify-email', { state: { email: emailToVerify, role } });
     } catch (err) {
