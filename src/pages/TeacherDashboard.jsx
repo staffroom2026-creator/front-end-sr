@@ -102,15 +102,19 @@ const normalizeJobData = (job = {}, index = 0) => {
 
 const normalizeApplicationData = (application = {}, index = 0) => {
   const status = application.status || application.application_status || 'Pending';
-  const appliedAt = application.appliedDate || application.applied_at || application.created_at || new Date().toISOString();
+  const appliedAt = application.appliedDate || application.applied_at || application.created_at || '';
   const date = new Date(appliedAt);
 
   return {
     id: application.id || application.application_id || index,
+    jobId: application.job_id || application.jobId || '',
     title: application.title || application.job_title || application.position || 'Teaching Opportunity',
     school: application.school || application.school_name || application.employer || 'School',
     status,
-    appliedDate: Number.isNaN(date.getTime()) ? 'Recently' : date.toLocaleDateString(),
+    appliedDate: appliedAt && !Number.isNaN(date.getTime()) ? date.toLocaleDateString() : 'Not available',
+    appliedAt,
+    location: application.location || application.job_location || '',
+    employmentType: application.employment_type || application.job_type || application.type || '',
     expiresIn: application.expiresIn || application.expires_in || '',
     urgent: application.urgent ?? application.is_urgent ?? false,
     icon: application.icon || '📄',
@@ -130,6 +134,49 @@ const toTeacherAssetUrl = (assetPath) => {
   return `${API_ORIGIN}/${String(assetPath).replace(/^\/+/, '')}`;
 };
 
+const formatMonthYear = (value) => {
+  if (!/^\d{4}-\d{2}$/.test(String(value))) return '';
+  return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(new Date(`${value}-01T00:00:00`));
+};
+
+const normalizeExperienceRecords = (value) => {
+  let records = value;
+  if (typeof records === 'string') {
+    try {
+      records = JSON.parse(records);
+    } catch (_err) {
+      records = [];
+    }
+  }
+  if (!Array.isArray(records)) return [];
+
+  return records.map((record, index) => {
+    const startDate = record.start_date || record.startDate || record.start_month || '';
+    const endDate = record.end_date || record.endDate || record.end_month || '';
+    return {
+      ...record,
+      id: record.id || record.experience_id || `experience-${index}`,
+      role: record.role || record.job_title || record.title || '',
+      school: record.school || record.institution || record.company || '',
+      location: record.location || record.city || '',
+      start_date: startDate,
+      end_date: endDate,
+      description: record.description || record.responsibilities || '',
+      period: record.period || [formatMonthYear(startDate), formatMonthYear(endDate)].filter(Boolean).join(' - '),
+    };
+  });
+};
+
+const applicationStatusLabel = (status) => {
+  const normalizedStatus = String(status || '').trim().toLowerCase();
+  if (normalizedStatus === 'under review' || normalizedStatus === 'reviewed') return 'Under Review';
+  if (normalizedStatus === 'shortlisted') return 'Shortlisted';
+  if (normalizedStatus === 'accepted' || normalizedStatus === 'hired') return 'Accepted';
+  if (normalizedStatus === 'rejected') return 'Rejected';
+  if (normalizedStatus === 'withdrawn') return 'Withdrawn';
+  return 'Pending';
+};
+
 export default function TeacherDashboard() {
   const contentRef = useRef(null);
   const navigate = useNavigate();
@@ -140,6 +187,9 @@ export default function TeacherDashboard() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
+  const [applicationSearch, setApplicationSearch] = useState('');
+  const [applicationSort, setApplicationSort] = useState('newest');
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [jobError, setJobError] = useState('');
@@ -174,10 +224,13 @@ export default function TeacherDashboard() {
     role: '',
     school: '',
     location: '',
-    period: '',
+    start_date: '',
+    end_date: '',
     description: ''
   });
   const [editingExpId, setEditingExpId] = useState(null);
+  const [experienceError, setExperienceError] = useState('');
+  const [savingExperience, setSavingExperience] = useState(false);
 
   // ── CV / Resume Tab state ──
   const [activeResume, setActiveResume] = useState({
@@ -224,6 +277,7 @@ export default function TeacherDashboard() {
   const [profTeachingLevels, setProfTeachingLevels] = useState([]);
   const [newSubjectInput, setNewSubjectInput] = useState('');
   const [showAddSubject, setShowAddSubject] = useState(false);
+  const [savingProfessionalInfo, setSavingProfessionalInfo] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applicationStep, setApplicationStep] = useState(1);
 
@@ -246,6 +300,22 @@ export default function TeacherDashboard() {
     const s = String(app?.status || '').toLowerCase();
     return s === 'pending' || s === 'under review' || s === 'reviewed';
   }).length;
+  const visibleApplications = applications
+    .filter((application) => {
+      const status = String(application.status || '').toLowerCase();
+      const matchesStatus = applicationStatusFilter === 'all' || status === applicationStatusFilter;
+      const searchTerm = applicationSearch.trim().toLowerCase();
+      const matchesSearch = !searchTerm || [application.title, application.school, application.location, application.status].join(' ').toLowerCase().includes(searchTerm);
+      return matchesStatus && matchesSearch;
+    })
+    .sort((first, second) => {
+      const firstDate = new Date(first.appliedAt).getTime() || 0;
+      const secondDate = new Date(second.appliedAt).getTime() || 0;
+      return applicationSort === 'oldest' ? firstDate - secondDate : secondDate - firstDate;
+    });
+  const selectedJobApplication = selectedJob
+    ? applications.find((application) => String(application.jobId) === String(selectedJob.job_id || selectedJob.id))
+    : null;
   const dashboardJobs = jobs.slice(0, 2);
   const getProfileStrengthValue = () => {
     const strength = Number(profileState?.profile_strength ?? 0);
@@ -349,7 +419,7 @@ export default function TeacherDashboard() {
       const jobList = jobsArray.map(normalizeJobData);
       const applicationList = (applicationsRes?.data?.data?.applications || applicationsRes?.data?.applications || []).map((app, idx) => normalizeApplicationData(app, idx));
       const profileData = profileRes?.data?.data || {};
-      const profile = profileData?.profile || {};
+      const profile = profileData?.profile || profileData?.teacher_profile || profileData || {};
       const notificationList = notificationsRes?.data?.data?.notifications || notificationsRes?.data?.notifications || [];
       const savedJobs = (savedRes?.data?.data?.saved_jobs || savedRes?.data?.saved_jobs || [])
         .map(item => normalizeJobId(item.job_id ?? item.id))
@@ -378,7 +448,9 @@ export default function TeacherDashboard() {
           ? profile.teaching_levels.split(',').map(item => item.trim()).filter(Boolean)
           : []);
       setEducationList(Array.isArray(profile.education_history) ? profile.education_history : []);
-      setExperienceList(Array.isArray(profile.work_experience) ? profile.work_experience : []);
+      setExperienceList(normalizeExperienceRecords(
+        profile.teaching_experience ?? profile.work_experience ?? profile.experience_history
+      ));
       setSettingsProfile({
         fullName: profileData?.user?.full_name || user?.full_name || 'Teacher',
         email: profileData?.user?.email || user?.email || '',
@@ -415,6 +487,81 @@ export default function TeacherDashboard() {
     refreshTeacherProfile();
     loadAccountPreferences();
   }, []);
+
+  const handleSaveProfessionalInfo = async () => {
+    try {
+      setSavingProfessionalInfo(true);
+      setAppError('');
+      await profileService.updateTeacher({
+        role_title: profTitle.trim(),
+        bio: profSummary.trim(),
+        experience_years: Number.parseInt(profYearsExp, 10) || 0,
+        preferred_employment_type: profEmpPref,
+        availability: profTeachMode,
+        skills: profSubjects.join(', '),
+        teaching_levels: profTeachingLevels,
+      });
+      await refreshTeacherProfile();
+      setShowProfileUpdatedModal(true);
+    } catch (err) {
+      setAppError(apiErrorMessage(err, 'Unable to save professional information.'));
+    } finally {
+      setSavingProfessionalInfo(false);
+    }
+  };
+
+  const handleSaveExperience = async () => {
+    if (!expForm.role.trim() || !expForm.school.trim() || !expForm.start_date || !expForm.end_date) {
+      setExperienceError('Complete the role, school, start month, and end month.');
+      return;
+    }
+    if (expForm.end_date < expForm.start_date) {
+      setExperienceError('The end month must be after the start month.');
+      return;
+    }
+
+    const experienceRecord = {
+      ...expForm,
+      role: expForm.role.trim(),
+      school: expForm.school.trim(),
+      location: expForm.location.trim(),
+      description: expForm.description.trim(),
+      period: `${formatMonthYear(expForm.start_date)} - ${formatMonthYear(expForm.end_date)}`,
+    };
+    const nextExperienceList = editingExpId
+      ? experienceList.map((item) => item.id === editingExpId ? { ...item, ...experienceRecord } : item)
+      : [...experienceList, { id: crypto.randomUUID(), ...experienceRecord }];
+    const teachingExperience = nextExperienceList.map(({ role, school, location, start_date, end_date, description }) => ({
+      role,
+      school,
+      location,
+      start_date,
+      end_date,
+      description,
+    }));
+
+    try {
+      setSavingExperience(true);
+      setExperienceError('');
+      await profileService.updateTeacher({ teaching_experience: teachingExperience });
+      const profileResponse = await profileService.getMe();
+      const profileData = profileResponse?.data?.data || {};
+      const savedProfile = profileData?.profile || profileData?.teacher_profile || profileData || {};
+      const savedExperiences = normalizeExperienceRecords(
+        savedProfile.teaching_experience ?? savedProfile.work_experience ?? savedProfile.experience_history
+      );
+      if (!savedExperiences.length) {
+        setExperienceError('The experience was submitted, but the profile API did not return it. Please try again.');
+        return;
+      }
+      setExperienceList(savedExperiences);
+      setShowAddExpModal(false);
+    } catch (err) {
+      setExperienceError(apiErrorMessage(err, 'Unable to save teaching experience.'));
+    } finally {
+      setSavingExperience(false);
+    }
+  };
 
   // ── Settings state ──
   const [settingsProfile, setSettingsProfile] = useState({
@@ -539,6 +686,17 @@ export default function TeacherDashboard() {
 
   const closeApplyModal = () => {
     setShowApplyModal(false);
+  };
+
+  const handleShareSelectedJob = async (mode) => {
+    if (!selectedJob) return;
+    const shareUrl = window.location.href;
+    const shareText = `${selectedJob.title} at ${selectedJob.school}`;
+    if (mode === 'share' && navigator.share) {
+      await navigator.share({ title: selectedJob.title, text: shareText, url: shareUrl });
+      return;
+    }
+    await navigator.clipboard?.writeText(shareUrl);
   };
 
   const handleApplicationInput = (e) => {
@@ -1450,39 +1608,27 @@ export default function TeacherDashboard() {
                       <span>APPLICATION DEADLINE</span>
                       <strong>{selectedJob.deadline || 'October 24th, 2024'}</strong>
                     </div>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="td-jd-apply-btn"
-                      onClick={() => submitJobApplication({
-                        customNote: applicationForm.motivation || applicationNote || 'I am highly interested in this role.'
-                      })}
-                    >
-                      Apply Now
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className={`td-jd-save-btn ${selectedJob && savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'td-jd-save-btn--saved' : ''}`}
-                      onClick={() => selectedJob && handleToggleSaveJob(selectedJob.job_id || selectedJob.id)}
-                    >
-                      <FiBookmark
-                        size={18}
-                        style={{
-                          strokeWidth: 2.5,
-                          fill: selectedJob && savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'currentColor' : 'none'
-                        }}
-                      />
-                      {selectedJob && savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'Saved' : 'Save Job'}
-                    </motion.button>
+                    {selectedJobApplication ? (
+                      <div className={`td-jd-applied-status td-jd-applied-status--${applicationStatusLabel(selectedJobApplication.status).toLowerCase().replace(/\s+/g, '-')}`}>
+                        {applicationStatusLabel(selectedJobApplication.status)}
+                      </div>
+                    ) : (
+                      <>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="td-jd-apply-btn" onClick={() => submitJobApplication({ customNote: applicationForm.motivation || applicationNote || 'I am highly interested in this role.' })}>Apply Now</motion.button>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`td-jd-save-btn ${savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'td-jd-save-btn--saved' : ''}`} onClick={() => handleToggleSaveJob(selectedJob.job_id || selectedJob.id)}>
+                          <FiBookmark size={18} style={{ strokeWidth: 2.5, fill: savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'currentColor' : 'none' }} />
+                          {savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'Saved' : 'Save Job'}
+                        </motion.button>
+                      </>
+                    )}
 
                     <div className="td-jd-share">
                       <span>Share this role with your network:</span>
                       <div className="td-jd-share-icons">
-                        <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn">
+                        <motion.button type="button" aria-label="Share this job" title="Share this job" whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn" onClick={() => handleShareSelectedJob('share')}>
                           <FiShare2 size={18} style={{ strokeWidth: 2.2 }} />
                         </motion.button>
-                        <motion.button whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn">
+                        <motion.button type="button" aria-label="Copy job link" title="Copy job link" whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn" onClick={() => handleShareSelectedJob('copy')}>
                           <FiLink size={18} style={{ strokeWidth: 2.2 }} />
                         </motion.button>
                       </div>
@@ -1696,62 +1842,39 @@ export default function TeacherDashboard() {
           )}
           {(activeTab === 'applications' || activeTab === 'application') && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-app-page">
-              <div className="td-desktop-only td-app-header">
-                <h1>Job Applications</h1>
-                <p>Manage and track the status of your <span className="td-app-highlight">{applications.length} active applications.</span></p>
+              <div className="td-app-header">
+                <h1>Applications</h1>
+                <p>Keep track of your teaching applications and follow your progress.</p>
               </div>
-
-              <div className="td-mobile-only td-app-mobile-stats">
-                <div className="td-app-stat-card td-app-stat-white">
-                  <div className="td-app-stat-icon-wrapper td-app-stat-icon-dark">
-                    <FiCheckCircle size={18} />
-                  </div>
-                  <h2>{applications.length}</h2>
-                  <span>SUBMITTED</span>
+              <div className="td-app-toolbar">
+                <div className="td-app-filter-tabs" role="tablist" aria-label="Application status">
+                  {[['all', 'All'], ['pending', 'Pending'], ['shortlisted', 'Shortlisted'], ['rejected', 'Rejected']].map(([value, label]) => (
+                    <button type="button" key={value} role="tab" aria-selected={applicationStatusFilter === value} className={applicationStatusFilter === value ? 'is-active' : ''} onClick={() => setApplicationStatusFilter(value)}>{label}</button>
+                  ))}
                 </div>
-                <div className="td-app-stat-card td-app-stat-green">
-                  <div className="td-app-stat-icon-wrapper td-app-stat-icon-light">
-                    <FiClock size={18} />
-                  </div>
-                  <h2>{pendingApplications}</h2>
-                  <span>UNDER REVIEW</span>
+                <div className="td-app-toolbar-actions">
+                  <label className="td-app-search"><FiSearch size={14} /><input type="search" value={applicationSearch} onChange={(event) => setApplicationSearch(event.target.value)} placeholder="Search applications..." /></label>
+                  <select aria-label="Sort applications" value={applicationSort} onChange={(event) => setApplicationSort(event.target.value)}><option value="newest">Newest</option><option value="oldest">Oldest</option></select>
                 </div>
               </div>
-
               <div className="td-app-list">
                 {appError && <div style={{ color: '#b91c1c', marginBottom: '12px' }}>{appError}</div>}
-                {!loading && applications.length === 0 && !appError && <div style={{ color: '#4b5563' }}>No applications yet.</div>}
-                {applications.map(app => (
+                {!loading && visibleApplications.length === 0 && !appError && <div className="td-app-empty">No applications match this filter.</div>}
+                {visibleApplications.map(app => (
                   <div key={app.id} className="td-app-card">
                     <div className="td-app-card-left">
-                      <div className="td-app-icon-wrapper">
-                        {app.icon}
-                      </div>
+                      <div className="td-app-icon-wrapper"><FiBriefcase size={20} /></div>
                       <div className="td-app-content">
                         <div className="td-app-title-row">
                           <h3>{app.title}</h3>
-                          <span className={`td-app-status-badge ${app.status === 'WITHDRAWN' ? 'td-app-status-badge--withdrawn' : ''}`}>{app.status}</span>
                         </div>
                         <p className="td-app-school">{app.school}</p>
-                        <div className="td-app-tags">
-                          {app.tags.map((tag, idx) => (
-                            <span key={idx} className={`td-app-tag td-app-tag--${tag.type}`}>{tag.label}</span>
-                          ))}
-                        </div>
+                        <div className="td-app-meta"><span><FiMapPin /> {app.location || 'Location not available'}</span>{app.employmentType && <span><FiBriefcase /> {app.employmentType}</span>}<span><FiCalendar /> Applied: {app.appliedDate}</span></div>
                       </div>
                     </div>
-
                     <div className="td-app-card-footer">
-                      <div className="td-app-footer-left">
-                        <span className="td-app-date"><FiCalendar size={14} /> Applied: {app.appliedDate}</span>
-                        {app.expiresIn && (
-                          <span className="td-app-expires"><FiClock size={14} /> Expires in {app.expiresIn}</span>
-                        )}
-                        {app.urgent && (
-                          <span className="td-app-urgent"><FiAlertTriangle size={14} /> {app.urgent === true ? 'Urgent Hiring' : 'Urgent Hiring'}</span>
-                        )}
-                      </div>
-                      <button className="td-app-action-btn">{app.actionText}</button>
+                      <span className={`td-app-status-badge td-app-status-badge--${String(app.status).toLowerCase().replace(/\s+/g, '-')}`}>{app.status}</span>
+                      <button type="button" className="td-app-action-btn" onClick={() => { const job = jobs.find((item) => String(item.id) === String(app.jobId)); if (job) { setSelectedJob(job); setActiveTab('jobs'); } }}>View Application</button>
                     </div>
                   </div>
                 ))}
@@ -2377,7 +2500,78 @@ export default function TeacherDashboard() {
           )}
           {activeTab === 'profile' && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-tab-page">
-              {profileSubTab === 'overview' ? (
+              {profileSubTab === 'profile-preview' ? (
+                <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-preview-page">
+                  <button type="button" className="td-preview-back-btn" onClick={() => setProfileSubTab('overview')}>
+                    <FiArrowLeft size={20} />
+                    <span>Settings / Preview profile</span>
+                  </button>
+
+                  <section className="td-preview-hero">
+                    <div className="td-preview-avatar" aria-label={profileFullName}>
+                      {profileState?.avatar_url || profileState?.profile_photo || profileState?.photo_url ? (
+                        <img src={toTeacherAssetUrl(profileState.avatar_url || profileState.profile_photo || profileState.photo_url)} alt="" />
+                      ) : getInitials(profileFullName)}
+                    </div>
+                    <div className="td-preview-hero-copy">
+                      <div className="td-preview-name-row">
+                        <h1>{profileFullName}</h1>
+                        <span className={`td-preview-verified ${isTrcnVerified ? '' : 'td-preview-verified--muted'}`}><FiCheckCircle size={12} />{trcnStatusLabel}</span>
+                      </div>
+                      <p>{profileRoleTitle}</p>
+                      <div className="td-preview-meta">
+                        <span><FiMapPin size={15} />{profileLocation}</span>
+                        <span><FiAward size={15} />{profYearsExp}</span>
+                      </div>
+                    </div>
+                  </section>
+
+                  <div className="td-preview-grid">
+                    <section className="td-preview-panel td-preview-summary">
+                      <h2><FiFileText /> Professional Summary</h2>
+                      <p>{profSummary || 'No professional summary has been provided.'}</p>
+                    </section>
+                    <section className="td-preview-panel td-preview-subjects">
+                      <h2><FiBook /> Subjects</h2>
+                      <div className="td-preview-tags">{profSubjects.length ? profSubjects.map((subject) => <span key={subject}>{subject}</span>) : <em>Not provided</em>}</div>
+                      <h2 className="td-preview-levels-heading"><FiCheckCircle /> Teaching Levels</h2>
+                      <div className="td-preview-levels">{profTeachingLevels.length ? profTeachingLevels.map((level) => <span key={level}>{level}</span>) : <em>Not provided</em>}</div>
+                    </section>
+                    <section className="td-preview-panel td-preview-experience">
+                      <h2><FiBriefcase /> Experience</h2>
+                      {experienceList.length ? <div className="td-preview-list">{experienceList.map((experience, index) => (
+                        <article key={`${experience.role || 'experience'}-${index}`} className="td-preview-list-item">
+                          <span>{normalizeProfileValue(experience.period)}</span>
+                          <strong>{normalizeProfileValue(experience.role, 'Role not provided')}</strong>
+                          <p>{normalizeProfileValue(experience.school, 'School not provided')}</p>
+                        </article>
+                      ))}</div> : <p className="td-preview-empty">No teaching experience has been provided.</p>}
+                    </section>
+                    <div className="td-preview-side-stack">
+                      <section className="td-preview-panel">
+                        <h2><FiAward /> Education</h2>
+                        {educationList.length ? educationList.map((education, index) => (
+                          <article key={`${education.degree || 'education'}-${index}`} className="td-preview-education-item">
+                            <FiBook /><div><strong>{normalizeProfileValue(education.degree, 'Qualification not provided')}</strong><p>{normalizeProfileValue(education.institution, 'Institution not provided')}</p><span>{normalizeProfileValue(education.period)}</span></div>
+                          </article>
+                        )) : <p className="td-preview-empty">No education has been provided.</p>}
+                      </section>
+                      <section className="td-preview-panel">
+                        <h2><FiShield /> Certification &amp; Documents</h2>
+                        <div className="td-preview-trcn">
+                          <FiCheckCircle />
+                          <div><strong>{profileState?.trcn_number ? 'TRCN Registered Educator' : 'TRCN certification not provided'}</strong><p>{profileState?.trcn_number ? `Registration No: ${profileState.trcn_number}` : 'No registration number available.'}</p></div>
+                          <span className={isTrcnVerified ? '' : 'td-preview-status--muted'}>{trcnStatusBadge}</span>
+                        </div>
+                        {activeResume?.url ? <div className="td-preview-doc-actions">
+                          <button type="button" onClick={() => handleResumeAction('download')}><FiDownload /> Download CV</button>
+                          <button type="button" onClick={() => handleResumeAction('view')}><FiEye /> View CV</button>
+                        </div> : <p className="td-preview-empty">No CV has been uploaded.</p>}
+                      </section>
+                    </div>
+                  </div>
+                </motion.div>
+              ) : profileSubTab === 'overview' ? (
                 <>
                   <h1 className="td-profile-main-title">Profile</h1>
 
@@ -2429,7 +2623,7 @@ export default function TeacherDashboard() {
                     </div>
 
                     <div className="td-profile-header-actions">
-                      <button className="td-profile-btn-preview" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
+                      <button type="button" className="td-profile-btn-preview" onClick={() => setProfileSubTab('profile-preview')}>
                         <FiEye size={15} />
                         <span>Preview Profile</span>
                       </button>
@@ -2686,6 +2880,37 @@ export default function TeacherDashboard() {
 
                   {/* 2. Professional Info Tab */}
                   {profileSubTab === 'professional-info' && (
+                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-edit-page">
+                      <button type="button" className="td-prof-edit-breadcrumb" onClick={() => setProfileSubTab('overview')}><FiArrowLeft size={18} /><span>Profile / Professional information</span></button>
+                      <header className="td-prof-edit-header"><h1>Professional Information</h1><p>Define your professional identity. This information will be visible to schools and administrators viewing your profile.</p></header>
+                      {appError && <p className="td-prof-edit-error">{appError}</p>}
+                      <div className="td-prof-edit-grid">
+                        <section className="td-prof-edit-card td-prof-edit-card--primary">
+                          <h2><FiBriefcase /> Identity &amp; Experience</h2>
+                          <label>Professional Title<input type="text" value={profTitle} onChange={(event) => setProfTitle(event.target.value)} /></label>
+                          <label>Professional Summary<textarea value={profSummary} onChange={(event) => setProfSummary(event.target.value)} /></label>
+                          <label>Years of Experience<select value={profYearsExp} onChange={(event) => setProfYearsExp(event.target.value)}><option value="Not provided">Not provided</option><option value="0+ years">0+ years</option><option value="1+ years">1+ years</option><option value="2+ years">2+ years</option><option value="3+ years">3+ years</option><option value="5+ years">5+ years</option><option value="8+ years">8+ years</option><option value="10+ years">10+ years</option></select></label>
+                          <div className="td-prof-preferences">
+                            <h2><FiFilter /> Preferences</h2>
+                            <label>Employment Preference<select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Open">Open</option><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
+                            <label>Teaching Mode<select value={profTeachMode} onChange={(event) => setProfTeachMode(event.target.value)}><option value="Open">Open</option><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
+                          </div>
+                        </section>
+                        <aside className="td-prof-edit-aside">
+                          <section className="td-prof-edit-card">
+                            <h2><FiAward /> Expertise</h2><span className="td-prof-edit-label">Subjects</span>
+                            <div className="td-prof-edit-subjects">
+                              {profSubjects.map((subject) => <button type="button" key={subject} onClick={() => setProfSubjects((items) => items.filter((item) => item !== subject))}>{subject} x</button>)}
+                              {showAddSubject ? <input autoFocus value={newSubjectInput} onChange={(event) => setNewSubjectInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && newSubjectInput.trim()) { event.preventDefault(); setProfSubjects((items) => [...items, newSubjectInput.trim()]); setNewSubjectInput(''); setShowAddSubject(false); } }} onBlur={() => setShowAddSubject(false)} aria-label="New subject" /> : <button type="button" className="td-prof-add-subject" onClick={() => setShowAddSubject(true)}>+ Add Subject</button>}
+                            </div>
+                            <div className="td-prof-edit-levels"><span className="td-prof-edit-label">Teaching Levels</span>{['JSS (Junior Secondary)', 'Senior Secondary', 'Primary'].map((level) => <label key={level}><input type="checkbox" checked={profTeachingLevels.includes(level)} onChange={() => setProfTeachingLevels((levels) => levels.includes(level) ? levels.filter((item) => item !== level) : [...levels, level])} />{level}</label>)}</div>
+                          </section>
+                          <button type="button" className="td-prof-save-btn" disabled={savingProfessionalInfo} onClick={handleSaveProfessionalInfo}>{savingProfessionalInfo ? 'Saving...' : 'Save Changes'}</button>
+                        </aside>
+                      </div>
+                    </motion.div>
+                  )}
+                  {profileSubTab === 'professional-info-legacy' && (
                     <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-info-page">
                       {/* Top Breadcrumb */}
                       <div className="td-prof-breadcrumb" onClick={() => setProfileSubTab('overview')}>
@@ -2989,7 +3214,7 @@ export default function TeacherDashboard() {
                       {/* Modal for adding education */}
                       {showAddEduModal && (
                         <div className="td-modal-overlay" onClick={() => setShowAddEduModal(false)}>
-                          <div className="td-modal-content" onClick={(e) => e.stopPropagation()}>
+                          <div className="td-modal-content td-edu-modal-content" onClick={(e) => e.stopPropagation()}>
                             <div className="td-modal-header">
                               <h2>Add Qualification</h2>
                               <button className="td-modal-close" onClick={() => setShowAddEduModal(false)}>✕</button>
@@ -3019,21 +3244,29 @@ export default function TeacherDashboard() {
                                 <div className="td-pers-field-group">
                                   <label className="td-pers-label">Start Year</label>
                                   <input
-                                    type="text"
+                                    type="number"
                                     placeholder="2015"
                                     className="td-pers-input"
+                                    min="1000"
+                                    max="9999"
+                                    step="1"
+                                    inputMode="numeric"
                                     value={newEduForm.startYear}
-                                    onChange={(e) => setNewEduForm({ ...newEduForm, startYear: e.target.value })}
+                                    onChange={(e) => setNewEduForm({ ...newEduForm, startYear: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                                   />
                                 </div>
                                 <div className="td-pers-field-group">
                                   <label className="td-pers-label">End Year</label>
                                   <input
-                                    type="text"
+                                    type="number"
                                     placeholder="2019"
                                     className="td-pers-input"
+                                    min="1000"
+                                    max="9999"
+                                    step="1"
+                                    inputMode="numeric"
                                     value={newEduForm.endYear}
-                                    onChange={(e) => setNewEduForm({ ...newEduForm, endYear: e.target.value })}
+                                    onChange={(e) => setNewEduForm({ ...newEduForm, endYear: e.target.value.replace(/\D/g, '').slice(0, 4) })}
                                   />
                                 </div>
                               </div>
@@ -3107,9 +3340,11 @@ export default function TeacherDashboard() {
                               role: '',
                               school: '',
                               location: '',
-                              period: '',
+                              start_date: '',
+                              end_date: '',
                               description: ''
                             });
+                            setExperienceError('');
                             setShowAddExpModal(true);
                           }}
                         >
@@ -3163,9 +3398,11 @@ export default function TeacherDashboard() {
                                       role: exp.role,
                                       school: exp.school,
                                       location: exp.location,
-                                      period: exp.period,
+                                      start_date: exp.start_date || '',
+                                      end_date: exp.end_date || '',
                                       description: exp.description
                                     });
+                                    setExperienceError('');
                                     setShowAddExpModal(true);
                                   }}
                                 >
@@ -3191,7 +3428,7 @@ export default function TeacherDashboard() {
                       {/* Modal for adding/editing experience */}
                       {showAddExpModal && (
                         <div className="td-modal-overlay" onClick={() => setShowAddExpModal(false)}>
-                          <div className="td-modal-content" onClick={(e) => e.stopPropagation()}>
+                          <div className="td-modal-content td-exp-modal-content" onClick={(e) => e.stopPropagation()}>
                             <div className="td-modal-header">
                               <h2>{editingExpId ? 'Edit Experience' : 'Add Experience'}</h2>
                               <button className="td-modal-close" onClick={() => setShowAddExpModal(false)}>✕</button>
@@ -3229,15 +3466,15 @@ export default function TeacherDashboard() {
                                   />
                                 </div>
                               </div>
-                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                <label className="td-pers-label">Employment Period</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. SEPT 2021 – PRESENT"
-                                  className="td-pers-input"
-                                  value={expForm.period}
-                                  onChange={(e) => setExpForm({ ...expForm, period: e.target.value })}
-                                />
+                              <div className="td-pers-grid td-exp-period-grid" style={{ marginBottom: '16px' }}>
+                                <div className="td-pers-field-group">
+                                  <label className="td-pers-label">Start Month and Year</label>
+                                  <input type="month" className="td-pers-input" value={expForm.start_date} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value })} />
+                                </div>
+                                <div className="td-pers-field-group">
+                                  <label className="td-pers-label">End Month and Year</label>
+                                  <input type="month" className="td-pers-input" min={expForm.start_date || undefined} value={expForm.end_date} onChange={(e) => setExpForm({ ...expForm, end_date: e.target.value })} />
+                                </div>
                               </div>
                               <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
                                 <label className="td-pers-label">Description / Responsibilities</label>
@@ -3250,6 +3487,7 @@ export default function TeacherDashboard() {
                                 />
                               </div>
                             </div>
+                            {experienceError && <p className="td-exp-modal-error">{experienceError}</p>}
                             <div className="td-modal-footer">
                               <button
                                 type="button"
@@ -3261,26 +3499,10 @@ export default function TeacherDashboard() {
                               <button
                                 type="button"
                                 className="td-pers-save-btn"
-                                onClick={() => {
-                                  if (expForm.role && expForm.school) {
-                                    if (editingExpId) {
-                                      setExperienceList(experienceList.map(item =>
-                                        item.id === editingExpId ? { ...item, ...expForm } : item
-                                      ));
-                                    } else {
-                                      setExperienceList([
-                                        ...experienceList,
-                                        {
-                                          id: Date.now(),
-                                          ...expForm
-                                        }
-                                      ]);
-                                    }
-                                    setShowAddExpModal(false);
-                                  }
-                                }}
+                                disabled={savingExperience}
+                                onClick={handleSaveExperience}
                               >
-                                {editingExpId ? 'Save Changes' : 'Add Experience'}
+                                {savingExperience ? 'Saving...' : editingExpId ? 'Save Changes' : 'Add Experience'}
                               </button>
                             </div>
                           </div>
@@ -6520,6 +6742,26 @@ export default function TeacherDashboard() {
           box-shadow: 0 12px 28px rgba(32, 208, 81, 0.45);
         }
 
+        .td-jd-applied-status {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 100%;
+          min-height: 62px;
+          margin-bottom: 14px;
+          border-radius: 999px;
+          background: #fff1aa;
+          color: #9a790d;
+          font-size: 17px;
+          font-weight: 800;
+          text-transform: capitalize;
+        }
+        .td-jd-applied-status--shortlisted { background: #d9f8df; color: #19723b; }
+        .td-jd-applied-status--under-review { background: #dbeafe; color: #1d4ed8; }
+        .td-jd-applied-status--accepted { background: #d9f8df; color: #19723b; }
+        .td-jd-applied-status--rejected { background: #ffe0da; color: #c2412d; }
+        .td-jd-applied-status--withdrawn { background: #e2e8f0; color: #64748b; }
+
         .td-jd-save-btn {
           width: 100%;
           background: #DFE3E8;
@@ -6630,6 +6872,86 @@ export default function TeacherDashboard() {
           justify-content: center;
           z-index: 1000;
           padding: 24px;
+        }
+        .td-modal-content {
+          width: min(406px, 100%);
+          overflow: hidden;
+          background: #fff;
+          border-radius: 12px;
+          box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28);
+        }
+        .td-edu-modal-content .td-modal-header {
+          align-items: center;
+          margin: 0;
+          padding: 20px 22px 16px;
+          border-bottom: 1px solid #edf1f4;
+        }
+        .td-edu-modal-content .td-modal-header h2 {
+          margin: 0;
+          color: #1e293b;
+          font-size: 18px;
+          font-weight: 700;
+        }
+        .td-edu-modal-content .td-modal-close {
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          padding: 0;
+          border-radius: 50%;
+          color: #64748b;
+          font-size: 18px;
+        }
+        .td-edu-modal-content .td-modal-close:hover { background: #f1f5f9; color: #1e293b; }
+        .td-edu-modal-content .td-modal-body { padding: 20px 22px 4px; }
+        .td-edu-modal-content .td-pers-field-group { margin-bottom: 17px !important; }
+        .td-edu-modal-content .td-pers-label { color: #475569; font-size: 11px; font-weight: 700; }
+        .td-edu-modal-content .td-pers-input { min-height: 40px; border-color: #d9e0e7; background: #fff; }
+        .td-edu-modal-content .td-pers-input:focus { border-color: #15946e; box-shadow: 0 0 0 3px rgba(21, 148, 110, .12); }
+        .td-edu-modal-content .td-modal-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          padding: 16px 22px 20px;
+          border-top: 1px solid #edf1f4;
+          background: #fbfcfd;
+        }
+        .td-edu-modal-content .td-pers-cancel-btn, .td-edu-modal-content .td-pers-save-btn { min-height: 38px; padding: 0 17px; border-radius: 7px; font-size: 12px; }
+        .td-edu-modal-content .td-pers-save-btn { background: #0d7c57; }
+        .td-edu-modal-content .td-pers-save-btn:hover { background: #096846; }
+        .td-exp-modal-content { max-height: calc(100vh - 32px); overflow-y: auto; }
+        .td-exp-modal-content .td-modal-header {
+          align-items: center;
+          margin: 0;
+          padding: 20px 22px 16px;
+          border-bottom: 1px solid #edf1f4;
+        }
+        .td-exp-modal-content .td-modal-header h2 { margin: 0; color: #1e293b; font-size: 18px; font-weight: 700; }
+        .td-exp-modal-content .td-modal-close { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border-radius: 50%; color: #64748b; font-size: 18px; }
+        .td-exp-modal-content .td-modal-close:hover { background: #f1f5f9; color: #1e293b; }
+        .td-exp-modal-content .td-modal-body { padding: 20px 22px 4px; }
+        .td-exp-modal-content .td-pers-field-group { margin-bottom: 17px !important; }
+        .td-exp-modal-content .td-pers-label { color: #475569; font-size: 11px; font-weight: 700; }
+        .td-exp-modal-content .td-pers-input, .td-exp-modal-content .td-prof-textarea { width: 100%; border: 1px solid #d9e0e7; border-radius: 7px; background: #fff; color: #1e293b; font: inherit; font-size: 12px; outline: none; }
+        .td-exp-modal-content .td-pers-input { min-height: 40px; }
+        .td-exp-modal-content .td-exp-period-grid { margin-bottom: 17px !important; }
+        .td-exp-modal-content input[type='month'] { padding-right: 8px; }
+        .td-exp-modal-error { margin: -6px 22px 12px; color: #b42318; font-size: 11px; font-weight: 600; }
+        .td-exp-modal-content .td-prof-textarea { min-height: 88px; padding: 10px 12px; line-height: 1.5; resize: vertical; }
+        .td-exp-modal-content .td-pers-input:focus, .td-exp-modal-content .td-prof-textarea:focus { border-color: #15946e; box-shadow: 0 0 0 3px rgba(21, 148, 110, .12); }
+        .td-exp-modal-content .td-modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 0; padding: 16px 22px 20px; border-top: 1px solid #edf1f4; background: #fbfcfd; }
+        .td-exp-modal-content .td-pers-cancel-btn, .td-exp-modal-content .td-pers-save-btn { min-height: 38px; padding: 0 17px; border-radius: 7px; font-size: 12px; }
+        .td-exp-modal-content .td-pers-save-btn { background: #0d7c57; }
+        .td-exp-modal-content .td-pers-save-btn:hover { background: #096846; }
+        .td-exp-modal-content .td-pers-save-btn:disabled { cursor: wait; opacity: .7; }
+        @media (max-width: 480px) {
+          .td-modal-overlay { padding: 16px; }
+          .td-edu-modal-content .td-modal-header { padding: 18px 18px 14px; }
+          .td-edu-modal-content .td-modal-body { padding: 18px 18px 2px; }
+          .td-edu-modal-content .td-modal-footer { padding: 14px 18px 18px; }
+          .td-exp-modal-content .td-modal-header { padding: 18px 18px 14px; }
+          .td-exp-modal-content .td-modal-body { padding: 18px 18px 2px; }
+          .td-exp-modal-content .td-modal-footer { padding: 14px 18px 18px; }
         }
         .td-modal {
           width: min(720px, 100%);
@@ -7518,6 +7840,51 @@ export default function TeacherDashboard() {
           .td-app-action-btn {
             font-size: 13px;
           }
+        }
+
+        .td-app-page { max-width: 1180px; padding: 28px 18px 48px; }
+        .td-app-header { margin-bottom: 18px; }
+        .td-app-header h1 { margin-bottom: 2px; color: #202b3d; font-size: 23px; line-height: 1.25; }
+        .td-app-header p { color: #7a8493; font-size: 12px; }
+        .td-app-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 20px; }
+        .td-app-filter-tabs { display: flex; flex-wrap: wrap; gap: 7px; }
+        .td-app-filter-tabs button { min-width: 39px; padding: 6px 12px; border-radius: 999px; background: #e7eef9; color: #58677d; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .td-app-filter-tabs button.is-active { background: #182338; color: #fff; }
+        .td-app-toolbar-actions { display: flex; align-items: center; gap: 8px; }
+        .td-app-search { display: flex; align-items: center; gap: 7px; width: 162px; height: 29px; padding: 0 8px; border: 1px solid #e0e6ee; border-radius: 5px; background: #fff; color: #a3afbf; }
+        .td-app-search input { min-width: 0; flex: 1; color: #344054; font-size: 10px; outline: none; }
+        .td-app-toolbar select { height: 29px; padding: 0 23px 0 9px; border: 1px solid #e0e6ee; border-radius: 5px; background: #fff; color: #58677d; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .td-app-list { gap: 10px; }
+        .td-app-card { min-height: 106px; padding: 15px; border: 1px solid #e7ebf0; border-radius: 8px; box-shadow: none; flex-direction: row; align-items: center; justify-content: space-between; gap: 20px; }
+        .td-app-card-left { min-width: 0; gap: 11px; align-items: flex-start; }
+        .td-app-icon-wrapper { width: 28px; height: 28px; border-radius: 5px; background: #d8ecfa; color: #337696; }
+        .td-app-title-row { margin-bottom: 1px; }
+        .td-app-title-row h3 { color: #313b4a; font-size: 13px; font-weight: 700; }
+        .td-app-school { margin-bottom: 12px; color: #77808b; font-size: 10px; }
+        .td-app-meta { display: flex; flex-wrap: wrap; gap: 9px; color: #8a95a3; font-size: 9px; }
+        .td-app-meta span { display: inline-flex; align-items: center; gap: 3px; }
+        .td-app-meta svg { width: 11px; height: 11px; }
+        .td-app-card-footer { flex: 0 0 auto; min-width: 105px; padding: 0; border: 0; flex-direction: column; align-items: flex-end; gap: 26px; }
+        .td-app-status-badge { padding: 3px 9px; border-radius: 999px; background: #fff1b8; color: #8a6910; font-size: 9px; text-transform: capitalize; }
+        .td-app-status-badge--shortlisted { background: #d7f8d6; color: #238b37; }
+        .td-app-status-badge--rejected { background: #ffe0da; color: #e35942; }
+        .td-app-status-badge--withdrawn { background: #e7ebf0; color: #6b7280; }
+        .td-app-action-btn { min-width: 100px; min-height: 23px; padding: 0 9px; border: 1px solid #cfd6df; border-radius: 4px; color: #4b5563; font-size: 9px; font-weight: 700; }
+        .td-app-action-btn:hover { border-color: #8896a7; background: #f8fafc; color: #273449; }
+        .td-app-empty { padding: 32px; border: 1px dashed #d8e0e9; border-radius: 8px; color: #6b7788; font-size: 13px; text-align: center; }
+        @media (max-width: 768px) {
+          .td-app-page { padding: 18px 14px 88px; }
+          .td-app-header { margin-bottom: 16px; }
+          .td-app-toolbar { align-items: stretch; flex-direction: column; }
+          .td-app-toolbar-actions { width: 100%; }
+          .td-app-search { width: 100%; flex: 1; }
+          .td-app-card { min-height: 0; padding: 14px; align-items: stretch; flex-direction: column; gap: 13px; }
+          .td-app-card-left { gap: 10px; }
+          .td-app-title-row h3 { padding-right: 80px; font-size: 13px; }
+          .td-app-school { margin-bottom: 9px; }
+          .td-app-card-footer { width: 100%; min-width: 0; flex-direction: row; align-items: center; gap: 10px; }
+          .td-app-status-badge { position: static; }
+          .td-app-action-btn { margin-left: auto; }
         }
 
         /* ═══════════════════════════════════════
@@ -9228,6 +9595,90 @@ export default function TeacherDashboard() {
 
         .td-profile-btn-preview:hover {
           background: #F8FAFC;
+        }
+
+        .td-prof-edit-page { max-width: 1100px; padding-bottom: 40px; }
+        .td-prof-edit-breadcrumb { display: inline-flex; align-items: center; gap: 11px; margin-bottom: 27px; color: #263447; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .td-prof-edit-header { margin-bottom: 22px; }
+        .td-prof-edit-header h1 { color: #202d41; font-size: 22px; font-weight: 700; }
+        .td-prof-edit-header p { max-width: 540px; margin-top: 5px; color: #687587; font-size: 12px; line-height: 1.5; }
+        .td-prof-edit-error { margin: 0 0 14px; color: #b42318; font-size: 12px; }
+        .td-prof-edit-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr); gap: 16px; align-items: start; }
+        .td-prof-edit-card { padding: 18px 20px; border: 1px solid #edf0ec; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .04); }
+        .td-prof-edit-card h2 { display: flex; align-items: center; gap: 7px; padding-bottom: 11px; border-bottom: 1px solid #e6f2e8; color: #344054; font-size: 16px; font-weight: 700; }
+        .td-prof-edit-card h2 svg { color: #08755d; }
+        .td-prof-edit-card > label, .td-prof-preferences > label { display: grid; gap: 6px; margin-top: 15px; color: #475467; font-size: 11px; font-weight: 600; }
+        .td-prof-edit-card input[type='text'], .td-prof-edit-card textarea, .td-prof-edit-card select { width: 100%; border: 1px solid #d9dee7; border-radius: 5px; background: #f9fafb; color: #344054; font: inherit; font-size: 12px; outline: none; }
+        .td-prof-edit-card input[type='text'], .td-prof-edit-card select { height: 31px; padding: 0 10px; }
+        .td-prof-edit-card textarea { min-height: 78px; padding: 10px; resize: vertical; line-height: 1.5; }
+        .td-prof-edit-card input:focus, .td-prof-edit-card textarea:focus, .td-prof-edit-card select:focus { border-color: #0b8b66; box-shadow: 0 0 0 2px rgba(11, 139, 102, .12); }
+        .td-prof-preferences { max-width: 235px; margin-top: 15px; padding: 17px 14px; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .06); }
+        .td-prof-preferences h2 { margin: -1px -14px 0; padding: 0 14px 10px; }
+        .td-prof-edit-label { display: block; margin-top: 15px; color: #475467; font-size: 11px; font-weight: 600; }
+        .td-prof-edit-subjects { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+        .td-prof-edit-subjects button { padding: 3px 8px; border-radius: 999px; background: #e7f5e8; color: #58725e; font-size: 9px; cursor: pointer; }
+        .td-prof-edit-subjects .td-prof-add-subject { border: 1px dashed #52a56f; background: transparent; color: #08755d; font-weight: 700; }
+        .td-prof-edit-subjects input { width: 100px; border: 1px solid #8ac9a2; border-radius: 4px; padding: 3px 5px; font-size: 10px; outline: none; }
+        .td-prof-edit-levels { display: grid; gap: 8px; margin-top: 16px; }
+        .td-prof-edit-levels .td-prof-edit-label { margin: 0 0 2px; }
+        .td-prof-edit-levels label { display: flex; align-items: center; gap: 7px; color: #475467; font-size: 11px; cursor: pointer; }
+        .td-prof-edit-levels input { width: 14px; height: 14px; accent-color: #08755d; }
+        .td-prof-save-btn { width: 100%; min-height: 35px; margin-top: 14px; border-radius: 999px; background: #25d84d; color: #075b2b; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .td-prof-save-btn:hover:not(:disabled) { background: #18c641; }
+        .td-prof-save-btn:disabled { cursor: wait; opacity: .7; }
+        @media (max-width: 720px) { .td-prof-edit-page { padding-bottom: 88px; } .td-prof-edit-grid { grid-template-columns: 1fr; } .td-prof-edit-header h1 { font-size: 20px; } }
+
+        .td-profile-preview-page { max-width: 1180px; margin: 0 auto; padding: 8px 0 42px; }
+        .td-preview-back-btn { display: inline-flex; align-items: center; gap: 12px; margin: 0 0 28px; color: #1e293b; font-size: 13px; font-weight: 600; cursor: pointer; }
+        .td-preview-hero { display: flex; align-items: center; gap: 22px; min-height: 145px; padding: 24px 30px; background: #fff; border-radius: 8px; box-shadow: 0 3px 13px rgba(15, 23, 42, .08); }
+        .td-preview-avatar { display: grid; place-items: center; width: 78px; height: 78px; flex: 0 0 78px; overflow: hidden; border: 3px solid #e2e8f0; border-radius: 50%; background: #dbeafe; color: #1e3a5f; font-size: 24px; font-weight: 700; }
+        .td-preview-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .td-preview-hero-copy { min-width: 0; }
+        .td-preview-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .td-preview-name-row h1 { color: #172238; font-size: 22px; line-height: 1.2; font-weight: 700; }
+        .td-preview-verified { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; background: #dff5ee; color: #15836d; font-size: 10px; font-weight: 700; }
+        .td-preview-verified--muted { background: #f1f5f9; color: #64748b; }
+        .td-preview-hero-copy > p { margin-top: 3px; color: #64748b; font-size: 15px; }
+        .td-preview-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; color: #718096; font-size: 12px; }
+        .td-preview-meta span { display: inline-flex; align-items: center; gap: 5px; }
+        .td-preview-grid { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(290px, .82fr); gap: 16px; margin-top: 18px; }
+        .td-preview-panel { padding: 17px 18px; background: #fff; border-radius: 8px; box-shadow: 0 3px 13px rgba(15, 23, 42, .07); }
+        .td-preview-panel h2 { display: flex; align-items: center; gap: 6px; padding-bottom: 9px; border-bottom: 1px solid #edf1f4; color: #273449; font-size: 16px; font-weight: 700; }
+        .td-preview-panel h2 svg { color: #08755d; }
+        .td-preview-summary, .td-preview-subjects { min-height: 205px; }
+        .td-preview-summary > p { margin-top: 13px; color: #596575; font-size: 12px; line-height: 1.68; }
+        .td-preview-tags, .td-preview-levels { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
+        .td-preview-tags span, .td-preview-levels span { padding: 4px 10px; border-radius: 999px; background: #dce7f8; color: #455a78; font-size: 10px; }
+        .td-preview-levels span { background: #eef2ef; color: #69766e; }
+        .td-preview-tags em, .td-preview-levels em { color: #64748b; font-size: 12px; font-style: normal; }
+        .td-preview-levels-heading { margin-top: 25px; }
+        .td-preview-experience { min-height: 220px; }
+        .td-preview-list { display: grid; gap: 12px; margin-top: 14px; }
+        .td-preview-list-item { position: relative; padding: 12px 42px 12px 11px; border: 1px solid #e8edf2; border-radius: 8px; background: #fbfcfd; }
+        .td-preview-list-item::after { content: ''; position: absolute; top: 15px; right: 13px; width: 20px; height: 20px; border-radius: 50%; background: #08755d; }
+        .td-preview-list-item span, .td-preview-education-item span { display: block; color: #638579; font-size: 10px; font-weight: 700; }
+        .td-preview-list-item strong, .td-preview-education-item strong { display: block; margin-top: 3px; color: #273449; font-size: 15px; line-height: 1.25; }
+        .td-preview-list-item p, .td-preview-education-item p { margin-top: 2px; color: #718096; font-size: 11px; }
+        .td-preview-side-stack { display: grid; align-content: start; gap: 16px; }
+        .td-preview-education-item { display: flex; gap: 12px; margin-top: 12px; }
+        .td-preview-education-item > svg { width: 26px; height: 26px; flex: 0 0 26px; padding: 5px; border-radius: 3px; background: #dce7f8; color: #4d668a; }
+        .td-preview-trcn { display: flex; align-items: center; gap: 9px; margin-top: 12px; padding: 11px; border: 1px solid #cee6dc; border-radius: 5px; background: #f4faf7; }
+        .td-preview-trcn > svg { flex: 0 0 auto; color: #08755d; }
+        .td-preview-trcn div { min-width: 0; flex: 1; }
+        .td-preview-trcn strong { display: block; color: #334155; font-size: 11px; }
+        .td-preview-trcn p { color: #64748b; font-size: 9px; }
+        .td-preview-trcn > span { padding: 3px 6px; border-radius: 2px; background: #d9f0e6; color: #08755d; font-size: 8px; font-weight: 800; }
+        .td-preview-trcn > .td-preview-status--muted { background: #e2e8f0; color: #64748b; }
+        .td-preview-doc-actions { display: grid; gap: 5px; margin-top: 12px; }
+        .td-preview-doc-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 29px; border: 1px solid #cfd6df; border-radius: 4px; color: #475569; font-size: 10px; font-weight: 600; cursor: pointer; }
+        .td-preview-doc-actions button:hover { background: #f8fafc; }
+        .td-preview-empty { margin-top: 12px; color: #718096; font-size: 12px; }
+        @media (max-width: 720px) {
+          .td-profile-preview-page { padding-bottom: 88px; }
+          .td-preview-hero { align-items: flex-start; padding: 20px; }
+          .td-preview-avatar { width: 58px; height: 58px; flex-basis: 58px; font-size: 18px; }
+          .td-preview-name-row h1 { font-size: 18px; }
+          .td-preview-grid { grid-template-columns: 1fr; }
         }
 
         .td-profile-btn-edit {

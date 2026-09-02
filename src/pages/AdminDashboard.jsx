@@ -21,6 +21,7 @@ import {
   FiBookOpen,
   FiChevronDown,
   FiClock,
+  FiDollarSign,
   FiEdit,
   FiFileText,
   FiGrid,
@@ -88,7 +89,7 @@ export default function AdminDashboard() {
   const [openApplicantMenuId, setOpenApplicantMenuId] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobDetailView, setJobDetailView] = useState("detail");
-  const [applicantFilter, setApplicantFilter] = useState("All (24)");
+  const [applicantFilter, setApplicantFilter] = useState("All");
   const [applicantPage, setApplicantPage] = useState(1);
   const [experienceFilter, setExperienceFilter] = useState("Experience");
   const [qualificationFilter, setQualificationFilter] = useState("Qualification");
@@ -191,6 +192,15 @@ export default function AdminDashboard() {
     setEditingJobId(null);
     setSelectedJob(null);
     setSelectedApplicant(null);
+    setActiveTab("post-job");
+  };
+
+  const openEditJobForm = (job) => {
+    if (!job) return;
+    setPreviousTab("jobs");
+    setEditingJobId(job.job_id || job.id);
+    setJobForm({ ...emptyJobForm, ...job });
+    setSelectedJob(null);
     setActiveTab("post-job");
   };
 
@@ -778,9 +788,6 @@ export default function AdminDashboard() {
         <section className="school-overview-section school-applicants-section">
           <div className="school-section-heading">
             <h3>Recent Applicants</h3>
-            <button type="button" onClick={() => handleTabChange("applicants")}>
-              View All <span>→</span>
-            </button>
           </div>
           <div className="school-applicant-table">
             <div className="school-table-row school-table-head">
@@ -822,7 +829,17 @@ export default function AdminDashboard() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => handleTabChange("applicants")}
+                    onClick={() => {
+                      const job = jobs.find((item) => String(item.job_id || item.id) === String(app.jobId));
+                      if (!job) return;
+                      setSelectedJob(job);
+                      setSelectedApplicant(app);
+                      setApplicantFilter("All");
+                      setApplicantPage(1);
+                      setJobDetailView("applicants");
+                      setActiveTab("jobs");
+                      loadApplicantsForJob(app.jobId);
+                    }}
                     className="school-review-button"
                   >
                     Review
@@ -1175,8 +1192,6 @@ export default function AdminDashboard() {
   );
 
   const renderJobDetailPage = (job) => {
-    const schoolName = job.school_name || user?.school_name || user?.full_name || "";
-    const schoolLogo = job.school_logo || user?.school_logo || "";
     const description = String(job.description || "").trim();
     const requirementText = String(job.requirements || "").trim();
     const requirements = requirementText
@@ -1185,83 +1200,49 @@ export default function AdminDashboard() {
           .map((item) => item.replace(/^-\s*/, "").trim())
           .filter(Boolean)
       : [];
+    const toDetailList = (value) => (Array.isArray(value) ? value : String(value || "").split(/\n|\r|;|•/))
+      .map((item) => String(item).replace(/^-\s*/, "").trim())
+      .filter(Boolean);
+    const qualificationList = toDetailList(job.qualifications || job.qualification);
+    const benefitList = toDetailList(job.benefits || job.perks);
+    const jobId = job.job_id || job.id;
+    const status = String(job.status || "active").toLowerCase();
+    const postedAt = job.created_at || job.posted_at || job.published_at || "";
+    const timeline = [
+      ["Posted on", postedAt],
+      ["Application deadline", job.application_deadline],
+      ["Expected start", job.expected_start_date || job.start_date],
+    ].filter(([, date]) => date && !Number.isNaN(new Date(date).getTime()));
+    const formatDate = (date) => new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 
     return (
       <div className="school-job-detail-page">
-        <div className="school-job-detail-shell">
-          <div className="school-job-detail-header-area">
-            <div className="school-job-detail-school-row">
-              {schoolName && (
-                <>
-                  <div className="school-job-detail-school-logo" aria-label={schoolName}>
-                    {schoolLogo ? (
-                      <img src={schoolLogo} alt={schoolName} />
-                    ) : (
-                      <span>{schoolName.slice(0, 2).toUpperCase()}</span>
-                    )}
-                  </div>
-                  <div className="school-job-detail-school-name">{schoolName}</div>
-                </>
-              )}
-            </div>
-
-            <div className="school-job-detail-title-wrap">
-              <h2>{job.title || ""}</h2>
-            </div>
-
+        <div className="school-job-detail-back"><button type="button" onClick={() => setSelectedJob(null)}>Jobs</button><span>›</span><strong>{job.title || "Job position"}</strong></div>
+        <section className="school-job-detail-hero">
+          <div className="school-job-detail-hero-main">
             <div className="school-job-detail-meta-row">
-              {job.location && (
-                <span className="school-job-detail-meta-item">
-                  <FiMapPin size={13} />
-                  {job.location}
-                </span>
-              )}
-              {job.role_type && (
-                <span className="school-job-detail-meta-item">
-                  <FiBook size={13} />
-                  {job.role_type}
-                </span>
-              )}
-              {job.employment_type && (
-                <span className="school-job-detail-meta-item">
-                  <FiClock size={13} />
-                  {job.employment_type}
-                </span>
-              )}
+              {job.role_type && <span className="school-job-detail-meta-item"><FiBook size={13} />{job.role_type}</span>}
+              {job.employment_type && <span className="school-job-detail-meta-item"><FiClock size={13} />{job.employment_type}</span>}
+              {job.location && <span className="school-job-detail-meta-item"><FiMapPin size={13} />{job.location}</span>}
+              {job.salary_range && <span className="school-job-detail-meta-item"><FiDollarSign size={13} />{job.salary_range}</span>}
+              <span className={`school-job-detail-status school-job-detail-status--${status.replace(/\s+/g, "-")}`}>{status === "open" ? "Active" : status}</span>
             </div>
-
-            {!isSchool && (
-              <div className="school-job-detail-actions">
-                <button type="button" className="school-job-detail-primary">
-                  Apply Now
-                </button>
-                <button type="button" className="school-job-detail-secondary">
-                  Save
-                </button>
-              </div>
-            )}
+            <h2>{job.title || "Job position"}</h2>
+            <div className="school-job-detail-actions">
+              <button type="button" className="school-job-detail-primary" onClick={() => { setJobDetailView("applicants"); setApplicantFilter("All"); setApplicantPage(1); loadApplicantsForJob(jobId); }}><FiUsers size={15} /> View Applicants</button>
+              <button type="button" className="school-job-detail-secondary" onClick={() => openEditJobForm(job)}>Edit Job</button>
+              {status !== "closed" && <button type="button" className="school-job-detail-close" onClick={() => handleCloseJob(jobId)}>Close Job</button>}
+            </div>
           </div>
-
-          <div className="school-job-detail-body">
-            {description && (
-              <section className="school-job-detail-section">
-                <h3>About the job</h3>
-                <p>{description}</p>
-              </section>
-            )}
-
-            {requirements.length > 0 && (
-              <section className="school-job-detail-section">
-                <h3>Requirements / Qualifications</h3>
-                <ul className="school-job-detail-bullets">
-                  {requirements.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </section>
-            )}
-          </div>
-        </div>
+          {timeline.length > 0 && <aside className="school-job-timeline"><h3>Job Timeline</h3>{timeline.map(([label, date], index) => <div key={label} className="school-job-timeline-item"><span className={index === 0 ? "is-current" : ""} /><div><small>{label}</small><strong>{formatDate(date)}</strong></div></div>)}</aside>}
+        </section>
+        <section className="school-job-detail-body">
+          {description && <div className="school-job-detail-section"><h3>About the Role</h3><p>{description}</p></div>}
+          {requirements.length > 0 && <div className="school-job-detail-section"><h3>Responsibilities</h3><ul className="school-job-detail-check-list">{requirements.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {(job.required_experience || job.required_qualification) && <div className="school-job-detail-section"><h3>Requirements</h3><ul className="school-job-detail-bullets">{job.required_experience && <li>{job.required_experience} of teaching experience</li>}{job.required_qualification && <li>{job.required_qualification}</li>}</ul></div>}
+          {qualificationList.length > 0 && <div className="school-job-detail-section"><h3>Qualifications</h3><ul className="school-job-detail-bullets">{qualificationList.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {benefitList.length > 0 && <div className="school-job-detail-section"><h3>Benefits</h3><ul className="school-job-detail-bullets">{benefitList.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+        </section>
       </div>
     );
   };
@@ -1306,14 +1287,14 @@ export default function AdminDashboard() {
           jobs
             .filter((job) => {
               if (jobFilter === "All Jobs") return true;
-              return (
-                String(job.status || "active").toLowerCase() ===
-                jobFilter.toLowerCase()
-              );
+              const jobStatus = String(job.status || "active").trim().toLowerCase();
+              if (jobFilter === "Active") return jobStatus === "active" || jobStatus === "open" || jobStatus === "published";
+              return jobStatus === jobFilter.toLowerCase();
             })
             .map((job) => {
               const jobId = job.job_id || job.id;
-              const status = String(job.status || "active").toLowerCase();
+              const rawStatus = String(job.status || "active").trim().toLowerCase();
+              const status = rawStatus === "open" || rawStatus === "published" ? "active" : rawStatus;
               const statusKey = status.replace(/\s+/g, "-");
               const statusLabel =
                 status === "active"
@@ -1322,6 +1303,11 @@ export default function AdminDashboard() {
                     ? "Under Review"
                     : status.charAt(0).toUpperCase() + status.slice(1);
               const applicantCount = (applicantsByJob[jobId] || []).length;
+              const postedAt = job.created_at || job.posted_at || job.published_at || "";
+              const postedDate = postedAt ? new Date(postedAt) : null;
+              const postedLabel = postedDate && !Number.isNaN(postedDate.getTime())
+                ? `Posted ${postedDate.toLocaleDateString()}`
+                : "Posting date unavailable";
               return (
                 <article
                   className="school-job-row"
@@ -1374,7 +1360,7 @@ export default function AdminDashboard() {
                       </span>
                       <span>
                         <FiCalendar size={14} />
-                        Posted recently
+                        {postedLabel}
                       </span>
                     </div>
                   </div>
@@ -1415,9 +1401,11 @@ export default function AdminDashboard() {
                             type="button"
                             className="school-job-more"
                             aria-label="More job actions"
-                            onClick={() =>
+                            aria-expanded={openJobMenuId === jobId}
+                            onClick={(event) => {
+                              event.stopPropagation();
                               setOpenJobMenuId(openJobMenuId === jobId ? null : jobId)
-                            }
+                            }}
                           >
                             <FiMoreVertical size={18} />
                           </button>
@@ -1443,7 +1431,7 @@ export default function AdminDashboard() {
                         </div>
                       </>
                     )}
-                    {status !== "draft" && status !== "filled" && (
+                    {status === "active" && (
                       <>
                         <button
                           type="button"
@@ -1451,18 +1439,35 @@ export default function AdminDashboard() {
                             event.stopPropagation();
                             openJobDetails(job);
                           }}
-                          className="school-job-view"
+                          className="school-job-details"
                         >
-                          View
+                          Job details
+                        </button>
+                        <button
+                          type="button"
+                          className="school-job-view-applicants"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setSelectedJob(job);
+                            setJobDetailView("applicants");
+                            setSelectedApplicant(null);
+                            setApplicantFilter("All");
+                            setApplicantPage(1);
+                            loadApplicantsForJob(jobId);
+                          }}
+                        >
+                          View applicants
                         </button>
                         <div className="school-job-more-wrap">
                           <button
                             type="button"
                             className="school-job-more"
                             aria-label="More job actions"
-                            onClick={() =>
+                            aria-expanded={openJobMenuId === jobId}
+                            onClick={(event) => {
+                              event.stopPropagation();
                               setOpenJobMenuId(openJobMenuId === jobId ? null : jobId)
-                            }
+                            }}
                           >
                             <FiMoreVertical size={18} />
                           </button>
@@ -1483,6 +1488,20 @@ export default function AdminDashboard() {
                                 <span className="school-job-menu-icon"><FiTrash2 size={18} /></span>
                                 <span>Delete</span>
                               </button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                    {(status === "pending" || status === "under review" || status === "rejected" || status === "closed") && (
+                      <>
+                        <button type="button" className="school-job-view" onClick={(event) => { event.stopPropagation(); openJobDetails(job); }}>View</button>
+                        <div className="school-job-more-wrap">
+                          <button type="button" className="school-job-more" aria-label="More job actions" onClick={(event) => { event.stopPropagation(); setOpenJobMenuId(openJobMenuId === jobId ? null : jobId); }}><FiMoreVertical size={18} /></button>
+                          {openJobMenuId === jobId && (
+                            <div className="school-job-menu">
+                              {status !== "closed" && <button type="button" onClick={() => handleCloseJob(jobId)}><span className="school-job-menu-icon"><FiX size={18} /></span><span>Close Application</span></button>}
+                              <button type="button" className="school-job-menu-delete" onClick={() => handleDeleteJob(jobId)}><span className="school-job-menu-icon"><FiTrash2 size={18} /></span><span>Delete</span></button>
                             </div>
                           )}
                         </div>
@@ -1498,6 +1517,42 @@ export default function AdminDashboard() {
   );
 
 const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
+  const toApplicantList = (value) => Array.isArray(value)
+    ? value.filter(Boolean)
+    : String(value || "").split(/[,;\n|]/).map((item) => item.trim()).filter(Boolean);
+  const applicantSubjects = toApplicantList(applicant.subjects || applicant.skills);
+  const applicantSkills = toApplicantList(applicant.skills || applicant.subjects);
+  const applicantQualifications = toApplicantList(applicant.qualifications || applicant.qualification || applicant.education);
+  const applicantExperience = Array.isArray(applicant.teaching_experience)
+    ? applicant.teaching_experience
+    : Array.isArray(applicant.work_experience) ? applicant.work_experience : [];
+  const applicantId = applicant.application_id || applicant.id;
+  const jobId = job.job_id || job.id;
+  const summary = applicant.summary || applicant.bio || applicant.about || applicant.cover_letter || "No professional summary has been provided.";
+  const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
+  const coverLetter = String(applicant.cover_letter || "").trim();
+
+  if (applicant) return (
+    <div className="school-applicant-summary-page school-applicant-summary-page--api">
+      <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
+      <div className="school-summary-container"><div className="school-summary-content">
+        <section className="school-summary-section school-summary-section--first">
+          <div className="school-summary-actions">
+            <button type="button" className="school-summary-shortlist-btn" onClick={() => handleShortlistApplicant(applicant)}>Shortlist Candidate</button>
+            <button type="button" className="school-summary-reject-btn" onClick={() => handleRejectApplicant(jobId, applicantId)}>Reject Applicant</button>
+          </div>
+          <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
+        </section>
+        <div className="school-summary-grid-2col">
+          <section className="school-summary-section"><div className="school-summary-section-header"><FiBook className="school-summary-icon" /><h2>Teaching Subjects</h2></div>{applicantSubjects.length ? <div className="school-summary-tags">{applicantSubjects.map((subject, index) => <span key={`${subject}-${index}`} className="school-summary-tag">{subject}</span>)}</div> : <p className="school-summary-text">No subjects provided.</p>}</section>
+          <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
+        </div>
+        <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
+        <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <button type="button" className="school-summary-cover-letter" onClick={() => window.alert(coverLetter)}><FiFileText /> View cover letter</button> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}</div></div>
+      </div></div>
+    </div>
+  );
+
   return (
     <div className="school-applicant-summary-page">
       <button
@@ -1559,11 +1614,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               </div>
 
               <div className="school-summary-tags">
-                {(applicant.subjects || [
-                  "Mathematics",
-                  "Further Math",
-                  "Physics (Junior Secondary)",
-                ]).map((subject, idx) => (
+                {applicantSubjects.map((subject, idx) => (
                   <span
                     key={idx}
                     className="school-summary-tag"
@@ -1689,12 +1740,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               </div>
 
               <div className="school-summary-skills">
-                {(applicant.skills || [
-                  "Curriculum Development",
-                  "E-learning Platforms",
-                  "Student Mentorship",
-                  "WAEC Grading",
-                ]).map((skill, idx) => (
+                {applicantSkills.map((skill, idx) => (
                   <span
                     key={idx}
                     className="school-summary-skill-tag"
@@ -1993,7 +2039,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     const applicants = applicantsByJob[jobId] || [];
 
     const statusFilters = [
-      "All (24)",
+      "All",
       "Under Review",
       "Shortlisted",
       "Rejected",
@@ -2012,7 +2058,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             return status === "shortlisted";
           case "Rejected":
             return status === "rejected";
-          case "All (24)":
+          case "All":
           default:
             return true;
         }
@@ -2035,7 +2081,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     });
 
     const applicantsPerPage = 3;
-    const totalApplicantCount = Math.max(24, filteredApplicants.length);
+    const totalApplicantCount = filteredApplicants.length;
     const totalApplicantPages = Math.max(1, Math.ceil(totalApplicantCount / applicantsPerPage));
     const safeApplicantPage = Math.min(Math.max(1, applicantPage), totalApplicantPages);
     const applicantPageStart = (safeApplicantPage - 1) * applicantsPerPage;
@@ -2067,13 +2113,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             Jobs
           </button>
           <span>›</span>
-          <strong>{job.title || "Mathematics Teacher"}</strong>
+          <strong>{job.title || "Job position"}</strong>
         </div>
 
         <h2 className="school-job-applicants-title">Applicants List</h2>
         <p className="school-job-applicants-subtitle">
           Reviewing {applicants.length} candidates for the{" "}
-          {job.title || "Senior Mathematics"} position
+          {job.title || "this job"} position
         </p>
 
         <div className="school-job-applicants-toolbar">
@@ -2088,7 +2134,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                   setApplicantPage(1);
                 }}
               >
-                {filter}
+                {filter === "All" ? `All (${applicants.length})` : filter}
               </button>
             ))}
 
@@ -2161,7 +2207,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             type="button"
             className="school-job-clear-filters"
             onClick={() => {
-              setApplicantFilter("All (24)");
+              setApplicantFilter("All");
               setExperienceFilter("Experience");
               setQualificationFilter("Qualification");
               setExperienceMenuOpen(false);
@@ -2174,6 +2220,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         </div>
 
         <div className="school-job-applicants-list">
+          {paginatedApplicants.length === 0 && (
+            <p className="school-job-applicants-empty">No applicants match the selected filters.</p>
+          )}
           {paginatedApplicants.map((app, index) => {
             const appId = app.application_id || app.id || index;
             const currentStatus = String(app.status || "pending").toLowerCase();
@@ -2194,12 +2243,12 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                       {app.teacher_name || app.teacher_email || "Applicant"}
                     </h4>
                     <div className="school-job-applicant-role">
-                      {app.role_title || job.role_type || "Mathematics Teacher"}
+                      {app.role_title || job.role_type || "Not provided"}
                     </div>
-                    {app.experience || "8 yrs exp" ? (
+                    {app.experience || app.experience_years ? (
                       <div className="school-job-applicant-meta-row">
                         <span className="school-job-applicant-badge">
-                          {app.experience || "8 yrs exp"}
+                          {app.experience || `${app.experience_years} years`}
                         </span>
                         {app.trcn || app.verified ? (
                           <span className="school-job-applicant-badge school-job-applicant-badge--green">
@@ -2214,14 +2263,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     <span className="school-job-applicant-label">
                       Qualification
                     </span>
-                    <strong>{app.qualification || "M.Ed"}</strong>
+                    <strong>{app.qualification || app.education || "Not provided"}</strong>
                   </div>
 
                   <div className="school-job-applicant-column">
                     <span className="school-job-applicant-label">Location</span>
                     <strong>
                       <span className="school-job-location-pin">◌</span>
-                      {app.location || "Lagos, NG"}
+                      {app.location || "Not provided"}
                     </strong>
                   </div>
 
@@ -6059,34 +6108,36 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-form-actions button:disabled { cursor: wait; opacity: .6; }
 
         .school-jobs-page { color: #252b3d; }
-        .school-jobs-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 38px; }
-        .school-jobs-heading h2 { margin: 0; font-size: 29px; font-weight: 700; }
+        .school-jobs-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
+        .school-jobs-heading h2 { margin: 0; color: #202b3d; font-size: 26px; font-weight: 700; }
         .school-jobs-heading button { display: inline-flex; align-items: center; gap: 7px; padding: 10px 16px; border: 0; border-radius: 999px; background: #1ccb43; color: #07331b; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .school-jobs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 22px; padding: 0 0 10px; border-bottom: 1px solid #edf0f2; }
+        .school-jobs-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 20px; padding: 0 0 11px; border-bottom: 1px solid #e8edf0; }
         .school-job-filters { display: flex; gap: 8px; flex-wrap: wrap; }
-        .school-job-filters button { padding: 8px 17px; border: 1px solid #d7ded7; border-radius: 999px; background: #fff; color: #718078; font: inherit; font-size: 11px; cursor: pointer; }
+        .school-job-filters button { min-height: 33px; padding: 0 17px; border: 1px solid #d8e0dc; border-radius: 999px; background: #fff; color: #77838c; font: inherit; font-size: 11px; cursor: pointer; }
         .school-job-filters button.is-active { border-color: #117b35; background: #117b35; color: #fff; }
         .school-jobs-toolbar-right { display: flex; align-items: center; gap: 28px; color: #718078; font-size: 11px; white-space: nowrap; }
         .school-jobs-toolbar-right button { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: #718078; font: inherit; font-size: 11px; cursor: pointer; }
-        .school-job-list-panel { padding: 0 0 14px; background: #fbfbfb; }
+        .school-job-list-panel { padding: 0 0 14px; background: transparent; }
         .school-job-row {
           display: grid;
           grid-template-columns: 58px minmax(0, 1fr) auto;
           gap: 17px;
           align-items: center;
-          min-height: 98px;
-          margin-bottom: 14px;
-          padding: 18px 22px;
-          border: 1px solid #e2e8ec;
-          border-radius: 16px;
+          min-height: 74px;
+          margin-bottom: 10px;
+          padding: 14px 18px;
+          border: 1px solid #e4e9ee;
+          border-radius: 9px;
           background: #fff;
-          box-shadow: 0 2px 0 rgba(16, 24, 40, 0.01);
+          box-shadow: none;
+          transition: border-color .18s ease, box-shadow .18s ease;
         }
+        .school-job-row:hover { border-color: #cad8d0; box-shadow: 0 4px 16px rgba(15, 23, 42, .04); }
         .school-job-row-icon {
           display: grid;
           place-items: center;
-          width: 52px;
-          height: 52px;
+          width: 42px;
+          height: 42px;
           border-radius: 50%;
           background: #e2f0e3;
           color: #176e39;
@@ -6099,6 +6150,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           background: #edf0f0;
           color: #7d898c;
         }
+        .school-job-row-icon--pending, .school-job-row-icon--under-review { background: #fff4d2; color: #ad7912; }
+        .school-job-row-icon--rejected { background: #ffe8e6; color: #cf584c; }
+        .school-job-row-icon--closed { background: #edf0f4; color: #748092; }
         .school-job-row-main { min-width: 0; }
         .school-job-row-title {
           display: flex;
@@ -6110,8 +6164,8 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           overflow: hidden;
           margin: 0;
           color: #1d2433;
-          font-size: 18px;
-          font-weight: 500;
+          font-size: 14px;
+          font-weight: 600;
           text-overflow: ellipsis;
           white-space: nowrap;
         }
@@ -6122,8 +6176,8 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           background: transparent;
           color: #1d2433;
           font: inherit;
-          font-size: 18px;
-          font-weight: 500;
+          font-size: 14px;
+          font-weight: 600;
           text-align: left;
           text-overflow: ellipsis;
           white-space: nowrap;
@@ -6144,12 +6198,15 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           color: #5d6f7e;
         }
         .school-job-row-status--filled { background: #ffe1e1; color: #c55e5e; }
+        .school-job-row-status--pending, .school-job-row-status--under-review { background: #fff1bd; color: #a66a11; }
+        .school-job-row-status--rejected { background: #ffe1e1; color: #c55e5e; }
+        .school-job-row-status--closed { background: #e9edf1; color: #5d6f7e; }
         .school-job-row-meta {
           display: flex;
           align-items: center;
-          gap: 17px;
+          gap: 13px;
           color: #6b7682;
-          font-size: 11px;
+          font-size: 10px;
         }
         .school-job-row-meta span {
           display: inline-flex;
@@ -6164,6 +6221,48 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-detail-page {
           width: 100%;
           color: #1f2a33;
+        }
+        .school-job-detail-back { display: flex; align-items: center; gap: 5px; margin-bottom: 17px; color: #71808a; font-size: 10px; }
+        .school-job-detail-back button { padding: 0; color: #617078; font: inherit; cursor: pointer; }
+        .school-job-detail-back strong { color: #56646d; font-weight: 600; }
+        .school-job-detail-hero { display: grid; grid-template-columns: minmax(0, 1fr) 190px; gap: 22px; min-height: 205px; padding: 18px; border: 1px solid #dce5df; border-radius: 8px; background: #fff; }
+        .school-job-detail-hero-main { min-width: 0; }
+        .school-job-detail-hero-main > h2 { margin: 17px 0 15px; color: #202b3d; font-size: 16px; font-weight: 600; }
+        .school-job-detail-meta-row { gap: 14px; margin-bottom: 0; color: #66757d; font-size: 10px; }
+        .school-job-detail-status { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 999px; background: #dff3e5; color: #247544; font-size: 9px; font-weight: 700; text-transform: capitalize; }
+        .school-job-detail-status--pending, .school-job-detail-status--under-review { background: #fff1bd; color: #a66a11; }
+        .school-job-detail-status--rejected { background: #ffe1e1; color: #c55e5e; }
+        .school-job-detail-status--closed { background: #e9edf1; color: #5d6f7e; }
+        .school-job-detail-actions { gap: 8px; margin-top: 0; }
+        .school-job-detail-primary, .school-job-detail-secondary, .school-job-detail-close { min-height: 29px; padding: 0 12px; border-radius: 6px; font-size: 10px; }
+        .school-job-detail-primary { box-shadow: none; }
+        .school-job-detail-close { border: 1px solid #f3c8c3; background: #fff; color: #c44336; font: inherit; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .school-job-timeline { padding: 14px; border: 1px solid #dce5df; border-radius: 8px; background: #fff; }
+        .school-job-timeline h3 { margin: 0 0 12px; color: #68747d; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+        .school-job-timeline-item { position: relative; display: flex; gap: 9px; padding: 0 0 13px; }
+        .school-job-timeline-item:last-child { padding-bottom: 0; }
+        .school-job-timeline-item:not(:last-child)::before { content: ''; position: absolute; top: 10px; left: 4px; width: 1px; height: calc(100% - 5px); background: #d5dfd8; }
+        .school-job-timeline-item > span { position: relative; z-index: 1; width: 9px; height: 9px; margin-top: 2px; border: 2px solid #99a69e; border-radius: 50%; background: #fff; }
+        .school-job-timeline-item > span.is-current { border-color: #198344; background: #198344; }
+        .school-job-timeline-item small, .school-job-timeline-item strong { display: block; }
+        .school-job-timeline-item small { color: #87929a; font-size: 8px; }
+        .school-job-timeline-item strong { color: #53616b; font-size: 9px; font-weight: 600; }
+        .school-job-detail-body { min-height: 420px; margin-top: 20px; padding: 18px; border: 1px solid #dce5df; border-radius: 8px; background: #fff; }
+        .school-job-detail-section { padding: 0 0 18px; }
+        .school-job-detail-section:last-child { padding-bottom: 0; }
+        .school-job-detail-section h3 { padding-left: 8px; border-left: 3px solid #1c8a47; font-size: 11px; }
+        .school-job-detail-section p, .school-job-detail-section li { color: #52606b; font-size: 11px; line-height: 1.65; }
+        .school-job-detail-check-list { list-style: none; padding-left: 0; }
+        .school-job-detail-check-list li { position: relative; padding-left: 19px; }
+        .school-job-detail-check-list li::before { content: '✓'; position: absolute; left: 0; color: #16833e; font-weight: 700; }
+        @media (max-width: 680px) {
+          .school-job-detail-hero { grid-template-columns: 1fr; padding: 15px; }
+          .school-job-detail-hero-main > h2 { font-size: 18px; }
+          .school-job-detail-meta-row { gap: 9px; }
+          .school-job-detail-actions { display: grid; grid-template-columns: 1fr 1fr; }
+          .school-job-detail-close { grid-column: span 2; }
+          .school-job-timeline { order: 2; }
+          .school-job-detail-body { padding: 15px; }
         }
         .school-job-detail-shell {
           border: 1px solid #ebeeef;
@@ -6293,12 +6392,31 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-detail-check-list li::marker {
           color: #1d7f4c;
         }
+        .school-job-detail-page .school-job-detail-body {
+          min-height: 420px;
+          margin-top: 20px;
+          padding: 18px;
+          border: 1px solid #dce5df;
+          border-radius: 8px;
+          background: #ffffff;
+        }
+        .school-job-detail-page .school-job-detail-section { padding: 0 0 18px; }
+        .school-job-detail-page .school-job-detail-section:last-child { padding-bottom: 0; }
+        .school-job-detail-page .school-job-detail-section h3 { margin: 0 0 10px; padding-left: 8px; border-left: 3px solid #1c8a47; color: #263342; font-size: 11px; font-weight: 700; }
+        .school-job-detail-page .school-job-detail-section p,
+        .school-job-detail-page .school-job-detail-section li { color: #52606b; font-size: 11px; line-height: 1.65; }
+        .school-job-detail-page .school-job-detail-section p { max-width: 510px; }
+        .school-job-detail-page .school-job-detail-check-list { margin: 0; padding-left: 0; list-style: none; }
+        .school-job-detail-page .school-job-detail-check-list li { position: relative; padding-left: 19px; }
+        .school-job-detail-page .school-job-detail-check-list li::before { content: '✓'; position: absolute; left: 0; color: #16833e; font-weight: 700; }
+        .school-job-detail-page .school-job-detail-bullets { margin: 0; padding-left: 18px; }
+        .school-job-detail-page .school-job-detail-bullets li { margin-bottom: 6px; }
         .school-job-row-actions {
           display: flex;
           align-items: center;
           justify-content: flex-end;
           gap: 12px;
-          min-width: 220px;
+          min-width: 150px;
         }
         .school-job-row-actions button {
           border: 0;
@@ -6306,11 +6424,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           font: inherit;
           cursor: pointer;
         }
-        .school-job-view, .school-job-continue {
+        .school-job-view, .school-job-continue, .school-job-details {
           color: #2f9d53;
-          font-size: 13px;
-          font-weight: 500;
+          font-size: 12px;
+          font-weight: 600;
         }
+        .school-job-details { min-height: 29px; padding: 0 11px; border: 1px solid #d8e3da !important; border-radius: 999px; }
+        .school-job-view-applicants { min-height: 29px; padding: 0 12px; border-radius: 999px; background: #16833e !important; color: #fff; font-size: 11px; font-weight: 700; }
         .school-job-continue {
           color: #2e9e57;
           font-size: 16px;
@@ -6356,6 +6476,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           color: #252b3d;
           cursor: pointer;
         }
+        .school-job-more:hover, .school-job-more[aria-expanded="true"] { background: #f1f5f3; color: #16733a; }
         .school-job-menu {
           position: absolute;
           right: 0;
@@ -6363,25 +6484,25 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           z-index: 30;
           display: flex;
           flex-direction: column;
-          width: 220px;
-          padding: 8px;
+          width: 200px;
+          padding: 7px;
           border: 1px solid #eceef0;
-          border-radius: 18px;
+          border-radius: 10px;
           background: #ffffff;
-          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
         }
         .school-job-menu button {
           display: flex;
           align-items: center;
           gap: 12px;
           width: 100%;
-          padding: 14px 14px;
+          padding: 11px 12px;
           border: 0;
-          border-radius: 12px;
+          border-radius: 6px;
           background: transparent;
           color: #1d2433;
           font: inherit;
-          font-size: 16px;
+          font-size: 12px;
           font-weight: 500;
           text-align: left;
           cursor: pointer;
@@ -6745,6 +6866,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-applicants-page {
           width: 100%;
           color: #1f2a33;
+          max-width: 1080px;
         }
         .school-job-applicants-breadcrumb {
           display: inline-flex;
@@ -6768,32 +6890,32 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         }
         .school-job-applicants-title {
           margin: 14px 0 0;
-          font-size: clamp(2rem, 2.6vw, 3rem);
-          font-weight: 800;
-          letter-spacing: -0.05em;
+          font-size: 20px;
+          font-weight: 700;
+          letter-spacing: 0;
           color: #171f29;
         }
         .school-job-applicants-subtitle {
-          margin: 10px 0 0;
+          margin: 5px 0 0;
           color: #5b6c72;
-          font-size: 15px;
+          font-size: 11px;
         }
         .school-job-applicants-toolbar {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 14px;
-          margin-top: 22px;
+          margin-top: 28px;
           padding: 14px 16px;
-          border: 1px solid #e2e8e5;
-          border-radius: 16px;
+          border: 1px solid #dce5df;
+          border-radius: 8px;
           background: #ffffff;
         }
         .school-job-applicants-filters {
           display: flex;
           align-items: center;
           flex-wrap: wrap;
-          gap: 10px;
+          gap: 7px;
         }
         .school-job-applicants-filters button,
         .school-job-filter-button,
@@ -6802,13 +6924,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           cursor: pointer;
         }
         .school-job-applicants-filters button {
-          min-height: 36px;
-          padding: 0 14px;
-          border: 1px solid #dfe5e3;
-          border-radius: 999px;
-          background: #f6faf7;
+          min-height: 25px;
+          padding: 0 12px;
+          border: 0;
+          border-radius: 4px;
+          background: #e9eff9;
           color: #485d5c;
-          font-size: 12px;
+          font-size: 9px;
           font-weight: 700;
         }
         .school-job-applicants-filters button.is-active {
@@ -6824,13 +6946,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          min-height: 36px;
-          padding: 0 15px;
-          border: 1px solid #dfe5e3;
-          border-radius: 999px;
+          min-height: 25px;
+          padding: 0 10px;
+          border: 1px solid #cad5df;
+          border-radius: 4px;
           background: #ffffff;
           color: #46555f;
-          font-size: 12px;
+          font-size: 9px;
           font-weight: 600;
         }
         .school-job-filter-menu {
@@ -6871,19 +6993,19 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-applicants-list {
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          margin-top: 20px;
+          gap: 8px;
+          margin-top: 16px;
         }
         .school-job-applicant-card {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 18px;
-          padding: 18px 18px 16px;
-          border: 1px solid #e2e8e5;
-          border-radius: 16px;
+          gap: 14px;
+          padding: 15px 16px;
+          border: 1px solid #dce5df;
+          border-radius: 8px;
           background: #ffffff;
-          box-shadow: 0 10px 24px rgba(17, 24, 39, 0.02);
+          box-shadow: 0 2px 6px rgba(17, 24, 39, 0.03);
         }
         .school-job-applicant-main {
           display: grid;
@@ -6899,32 +7021,32 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-applicant-name-block h4 {
           margin: 0;
           color: #1b2430;
-          font-size: 22px;
+          font-size: 14px;
           font-weight: 700;
           letter-spacing: -0.04em;
         }
         .school-job-applicant-role {
-          margin-top: 6px;
+          margin-top: 2px;
           color: #4f5f66;
-          font-size: 12px;
+          font-size: 9px;
           font-weight: 600;
         }
         .school-job-applicant-meta-row {
           display: flex;
           flex-wrap: wrap;
           gap: 8px;
-          margin-top: 12px;
+          margin-top: 7px;
         }
         .school-job-applicant-badge {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-height: 28px;
-          padding: 0 10px;
+          min-height: 20px;
+          padding: 0 8px;
           border-radius: 999px;
           background: #eef3f2;
           color: #4a5e69;
-          font-size: 11px;
+          font-size: 9px;
           font-weight: 700;
         }
         .school-job-applicant-badge--green {
@@ -6934,7 +7056,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-job-applicant-column {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 4px;
           min-width: 0;
         }
         .school-job-applicant-label {
@@ -6949,7 +7071,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           align-items: center;
           gap: 7px;
           color: #1f2a33;
-          font-size: 14px;
+          font-size: 10px;
           font-weight: 700;
         }
         .school-job-location-pin {
@@ -6964,10 +7086,10 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-height: 32px;
-          padding: 0 12px;
-          border-radius: 999px;
-          font-size: 11px;
+          min-height: 21px;
+          padding: 0 8px;
+          border-radius: 3px;
+          font-size: 8px;
           font-weight: 800;
           letter-spacing: 0.04em;
         }
@@ -7052,14 +7174,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           color: #d93c3c;
         }
         .school-job-applicant-view-btn {
-          min-height: 42px;
-          padding: 0 18px;
+          min-height: 29px;
+          padding: 0 12px;
           border: 1px solid #1a8e53;
-          border-radius: 999px;
-          background: #1a8e53;
-          color: #ffffff;
+          border-radius: 5px;
+          background: #fff;
+          color: #197a4a;
           font: inherit;
-          font-size: 13px;
+          font-size: 9px;
           font-weight: 700;
           cursor: pointer;
         }
@@ -7067,13 +7189,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          width: 40px;
-          height: 40px;
-          border: 1px solid #dfe5e3;
-          border-radius: 50%;
-          background: #ffffff;
+          width: 28px;
+          height: 29px;
+          border: 0;
+          border-radius: 4px;
+          background: transparent;
           color: #1b2430;
-          font-size: 22px;
+          font-size: 18px;
           cursor: pointer;
         }
         .school-job-applicants-footer {
@@ -7086,6 +7208,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           color: #657581;
           font-size: 12px;
         }
+        .school-job-applicants-empty { margin: 0; padding: 26px; border: 1px dashed #ccd8d1; border-radius: 8px; color: #64748b; font-size: 12px; text-align: center; }
         .school-job-applicant-pagination {
           display: flex;
           align-items: center;
@@ -7903,6 +8026,61 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
 .school-summary-reject-btn:hover {
   background: #fff7f7;
   border-color: #d51e1e;
+}
+
+.school-applicant-summary-page .school-summary-no-cover-letter {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 54px;
+  padding: 0 14px;
+  border: 1px dashed #d7dfdc;
+  border-radius: 8px;
+  background: #fafcfb;
+  color: #748078;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.school-applicant-summary-page .school-summary-no-cover-letter svg {
+  flex: 0 0 auto;
+  color: #98a49e;
+}
+
+.school-applicant-summary-page .school-summary-cover-letter {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid #cfe1d8;
+  border-radius: 8px;
+  background: #f7fbf8;
+  color: #146b49;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, color .18s ease;
+}
+
+.school-applicant-summary-page .school-summary-cover-letter svg {
+  width: 17px;
+  height: 17px;
+  color: #16833e;
+}
+
+.school-applicant-summary-page .school-summary-cover-letter:hover {
+  border-color: #198344;
+  background: #eaf6ee;
+  color: #0d593a;
+}
+
+.school-applicant-summary-page .school-summary-cover-letter:focus-visible {
+  outline: 3px solid rgba(25, 131, 68, .2);
+  outline-offset: 2px;
 }
 
 
