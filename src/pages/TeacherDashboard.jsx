@@ -9,7 +9,7 @@ import { applicationService } from '../services/applicationService';
 import { featureService } from '../services/featureService';
 import { profileService } from '../services/profileService';
 import { accountService } from '../services/accountService';
-import { apiErrorMessage } from '../services/api';
+import { apiErrorMessage, API_ORIGIN } from '../services/api';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
@@ -122,6 +122,12 @@ const normalizeApplicationData = (application = {}, index = 0) => {
 const getInitials = (fullName = '') => {
   const initials = String(fullName).trim().split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join('').toUpperCase();
   return initials || 'T';
+};
+
+const toTeacherAssetUrl = (assetPath) => {
+  if (!assetPath) return '';
+  if (/^(data:|https?:\/\/)/i.test(assetPath)) return assetPath;
+  return `${API_ORIGIN}/${String(assetPath).replace(/^\/+/, '')}`;
 };
 
 export default function TeacherDashboard() {
@@ -378,11 +384,12 @@ export default function TeacherDashboard() {
         email: profileData?.user?.email || user?.email || '',
         phone: profileData?.user?.phone || user?.phone || '',
       });
+      const cvUrl = toTeacherAssetUrl(profile.cv_url || '');
       setActiveResume({
-        name: profile.cv_url ? profile.cv_url.split('/').pop() || 'CV.pdf' : 'No resume uploaded',
+        name: cvUrl ? cvUrl.split('/').pop() || 'CV.pdf' : 'No resume uploaded',
         uploadDate: profile.updated_at ? new Date(profile.updated_at).toLocaleDateString() : 'Not provided',
-        size: profile.cv_url ? 'Uploaded' : 'Not provided',
-        url: profile.cv_url || '',
+        size: cvUrl ? 'Uploaded' : 'Not provided',
+        url: cvUrl,
       });
       setSavedJobIds(savedJobs);
       setNotifications(notificationList.map((notification) => ({

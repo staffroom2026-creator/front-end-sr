@@ -58,12 +58,12 @@ function App() {
         <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
         <Route path="/add-phone-number" element={<PublicRoute><AddPhoneNumber /></PublicRoute>} />
         <Route path="/verify-phone" element={<PublicRoute><VerifyPhone /></PublicRoute>} />
-        <Route path="/teacher-info" element={<PublicRoute><TeacherInfo /></PublicRoute>} />
+        <Route path="/teacher-info" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInfo /></ProtectedRoute>} />
         <Route path="/sch-info" element={<PublicRoute><SchoolInfo /></PublicRoute>} />
         <Route
           path="/teacher-dashboard"
           element={
-            <ProtectedRoute allowedRoles={['teacher']}>
+            <ProtectedRoute allowedRoles={['teacher']} requireTeacherProfile>
               <TeacherDashboard />
             </ProtectedRoute>
           }

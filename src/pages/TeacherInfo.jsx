@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { Country, State } from 'country-state-city';
 import { useAuth } from '../context/AuthContext';
 import { profileService } from '../services/profileService';
 import { apiErrorMessage } from '../services/api';
@@ -20,6 +21,55 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
+function SearchableSelect({ value, options, placeholder, disabled, onChange }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+  const selectedOption = options.find((option) => option.value === value);
+  const filteredOptions = options.filter((option) => option.label.toLowerCase().includes(query.toLowerCase()));
+
+  return (
+    <div className="ti-search-select">
+      <input
+        type="text"
+        value={open ? query : (selectedOption?.label || value || '')}
+        placeholder={placeholder}
+        disabled={disabled}
+        onFocus={() => {
+          setQuery('');
+          setOpen(true);
+        }}
+        onChange={(event) => {
+          setQuery(event.target.value);
+          setOpen(true);
+        }}
+        onBlur={() => window.setTimeout(() => setOpen(false), 120)}
+        role="combobox"
+        aria-expanded={open}
+        aria-autocomplete="list"
+      />
+      {open && !disabled && (
+        <div className="ti-search-options" role="listbox">
+          {filteredOptions.length > 0 ? filteredOptions.map((option) => (
+            <button
+              type="button"
+              key={option.value}
+              className="ti-search-option"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(option.value);
+                setQuery(option.label);
+                setOpen(false);
+              }}
+            >
+              {option.label}
+            </button>
+          )) : <span className="ti-search-empty">No matches found</span>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function TeacherInfo() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -28,23 +78,61 @@ export default function TeacherInfo() {
     state: '',
     level: '',
     subjects: '',
-    bio: '',
-    photo: null
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [photoPreview, setPhotoPreview] = useState('');
+  const [countries, setCountries] = useState([]);
+  const [states, setStates] = useState([]);
+  const [loadingLocations, setLoadingLocations] = useState(true);
 
   useEffect(() => {
-    return () => {
-      if (photoPreview) {
-        URL.revokeObjectURL(photoPreview);
+    setCountries((Country.getAllCountries() || []).sort((a, b) => a.name.localeCompare(b.name)));
+    setLoadingLocations(false);
+  }, []);
+
+  useEffect(() => {
+    if (!form.country) {
+      setStates([]);
+      return;
+    }
+
+    const selectedCountry = countries.find((country) => country.name === form.country);
+    setStates(selectedCountry
+      ? (State.getStatesOfCountry(selectedCountry.isoCode) || []).sort((a, b) => a.name.localeCompare(b.name))
+      : []);
+  }, [countries, form.country]);
+
+  useEffect(() => {
+    let active = true;
+    profileService.getMe().then((response) => {
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const profile = payload?.profile || payload?.teacher_profile || {};
+      const locationParts = String(profile.location || '').split(',').map((value) => value.trim()).filter(Boolean);
+      const savedCountry = locationParts.at(-1) || '';
+      const savedState = locationParts.length > 1 ? locationParts.at(-2) : '';
+      const countryMatch = (Country.getAllCountries() || []).find((country) => country.name.toLowerCase() === savedCountry.toLowerCase());
+      const stateMatch = countryMatch
+        ? (State.getStatesOfCountry(countryMatch.isoCode) || []).find((state) => state.name.toLowerCase() === savedState.toLowerCase())
+        : null;
+      if (active) {
+        setForm((current) => ({
+          ...current,
+          country: countryMatch?.name || savedCountry,
+          state: stateMatch?.name || savedState,
+          subjects: profile.skills || '',
+        }));
       }
+    }).catch(() => {
+      // A new teacher may not have a profile record yet.
+    });
+
+    return () => {
+      active = false;
     };
-  }, [photoPreview]);
+  }, []);
 
   const handleNext = async () => {
-    if (!form.country || !form.state || !form.level || !form.subjects.trim() || !form.bio.trim()) {
+    if (!form.country || !form.state || !form.level || !form.subjects.trim()) {
       setError('Please complete all teacher profile fields before continuing.');
       return;
     }
@@ -54,14 +142,15 @@ export default function TeacherInfo() {
       setError('');
 
       const payload = {
-        bio: form.bio.trim(),
         skills: form.subjects.trim(),
+        teaching_levels: [form.level],
         location: `${form.state}, ${form.country}`.trim(),
         preferred_location: `${form.state}, ${form.country}`.trim(),
         preferred_employment_type: form.level === 'primary' ? 'full-time' : 'part-time',
       };
 
       await profileService.updateTeacher(payload);
+      await profileService.getMe();
       const nextUser = user ? { ...user, role: user.role || 'teacher' } : user;
       if (nextUser) {
         localStorage.setItem('staffroom_user', JSON.stringify(nextUser));
@@ -97,44 +186,28 @@ export default function TeacherInfo() {
       {/* ── Main Content ── */}
       <main className="ti-main">
         <div className="ti-container">
-          <div className="ti-grid">
+          <div className="ti-grid ti-grid--single">
             {/* ── Left Column ── */}
             <div className="ti-col">
               <motion.section variants={itemVariants} className="ti-section">
                 <label className="ti-label">Location</label>
                 <div className="ti-select-wrapper">
-                  <select 
-                    className="ti-select"
+                  <SearchableSelect
                     value={form.country}
-                    onChange={(e) => setForm({...form, country: e.target.value})}
-                  >
-                    <option value="" disabled hidden>Country</option>
-                    <option value="nigeria">Nigeria</option>
-                    <option value="ghana">Ghana</option>
-                    <option value="kenya">Kenya</option>
-                  </select>
-                  <span className="ti-chevron">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </span>
+                    placeholder={loadingLocations ? 'Loading countries...' : 'Search country...'}
+                    disabled={loadingLocations}
+                    options={countries.map((country) => ({ value: country.name, label: country.name }))}
+                    onChange={(country) => setForm((current) => ({ ...current, country, state: '' }))}
+                  />
                 </div>
                 <div className="ti-select-wrapper" style={{ marginTop: '12px' }}>
-                  <select 
-                    className="ti-select"
+                  <SearchableSelect
                     value={form.state}
-                    onChange={(e) => setForm({...form, state: e.target.value})}
-                  >
-                    <option value="" disabled hidden>State</option>
-                    <option value="lagos">Lagos</option>
-                    <option value="abuja">Abuja</option>
-                    <option value="accra">Accra</option>
-                  </select>
-                  <span className="ti-chevron">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M6 9l6 6 6-6" />
-                    </svg>
-                  </span>
+                    placeholder={!form.country ? 'Choose country first' : 'Search state...'}
+                    disabled={!form.country || states.length === 0}
+                    options={states.map((state) => ({ value: state.name, label: state.name }))}
+                    onChange={(state) => setForm((current) => ({ ...current, state }))}
+                  />
                 </div>
               </motion.section>
 
@@ -171,41 +244,6 @@ export default function TeacherInfo() {
               </motion.section>
             </div>
 
-            {/* ── Right Column ── */}
-            <div className="ti-col">
-              <motion.section variants={itemVariants} className="ti-section">
-                <label className="ti-label">Short bio</label>
-                <textarea 
-                  className="ti-textarea"
-                  placeholder="Text"
-                  value={form.bio}
-                  onChange={(e) => setForm({...form, bio: e.target.value})}
-                  style={{ height: '180px' }}
-                />
-              </motion.section>
-
-              <motion.section variants={itemVariants} className="ti-section">
-                <label className="ti-label">Profile Photo</label>
-                <div className="ti-upload-box">
-                  {photoPreview ? (
-                    <img src={photoPreview} alt="Profile preview" className="ti-upload-preview" />
-                  ) : (
-                    <span className="ti-upload-text">Upload photo</span>
-                  )}
-                  <input 
-                    type="file" 
-                    accept="image/*"
-                    className="ti-file-input" 
-                    onChange={(e) => {
-                      const photo = e.target.files[0];
-                      if (!photo) return;
-                      setForm({...form, photo});
-                      setPhotoPreview(URL.createObjectURL(photo));
-                    }}
-                  />
-                </div>
-              </motion.section>
-            </div>
           </div>
 
           {error && (
@@ -291,6 +329,13 @@ export default function TeacherInfo() {
           gap: 48px;
         }
 
+        .ti-grid--single {
+          grid-template-columns: minmax(0, 1fr);
+          max-width: 520px;
+          margin: 0 auto;
+          width: 100%;
+        }
+
         .ti-col {
           display: flex;
           flex-direction: column;
@@ -311,6 +356,77 @@ export default function TeacherInfo() {
 
         .ti-select-wrapper {
           position: relative;
+        }
+
+        .ti-search-select {
+          position: relative;
+        }
+
+        .ti-search-select > input {
+          width: 100%;
+          padding: 14px 40px 14px 16px;
+          border-radius: 12px;
+          border: 1px solid #E2E8F0;
+          background-color: #E2E8F0;
+          font-size: 14px;
+          color: #2D3748;
+          outline: none;
+          box-sizing: border-box;
+        }
+
+        .ti-search-select > input:focus {
+          border-color: #CBD5E0;
+          background-color: #FAFAFA;
+        }
+
+        .ti-search-select::after {
+          content: '⌄';
+          position: absolute;
+          top: 11px;
+          right: 16px;
+          color: #718096;
+          font-size: 18px;
+          pointer-events: none;
+        }
+
+        .ti-search-options {
+          position: absolute;
+          z-index: 10;
+          top: calc(100% + 4px);
+          left: 0;
+          right: 0;
+          max-height: 220px;
+          overflow-y: auto;
+          padding: 4px;
+          border: 1px solid #CBD5E0;
+          border-radius: 10px;
+          background: #FFFFFF;
+          box-shadow: 0 10px 24px rgba(45, 55, 72, 0.14);
+        }
+
+        .ti-search-option {
+          display: block;
+          width: 100%;
+          padding: 10px 12px;
+          border: none;
+          border-radius: 7px;
+          background: transparent;
+          color: #2D3748;
+          font-size: 14px;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .ti-search-option:hover {
+          background: #F0FDF4;
+          color: #166534;
+        }
+
+        .ti-search-empty {
+          display: block;
+          padding: 10px 12px;
+          color: #718096;
+          font-size: 13px;
         }
 
         .ti-select {
@@ -437,10 +553,15 @@ export default function TeacherInfo() {
             gap: 24px;
           }
           .ti-container {
-            max-width: 500px;
+            max-width: 100%;
+            gap: 24px;
           }
           .ti-header {
             padding: 20px;
+          }
+          .ti-main {
+            align-items: flex-start;
+            padding: 16px;
           }
         }
 
@@ -456,21 +577,25 @@ export default function TeacherInfo() {
 
           .ti-main {
             align-items: flex-start;
-            padding: 54px 20px 72px;
+            padding: 28px 32px 44px;
           }
 
           .ti-container {
-            max-width: 343px;
-            gap: 40px;
+            max-width: 760px;
+            gap: 24px;
           }
 
           .ti-grid {
             grid-template-columns: 1fr;
-            gap: 30px;
+            gap: 20px;
+          }
+
+          .ti-grid--single {
+            max-width: 620px;
           }
 
           .ti-col {
-            gap: 24px;
+            gap: 18px;
           }
 
           .ti-label {
@@ -486,6 +611,13 @@ export default function TeacherInfo() {
 
           .ti-select {
             padding: 13px 16px;
+            font-family: 'Sora', sans-serif;
+            font-size: 12px;
+          }
+
+          .ti-search-select > input {
+            padding: 13px 40px 13px 16px;
+            border-radius: 13px;
             font-family: 'Sora', sans-serif;
             font-size: 12px;
           }

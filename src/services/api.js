@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const DEFAULT_API_BASE_URL = 'https://api.staffroomng.com';
 const resolvedBaseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+export const API_ORIGIN = resolvedBaseUrl.replace(/\/$/, '');
 export const API_BASE_URL = import.meta.env.DEV ? '' : resolvedBaseUrl.replace(/\/$/, '');
 
 export const api = axios.create({

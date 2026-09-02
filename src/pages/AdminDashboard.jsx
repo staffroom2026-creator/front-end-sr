@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/adminService";
-import { apiErrorMessage } from "../services/api";
+import { apiErrorMessage, API_ORIGIN } from "../services/api";
 import { jobService } from "../services/jobService";
 import { applicationService } from "../services/applicationService";
 import { featureService } from "../services/featureService";
@@ -143,6 +143,11 @@ export default function AdminDashboard() {
     recipientPhone: "",
   });
 
+  const toAssetUrl = (assetPath) => {
+    if (!assetPath) return "";
+    if (/^(data:|https?:\/\/)/i.test(assetPath)) return assetPath;
+    return `${API_ORIGIN}/${String(assetPath).replace(/^\/+/, "")}`;
+  };
   const isSchool = user?.role === "school";
 
   const normalizeJobPayload = (payload = {}) => {
@@ -379,7 +384,7 @@ export default function AdminDashboard() {
       setPhoneValue(nextPhone);
       setWebsiteValue(nextWebsite);
       setAddressValue(nextAddress);
-      setSchoolLogoPreview(mergedProfile?.logo_url || mergedProfile?.school_logo || mergedProfile?.logo || "");
+      setSchoolLogoPreview(toAssetUrl(mergedProfile?.logo_url || mergedProfile?.school_logo || mergedProfile?.logo || ""));
 
       if (locationFromProfile) {
         setJobForm((prev) => ({
@@ -641,7 +646,7 @@ export default function AdminDashboard() {
   const adminLabel =
     user?.role === "school" ? "School Dashboard" : "Admin Dashboard";
 
-  const schoolProfileLogo =
+  const schoolProfileLogoPath =
     schoolProfile?.logo_url ||
     schoolProfile?.school_logo ||
     schoolProfile?.logo ||
@@ -651,6 +656,11 @@ export default function AdminDashboard() {
     user?.avatar_url ||
     user?.profile_picture ||
     "";
+  const schoolProfileLogo = schoolProfileLogoPath
+    ? /^https?:\/\//i.test(schoolProfileLogoPath)
+      ? schoolProfileLogoPath
+      : `${API_ORIGIN}/${String(schoolProfileLogoPath).replace(/^\/+/, "")}`
+    : "";
 
   const schoolDisplayName =
     schoolProfile?.school_name ||
@@ -1811,7 +1821,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     const skillList = normalizeMultiValueList(teacher.skills || teacher.key_skills || teacher.skillset || teacher.specialties);
     const qualificationList = normalizeMultiValueList(teacher.qualifications || teacher.qualification || teacher.education || teacher.certifications);
     const experienceText = teacher.experience || teacher.experience_years ? `${teacher.experience || teacher.experience_years} Years` : "";
-    const cvUrl = teacher.cv_url || teacher.cvUrl || teacher.cv || "";
+    const cvUrl = toAssetUrl(teacher.cv_url || teacher.cvUrl || teacher.cv || "");
     const cvFileName = cvUrl ? cvUrl.split("/").pop() || "Teacher_CV.pdf" : "";
 
     return (
