@@ -6,4 +6,8 @@ export const applicationService = {
   getApplicantsByJob: (jobId) => api.get(`/api/applications/job/${jobId}`),
   updateApplicationStatus: (applicationId, payload) =>
     api.patch(`/api/applications/${applicationId}/status`, payload),
+  scheduleInterview: (applicationId, payload) =>
+    api.post(`/api/applications/${applicationId}/interview`, payload),
+  getInterview: (applicationId) =>
+    api.get(`/api/applications/${applicationId}/interview`),
 };

@@ -91,6 +91,7 @@ export default function AdminDashboard() {
   const [jobDetailView, setJobDetailView] = useState("detail");
   const [applicantFilter, setApplicantFilter] = useState("All");
   const [applicantPage, setApplicantPage] = useState(1);
+  const [, setCurrentTime] = useState(() => Date.now());
   const [experienceFilter, setExperienceFilter] = useState("Experience");
   const [qualificationFilter, setQualificationFilter] = useState("Qualification");
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
@@ -120,6 +121,8 @@ export default function AdminDashboard() {
   const [editingJobId, setEditingJobId] = useState(null);
   const [isShortlistModalOpen, setIsShortlistModalOpen] = useState(false);
   const [isShortlistSuccessOpen, setIsShortlistSuccessOpen] = useState(false);
+  const [shortlistSubmitting, setShortlistSubmitting] = useState(false);
+  const [shortlistError, setShortlistError] = useState("");
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState("");
@@ -281,6 +284,11 @@ export default function AdminDashboard() {
     }, 4500);
     return () => window.clearTimeout(timeoutId);
   }, [snackbar]);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setCurrentTime(Date.now()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
 
   useEffect(() => {
     if (!isShortlistModalOpen && !isShortlistSuccessOpen && !isTeacherInviteModalOpen) {
@@ -483,6 +491,30 @@ export default function AdminDashboard() {
     loadDashboard();
   }, [isSchool, currentUserId]);
 
+  const normalizeInterviewPayload = (payload) => {
+    if (!payload || typeof payload !== "object") return null;
+
+    const candidate =
+      payload.interview ??
+      payload.data?.interview ??
+      payload.data ??
+      payload.result ??
+      payload.details ??
+      payload;
+
+    if (!candidate || typeof candidate !== "object") return null;
+
+    return {
+      ...candidate,
+      interview_date: candidate.interview_date || payload.interview_date || payload.date || "",
+      interview_time: candidate.interview_time || payload.interview_time || payload.time || "",
+      venue: candidate.venue || payload.venue || "",
+      meeting_link: candidate.meeting_link || payload.meeting_link || "",
+      status: candidate.status || payload.status || "",
+      updated_at: candidate.updated_at || payload.updated_at || payload.updatedAt || "",
+    };
+  };
+
   const loadApplicantsForJob = async (jobId) => {
     if (!jobId) return;
 
@@ -492,7 +524,19 @@ export default function AdminDashboard() {
         response?.data?.data?.applications ||
         response?.data?.applications ||
         [];
-      setApplicantsByJob((prev) => ({ ...prev, [jobId]: list }));
+      const enrichedList = await Promise.all(list.map(async (app) => {
+        const applicationId = app.application_id || app.id;
+        if (!applicationId) return app;
+
+        try {
+          const interviewResponse = await applicationService.getInterview(applicationId);
+          const payload = interviewResponse?.data?.data ?? interviewResponse?.data ?? {};
+          return { ...app, interview: normalizeInterviewPayload(payload) };
+        } catch {
+          return { ...app, interview: null };
+        }
+      }));
+      setApplicantsByJob((prev) => ({ ...prev, [jobId]: enrichedList }));
     } catch (err) {
       setApplicantsByJob((prev) => ({ ...prev, [jobId]: [] }));
     }
@@ -594,8 +638,64 @@ export default function AdminDashboard() {
     if (!applicant) return;
 
     setSelectedApplicant(applicant);
+    setShortlistForm((prev) => ({
+      ...prev,
+      recipientName: applicant.teacher_name || applicant.full_name || applicant.name || "Applicant",
+      recipientPhone: applicant.teacher_phone || applicant.phone || applicant.profile?.phone || "",
+    }));
     setIsShortlistModalOpen(true);
     setOpenApplicantMenuId(null);
+  };
+
+  const handleConfirmShortlist = async () => {
+    const applicationId = selectedApplicant?.application_id || selectedApplicant?.id;
+    const jobId = selectedApplicant?.jobId || selectedApplicant?.job_id || selectedJob?.job_id || selectedJob?.id;
+    const interviewType = String(shortlistForm.interviewType || "").toLowerCase().includes("physical")
+      ? "physical"
+      : "virtual";
+
+    if (!applicationId) {
+      setShortlistError("This applicant is missing an application ID.");
+      return;
+    }
+    if (!shortlistForm.interviewType || !shortlistForm.interviewDate || !shortlistForm.interviewTime) {
+      setShortlistError("Please provide the interview type, date, and time.");
+      return;
+    }
+    if (interviewType === "physical" && !shortlistForm.interviewVenue.trim()) {
+      setShortlistError("Please provide the interview venue.");
+      return;
+    }
+    if (interviewType === "virtual" && !shortlistForm.interviewLink.trim()) {
+      setShortlistError("Please provide the meeting link.");
+      return;
+    }
+
+    try {
+      setShortlistSubmitting(true);
+      setShortlistError("");
+      const payload = {
+        interview_type: interviewType,
+        interview_date: shortlistForm.interviewDate,
+        interview_time: shortlistForm.interviewTime,
+        ...(interviewType === "physical"
+          ? { venue: shortlistForm.interviewVenue.trim() }
+          : { meeting_link: shortlistForm.interviewLink.trim() }),
+        instructions: shortlistForm.additionalInstructions?.trim() || "",
+        candidate_message: shortlistForm.candidateMessage?.trim() || "",
+        template_name: shortlistForm.responseTemplate || "",
+      };
+
+      await applicationService.scheduleInterview(applicationId, payload);
+      if (jobId) await loadApplicantsForJob(jobId);
+      setIsShortlistModalOpen(false);
+      setIsShortlistSuccessOpen(true);
+      showSnackbar("Interview scheduled", "The candidate has been shortlisted and notified.");
+    } catch (err) {
+      setShortlistError(apiErrorMessage(err, "Unable to shortlist this candidate."));
+    } finally {
+      setShortlistSubmitting(false);
+    }
   };
 
   const handleRejectApplicant = (jobId, applicantId) => {
@@ -711,15 +811,85 @@ export default function AdminDashboard() {
   const allApplicants = Object.entries(applicantsByJob).flatMap(
     ([jobId, applicants]) => applicants.map((app) => ({ ...app, jobId })),
   );
+  const getInterviewStart = (interview = {}) => {
+    const date = interview.interview_date || interview.date;
+    const time = interview.interview_time || interview.time;
+    if (!date || !time) return null;
+    const start = new Date(`${date}T${time}`);
+    return Number.isNaN(start.getTime()) ? null : start;
+  };
+  const getUpdatedTimestamp = (app = {}) => {
+    const rawValue =
+      app.updated_at ||
+      app.updatedAt ||
+      app.updated_date ||
+      app.updatedDate ||
+      app.interview?.updated_at ||
+      app.interview?.updatedAt ||
+      app.interview?.updated_date ||
+      app.interview?.updatedDate ||
+      app.last_updated ||
+      app.lastUpdated ||
+      app.application_updated_at ||
+      app.applicationUpdatedAt;
+
+    if (!rawValue) return null;
+    const parsed = new Date(rawValue);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+  const getApplicantDisplayStatus = (app = {}) => {
+    const rawStatus = String(app.status || "").toLowerCase();
+    if (rawStatus === "interviewing") return "shortlisted";
+    if (!app.interview || (rawStatus !== "shortlisted" && rawStatus !== "interviewing")) {
+      return rawStatus || "pending";
+    }
+
+    return "shortlisted";
+  };
+  const shortlistedCandidates = allApplicants.filter((app) => {
+    const status = String(app.status || "").toLowerCase();
+    return status === "shortlisted" || status === "interviewing";
+  });
+  const upcomingInterviews = allApplicants
+    .filter((app) => {
+      const status = String(app.status || "").toLowerCase();
+      if (!app.interview || (status !== "shortlisted" && status !== "interviewing")) {
+        return false;
+      }
+
+      return Boolean(getUpdatedTimestamp(app));
+    })
+    .sort((a, b) => {
+      const aUpdated = getUpdatedTimestamp(a)?.getTime?.() ?? 0;
+      const bUpdated = getUpdatedTimestamp(b)?.getTime?.() ?? 0;
+      return bUpdated - aUpdated;
+    })
+    .slice(0, 3);
+  const scheduledInterviews = upcomingInterviews;
+
+  const openShortlistedApplicants = () => {
+    const shortlistedJobId = shortlistedCandidates[0]?.jobId;
+    const job = jobs.find((item) => String(item.job_id || item.id) === String(shortlistedJobId)) || jobs[0];
+    if (!job) {
+      handleTabChange("applicants");
+      return;
+    }
+
+    setSelectedApplicant(null);
+    setSelectedJob(job);
+    setJobDetailView("applicants");
+    setApplicantFilter("Shortlisted");
+    setApplicantPage(1);
+    setActiveTab("jobs");
+    loadApplicantsForJob(job.job_id || job.id);
+  };
 
   const renderSchoolOverview = () => {
     const totalApplicants = Number(
       stats.total_applications ?? allApplicants.length ?? 0,
     );
     const activeJobs = Number(stats.active_jobs ?? jobs.length ?? 0);
-    const shortlistedApplicants = allApplicants.filter(
-      (app) => String(app.status || "").toLowerCase() === "shortlisted",
-    ).length;
+    const shortlistedApplicants = shortlistedCandidates.length;
 
     return (
       <div className="school-overview">
@@ -775,7 +945,7 @@ export default function AdminDashboard() {
             ["Active Jobs", activeJobs, FiBriefcase],
             ["Total Applicants", totalApplicants, FiUsers],
             ["Shortlisted", shortlistedApplicants, FiCheckCircle],
-            ["Interviews", 0, FiCalendar],
+            ["Upcoming Interviews", scheduledInterviews.length, FiCalendar],
           ].map(([label, value, Icon]) => (
             <div key={label} className="school-stat-card">
               <span>{label}</span>
@@ -800,7 +970,10 @@ export default function AdminDashboard() {
               ? allApplicants.slice(0, 3)
               : []
             ).map((app, index) => {
-              const status = app.status || "New";
+              const status = getApplicantDisplayStatus(app) || "pending";
+              const statusLabel = status === "pending"
+                ? "Submitted"
+                : status.charAt(0).toUpperCase() + status.slice(1);
               return (
                 <div
                   className="school-table-row"
@@ -824,7 +997,7 @@ export default function AdminDashboard() {
                     <b
                       className={`school-status school-status-${String(status).toLowerCase()}`}
                     >
-                      {status}
+                      {statusLabel}
                     </b>
                   </span>
                   <button
@@ -897,19 +1070,41 @@ export default function AdminDashboard() {
             <h3>Upcoming Interviews</h3>
             <FiCalendar size={15} />
           </div>
-          <div className="school-empty-interviews">
-            <span>
-              <FiCalendar size={15} />
-            </span>
-            <div>
-              <strong>No upcoming interviews</strong>
-              <small>Scheduled interviews will appear here.</small>
+          {scheduledInterviews.length > 0 ? scheduledInterviews.map((app, index) => {
+            const job = jobs.find((item) => String(item.job_id || item.id) === String(app.jobId));
+            const interview = app.interview || {};
+            const interviewDate = interview.interview_date || interview.date || "Date not provided";
+            const interviewTime = interview.interview_time || interview.time || "Time not provided";
+            const interviewLocation = interview.venue || interview.meeting_link || interview.location || "Interview location not provided";
+            const interviewWhen = [interviewDate, interviewTime].filter(Boolean).join(" ");
+
+            return (
+              <div className="school-interview-row" key={app.application_id || app.id || index}>
+                <div className="school-interview-main">
+                  <span className="school-interview-icon"><FiCalendar size={15} /></span>
+                  <div className="school-interview-copy">
+                    <strong>{app.teacher_name || app.teacher_email || "Applicant"}</strong>
+                    <small>{job?.title || "Teaching opportunity"}</small>
+                    <small>{interviewLocation}</small>
+                  </div>
+                </div>
+                <span className="school-interview-time">{interviewWhen || "Schedule pending"}</span>
+              </div>
+            );
+          }) : (
+            <div className="school-empty-interviews">
+              <span><FiCalendar size={15} /></span>
+              <div>
+                <strong>No shortlisted interviews scheduled</strong>
+                <small>Upcoming interview slots for shortlisted candidates will appear here.</small>
+              </div>
             </div>
-          </div>
-          <button type="button" className="school-schedule-button">
-            View Full Schedule
+          )}
+          <button type="button" className="school-schedule-button" onClick={openShortlistedApplicants}>
+            View Shortlisted Candidates
           </button>
         </section>
+
       </div>
     );
   };
@@ -1435,16 +1630,6 @@ export default function AdminDashboard() {
                       <>
                         <button
                           type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            openJobDetails(job);
-                          }}
-                          className="school-job-details"
-                        >
-                          Job details
-                        </button>
-                        <button
-                          type="button"
                           className="school-job-view-applicants"
                           onClick={(event) => {
                             event.stopPropagation();
@@ -1574,7 +1759,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               <button
                 type="button"
                 className="school-summary-shortlist-btn"
-                onClick={() => setIsShortlistModalOpen(true)}
+                onClick={() => handleShortlistApplicant(applicant)}
               >
                 Shortlist Candidate
               </button>
@@ -2046,7 +2231,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     ];
 
     const filteredApplicants = applicants.filter((app) => {
-      const status = String(app.status || "pending").toLowerCase();
+      const status = getApplicantDisplayStatus(app);
       const experience = String(app.experience || "");
       const qualification = String(app.qualification || "");
 
@@ -2225,7 +2410,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           )}
           {paginatedApplicants.map((app, index) => {
             const appId = app.application_id || app.id || index;
-            const currentStatus = String(app.status || "pending").toLowerCase();
+            const currentStatus = getApplicantDisplayStatus(app);
             const statusMap = {
               shortlisted: "SHORTLISTED",
               "under review": "UNDER REVIEW",
@@ -2281,6 +2466,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     >
                       {displayStatus}
                     </span>
+                    {app.interview ? (
+                      <small className="school-job-applicant-interview">
+                        {app.interview.interview_date || "Date not provided"} at {app.interview.interview_time || "Time not provided"}
+                        <br />
+                        {app.interview.venue || app.interview.meeting_link || "Location not provided"}
+                      </small>
+                    ) : null}
                   </div>
                 </div>
 
@@ -2579,7 +2771,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     </span>
                     <select
                       className="school-shortlist-status-select"
-                      value={shortlistForm.interviewType || "Interview"}
+                      value={shortlistForm.interviewType}
                       onChange={(event) =>
                         setShortlistForm((prev) => ({
                           ...prev,
@@ -2587,7 +2779,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                         }))
                       }
                     >
-                      <option value="Interview">Interview</option>
+                      <option value="">Select interview type</option>
                       <option value="Physical Interview">Physical Interview</option>
                       <option value="Virtual Interview">Virtual Interview</option>
                     </select>
@@ -2604,8 +2796,8 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     <div className="school-shortlist-detail-block">
                       <label>Date</label>
                       <input
-                        type="text"
-                        value={shortlistForm.interviewDate || "05/24/2024"}
+                        type="date"
+                        value={shortlistForm.interviewDate}
                         onChange={(event) =>
                           setShortlistForm((prev) => ({
                             ...prev,
@@ -2618,8 +2810,8 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     <div className="school-shortlist-detail-block">
                       <label>Time</label>
                       <input
-                        type="text"
-                        value={shortlistForm.interviewTime || "10:30AM"}
+                        type="time"
+                        value={shortlistForm.interviewTime}
                         onChange={(event) =>
                           setShortlistForm((prev) => ({
                             ...prev,
@@ -2635,7 +2827,8 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                         <span className="school-shortlist-link-icon">◫</span>
                         <input
                           type="text"
-                          value={shortlistForm.interviewLink || "https://zoom.us/j/8492013847"}
+                          value={shortlistForm.interviewLink}
+                          placeholder="Meeting link"
                           onChange={(event) =>
                             setShortlistForm((prev) => ({
                               ...prev,
@@ -2650,7 +2843,8 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                       <label>Additional Instructions</label>
                       <input
                         type="text"
-                        value={shortlistForm.additionalInstructions || "e.g. Please bring a copy of your portfolio"}
+                        value={shortlistForm.additionalInstructions || ""}
+                        placeholder="e.g. Please bring a copy of your portfolio"
                         onChange={(event) =>
                           setShortlistForm((prev) => ({
                             ...prev,
@@ -2744,24 +2938,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                               className="school-shortlist-recipient-input"
                               placeholder="Name"
                               value={shortlistForm.recipientName}
-                              onChange={(event) =>
-                                setShortlistForm((prev) => ({
-                                  ...prev,
-                                  recipientName: event.target.value,
-                                }))
-                              }
+                              readOnly
                             />
                             <input
                               type="tel"
                               className="school-shortlist-recipient-input"
                               placeholder="Phone Number"
                               value={shortlistForm.recipientPhone}
-                              onChange={(event) =>
-                                setShortlistForm((prev) => ({
-                                  ...prev,
-                                  recipientPhone: event.target.value,
-                                }))
-                              }
+                              readOnly
                             />
                           </div>
                         </>
@@ -2791,24 +2975,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                               className="school-shortlist-recipient-input"
                               placeholder="Name"
                               value={shortlistForm.recipientName}
-                              onChange={(event) =>
-                                setShortlistForm((prev) => ({
-                                  ...prev,
-                                  recipientName: event.target.value,
-                                }))
-                              }
+                              readOnly
                             />
                             <input
                               type="tel"
                               className="school-shortlist-recipient-input"
                               placeholder="Phone Number"
                               value={shortlistForm.recipientPhone}
-                              onChange={(event) =>
-                                setShortlistForm((prev) => ({
-                                  ...prev,
-                                  recipientPhone: event.target.value,
-                                }))
-                              }
+                              readOnly
                             />
                           </div>
                         </>
@@ -2919,6 +3093,10 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               />
             </label>
 
+            {shortlistError && (
+              <p className="school-shortlist-error" role="alert">{shortlistError}</p>
+            )}
+
             <label className="school-shortlist-save-template">
               <input
                 type="checkbox"
@@ -2944,16 +3122,10 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               <button
                 type="button"
                 className="school-shortlist-confirm-btn"
-                onClick={() => {
-                  setIsShortlistModalOpen(false);
-                  setIsShortlistSuccessOpen(true);
-                  showSnackbar(
-                    "Shortlist sent",
-                    "Candidate has been shortlisted successfully.",
-                  );
-                }}
+                onClick={handleConfirmShortlist}
+                disabled={shortlistSubmitting}
               >
-                Confirm Shortlist
+                {shortlistSubmitting ? "Sending..." : "Confirm Shortlist"}
               </button>
             </div>
           </div>
@@ -2984,7 +3156,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             </div>
           </div>
 
-          <h3 id="shortlist-success-title">Application Updated Successfully</h3>
+          <h3 id="shortlist-success-title">Shortlist Updated Successfully</h3>
 
           <p className="school-shortlist-success-text">
             {successName} has been notified. The application status is now
@@ -7505,6 +7677,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-applicant-name i { display: grid; place-items: center; width: 21px; height: 21px; border-radius: 50%; background: #cfe8db; color: #355b49; font-size: 7px; font-style: normal; font-weight: 700; }
         .school-status { width: fit-content; padding: 4px 8px; border-radius: 999px; background: #dfe3e6; color: #5d666c; font-size: 9px; font-weight: 700; }
         .school-status-shortlisted { background: #dcebd1; color: #41673a; }
+        .school-status-interviewing { background: #dbeafe; color: #1d4ed8; }
         .school-status-new { background: #073e32; color: #fff; }
         .school-review-button { padding: 5px 10px; justify-self: start; border-radius: 3px; font-size: 10px; }
         .school-posting-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 16px 16px; }
@@ -7518,6 +7691,59 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-posting-footer small { color: #62686d; font-size: 9px; }
         .school-interviews-section { padding-bottom: 14px; }
         .school-interviews-section > .school-section-heading { padding-bottom: 12px; }
+        .school-interview-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          margin: 0 16px 10px;
+          padding: 12px 12px 11px;
+          border: 1px solid #e3e7e9;
+          border-radius: 12px;
+          background: linear-gradient(180deg, #ffffff 0%, #f8faf9 100%);
+          box-shadow: 0 8px 18px rgba(18, 26, 31, 0.03);
+        }
+        .school-interview-main {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex: 1;
+          min-width: 0;
+        }
+        .school-interview-icon {
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: #dff5e8;
+          color: #1a7a54;
+          flex-shrink: 0;
+        }
+        .school-interview-copy {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          gap: 3px;
+        }
+        .school-interview-copy strong {
+          color: #20252b;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1.3;
+        }
+        .school-interview-copy small {
+          color: #686f73;
+          font-size: 10px;
+          line-height: 1.4;
+        }
+        .school-interview-time {
+          flex-shrink: 0;
+          color: #20252b;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.02em;
+        }
         .school-empty-interviews { display: flex; align-items: center; gap: 10px; margin: 0 16px 10px; padding: 12px; border-radius: 8px; background: #f5f6f7; }
         .school-empty-interviews > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #dcefe5; color: #346850; }
         .school-empty-interviews div { display: flex; flex-direction: column; gap: 3px; }

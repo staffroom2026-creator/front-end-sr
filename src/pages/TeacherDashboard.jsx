@@ -120,6 +120,31 @@ const normalizeApplicationData = (application = {}, index = 0) => {
     icon: application.icon || '📄',
     tags: Array.isArray(application.tags) ? application.tags : [{ type: 'neutral', label: status }],
     actionText: application.actionText || 'View',
+    interview: application.interview || null,
+  };
+};
+
+const normalizeInterviewData = (response) => {
+  if (!response || typeof response !== 'object') return null;
+
+  const payload = response?.data?.data ?? response?.data ?? response ?? {};
+  const interview =
+    payload?.interview ??
+    payload?.data?.interview ??
+    payload?.data ??
+    payload?.result ??
+    payload?.details ??
+    payload;
+
+  if (!interview || typeof interview !== 'object') return null;
+
+  return {
+    ...interview,
+    interview_date: interview.interview_date ?? interview.date ?? payload?.interview_date ?? payload?.date ?? '',
+    interview_time: interview.interview_time ?? interview.time ?? payload?.interview_time ?? payload?.time ?? '',
+    venue: interview.venue ?? interview.location ?? payload?.venue ?? payload?.location ?? '',
+    meeting_link: interview.meeting_link ?? payload?.meeting_link ?? '',
+    updated_at: interview.updated_at ?? interview.updatedAt ?? payload?.updated_at ?? payload?.updatedAt ?? '',
   };
 };
 
@@ -170,11 +195,36 @@ const normalizeExperienceRecords = (value) => {
 const applicationStatusLabel = (status) => {
   const normalizedStatus = String(status || '').trim().toLowerCase();
   if (normalizedStatus === 'under review' || normalizedStatus === 'reviewed') return 'Under Review';
-  if (normalizedStatus === 'shortlisted') return 'Shortlisted';
+  if (normalizedStatus === 'shortlisted' || normalizedStatus === 'interviewing') return 'Shortlisted';
   if (normalizedStatus === 'accepted' || normalizedStatus === 'hired') return 'Accepted';
   if (normalizedStatus === 'rejected') return 'Rejected';
   if (normalizedStatus === 'withdrawn') return 'Withdrawn';
   return 'Pending';
+};
+
+const getInterviewStart = (interview = {}) => {
+  const date = interview.interview_date || interview.date;
+  const time = interview.interview_time || interview.time;
+  if (!date || !time) return null;
+  const start = new Date(`${date}T${time}`);
+  return Number.isNaN(start.getTime()) ? null : start;
+};
+
+const isInterviewInProgress = (interview = {}) => {
+  const start = getInterviewStart(interview);
+  if (!start) return false;
+  const durationMinutes = Number(interview.duration_minutes || interview.duration || 60);
+  const end = new Date(start.getTime() + (Number.isFinite(durationMinutes) ? durationMinutes : 60) * 60000);
+  const now = new Date();
+  return now >= start && now <= end;
+};
+
+const getApplicationDisplayStatus = (application = {}) => {
+  const rawStatus = String(application.status || '').toLowerCase();
+  if (application.interview && (rawStatus === 'shortlisted' || rawStatus === 'interviewing')) {
+    return 'shortlisted';
+  }
+  return rawStatus;
 };
 
 export default function TeacherDashboard() {
@@ -187,6 +237,7 @@ export default function TeacherDashboard() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [, setCurrentTime] = useState(() => Date.now());
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
   const [applicationSearch, setApplicationSearch] = useState('');
   const [applicationSort, setApplicationSort] = useState('newest');
@@ -267,6 +318,11 @@ export default function TeacherDashboard() {
   const [preferencesMessage, setPreferencesMessage] = useState('');
   const [preferencesError, setPreferencesError] = useState('');
 
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setCurrentTime(Date.now()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Teacher');
   const [profSummary, setProfSummary] = useState('');
@@ -302,7 +358,7 @@ export default function TeacherDashboard() {
   }).length;
   const visibleApplications = applications
     .filter((application) => {
-      const status = String(application.status || '').toLowerCase();
+      const status = getApplicationDisplayStatus(application);
       const matchesStatus = applicationStatusFilter === 'all' || status === applicationStatusFilter;
       const searchTerm = applicationSearch.trim().toLowerCase();
       const matchesSearch = !searchTerm || [application.title, application.school, application.location, application.status].join(' ').toLowerCase().includes(searchTerm);
@@ -317,6 +373,16 @@ export default function TeacherDashboard() {
     ? applications.find((application) => String(application.jobId) === String(selectedJob.job_id || selectedJob.id))
     : null;
   const dashboardJobs = jobs.slice(0, 2);
+  const upcomingInterviews = applications
+    .map((application) => {
+      const normalizedInterview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || null;
+      return { ...application, interview: normalizedInterview };
+    })
+    .filter((application) => {
+      const start = getInterviewStart(application.interview);
+      return application.interview && start && start.getTime() >= Date.now();
+    })
+    .slice(0, 2);
   const getProfileStrengthValue = () => {
     const strength = Number(profileState?.profile_strength ?? 0);
     if (!Number.isFinite(strength)) return 0;
@@ -418,6 +484,18 @@ export default function TeacherDashboard() {
       }
       const jobList = jobsArray.map(normalizeJobData);
       const applicationList = (applicationsRes?.data?.data?.applications || applicationsRes?.data?.applications || []).map((app, idx) => normalizeApplicationData(app, idx));
+      const applicationsWithInterviews = await Promise.all(applicationList.map(async (application) => {
+        if (!application.id || !String(application.status).toLowerCase().match(/shortlisted|interviewing/)) {
+          return application;
+        }
+
+        try {
+          const interviewResponse = await applicationService.getInterview(application.id);
+          return { ...application, interview: normalizeInterviewData(interviewResponse) };
+        } catch {
+          return application;
+        }
+      }));
       const profileData = profileRes?.data?.data || {};
       const profile = profileData?.profile || profileData?.teacher_profile || profileData || {};
       const notificationList = notificationsRes?.data?.data?.notifications || notificationsRes?.data?.notifications || [];
@@ -427,7 +505,7 @@ export default function TeacherDashboard() {
       const { firstName, lastName } = splitFullName(profileData?.user?.full_name || user?.full_name || 'Teacher');
 
       setJobs(jobList);
-      setApplications(applicationList);
+      setApplications(applicationsWithInterviews);
       setProfileState(profile);
       setPersonalFirstName(firstName);
       setPersonalLastName(lastName);
@@ -1140,19 +1218,26 @@ export default function TeacherDashboard() {
                 <div className="td-right-col">
                   <motion.div variants={cardVariants} className="td-side-section">
                     <h3>Upcoming Interviews</h3>
-                    {applications.length > 0 ? (
-                      applications.slice(0, 2).map((app) => (
+                    {upcomingInterviews.length > 0 ? (
+                      upcomingInterviews.map((app) => {
+                        const interview = app.interview || {};
+                        const interviewDate = new Date(interview.interview_date || interview.date || '');
+                        const hasInterviewDate = !Number.isNaN(interviewDate.getTime());
+                        const interviewLocation = interview.venue || interview.meeting_link || interview.location || 'Location not provided';
+                        return (
                         <div key={app.id} className="td-interview-item">
                           <div className="td-date-box">
-                            <span className="td-day">{new Date().getDate()}</span>
-                            <span className="td-month">{new Date().toLocaleString('en-US', { month: 'short' }).toUpperCase()}</span>
+                            <span className="td-day">{hasInterviewDate ? interviewDate.getDate() : '--'}</span>
+                            <span className="td-month">{hasInterviewDate ? interviewDate.toLocaleString('en-US', { month: 'short' }).toUpperCase() : 'DATE'}</span>
                           </div>
                           <div className="td-int-info">
                             <h4>{app.school}</h4>
-                            <p>{app.title} • {app.status}</p>
+                            <p>{app.title}</p>
+                            <p>{interview.interview_time || interview.time || 'Time not provided'} • {interviewLocation}</p>
                           </div>
                         </div>
-                      ))
+                        );
+                      })
                     ) : (
                       <div className="td-interview-item">
                         <div className="td-int-info">
@@ -1609,8 +1694,8 @@ export default function TeacherDashboard() {
                       <strong>{selectedJob.deadline || 'October 24th, 2024'}</strong>
                     </div>
                     {selectedJobApplication ? (
-                      <div className={`td-jd-applied-status td-jd-applied-status--${applicationStatusLabel(selectedJobApplication.status).toLowerCase().replace(/\s+/g, '-')}`}>
-                        {applicationStatusLabel(selectedJobApplication.status)}
+                      <div className={`td-jd-applied-status td-jd-applied-status--${getApplicationDisplayStatus(selectedJobApplication).replace(/\s+/g, '-')}`}>
+                        {applicationStatusLabel(getApplicationDisplayStatus(selectedJobApplication))}
                       </div>
                     ) : (
                       <>
@@ -1870,10 +1955,11 @@ export default function TeacherDashboard() {
                         </div>
                         <p className="td-app-school">{app.school}</p>
                         <div className="td-app-meta"><span><FiMapPin /> {app.location || 'Location not available'}</span>{app.employmentType && <span><FiBriefcase /> {app.employmentType}</span>}<span><FiCalendar /> Applied: {app.appliedDate}</span></div>
+                        {app.interview && <div className="td-app-interview"><FiCalendar /> Interview: {app.interview.interview_date || 'Date not provided'} at {app.interview.interview_time || 'Time not provided'}{app.interview.venue ? ` - ${app.interview.venue}` : app.interview.meeting_link ? ` - ${app.interview.meeting_link}` : ''}</div>}
                       </div>
                     </div>
                     <div className="td-app-card-footer">
-                      <span className={`td-app-status-badge td-app-status-badge--${String(app.status).toLowerCase().replace(/\s+/g, '-')}`}>{app.status}</span>
+                      <span className={`td-app-status-badge td-app-status-badge--${getApplicationDisplayStatus(app).replace(/\s+/g, '-')}`}>{applicationStatusLabel(getApplicationDisplayStatus(app))}</span>
                       <button type="button" className="td-app-action-btn" onClick={() => { const job = jobs.find((item) => String(item.id) === String(app.jobId)); if (job) { setSelectedJob(job); setActiveTab('jobs'); } }}>View Application</button>
                     </div>
                   </div>
