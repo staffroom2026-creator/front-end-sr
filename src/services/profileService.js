@@ -4,6 +4,7 @@ export const profileService = {
   getMe: () => api.get('/api/profiles/me'),
   updateTeacher: (payload) => api.put('/api/profiles/teacher', payload),
   updateSchool: (payload) => api.put('/api/profiles/school', payload),
+  inviteTeacher: (teacherUserId, payload = {}) => api.post(`/api/teachers/${teacherUserId}/invite`, payload),
   uploadCv: (formData) =>
     api.post('/api/profiles/upload-cv', formData, {
       headers: {

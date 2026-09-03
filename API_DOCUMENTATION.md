@@ -1223,6 +1223,49 @@ Changes the authenticated user’s password. Requires `current_password`, `new_p
 Reads or saves notification preferences as a JSON object. Security notifications remain mandatory at the product level.
 
 ### `POST /account/email` and `PATCH /account/email`
+
+---
+
+## 10C. Recruitment Integration Additions
+
+All endpoints below use the `/api` prefix (the existing non-prefixed aliases remain available). Protected endpoints require `Authorization: Bearer <token>`.
+
+### Teacher profile and setup
+
+`GET /profiles/me` returns the authenticated account and role profile. For teachers, `data.profile.setup_completed` is the authoritative setup flag and `data.profile.subjects` is a de-duplicated array. `PUT /profiles/teacher` accepts `subjects` as an array and persists the complete subject list. It also accepts `setup_completed` and validates `experience_years`, `trcn_status`, `availability`, and `profile_visibility`.
+
+### Applications
+
+- `GET /applications/{application_id}` returns an application only to its teacher, owning school, or an administrator.
+- `GET /applications/my-applications?page=1&per_page=10` returns the teacher's applications and `pagination` metadata.
+- `GET /applications/job/{job_id}?page=1&per_page=10` returns applications for a job only when the authenticated school owns that job.
+- `PATCH /applications/{application_id}/status` accepts `status`. When `status` is `rejected`, `message` (or `rejection_message`) is required and is returned to the teacher. Repeating the current status returns `409`.
+
+Application list responses expose `application_id`, `job_id`, `teacher_id`, `status`, `rejection_message`, timestamps, and relevant job/teacher fields.
+
+### Search and pagination
+
+`GET /jobs` supports composable `subject`, `level`/`teaching_level`, `location`, `experience`, `state`, `page`, and `per_page` filters. `GET /teachers` supports `search`, `subject`, `location`, `experience_min`, `experience_max`, `trcn_status`, `qualification`, `page`, and `per_page`. Both return a list plus `pagination` with `current_page`, `per_page`, `total`, `last_page`, and `has_more`.
+
+`GET /jobs?recommended=1&page=1&per_page=10` is teacher-only and returns open jobs ranked deterministically by subject and location matches, including `relevance_score`.
+
+Teacher levels `Pre KG` and `KG` are accepted as job/profile values without removing existing levels.
+
+### Saved teachers and alerts
+
+- `GET /features/saved-teachers` lists saved teachers for the authenticated school.
+- `POST /features/saved-teachers/{teacher_user_id}` saves a teacher; duplicate saves are idempotent.
+- `DELETE /features/saved-teachers/{teacher_user_id}` removes a saved teacher.
+- `GET /features/job-alerts` returns the authenticated teacher's preferences.
+- `PUT|PATCH /features/job-alerts` accepts `{ "subjects": ["Mathematics"], "teaching_level": "KG", "location": "Benin City", "enabled": true }`.
+
+### Notifications
+
+`GET /features/notifications?page=1&per_page=10` returns notifications, pagination, and `unread_count`. `PATCH /features/notifications/{notification_id}/read` marks only the owner's notification as read. `DELETE /features/notifications/{notification_id}` deletes only the owner's notification. Notification records may include `related_id` and `related_type`.
+
+### Database migration
+
+Run `database/migrations/2026_09_03_staffroom_backend.sql` after reviewing duplicate data. It adds normalized `teacher_subjects`, `saved_teachers`, and `job_alert_preferences` tables, setup/rejection/notification metadata, uniqueness constraints, and query indexes.
 Starts and completes a verified email change. `POST` accepts `{ "email": "new@example.com" }`; `PATCH` accepts `{ "code": "123456" }`. The code is valid for ten minutes.
 
 All account and settings endpoints require a valid JWT.

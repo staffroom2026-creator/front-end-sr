@@ -45,9 +45,63 @@ const normalizeProfileValue = (value, fallback = 'Not provided') => {
   return value;
 };
 
+const parseSubjectList = (value) => {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof value === 'string') {
+    return value.split(',').map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+const parseLocationParts = (value) => {
+  if (typeof value !== 'string') return [];
+  return value.split(',').map((item) => item.trim()).filter(Boolean);
+};
+
+const PasswordField = ({ label, value, onChange, placeholder }) => {
+  const [showPassword, setShowPassword] = useState(false);
+
+  return (
+    <label style={{ display: 'grid', gap: 8 }}>
+      <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#4b5563', letterSpacing: 0.8 }}>{label}</span>
+      <div style={{ position: 'relative' }}>
+        <input
+          type={showPassword ? 'text' : 'password'}
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          style={{ width: '100%', padding: '12px 44px 12px 14px', border: '1px solid #d1d5db', borderRadius: 10, fontSize: 14, outline: 'none' }}
+        />
+        <button
+          type="button"
+          aria-label={showPassword ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
+          onClick={() => setShowPassword((current) => !current)}
+          style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#4b5563', cursor: 'pointer', display: 'grid', placeItems: 'center' }}
+        >
+          {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+        </button>
+      </div>
+    </label>
+  );
+};
+
 const normalizeJobId = (value, fallback = '') => {
   if (value === null || value === undefined || value === '') return fallback;
   return String(value).trim();
+};
+
+const getJobRelevanceScore = (job = {}) => {
+  if (!job || typeof job !== 'object') return 0;
+  const value = Number(
+    job.relevance_score ??
+    job.relevanceScore ??
+    job.recommended_score ??
+    job.score ??
+    job.match_score ??
+    job.priority_score ??
+    0
+  );
+  return Number.isFinite(value) ? value : 0;
 };
 
 const normalizeJobData = (job = {}, index = 0) => {
@@ -71,6 +125,7 @@ const normalizeJobData = (job = {}, index = 0) => {
   const createdDate = timePosted ? new Date(timePosted) : new Date();
 
   const realJobId = normalizeJobId(job.job_id || job.id || index, String(index));
+  const relevanceScore = getJobRelevanceScore(job);
 
   return {
     id: realJobId,
@@ -97,6 +152,8 @@ const normalizeJobData = (job = {}, index = 0) => {
     verifiedRecruiter: Boolean(job.verifiedRecruiter || job.verified_recruiter),
     deadline: job.deadline || job.application_deadline || 'October 24th, 2024',
     tags: Array.isArray(job.tags) ? job.tags : [],
+    recommended: Boolean(job.recommended || relevanceScore > 0),
+    relevanceScore,
   };
 };
 
@@ -104,9 +161,11 @@ const normalizeApplicationData = (application = {}, index = 0) => {
   const status = application.status || application.application_status || 'Pending';
   const appliedAt = application.appliedDate || application.applied_at || application.created_at || '';
   const date = new Date(appliedAt);
+  const applicationId = application.application_id || application.id || index;
 
   return {
-    id: application.id || application.application_id || index,
+    id: applicationId,
+    application_id: applicationId,
     jobId: application.job_id || application.jobId || '',
     title: application.title || application.job_title || application.position || 'Teaching Opportunity',
     school: application.school || application.school_name || application.employer || 'School',
@@ -242,6 +301,9 @@ export default function TeacherDashboard() {
   const [applicationSearch, setApplicationSearch] = useState('');
   const [applicationSort, setApplicationSort] = useState('newest');
   const [notifications, setNotifications] = useState([]);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [notificationActionLoading, setNotificationActionLoading] = useState({});
   const [loading, setLoading] = useState(false);
   const [jobError, setJobError] = useState('');
   const [appError, setAppError] = useState('');
@@ -314,6 +376,12 @@ export default function TeacherDashboard() {
     direct_messages: true,
     system_updates: false,
   });
+  const [jobAlertPreferences, setJobAlertPreferences] = useState({
+    enabled: true,
+    subjects: [],
+    teaching_level: '',
+    location: '',
+  });
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [preferencesMessage, setPreferencesMessage] = useState('');
   const [preferencesError, setPreferencesError] = useState('');
@@ -336,6 +404,7 @@ export default function TeacherDashboard() {
   const [savingProfessionalInfo, setSavingProfessionalInfo] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applicationStep, setApplicationStep] = useState(1);
+  const [sortBy, setSortBy] = useState('Recommended');
 
   const profileFullName = (user?.full_name || [personalFirstName, personalLastName].filter(Boolean).join(' ') || 'Teacher').trim() || 'Teacher';
   const profileLocation = profileState?.location || [personalCity, personalState].filter(Boolean).join(', ') || 'Location not set';
@@ -372,17 +441,53 @@ export default function TeacherDashboard() {
   const selectedJobApplication = selectedJob
     ? applications.find((application) => String(application.jobId) === String(selectedJob.job_id || selectedJob.id))
     : null;
-  const dashboardJobs = jobs.slice(0, 2);
+  const sortJobsByPreference = (jobList = []) => {
+    return [...jobList].sort((a, b) => {
+      const aTime = new Date(a.timePosted || a.created_at || Date.now()).getTime();
+      const bTime = new Date(b.timePosted || b.created_at || Date.now()).getTime();
+      const aSalary = Number(a.salaryMonthly || 0);
+      const bSalary = Number(b.salaryMonthly || 0);
+      const aRecommended = Number(
+        a.relevanceScore ??
+        a.relevance_score ??
+        getJobRelevanceScore(a) ??
+        (a.recommended ? 1 : 0) ??
+        0
+      );
+      const bRecommended = Number(
+        b.relevanceScore ??
+        b.relevance_score ??
+        getJobRelevanceScore(b) ??
+        (b.recommended ? 1 : 0) ??
+        0
+      );
+
+      if (sortBy === 'Recommended') return bRecommended - aRecommended || bTime - aTime;
+      if (sortBy === 'Newest First') return bTime - aTime;
+      if (sortBy === 'Oldest First') return aTime - bTime;
+      if (sortBy === 'Highest Salary') return bSalary - aSalary;
+      if (sortBy === 'Lowest Salary') return aSalary - bSalary;
+      return bRecommended - aRecommended || bTime - aTime;
+    });
+  };
+  const dashboardJobs = sortJobsByPreference(jobs).slice(0, 2);
   const upcomingInterviews = applications
     .map((application) => {
       const normalizedInterview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || null;
       return { ...application, interview: normalizedInterview };
     })
     .filter((application) => {
-      const start = getInterviewStart(application.interview);
-      return application.interview && start && start.getTime() >= Date.now();
+      const interview = normalizeInterviewData(application.interview) || null;
+      const start = getInterviewStart(interview || {});
+      const status = String(application.status || '').toLowerCase();
+      return Boolean(interview) && (status === 'shortlisted' || status === 'interviewing') && start && start.getTime() >= Date.now();
     })
-    .slice(0, 2);
+    .sort((first, second) => {
+      const firstDate = getInterviewStart(first.interview || {})?.getTime?.() ?? 0;
+      const secondDate = getInterviewStart(second.interview || {})?.getTime?.() ?? 0;
+      return secondDate - firstDate;
+    })
+    .slice(0, 3);
   const getProfileStrengthValue = () => {
     const strength = Number(profileState?.profile_strength ?? 0);
     if (!Number.isFinite(strength)) return 0;
@@ -462,36 +567,63 @@ export default function TeacherDashboard() {
 
   const refreshTeacherProfile = async () => {
     try {
-      const [jobsRes, applicationsRes, profileRes, notificationsRes, savedRes] = await Promise.all([
+      const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes] = await Promise.all([
         jobService.getJobs({}),
-
+        jobService.getJobs({ recommended: 1, page: 1, per_page: 10 }),
         applicationService.getMyApplications(),
         profileService.getMe(),
         featureService.getNotifications(),
         featureService.getSavedJobs(),
       ]);
-      
-      // Handle multiple possible response structures for jobs
-      let jobsArray = [];
-      if (Array.isArray(jobsRes?.data?.data?.jobs)) {
-        jobsArray = jobsRes.data.data.jobs;
-      } else if (Array.isArray(jobsRes?.data?.jobs)) {
-        jobsArray = jobsRes.data.jobs;
-      } else if (Array.isArray(jobsRes?.data)) {
-        jobsArray = jobsRes.data;
-      } else if (Array.isArray(jobsRes)) {
-        jobsArray = jobsRes;
-      }
-      const jobList = jobsArray.map(normalizeJobData);
+
+      const extractJobsArray = (response) => {
+        if (Array.isArray(response?.data?.data?.jobs)) return response.data.data.jobs;
+        if (Array.isArray(response?.data?.jobs)) return response.data.jobs;
+        if (Array.isArray(response?.data)) return response.data;
+        if (Array.isArray(response)) return response;
+        return [];
+      };
+
+      const jobsArray = extractJobsArray(jobsRes);
+      const recommendedJobsArray = extractJobsArray(recommendedJobsRes);
+      const recommendedLookup = new Map(
+        recommendedJobsArray.map((job) => {
+          const jobId = normalizeJobId(job.job_id || job.id || job?.job?.job_id || job?.job?.id);
+          const recommendedJob = { ...job, recommended: true };
+          return [jobId, recommendedJob];
+        }).filter(([jobId]) => jobId)
+      );
+      const jobList = jobsArray.map((job) => {
+        const jobId = normalizeJobId(job.job_id || job.id || job?.job?.job_id || job?.job?.id);
+        const matchedRecommendation = recommendedLookup.get(jobId) || {};
+        const mergedJob = {
+          ...job,
+          ...matchedRecommendation,
+          recommended: Boolean(job.recommended || matchedRecommendation.recommended || getJobRelevanceScore(job) > 0 || getJobRelevanceScore(matchedRecommendation) > 0),
+          relevance_score: Number(
+            job.relevance_score ??
+            job.relevanceScore ??
+            matchedRecommendation.relevance_score ??
+            matchedRecommendation.relevanceScore ??
+            getJobRelevanceScore(matchedRecommendation) ??
+            getJobRelevanceScore(job) ??
+            0
+          ),
+        };
+        return normalizeJobData(mergedJob);
+      }).sort((a, b) => (Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0)) || (new Date(b.timePosted || Date.now()).getTime() - new Date(a.timePosted || Date.now()).getTime()));
       const applicationList = (applicationsRes?.data?.data?.applications || applicationsRes?.data?.applications || []).map((app, idx) => normalizeApplicationData(app, idx));
       const applicationsWithInterviews = await Promise.all(applicationList.map(async (application) => {
-        if (!application.id || !String(application.status).toLowerCase().match(/shortlisted|interviewing/)) {
+        const applicationId = application.application_id || application.id;
+        const status = String(application.status || '').toLowerCase();
+        if (!applicationId || !status.match(/shortlisted|interviewing/)) {
           return application;
         }
 
         try {
-          const interviewResponse = await applicationService.getInterview(application.id);
-          return { ...application, interview: normalizeInterviewData(interviewResponse) };
+          const interviewResponse = await applicationService.getInterview(applicationId);
+          const interviewData = normalizeInterviewData(interviewResponse);
+          return { ...application, interview: interviewData };
         } catch {
           return application;
         }
@@ -503,6 +635,16 @@ export default function TeacherDashboard() {
         .map(item => normalizeJobId(item.job_id ?? item.id))
         .filter(Boolean);
       const { firstName, lastName } = splitFullName(profileData?.user?.full_name || user?.full_name || 'Teacher');
+      const nextNotifications = (notificationList || []).map((notification) => ({
+        id: notification.notification_id || notification.id,
+        type: notification.type || 'job',
+        title: notification.title || 'Notification',
+        description: notification.message || notification.description || '',
+        time: notification.created_at ? new Date(notification.created_at).toLocaleDateString() : 'Recently',
+        isNew: Number(notification.is_read ?? notification.read ?? 0) === 0,
+        read: Number(notification.is_read ?? notification.read ?? 0) === 1,
+        category: notification.type === 'application_status' ? 'Job Alerts' : 'Account',
+      }));
 
       setJobs(jobList);
       setApplications(applicationsWithInterviews);
@@ -511,19 +653,20 @@ export default function TeacherDashboard() {
       setPersonalLastName(lastName);
       setPersonalPhone(profileData?.user?.phone || '');
       setPersonalEmail(profileData?.user?.email || user?.email || '');
-      setPersonalCity(profile.location?.split(',')[0] || '');
-      setPersonalState(profile.location?.includes(',') ? profile.location.split(',').slice(1).join(',').trim() : '');
+      const locationParts = parseLocationParts(profile.location || profile.preferred_location || '');
+      setPersonalCity(locationParts[0] || '');
+      setPersonalState(locationParts.slice(1).join(', ') || '');
       setAvailLocation(profile.preferred_location || profile.location || '');
       setProfTitle(profile.role_title || 'Teacher');
       setProfSummary(profile.bio || '');
       setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
       setProfEmpPref(profile.preferred_employment_type || 'Open');
       setProfTeachMode(profile.availability || 'Open');
-      setProfSubjects((profile.skills || '').split(',').map((s) => s.trim()).filter(Boolean));
+      setProfSubjects(parseSubjectList(profile.subjects || profile.skills || []));
       setProfTeachingLevels(Array.isArray(profile.teaching_levels)
         ? profile.teaching_levels
         : typeof profile.teaching_levels === 'string'
-          ? profile.teaching_levels.split(',').map(item => item.trim()).filter(Boolean)
+          ? parseSubjectList(profile.teaching_levels)
           : []);
       setEducationList(Array.isArray(profile.education_history) ? profile.education_history : []);
       setExperienceList(normalizeExperienceRecords(
@@ -542,16 +685,7 @@ export default function TeacherDashboard() {
         url: cvUrl,
       });
       setSavedJobIds(savedJobs);
-      setNotifications(notificationList.map((notification) => ({
-        id: notification.notification_id || notification.id,
-        type: notification.type || 'job',
-        title: notification.title || 'Notification',
-        description: notification.message || notification.description || '',
-        time: notification.created_at ? new Date(notification.created_at).toLocaleDateString() : 'Recently',
-        isNew: Number(notification.is_read) === 0,
-        read: Number(notification.is_read) === 1,
-        category: notification.type === 'application_status' ? 'Job Alerts' : 'Account',
-      })));
+      setNotifications(nextNotifications);
     } catch (err) {
       setJobError(apiErrorMessage(err, 'Unable to load jobs.'));
       setAppError(apiErrorMessage(err, 'Unable to load applications.'));
@@ -664,10 +798,19 @@ export default function TeacherDashboard() {
 
   const loadAccountPreferences = async () => {
     try {
-      const response = await accountService.getPreferences();
-      const payload = response?.data?.data ?? response?.data?.preferences ?? response?.data ?? {};
+      const [preferencesResponse, jobAlertsResponse] = await Promise.all([
+        accountService.getPreferences().catch(() => null),
+        featureService.getJobAlerts().catch(() => null),
+      ]);
+
+      const payload = preferencesResponse?.data?.data ?? preferencesResponse?.data?.preferences ?? preferencesResponse?.data ?? {};
       const normalized = payload && typeof payload === 'object' && !Array.isArray(payload)
         ? payload
+        : {};
+
+      const jobAlertsPayload = jobAlertsResponse?.data?.data ?? jobAlertsResponse?.data?.job_alerts ?? jobAlertsResponse?.data ?? {};
+      const normalizedJobAlerts = jobAlertsPayload && typeof jobAlertsPayload === 'object' && !Array.isArray(jobAlertsPayload)
+        ? jobAlertsPayload
         : {};
 
       setAccountPreferences({
@@ -675,6 +818,12 @@ export default function TeacherDashboard() {
         application_status: Boolean(normalized.application_status ?? normalized.appStatus ?? true),
         direct_messages: Boolean(normalized.direct_messages ?? normalized.directMsg ?? true),
         system_updates: Boolean(normalized.system_updates ?? normalized.sysAnnounce ?? false),
+      });
+      setJobAlertPreferences({
+        enabled: Boolean(normalizedJobAlerts.enabled ?? true),
+        subjects: Array.isArray(normalizedJobAlerts.subjects) ? normalizedJobAlerts.subjects : [],
+        teaching_level: normalizedJobAlerts.teaching_level ?? normalizedJobAlerts.teachingLevel ?? '',
+        location: normalizedJobAlerts.location ?? '',
       });
     } catch (err) {
       setPreferencesError(apiErrorMessage(err, 'Unable to load notification preferences.'));
@@ -718,6 +867,12 @@ export default function TeacherDashboard() {
     try {
       setSavingPreferences(true);
       await accountService.updatePreferences(nextPreferences);
+      if (key === 'job_matches') {
+        await featureService.updateJobAlerts({
+          ...jobAlertPreferences,
+          enabled: nextValue,
+        });
+      }
       setPreferencesMessage('Notification preferences saved.');
     } catch (err) {
       setPreferencesError(apiErrorMessage(err, 'Unable to save notification preferences.'));
@@ -787,6 +942,16 @@ export default function TeacherDashboard() {
     setApplicationForm(prev => ({ ...prev, resumeFile: file }));
   };
 
+  const refreshApplications = async () => {
+    const response = await applicationService.getMyApplications();
+    const applicationPayload = response?.data?.data?.applications || response?.data?.applications || [];
+    const nextApplications = Array.isArray(applicationPayload)
+      ? applicationPayload.map((application, index) => normalizeApplicationData(application, index))
+      : [];
+    setApplications(nextApplications);
+    return nextApplications;
+  };
+
   const goToNextStep = () => {
     setApplicationStep(prev => Math.min(prev + 1, 3));
   };
@@ -809,6 +974,12 @@ export default function TeacherDashboard() {
       await applicationService.applyToJob(jobId, {
         cover_letter: coverLetter
       });
+
+      try {
+        await refreshApplications();
+      } catch (refreshError) {
+        setAppError(apiErrorMessage(refreshError, 'Application submitted, but applications could not be refreshed.'));
+      }
 
       setShowApplyModal(false);
       setActiveTab('application-submitted');
@@ -836,7 +1007,84 @@ export default function TeacherDashboard() {
     return n.category === notifFilter;
   });
 
+  const unreadNotificationCount = notifications.filter((notification) => !notification.read).length;
   const totalNotifications = notifications.length || 0;
+
+  const handleMarkNotificationAsRead = async (notificationId) => {
+    if (!notificationId) return;
+
+    setNotificationActionLoading((current) => ({ ...current, [notificationId]: 'read' }));
+    try {
+      await featureService.markNotificationRead(notificationId);
+      setNotifications((current) => current.map((notification) => (
+        notification.id === notificationId
+          ? { ...notification, read: true, isNew: false }
+          : notification
+      )));
+      setSelectedNotification((current) => (
+        current && current.id === notificationId
+          ? { ...current, read: true, isNew: false }
+          : current
+      ));
+    } catch (err) {
+      setNotifError(apiErrorMessage(err, 'Unable to mark this notification as read.'));
+    } finally {
+      setNotificationActionLoading((current) => {
+        const next = { ...current };
+        delete next[notificationId];
+        return next;
+      });
+    }
+  };
+
+  const handleMarkAllNotificationsAsRead = async () => {
+    const unreadIds = notifications.filter((notification) => !notification.read).map((notification) => notification.id).filter(Boolean);
+    if (!unreadIds.length) return;
+
+    try {
+      await Promise.all(unreadIds.map((notificationId) => featureService.markNotificationRead(notificationId)));
+      setNotifications((current) => current.map((notification) => ({
+        ...notification,
+        read: true,
+        isNew: false,
+      })));
+    } catch (err) {
+      setNotifError(apiErrorMessage(err, 'Unable to mark notifications as read.'));
+    }
+  };
+
+  const handleDeleteNotification = async (notificationId) => {
+    if (!notificationId) return;
+
+    setNotificationActionLoading((current) => ({ ...current, [notificationId]: 'delete' }));
+    try {
+      await featureService.deleteNotification(notificationId);
+      setNotifications((current) => current.filter((notification) => notification.id !== notificationId));
+      if (selectedNotification?.id === notificationId) {
+        setIsNotificationModalOpen(false);
+        setSelectedNotification(null);
+      }
+    } catch (err) {
+      setNotifError(apiErrorMessage(err, 'Unable to delete this notification.'));
+    } finally {
+      setNotificationActionLoading((current) => {
+        const next = { ...current };
+        delete next[notificationId];
+        return next;
+      });
+    }
+  };
+
+  const openNotificationModal = async (notification) => {
+    if (!notification) return;
+
+    setSelectedNotification(notification);
+    setIsNotificationModalOpen(true);
+
+    if (!notification.read) {
+      await handleMarkNotificationAsRead(notification.id);
+    }
+  };
 
   // Job Feeds Filters State
   const [subjectSearch, setSubjectSearch] = useState('');
@@ -846,7 +1094,6 @@ export default function TeacherDashboard() {
   const [selectedEducation, setSelectedEducation] = useState([]);
   const [selectedJobTypes, setSelectedJobTypes] = useState([]);
   const [salaryRange, setSalaryRange] = useState(50000);
-  const [sortBy, setSortBy] = useState('Newest First');
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [displayedJobsCount, setDisplayedJobsCount] = useState(10);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
@@ -874,41 +1121,32 @@ export default function TeacherDashboard() {
     setDisplayedJobsCount(prev => prev + 10);
   };
 
-  const filteredJobs = jobs.filter(job => {
-    const title = String(job.title || '').toLowerCase();
-    const school = String(job.school || '').toLowerCase();
-    const location = String(job.location || '').toLowerCase();
-    const matchesSubject = title.includes(subjectSearch.toLowerCase()) || school.includes(subjectSearch.toLowerCase());
-    const matchesLocation = location.includes(locationSearch.toLowerCase());
-    const matchesKeyword = title.includes(keywordSearch.toLowerCase()) || school.includes(keywordSearch.toLowerCase());
+  const filteredJobs = sortJobsByPreference(
+    jobs.filter(job => {
+      const title = String(job.title || '').toLowerCase();
+      const school = String(job.school || '').toLowerCase();
+      const location = String(job.location || '').toLowerCase();
+      const subject = String(job.subject || '').toLowerCase();
+      const matchesSubject = title.includes(subjectSearch.toLowerCase()) || school.includes(subjectSearch.toLowerCase()) || subject.includes(subjectSearch.toLowerCase());
+      const matchesLocation = location.includes(locationSearch.toLowerCase());
+      const matchesKeyword = title.includes(keywordSearch.toLowerCase()) || school.includes(keywordSearch.toLowerCase()) || subject.includes(keywordSearch.toLowerCase());
 
-    if (subjectSearch && !matchesSubject) return false;
-    if (locationSearch && !matchesLocation) return false;
-    if (keywordSearch && !matchesKeyword) return false;
+      if (subjectSearch && !matchesSubject) return false;
+      if (locationSearch && !matchesLocation) return false;
+      if (keywordSearch && !matchesKeyword) return false;
 
-    if (selectedEducation.length > 0 && !selectedEducation.includes(job.education)) return false;
-    if (selectedJobTypes.length > 0 && !selectedJobTypes.some(type => String(job.type).toLowerCase().includes(type.toLowerCase()))) return false;
-    if (Number(job.salaryMonthly || 0) < Number(salaryRange || 0)) return false;
+      if (selectedEducation.length > 0 && !selectedEducation.includes(job.education)) return false;
+      if (selectedJobTypes.length > 0 && !selectedJobTypes.some(type => String(job.type).toLowerCase().includes(type.toLowerCase()))) return false;
+      if (Number(job.salaryMonthly || 0) < Number(salaryRange || 0)) return false;
 
-    // Filter by saved jobs if showSavedOnly is true
-    if (showSavedOnly) {
-      const jobId = normalizeJobId(job.job_id || job.id);
-      if (!savedJobIds.includes(jobId)) return false;
-    }
+      if (showSavedOnly) {
+        const jobId = normalizeJobId(job.job_id || job.id);
+        if (!savedJobIds.includes(jobId)) return false;
+      }
 
-    return true;
-  }).sort((a, b) => {
-    const aTime = new Date(a.timePosted || Date.now()).getTime();
-    const bTime = new Date(b.timePosted || Date.now()).getTime();
-    const aSalary = Number(a.salaryMonthly || 0);
-    const bSalary = Number(b.salaryMonthly || 0);
-
-    if (sortBy === 'Newest First') return bTime - aTime;
-    if (sortBy === 'Oldest First') return aTime - bTime;
-    if (sortBy === 'Highest Salary') return bSalary - aSalary;
-    if (sortBy === 'Lowest Salary') return aSalary - bSalary;
-    return 0;
-  });
+      return true;
+    })
+  );
 
   return (
     <motion.div
@@ -997,9 +1235,13 @@ export default function TeacherDashboard() {
             <div className="td-mobile-brand">
               <BrandLogo />
             </div>
-            <button className="td-mobile-bell" onClick={() => setActiveTab('notifications')}>
+            <button className="td-mobile-bell" onClick={() => setActiveTab('notifications')} style={{ position: 'relative' }}>
               <FiBell />
-              <span className="td-bell-dot" />
+              {unreadNotificationCount > 0 && (
+                <span className="td-bell-dot" style={{ position: 'absolute', top: '-2px', right: '-2px', minWidth: '18px', height: '18px', padding: '0 4px', borderRadius: '999px', background: '#dc2626', color: '#fff', fontSize: '10px', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
+                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </span>
+              )}
             </button>
           </header>
         )}
@@ -1011,7 +1253,14 @@ export default function TeacherDashboard() {
             <input type="text" placeholder="Search vacancies in Lagos..." />
           </div>
           <div className="td-topbar-actions">
-            <div className="td-icon-badge" onClick={() => setActiveTab('notifications')}><FiBell /></div>
+            <div className="td-icon-badge" onClick={() => setActiveTab('notifications')} style={{ position: 'relative' }}>
+              <FiBell />
+              {unreadNotificationCount > 0 && (
+                <span style={{ position: 'absolute', top: '-6px', right: '-6px', minWidth: '18px', height: '18px', borderRadius: '999px', background: '#dc2626', color: '#fff', fontSize: '10px', fontWeight: 700, display: 'grid', placeItems: 'center', padding: '0 4px' }}>
+                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                </span>
+              )}
+            </div>
             <div className="td-icon-badge"><FiMail /></div>
             <div className="td-user-avatar" onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); }} style={{ cursor: 'pointer' }}>
               <div className="td-avatar-initials td-avatar-initials--topbar" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
@@ -1432,7 +1681,7 @@ export default function TeacherDashboard() {
                       </strong>
                       {showSortDropdown && (
                         <div style={{ position: 'absolute', top: '30px', right: 0, background: '#fff', border: '1px solid #E9ECEF', borderRadius: '8px', padding: '8px', zIndex: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', width: '160px' }}>
-                          {['Newest First', 'Oldest First', 'Highest Salary', 'Lowest Salary'].map(s => (
+                          {['Recommended', 'Newest First', 'Oldest First', 'Highest Salary', 'Lowest Salary'].map(s => (
                             <div
                               key={s}
                               onClick={() => { setSortBy(s); setShowSortDropdown(false); }}
@@ -1819,8 +2068,8 @@ export default function TeacherDashboard() {
                   <p>Stay up to date with your applications, job opportunities, and account updates.</p>
                 </div>
                 <div className="td-notif-header-actions">
-                  <span className="td-notif-unread-summary"><span /> {notifications.filter(notification => !notification.read).length} unread</span>
-                  <button type="button" className="td-notif-mark-read" onClick={() => setNotifications(current => current.map(notification => ({ ...notification, read: true })))}>
+                  <span className="td-notif-unread-summary"><span /> {unreadNotificationCount} unread</span>
+                  <button type="button" className="td-notif-mark-read" onClick={handleMarkAllNotificationsAsRead}>
                     Mark all as read
                   </button>
                 </div>
@@ -1849,6 +2098,8 @@ export default function TeacherDashboard() {
                     key={notif.id}
                     variants={cardVariants}
                     className={`td-notif-card ${!notif.read ? 'td-notif-card--unread' : ''}`}
+                    onClick={() => openNotificationModal(notif)}
+                    style={{ cursor: 'pointer' }}
                   >
                     <div className="td-notif-card-icon">
                       {notif.type === 'job' && (
@@ -1902,6 +2153,61 @@ export default function TeacherDashboard() {
                   </motion.div>
                 ))}
               </div>
+
+              {isNotificationModalOpen && selectedNotification && (
+                <div
+                  style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', display: 'grid', placeItems: 'center', padding: '20px', zIndex: 1000 }}
+                  onClick={() => setIsNotificationModalOpen(false)}
+                >
+                  <motion.div
+                    initial={{ opacity: 0, y: 20, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 20 }}
+                    style={{ width: '100%', maxWidth: '480px', background: '#fff', borderRadius: '22px', padding: '24px', boxShadow: '0 20px 60px rgba(15, 23, 42, 0.2)' }}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                      <h3 style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: '#0f172a' }}>Notifications</h3>
+                      <button type="button" onClick={() => setIsNotificationModalOpen(false)} style={{ border: 'none', background: 'transparent', fontSize: '26px', color: '#475569', cursor: 'pointer' }} aria-label="Close notifications">×</button>
+                    </div>
+
+                    <div style={{ marginBottom: '18px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '8px' }}>
+                        <strong style={{ fontSize: '17px', color: '#111827' }}>{selectedNotification.title}</strong>
+                        {!selectedNotification.read && (
+                          <span style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '0.08em', background: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '999px' }}>UNREAD</span>
+                        )}
+                      </div>
+                      <p style={{ margin: 0, color: '#475569', lineHeight: 1.7 }}>{selectedNotification.description}</p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', color: '#64748b', fontSize: '12px', marginBottom: '20px' }}>
+                      <span>{selectedNotification.time}</span>
+                      <span>•</span>
+                      <span>{selectedNotification.category || 'Account'}</span>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkNotificationAsRead(selectedNotification.id)}
+                        disabled={notificationActionLoading[selectedNotification.id] === 'read' || selectedNotification.read}
+                        style={{ flex: 1, minHeight: '42px', border: 'none', borderRadius: '12px', background: '#15803d', color: '#fff', fontWeight: 600, cursor: notificationActionLoading[selectedNotification.id] === 'read' || selectedNotification.read ? 'not-allowed' : 'pointer', opacity: selectedNotification.read ? 0.7 : 1 }}
+                      >
+                        {notificationActionLoading[selectedNotification.id] === 'read' ? 'Marking as read...' : selectedNotification.read ? 'Read' : 'Mark as read'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteNotification(selectedNotification.id)}
+                        disabled={notificationActionLoading[selectedNotification.id] === 'delete'}
+                        style={{ flex: 1, minHeight: '42px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: notificationActionLoading[selectedNotification.id] === 'delete' ? 'not-allowed' : 'pointer' }}
+                      >
+                        {notificationActionLoading[selectedNotification.id] === 'delete' ? 'Deleting...' : 'Delete'}
+                      </button>
+                    </div>
+                  </motion.div>
+                </div>
+              )}
 
               {filteredNotifications.length === 0 && (
                 <div className="td-notif-empty">
@@ -2264,35 +2570,26 @@ export default function TeacherDashboard() {
                     </div>
 
                     <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
-                      <label style={{ display: 'grid', gap: 8 }}>
-                        <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#4b5563', letterSpacing: 0.8 }}>Current password</span>
-                        <input
-                          type="password"
-                          value={passwordForm.current_password}
-                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, current_password: e.target.value }))}
-                          style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 10 }}
-                        />
-                      </label>
+                      <PasswordField
+                        label="Current password"
+                        value={passwordForm.current_password}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, current_password: e.target.value }))}
+                        placeholder="Enter current password"
+                      />
 
-                      <label style={{ display: 'grid', gap: 8 }}>
-                        <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#4b5563', letterSpacing: 0.8 }}>New password</span>
-                        <input
-                          type="password"
-                          value={passwordForm.new_password}
-                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, new_password: e.target.value }))}
-                          style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 10 }}
-                        />
-                      </label>
+                      <PasswordField
+                        label="New password"
+                        value={passwordForm.new_password}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, new_password: e.target.value }))}
+                        placeholder="Enter new password"
+                      />
 
-                      <label style={{ display: 'grid', gap: 8 }}>
-                        <span style={{ fontSize: 12, textTransform: 'uppercase', color: '#4b5563', letterSpacing: 0.8 }}>Confirm password</span>
-                        <input
-                          type="password"
-                          value={passwordForm.confirm_password}
-                          onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
-                          style={{ padding: '12px 14px', border: '1px solid #d1d5db', borderRadius: 10 }}
-                        />
-                      </label>
+                      <PasswordField
+                        label="Confirm password"
+                        value={passwordForm.confirm_password}
+                        onChange={(e) => setPasswordForm((prev) => ({ ...prev, confirm_password: e.target.value }))}
+                        placeholder="Confirm new password"
+                      />
                     </div>
 
                     {passwordError && <p style={{ color: '#b91c1c', marginTop: 12 }}>{passwordError}</p>}

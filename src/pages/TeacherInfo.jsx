@@ -70,6 +70,17 @@ function SearchableSelect({ value, options, placeholder, disabled, onChange }) {
   );
 }
 
+const parseSubjectList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  return String(value || '')
+    .split(/[;,|\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
 export default function TeacherInfo() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -77,8 +88,9 @@ export default function TeacherInfo() {
     country: '',
     state: '',
     level: '',
-    subjects: '',
+    subjects: [],
   });
+  const [subjectInput, setSubjectInput] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [countries, setCountries] = useState([]);
@@ -106,7 +118,18 @@ export default function TeacherInfo() {
     let active = true;
     profileService.getMe().then((response) => {
       const payload = response?.data?.data ?? response?.data ?? {};
-      const profile = payload?.profile || payload?.teacher_profile || {};
+      const profile = payload?.profile || payload?.teacher_profile || payload || {};
+      const setupComplete =
+        profile?.setup_completed ??
+        profile?.setupComplete ??
+        profile?.profile_complete ??
+        profile?.is_profile_complete;
+
+      if (setupComplete === true || setupComplete === 'true' || setupComplete === 1) {
+        navigate('/teacher-dashboard', { replace: true });
+        return;
+      }
+
       const locationParts = String(profile.location || '').split(',').map((value) => value.trim()).filter(Boolean);
       const savedCountry = locationParts.at(-1) || '';
       const savedState = locationParts.length > 1 ? locationParts.at(-2) : '';
@@ -115,11 +138,12 @@ export default function TeacherInfo() {
         ? (State.getStatesOfCountry(countryMatch.isoCode) || []).find((state) => state.name.toLowerCase() === savedState.toLowerCase())
         : null;
       if (active) {
+        const subjectList = parseSubjectList(profile.subjects || profile.skills || []);
         setForm((current) => ({
           ...current,
           country: countryMatch?.name || savedCountry,
           state: stateMatch?.name || savedState,
-          subjects: profile.skills || '',
+          subjects: subjectList,
         }));
       }
     }).catch(() => {
@@ -129,10 +153,38 @@ export default function TeacherInfo() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [navigate]);
+
+  const addSubject = (value) => {
+    const subject = String(value || '').trim();
+    if (!subject) return;
+
+    setForm((current) => {
+      const nextSubjects = parseSubjectList(current.subjects);
+      const normalized = subject.replace(/[,;]+$/, '').trim();
+      if (!normalized) return current;
+      if (nextSubjects.some((item) => item.toLowerCase() === normalized.toLowerCase())) {
+        return current;
+      }
+
+      return {
+        ...current,
+        subjects: [...nextSubjects, normalized],
+      };
+    });
+    setSubjectInput('');
+  };
+
+  const removeSubject = (subject) => {
+    setForm((current) => ({
+      ...current,
+      subjects: current.subjects.filter((item) => item !== subject),
+    }));
+  };
 
   const handleNext = async () => {
-    if (!form.country || !form.state || !form.level || !form.subjects.trim()) {
+    const subjectList = form.subjects.filter(Boolean);
+    if (!form.country || !form.state || !form.level || subjectList.length === 0) {
       setError('Please complete all teacher profile fields before continuing.');
       return;
     }
@@ -142,11 +194,13 @@ export default function TeacherInfo() {
       setError('');
 
       const payload = {
-        skills: form.subjects.trim(),
+        subjects: subjectList,
+        skills: subjectList.join(', '),
         teaching_levels: [form.level],
         location: `${form.state}, ${form.country}`.trim(),
         preferred_location: `${form.state}, ${form.country}`.trim(),
         preferred_employment_type: form.level === 'primary' ? 'full-time' : 'part-time',
+        setup_completed: true,
       };
 
       await profileService.updateTeacher(payload);
@@ -155,7 +209,7 @@ export default function TeacherInfo() {
       if (nextUser) {
         localStorage.setItem('staffroom_user', JSON.stringify(nextUser));
       }
-      navigate('/teacher-dashboard');
+      navigate('/teacher-dashboard', { replace: true });
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to save your profile right now.'));
     } finally {
@@ -220,9 +274,12 @@ export default function TeacherInfo() {
                     onChange={(e) => setForm({...form, level: e.target.value})}
                   >
                     <option value="" disabled hidden>Select</option>
-                    <option value="primary">Primary</option>
-                    <option value="secondary">Secondary</option>
-                    <option value="tertiary">Tertiary</option>
+                    <option value="Pre KG">Pre KG</option>
+                    <option value="KG">KG</option>
+                    <option value="Primary">Primary</option>
+                    <option value="Junior Secondary">Junior Secondary</option>
+                    <option value="Senior Secondary">Senior Secondary</option>
+                    <option value="Tertiary">Tertiary</option>
                   </select>
                   <span className="ti-chevron">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -233,14 +290,37 @@ export default function TeacherInfo() {
               </motion.section>
 
               <motion.section variants={itemVariants} className="ti-section">
-                <label className="ti-label">Subject(s)</label>
-                <textarea 
-                  className="ti-textarea"
-                  placeholder="Eg, Mathematics, etc."
-                  value={form.subjects}
-                  onChange={(e) => setForm({...form, subjects: e.target.value})}
-                  style={{ height: '140px' }}
-                />
+                <label className="ti-label">Subjects</label>
+                <div className="ti-subjects-input">
+                  {form.subjects.length > 0 && (
+                    <div className="ti-subject-tags">
+                      {form.subjects.map((subject) => (
+                        <span key={subject} className="ti-subject-tag">
+                          {subject}
+                          <button type="button" aria-label={`Remove ${subject}`} onClick={() => removeSubject(subject)}>×</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    type="text"
+                    className="ti-subject-input"
+                    value={subjectInput}
+                    placeholder="Type to add a subject..."
+                    onChange={(event) => setSubjectInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' || event.key === ',') {
+                        event.preventDefault();
+                        addSubject(subjectInput);
+                      }
+                    }}
+                    onBlur={() => {
+                      if (subjectInput.trim()) {
+                        addSubject(subjectInput);
+                      }
+                    }}
+                  />
+                </div>
               </motion.section>
             </div>
 
@@ -440,6 +520,59 @@ export default function TeacherInfo() {
           appearance: none;
           outline: none;
           cursor: pointer;
+        }
+
+        .ti-subjects-input {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+          padding: 12px 12px 10px;
+          border-radius: 12px;
+          border: 1px solid #E2E8F0;
+          background-color: #F8FAFC;
+        }
+
+        .ti-subject-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+
+        .ti-subject-tag {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 7px 10px;
+          border-radius: 999px;
+          background: #DCFCE7;
+          color: #166534;
+          font-size: 13px;
+          font-weight: 600;
+        }
+
+        .ti-subject-tag button {
+          border: none;
+          background: transparent;
+          color: #166534;
+          font-size: 16px;
+          line-height: 1;
+          cursor: pointer;
+          padding: 0;
+        }
+
+        .ti-subject-input {
+          width: 100%;
+          border: none;
+          background: transparent;
+          color: #2D3748;
+          font-size: 14px;
+          outline: none;
+          min-height: 28px;
+        }
+
+        .ti-subject-input::placeholder {
+          color: #94A3B8;
         }
 
         /* First input in Location section has a white background/border in image */

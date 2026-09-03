@@ -1,111 +1,14 @@
 {
   "info": {
-    "_postman_id": "8a3d1c4b-9e2f-4a81-b5d3-staffroom2026",
+    "_postman_id": "5af9c17e-7b52-46e6-a3eb-c9fe52c20c4a",
     "name": "StaffRoom PHP API Collection",
     "description": "Complete Postman collection for the StaffRoom teaching job marketplace API. Features 6-digit email verification code flow, string user_id identification, role-based access control (Teacher, School, Admin), and automated JWT token saving.",
-    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "25474083"
   },
-  "variable": [
-    {
-      "key": "baseUrl",
-      "value": "https://api.staffroomng.com/api",
-      "type": "string"
-    },
-    {
-      "key": "healthUrl",
-      "value": "https://api.staffroomng.com/health",
-      "type": "string"
-    },
-    {
-      "key": "token",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "teacherToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "schoolToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "adminToken",
-      "value": "",
-      "type": "string"
-    },
-    {
-      "key": "job_id",
-      "value": "job-demo-school-1",
-      "type": "string"
-    },
-    {
-      "key": "application_id",
-      "value": "application-demo-school-000000000000000000000000000000000000000000001",
-      "type": "string"
-    },
-    {
-      "key": "notification_id",
-      "value": "1",
-      "type": "string"
-    },
-    {
-      "key": "school_profile_id",
-      "value": "school-profile-demo-000000000000000000000000000000000000000000000000001",
-      "type": "string"
-    },
-    {
-      "key": "teacher_user_id",
-      "value": "5f7bc45120f26c3c8325f91c982bc95fc86916d56f273c0879700ea5528c5fff",
-      "type": "string"
-    },
-    {
-      "key": "interview_id",
-      "value": "interview-demo-000000000000000000000000000000000000000000000000000001",
-      "type": "string"
-    },
-    {
-      "key": "invitation_id",
-      "value": "invitation-demo-000000000000000000000000000000000000000000000000000001",
-      "type": "string"
-    },
-    {
-      "key": "demoTeacherEmail",
-      "value": "teacher@staffroom.test",
-      "type": "string"
-    },
-    {
-      "key": "demoTeacherPassword",
-      "value": "TeacherPass123!",
-      "type": "string"
-    },
-    {
-      "key": "demoSchoolEmail",
-      "value": "school@staffroom.test",
-      "type": "string"
-    },
-    {
-      "key": "demoSchoolPassword",
-      "value": "SchoolPass123!",
-      "type": "string"
-    },
-    {
-      "key": "demoAdminEmail",
-      "value": "admin@staffroom.test",
-      "type": "string"
-    },
-    {
-      "key": "demoAdminPassword",
-      "value": "AdminPass123!",
-      "type": "string"
-    }
-  ],
   "item": [
     {
       "name": "Health",
-      "description": "Authenticated liveness and system health verification endpoints.",
       "item": [
         {
           "name": "Check Health",
@@ -157,11 +60,11 @@
             }
           ]
         }
-      ]
+      ],
+      "description": "Authenticated liveness and system health verification endpoints."
     },
     {
       "name": "Auth",
-      "description": "Authentication endpoints including registration, 6-digit email verification, login, account deletion, and code resending.",
       "item": [
         {
           "name": "Register Teacher",
@@ -891,11 +794,11 @@
             }
           ]
         }
-      ]
+      ],
+      "description": "Authentication endpoints including registration, 6-digit email verification, login, account deletion, and code resending."
     },
     {
       "name": "Jobs",
-      "description": "Job discovery, filtering, creation, modification, and deletion endpoints.",
       "item": [
         {
           "name": "Browse Jobs",
@@ -1249,11 +1152,11 @@
             }
           ]
         }
-      ]
+      ],
+      "description": "Job discovery, filtering, creation, modification, and deletion endpoints."
     },
     {
       "name": "Applications",
-      "description": "Teacher job application submission, applicant tracking, and recruitment status management endpoints.",
       "item": [
         {
           "name": "Apply for Job (Teacher)",
@@ -1570,18 +1473,37 @@
         {
           "name": "Withdraw Application",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{teacherToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{teacherToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "DELETE",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/applications/{{application_id}}", "host": ["{{baseUrl}}"], "path": ["applications", "{{application_id}}"] },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{application_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{application_id}}"
+              ]
+            },
             "description": "Withdraws an active application owned by the authenticated teacher."
-          }
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Teacher job application submission, applicant tracking, and recruitment status management endpoints."
     },
     {
       "name": "Profiles",
-      "description": "Endpoints for fetching and updating user profiles as well as uploading CV documents and school logos.",
       "item": [
         {
           "name": "Get My Profile",
@@ -1739,7 +1661,12 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"school_name\": \"Bright Future Academy\",\n  \"address\": \"123 School Road\",\n  \"lga\": \"Ikeja\",\n  \"state\": \"Lagos\",\n  \"website\": \"https://myschool.com\"\n}"
+              "raw": "{\n    \"school_name\": \"hope alive\",\n        \"address\": \"hope alive road\",\n        \"location\": \"hope alive road\",\n        \"state\": \"edo\",\n        \"country\": \"nigeria\",\n        \"city\": \"benin city\",\n        \"email\": \"artisanapp8@gmail.com\",\n        \"phone\": \"08055406977\",\n        \"school_type\": \"private\",\n        \"website\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             },
             "url": {
               "raw": "{{baseUrl}}/profiles/school",
@@ -1814,7 +1741,8 @@
                 {
                   "key": "cv",
                   "type": "file",
-                  "description": "Select a PDF, DOC, or DOCX resume document (Max 5MB)."
+                  "description": "Select a PDF, DOC, or DOCX resume document (Max 5MB).",
+                  "value": null
                 }
               ]
             },
@@ -1841,7 +1769,8 @@
                   "formdata": [
                     {
                       "key": "cv",
-                      "type": "file"
+                      "type": "file",
+                      "src": []
                     }
                   ]
                 },
@@ -1891,7 +1820,9 @@
                 {
                   "key": "logo",
                   "type": "file",
-                  "description": "Select a JPG, PNG, or WEBP institutional logo image (Max 2MB)."
+                  "src": [
+                    "/home/brainiac/Documents/staffroom_api/pdf/image w.png"
+                  ]
                 }
               ]
             },
@@ -1918,7 +1849,8 @@
                   "formdata": [
                     {
                       "key": "logo",
-                      "type": "file"
+                      "type": "file",
+                      "src": []
                     }
                   ]
                 },
@@ -1947,11 +1879,11 @@
             }
           ]
         }
-      ]
+      ],
+      "description": "Endpoints for fetching and updating user profiles as well as uploading CV documents and school logos."
     },
     {
       "name": "Features",
-      "description": "Bookmarking jobs, saving vacancies, and managing real-time notifications.",
       "item": [
         {
           "name": "Save Job",
@@ -2251,107 +2183,534 @@
             }
           ]
         }
-      ]
+      ],
+      "description": "Bookmarking jobs, saving vacancies, and managing real-time notifications."
     },
     {
       "name": "Dashboard",
-      "description": "Authenticated role-specific dashboard metrics.",
       "item": [
         {
           "name": "Get Dashboard",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/dashboard", "host": ["{{baseUrl}}"], "path": ["dashboard"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ]
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Authenticated role-specific dashboard metrics."
     },
     {
       "name": "Teacher Directory",
-      "description": "School-only teacher discovery and invitation workflow.",
       "item": [
         {
           "name": "Search Teachers",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{schoolToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{schoolToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/teachers?search=Mathematics&location=Lagos&experience_years=3", "host": ["{{baseUrl}}"], "path": ["teachers"], "query": [{ "key": "search", "value": "Mathematics" }, { "key": "location", "value": "Lagos" }, { "key": "experience_years", "value": "3" }] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/teachers?search=Mathematics&location=Lagos&experience_years=3",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teachers"
+              ],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Mathematics"
+                },
+                {
+                  "key": "location",
+                  "value": "Lagos"
+                },
+                {
+                  "key": "experience_years",
+                  "value": "3"
+                }
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "View Teacher Profile",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{schoolToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{schoolToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/teachers/{{teacher_user_id}}", "host": ["{{baseUrl}}"], "path": ["teachers", "{{teacher_user_id}}"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/teachers/{{teacher_user_id}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teachers",
+                "{{teacher_user_id}}"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Invite Teacher",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{schoolToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{schoolToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"message\": \"We would love for you to apply for this opportunity.\"\n}" },
-            "url": { "raw": "{{baseUrl}}/teachers/{{teacher_user_id}}/invite", "host": ["{{baseUrl}}"], "path": ["teachers", "{{teacher_user_id}}", "invite"] }
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"job_id\": \"{{job_id}}\",\n  \"message\": \"We would love for you to apply for this opportunity.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/teachers/{{teacher_user_id}}/invite",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "teachers",
+                "{{teacher_user_id}}",
+                "invite"
+              ]
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "School-only teacher discovery and invitation workflow."
     },
     {
       "name": "Interviews",
-      "description": "School interview scheduling for shortlisted applications.",
       "item": [
         {
           "name": "Schedule Virtual Interview",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{schoolToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{schoolToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"interview_type\": \"virtual\",\n  \"interview_date\": \"2026-09-15\",\n  \"interview_time\": \"10:30:00\",\n  \"meeting_link\": \"https://meet.google.com/staffroom-demo\",\n  \"instructions\": \"Prepare a short teaching demonstration.\"\n}" },
-            "url": { "raw": "{{baseUrl}}/applications/{{application_id}}/interview", "host": ["{{baseUrl}}"], "path": ["applications", "{{application_id}}", "interview"] }
-          }
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"interview_type\": \"virtual\",\n  \"interview_date\": \"2026-09-15\",\n  \"interview_time\": \"10:30:00\",\n  \"meeting_link\": \"https://meet.google.com/staffroom-demo\",\n  \"instructions\": \"Prepare a short teaching demonstration.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{application_id}}/interview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{application_id}}",
+                "interview"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "List Application Interviews",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{schoolToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{schoolToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{baseUrl}}/applications/{{application_id}}/interview", "host": ["{{baseUrl}}"], "path": ["applications", "{{application_id}}", "interview"] }
-          }
+            "url": {
+              "raw": "{{baseUrl}}/applications/{{application_id}}/interview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "applications",
+                "{{application_id}}",
+                "interview"
+              ]
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "School interview scheduling for shortlisted applications."
     },
     {
       "name": "Account Settings",
-      "description": "Authenticated profile, password, email, and notification preference settings.",
       "item": [
         {
           "name": "Get Account Profile",
-          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "GET", "header": [], "url": { "raw": "{{baseUrl}}/account/profile", "host": ["{{baseUrl}}"], "path": ["account", "profile"] } }
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/account/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account",
+                "profile"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Change Password",
-          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"current_password\": \"AdminPass123!\",\n  \"new_password\": \"NewAdminPass123!\",\n  \"confirm_password\": \"NewAdminPass123!\"\n}" }, "url": { "raw": "{{baseUrl}}/account/password", "host": ["{{baseUrl}}"], "path": ["account", "password"] } }
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"AdminPass123!\",\n  \"new_password\": \"NewAdminPass123!\",\n  \"confirm_password\": \"NewAdminPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account",
+                "password"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Save Notification Preferences",
-          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"new_applications\": { \"in_app\": true, \"email\": true },\n  \"application_updates\": { \"in_app\": true, \"email\": false },\n  \"job_alerts\": { \"in_app\": true, \"email\": true }\n}" }, "url": { "raw": "{{baseUrl}}/account/preferences", "host": ["{{baseUrl}}"], "path": ["account", "preferences"] } }
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"new_applications\": { \"in_app\": true, \"email\": true },\n  \"application_updates\": { \"in_app\": true, \"email\": false },\n  \"job_alerts\": { \"in_app\": true, \"email\": true }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account/preferences",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account",
+                "preferences"
+              ]
+            }
+          },
+          "response": []
         },
         {
           "name": "Request Email Change",
-          "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"email\": \"new-email@example.com\"\n}" }, "url": { "raw": "{{baseUrl}}/account/email", "host": ["{{baseUrl}}"], "path": ["account", "email"] } }
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new-email@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/account/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "account",
+                "email"
+              ]
+            }
+          },
+          "response": []
         }
-      ]
+      ],
+      "description": "Authenticated profile, password, email, and notification preference settings."
+    },
+    {
+      "name": "Backend Integration Updates",
+      "item": [
+        {
+          "name": "Get Teacher Profile and Setup",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{teacherToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/profiles/me", "host": ["{{baseUrl}}"], "path": ["profiles", "me"]},
+            "description": "Returns the teacher profile. Read data.profile.setup_completed to determine whether initial setup is complete; subjects are returned as an array. Requires role: teacher."
+          }
+        },
+        {
+          "name": "Update Teacher Profile and Subjects",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{teacherToken}}", "type": "string"}]},
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"bio\": \"Experienced mathematics teacher\",\n  \"subjects\": [\"Mathematics\", \"Physics\", \"Mathematics\"],\n  \"experience_years\": 4,\n  \"location\": \"Benin City\",\n  \"teaching_experience\": \"Primary and secondary teaching\",\n  \"setup_completed\": true\n}"},
+            "url": {"raw": "{{baseUrl}}/profiles/teacher", "host": ["{{baseUrl}}"], "path": ["profiles", "teacher"]},
+            "description": "Updates the authenticated teacher profile. Duplicate subjects are removed by the API. Requires role: teacher."
+          }
+        },
+        {
+          "name": "Browse Filtered Jobs with Pagination",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{teacherToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/jobs?subject=Mathematics&level=KG&location=Benin%20City&experience=3&page=1&per_page=10", "host": ["{{baseUrl}}"], "path": ["jobs"], "query": [{"key": "subject", "value": "Mathematics"}, {"key": "level", "value": "KG"}, {"key": "location", "value": "Benin City"}, {"key": "experience", "value": "3"}, {"key": "page", "value": "1"}, {"key": "per_page", "value": "10"}]},
+            "description": "Composable job filters. Supports Pre KG and KG values and returns pagination metadata."
+          }
+        },
+        {
+          "name": "Recommended Jobs",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{teacherToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/jobs?recommended=1&page=1&per_page=10", "host": ["{{baseUrl}}"], "path": ["jobs"], "query": [{"key": "recommended", "value": "1"}, {"key": "page", "value": "1"}, {"key": "per_page", "value": "10"}]},
+            "description": "Returns open jobs ranked deterministically by teacher subject and location matches. Requires role: teacher."
+          }
+        },
+        {
+          "name": "Get Application Details",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{teacherToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/applications/{{application_id}}", "host": ["{{baseUrl}}"], "path": ["applications", "{{application_id}}"]},
+            "description": "Returns an application only to its teacher, owning school, or an administrator."
+          }
+        },
+        {
+          "name": "Reject Application with Message (School)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{schoolToken}}", "type": "string"}]},
+            "method": "PATCH",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"status\": \"rejected\",\n  \"message\": \"Thank you for applying. Unfortunately, we have decided to proceed with another candidate.\"\n}"},
+            "url": {"raw": "{{baseUrl}}/applications/{{application_id}}/status", "host": ["{{baseUrl}}"], "path": ["applications", "{{application_id}}", "status"]},
+            "description": "Rejects an application owned by the school and stores the teacher-visible rejection message. Requires role: school."
+          }
+        },
+        {
+          "name": "Search Teachers with Filters",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{schoolToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/teachers?subject=Mathematics&location=Benin%20City&experience_min=2&experience_max=8&trcn_status=verified&page=1&per_page=10", "host": ["{{baseUrl}}"], "path": ["teachers"], "query": [{"key": "subject", "value": "Mathematics"}, {"key": "location", "value": "Benin City"}, {"key": "experience_min", "value": "2"}, {"key": "experience_max", "value": "8"}, {"key": "trcn_status", "value": "verified"}, {"key": "page", "value": "1"}, {"key": "per_page", "value": "10"}]},
+            "description": "School-only teacher directory search with composable filters and pagination."
+          }
+        },
+        {
+          "name": "Save Teacher (School)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{schoolToken}}", "type": "string"}]},
+            "method": "POST",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/features/saved-teachers/{{teacher_user_id}}", "host": ["{{baseUrl}}"], "path": ["features", "saved-teachers", "{{teacher_user_id}}"]},
+            "description": "Saves a teacher within the authenticated school's scope. Duplicate saves are handled idempotently."
+          }
+        },
+        {
+          "name": "List Saved Teachers (School)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{schoolToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/features/saved-teachers", "host": ["{{baseUrl}}"], "path": ["features", "saved-teachers"]},
+            "description": "Lists only teachers saved by the authenticated school."
+          }
+        },
+        {
+          "name": "Unsave Teacher (School)",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{schoolToken}}", "type": "string"}]},
+            "method": "DELETE",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/features/saved-teachers/{{teacher_user_id}}", "host": ["{{baseUrl}}"], "path": ["features", "saved-teachers", "{{teacher_user_id}}"]},
+            "description": "Removes a saved teacher from the authenticated school's list."
+          }
+        },
+        {
+          "name": "Get Job Alert Preferences",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{teacherToken}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/features/job-alerts", "host": ["{{baseUrl}}"], "path": ["features", "job-alerts"]},
+            "description": "Returns preferences owned by the authenticated teacher."
+          }
+        },
+        {
+          "name": "Update Job Alert Preferences",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{teacherToken}}", "type": "string"}]},
+            "method": "PUT",
+            "header": [{"key": "Content-Type", "value": "application/json"}],
+            "body": {"mode": "raw", "raw": "{\n  \"subjects\": [\"Mathematics\", \"Physics\"],\n  \"teaching_level\": \"KG\",\n  \"location\": \"Benin City\",\n  \"enabled\": true\n}"},
+            "url": {"raw": "{{baseUrl}}/features/job-alerts", "host": ["{{baseUrl}}"], "path": ["features", "job-alerts"]},
+            "description": "Creates or updates personalized job alert preferences. Requires role: teacher."
+          }
+        },
+        {
+          "name": "List Notifications with Unread Count",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]},
+            "method": "GET",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/features/notifications?page=1&per_page=10", "host": ["{{baseUrl}}"], "path": ["features", "notifications"], "query": [{"key": "page", "value": "1"}, {"key": "per_page", "value": "10"}]},
+            "description": "Returns notifications, pagination, and unread_count for the authenticated user."
+          }
+        },
+        {
+          "name": "Mark Notification Read",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]},
+            "method": "PATCH",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/features/notifications/{{notification_id}}/read", "host": ["{{baseUrl}}"], "path": ["features", "notifications", "{{notification_id}}", "read"]},
+            "description": "Marks only the authenticated user's notification as read."
+          }
+        },
+        {
+          "name": "Delete Notification",
+          "request": {
+            "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]},
+            "method": "DELETE",
+            "header": [],
+            "url": {"raw": "{{baseUrl}}/features/notifications/{{notification_id}}", "host": ["{{baseUrl}}"], "path": ["features", "notifications", "{{notification_id}}"]},
+            "description": "Deletes only the authenticated user's notification."
+          }
+        }
+      ],
+      "description": "Postman requests for the September 2026 backend integration: setup state, structured subjects, applications, filtering, recommendations, saved teachers, alerts, and notification lifecycle."
     },
     {
       "name": "Admin",
-      "description": "Platform management endpoints for oversight of system metrics and processing school verifications.",
       "item": [
         {
           "name": "Get Stats (Admin)",
@@ -2547,7 +2906,86 @@
             }
           ]
         }
-      ]
+      ],
+      "description": "Platform management endpoints for oversight of system metrics and processing school verifications."
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "https://api.staffroomng.com/api"
+    },
+    {
+      "key": "healthUrl",
+      "value": "https://api.staffroomng.com/health"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "teacherToken",
+      "value": ""
+    },
+    {
+      "key": "schoolToken",
+      "value": ""
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "job_id",
+      "value": "job-demo-school-1"
+    },
+    {
+      "key": "application_id",
+      "value": "application-demo-school-000000000000000000000000000000000000000000001"
+    },
+    {
+      "key": "notification_id",
+      "value": "1"
+    },
+    {
+      "key": "school_profile_id",
+      "value": "school-profile-demo-000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "key": "teacher_user_id",
+      "value": "5f7bc45120f26c3c8325f91c982bc95fc86916d56f273c0879700ea5528c5fff"
+    },
+    {
+      "key": "interview_id",
+      "value": "interview-demo-000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "key": "invitation_id",
+      "value": "invitation-demo-000000000000000000000000000000000000000000000000000001"
+    },
+    {
+      "key": "demoTeacherEmail",
+      "value": "teacher@staffroom.test"
+    },
+    {
+      "key": "demoTeacherPassword",
+      "value": "TeacherPass123!"
+    },
+    {
+      "key": "demoSchoolEmail",
+      "value": "school@staffroom.test"
+    },
+    {
+      "key": "demoSchoolPassword",
+      "value": "SchoolPass123!"
+    },
+    {
+      "key": "demoAdminEmail",
+      "value": "admin@staffroom.test"
+    },
+    {
+      "key": "demoAdminPassword",
+      "value": "AdminPass123!"
     }
   ]
 }

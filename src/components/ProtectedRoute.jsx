@@ -3,10 +3,38 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { profileService } from '../services/profileService';
 
-const hasCompletedTeacherProfile = (profile = {}) => Boolean(
-  String(profile.skills || '').trim() &&
-  String(profile.location || '').trim()
-);
+const hasCompletedTeacherProfile = (profile = {}) => {
+  const setupFlag =
+    profile?.setup_completed ??
+    profile?.setupComplete ??
+    profile?.profile_complete ??
+    profile?.is_profile_complete ??
+    profile?.setupCompleted;
+
+  if (setupFlag === true || setupFlag === 'true' || setupFlag === 1) {
+    return true;
+  }
+
+  if (setupFlag === false || setupFlag === 'false' || setupFlag === 0) {
+    return false;
+  }
+
+  const skillText = String(profile?.skills || profile?.subjects || '').trim();
+  const locationText = String(profile?.location || profile?.preferred_location || '').trim();
+  const levels = Array.isArray(profile?.teaching_levels)
+    ? profile.teaching_levels
+    : typeof profile?.teaching_levels === 'string'
+      ? profile.teaching_levels.split(',').map((item) => item.trim()).filter(Boolean)
+      : [];
+
+  return Boolean(
+    skillText ||
+    locationText ||
+    levels.length ||
+    String(profile?.bio || '').trim() ||
+    String(profile?.experience_years || '').trim()
+  );
+};
 
 export default function ProtectedRoute({ children, allowedRoles = [], requireTeacherProfile = false }) {
   const { user, token, loading } = useAuth();
@@ -23,7 +51,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
     profileService.getMe()
       .then((response) => {
         const payload = response?.data?.data ?? response?.data ?? {};
-        const profile = payload?.profile || payload?.teacher_profile || {};
+        const profile = payload?.profile || payload?.teacher_profile || payload || {};
         if (active) setProfileCheck({ loading: false, complete: hasCompletedTeacherProfile(profile) });
       })
       .catch(() => {

@@ -98,6 +98,11 @@ export default function AdminDashboard() {
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
+  const [teacherInviteMessage, setTeacherInviteMessage] = useState(
+    "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
+  );
+  const [teacherInviteSubmitting, setTeacherInviteSubmitting] = useState(false);
+  const [savedTeacherIds, setSavedTeacherIds] = useState([]);
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [schoolLocationLocked, setSchoolLocationLocked] = useState(false);
   const [isSchoolNameEditing, setIsSchoolNameEditing] = useState(false);
@@ -123,6 +128,11 @@ export default function AdminDashboard() {
   const [isShortlistSuccessOpen, setIsShortlistSuccessOpen] = useState(false);
   const [shortlistSubmitting, setShortlistSubmitting] = useState(false);
   const [shortlistError, setShortlistError] = useState("");
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState(null);
+  const [rejectMessage, setRejectMessage] = useState("");
+  const [rejectSubmitting, setRejectSubmitting] = useState(false);
+  const [rejectError, setRejectError] = useState("");
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [teacherSearch, setTeacherSearch] = useState("");
@@ -250,11 +260,26 @@ export default function AdminDashboard() {
     reader.readAsDataURL(file);
   };
 
-  const markAllNotificationsAsRead = () => {
-    setNotificationItems((prev) => prev.map((item) => ({ ...item, unread: false })));
+  const isNotificationUnread = (notification = {}) => {
+    const readValue = notification.is_read ?? notification.read;
+    return readValue === false || readValue === "false" || Number(readValue) === 0;
   };
 
-  const handleNotificationItemClick = (item) => {
+  const markAllNotificationsAsRead = async () => {
+    const unreadItems = notificationItems.filter((item) => item.unread && item.key);
+    if (!unreadItems.length) return;
+
+    try {
+      await Promise.all(
+        unreadItems.map((item) => featureService.markNotificationRead(item.key)),
+      );
+      setNotificationItems((prev) => prev.map((item) => ({ ...item, unread: false })));
+    } catch (err) {
+      setError(apiErrorMessage(err, "Unable to mark notifications as read."));
+    }
+  };
+
+  const handleNotificationItemClick = async (item) => {
     if (item.applicantName) {
       const matchedApplicant = allApplicants.find(
         (app) =>
@@ -268,11 +293,18 @@ export default function AdminDashboard() {
       }
     }
 
-    setNotificationItems((prev) =>
-      prev.map((entry) =>
-        entry.key === item.key ? { ...entry, unread: false } : entry,
-      ),
-    );
+    if (item.unread && item.key) {
+      try {
+        await featureService.markNotificationRead(item.key);
+        setNotificationItems((prev) =>
+          prev.map((entry) =>
+            entry.key === item.key ? { ...entry, unread: false } : entry,
+          ),
+        );
+      } catch (err) {
+        setError(apiErrorMessage(err, "Unable to mark this notification as read."));
+      }
+    }
 
     handleTabChange(item.tab);
   };
@@ -308,6 +340,44 @@ export default function AdminDashboard() {
     [user],
   );
 
+  const schoolDraftStorageKey = `staffroom_school_job_drafts_${currentUserId || "unknown"}`;
+
+  const readSchoolJobDrafts = () => {
+    try {
+      const storedDrafts = JSON.parse(localStorage.getItem(schoolDraftStorageKey) || "[]");
+      return Array.isArray(storedDrafts) ? storedDrafts : [];
+    } catch (_err) {
+      return [];
+    }
+  };
+
+  const saveSchoolJobDraft = () => {
+    const draftId = editingJobId || `draft-${Date.now()}`;
+    const draft = {
+      ...jobForm,
+      job_id: draftId,
+      status: "draft",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    const nextDrafts = [
+      ...readSchoolJobDrafts().filter((item) => String(item.job_id || item.id) !== String(draftId)),
+      draft,
+    ];
+
+    localStorage.setItem(schoolDraftStorageKey, JSON.stringify(nextDrafts));
+    setJobs((prev) => [
+      draft,
+      ...prev.filter((job) => String(job.job_id || job.id) !== String(draftId)),
+    ]);
+    setJobForm(emptyJobForm);
+    setEditingJobId(null);
+    setSelectedJob(null);
+    setSelectedApplicant(null);
+    setActiveTab(previousTab);
+    showSnackbar("Draft saved successfully", "Your job draft has been saved successfully");
+  };
+
   const loadSchoolNotifications = async () => {
     try {
       const response = await featureService.getNotifications();
@@ -325,12 +395,12 @@ export default function AdminDashboard() {
         return {
           key: n.notification_id || n.id || `notif-${Date.now()}-${Math.random()}`,
           tab: isApplication ? "applicants" : "notifications",
-          type: Number(n.is_read) === 0 ? "highlight" : "simple",
+          type: isNotificationUnread(n) ? "highlight" : "simple",
           accent: isApplication ? "green" : "",
           icon: iconMap[n.type] || FiBell,
           label: (n.type || "notification").toUpperCase().replace(/_/g, " "),
           title: n.title || "Notification",
-          unread: Number(n.is_read) === 0,
+          unread: isNotificationUnread(n),
           description: n.message || n.description || "",
           time: n.created_at
             ? new Date(n.created_at).toLocaleDateString()
@@ -348,9 +418,12 @@ export default function AdminDashboard() {
     try {
       const response = await jobService.getJobs({});
       const jobList = response?.data?.data?.jobs || response?.data?.jobs || [];
+      const savedDrafts = readSchoolJobDrafts();
+      const jobsWithDrafts = [...savedDrafts, ...jobList];
 
       if (isSchool && currentUserId) {
-        const ownedJobs = jobList.filter((job) => {
+        const ownedJobs = jobsWithDrafts.filter((job) => {
+          if (String(job.status || "").toLowerCase() === "draft") return true;
           const candidate =
             job.school_id || job.user_id || job.created_by || "";
           return candidate === currentUserId || candidate === user?.id;
@@ -362,7 +435,7 @@ export default function AdminDashboard() {
         }
       }
 
-      setJobs(jobList);
+      setJobs(jobsWithDrafts);
     } catch (err) {
       setError(apiErrorMessage(err, "Unable to load school jobs."));
     }
@@ -465,6 +538,7 @@ export default function AdminDashboard() {
             loadUsers(),
             loadSchoolNotifications(),
             loadSchoolProfileForJobLocation(),
+            loadSavedTeachers(),
           ]);
         } else {
           const [statsRes, verificationsRes] = await Promise.all([
@@ -492,26 +566,44 @@ export default function AdminDashboard() {
   }, [isSchool, currentUserId]);
 
   const normalizeInterviewPayload = (payload) => {
-    if (!payload || typeof payload !== "object") return null;
+    if (!payload) return null;
 
-    const candidate =
-      payload.interview ??
-      payload.data?.interview ??
-      payload.data ??
-      payload.result ??
-      payload.details ??
-      payload;
+    const possiblePayloads = Array.isArray(payload)
+      ? payload
+      : [payload];
 
-    if (!candidate || typeof candidate !== "object") return null;
+    const candidate = possiblePayloads.find((entry) => entry && typeof entry === "object") ?? null;
+    if (!candidate) return null;
+
+    const nested =
+      candidate.interview ??
+      candidate.data?.interview ??
+      candidate.data?.details ??
+      candidate.data?.result ??
+      candidate.result?.interview ??
+      candidate.details?.interview ??
+      candidate.data ??
+      candidate.result ??
+      candidate.details ??
+      candidate;
+
+    const interviewObject =
+      nested && typeof nested === "object" && !Array.isArray(nested)
+        ? nested
+        : Array.isArray(nested) && nested.length > 0
+          ? nested[0]
+          : null;
+
+    if (!interviewObject || typeof interviewObject !== "object") return null;
 
     return {
-      ...candidate,
-      interview_date: candidate.interview_date || payload.interview_date || payload.date || "",
-      interview_time: candidate.interview_time || payload.interview_time || payload.time || "",
-      venue: candidate.venue || payload.venue || "",
-      meeting_link: candidate.meeting_link || payload.meeting_link || "",
-      status: candidate.status || payload.status || "",
-      updated_at: candidate.updated_at || payload.updated_at || payload.updatedAt || "",
+      ...interviewObject,
+      interview_date: interviewObject.interview_date || interviewObject.interviewDate || interviewObject.date || candidate.interview_date || candidate.date || "",
+      interview_time: interviewObject.interview_time || interviewObject.interviewTime || interviewObject.time || candidate.interview_time || candidate.time || "",
+      venue: interviewObject.venue || interviewObject.location || candidate.venue || candidate.location || "",
+      meeting_link: interviewObject.meeting_link || interviewObject.meetingLink || candidate.meeting_link || candidate.meetingLink || "",
+      status: interviewObject.status || candidate.status || "",
+      updated_at: interviewObject.updated_at || interviewObject.updatedAt || candidate.updated_at || candidate.updatedAt || "",
     };
   };
 
@@ -698,16 +790,60 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleRejectApplicant = (jobId, applicantId) => {
+  const handleRejectApplicant = async () => {
+    const activeTarget = rejectTarget || (selectedApplicant ? {
+      jobId: selectedApplicant.jobId || selectedApplicant.job_id || selectedJob?.job_id || selectedJob?.id,
+      applicantId: selectedApplicant.application_id || selectedApplicant.id,
+    } : null);
+
+    if (!activeTarget?.jobId || !activeTarget?.applicantId) return;
+
+    const trimmedMessage = rejectMessage.trim();
+    if (!trimmedMessage) {
+      setRejectError("Please provide a rejection reason before continuing.");
+      return;
+    }
+
+    try {
+      setRejectSubmitting(true);
+      setRejectError("");
+
+      await applicationService.updateApplicationStatus(activeTarget.applicantId, {
+        status: "rejected",
+        message: trimmedMessage,
+        rejection_message: trimmedMessage,
+      });
+
+      setApplicantsByJob((prev) => ({
+        ...prev,
+        [activeTarget.jobId]: (prev[activeTarget.jobId] || []).map((app) => {
+          const currentId = app.application_id || app.id;
+          return currentId === activeTarget.applicantId ? { ...app, status: "rejected" } : app;
+        }),
+      }));
+
+      if (selectedApplicant && (selectedApplicant.application_id || selectedApplicant.id) === activeTarget.applicantId) {
+        setSelectedApplicant((current) => (current ? { ...current, status: "rejected" } : current));
+      }
+
+      setIsRejectModalOpen(false);
+      setRejectTarget(null);
+      setRejectMessage("");
+      showSnackbar("Application rejected", "The candidate has been notified with the rejection reason.");
+    } catch (err) {
+      setRejectError(apiErrorMessage(err, "Unable to reject this applicant."));
+    } finally {
+      setRejectSubmitting(false);
+    }
+  };
+
+  const openRejectApplicantModal = (jobId, applicantId) => {
     if (!jobId || !applicantId) return;
 
-    setApplicantsByJob((prev) => ({
-      ...prev,
-      [jobId]: (prev[jobId] || []).map((app) => {
-        const currentId = app.application_id || app.id;
-        return currentId === applicantId ? { ...app, status: "rejected" } : app;
-      }),
-    }));
+    setRejectTarget({ jobId, applicantId });
+    setRejectMessage("");
+    setRejectError("");
+    setIsRejectModalOpen(true);
     setOpenApplicantMenuId(null);
   };
 
@@ -812,10 +948,12 @@ export default function AdminDashboard() {
     ([jobId, applicants]) => applicants.map((app) => ({ ...app, jobId })),
   );
   const getInterviewStart = (interview = {}) => {
-    const date = interview.interview_date || interview.date;
-    const time = interview.interview_time || interview.time;
-    if (!date || !time) return null;
-    const start = new Date(`${date}T${time}`);
+    const date = interview.interview_date || interview.interviewDate || interview.date;
+    const time = interview.interview_time || interview.interviewTime || interview.time;
+    if (!date) return null;
+
+    const safeTime = time ? String(time).trim() : "00:00:00";
+    const start = new Date(`${date}T${safeTime}`);
     return Number.isNaN(start.getTime()) ? null : start;
   };
   const getUpdatedTimestamp = (app = {}) => {
@@ -847,22 +985,28 @@ export default function AdminDashboard() {
     return "shortlisted";
   };
   const shortlistedCandidates = allApplicants.filter((app) => {
-    const status = String(app.status || "").toLowerCase();
+    const status = String(app.status || app.interview?.status || "").toLowerCase();
     return status === "shortlisted" || status === "interviewing";
   });
   const upcomingInterviews = allApplicants
+    .map((app) => {
+      const interview = normalizeInterviewPayload(app.interview || app) || null;
+      return { ...app, interview };
+    })
     .filter((app) => {
-      const status = String(app.status || "").toLowerCase();
-      if (!app.interview || (status !== "shortlisted" && status !== "interviewing")) {
+      const status = String(app.status || app.interview?.status || "").toLowerCase();
+      const interview = app.interview || null;
+      if (!interview || (status !== "shortlisted" && status !== "interviewing")) {
         return false;
       }
 
-      return Boolean(getUpdatedTimestamp(app));
+      const interviewStart = getInterviewStart(interview);
+      return interviewStart && interviewStart.getTime() >= Date.now();
     })
     .sort((a, b) => {
-      const aUpdated = getUpdatedTimestamp(a)?.getTime?.() ?? 0;
-      const bUpdated = getUpdatedTimestamp(b)?.getTime?.() ?? 0;
-      return bUpdated - aUpdated;
+      const aDate = getInterviewStart(a.interview || {})?.getTime?.() ?? 0;
+      const bDate = getInterviewStart(b.interview || {})?.getTime?.() ?? 0;
+      return bDate - aDate;
     })
     .slice(0, 3);
   const scheduledInterviews = upcomingInterviews;
@@ -1364,15 +1508,7 @@ export default function AdminDashboard() {
         <div className="school-job-form-actions">
           <button
             type="button"
-            onClick={() => {
-              setSelectedJob(null);
-              setSelectedApplicant(null);
-              setActiveTab(previousTab);
-              showSnackbar(
-                "Draft saved successfully",
-                "Your job draft has been saved successfully",
-              );
-            }}
+            onClick={saveSchoolJobDraft}
           >
             Save Draft
           </button>
@@ -1724,7 +1860,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         <section className="school-summary-section school-summary-section--first">
           <div className="school-summary-actions">
             <button type="button" className="school-summary-shortlist-btn" onClick={() => handleShortlistApplicant(applicant)}>Shortlist Candidate</button>
-            <button type="button" className="school-summary-reject-btn" onClick={() => handleRejectApplicant(jobId, applicantId)}>Reject Applicant</button>
+            <button type="button" className="school-summary-reject-btn" onClick={() => openRejectApplicantModal(jobId, applicantId)}>Reject Applicant</button>
           </div>
           <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
         </section>
@@ -1767,6 +1903,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               <button
                 type="button"
                 className="school-summary-reject-btn"
+                onClick={() => openRejectApplicantModal(jobId, applicantId)}
               >
                 Reject Applicant
               </button>
@@ -2075,6 +2212,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                   onClick={() => setIsTeacherInviteModalOpen(true)}
                 >
                   Invite
+                </button>
+                <button
+                  type="button"
+                  className="school-summary-reject-btn"
+                  onClick={() => handleToggleSavedTeacher(teacher)}
+                >
+                  {savedTeacherIds.includes(String(teacher.teacher_id || teacher.user_id || teacher.id || teacher.teacherUserId || teacher.application_id)) ? 'Saved' : 'Save Teacher'}
                 </button>
               </div>
 
@@ -2511,12 +2655,12 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                         <button
                           type="button"
                           className="school-job-applicant-menu-delete"
-                          onClick={() => handleRejectApplicant(jobId, appId)}
+                          onClick={() => openRejectApplicantModal(jobId, appId)}
                         >
                           <span className="school-job-applicant-menu-icon">
                             <FiX size={18} />
                           </span>
-                          <span>Rejected</span>
+                          <span>Reject</span>
                         </button>
                       </div>
                     )}
@@ -2618,6 +2762,37 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     }
   };
 
+  const handleSendTeacherInvite = async () => {
+    const teacherId = selectedTeacherProfile?.teacher_id || selectedTeacherProfile?.user_id || selectedTeacherProfile?.id;
+    const message = teacherInviteMessage.trim();
+
+    if (!teacherId) {
+      showSnackbar("Unable to invite teacher", "This teacher profile is missing a valid ID.");
+      return;
+    }
+
+    if (!message) {
+      showSnackbar("Invitation message required", "Please add a short invitation message before sending.");
+      return;
+    }
+
+    try {
+      setTeacherInviteSubmitting(true);
+      await profileService.inviteTeacher(teacherId, {
+        message,
+      });
+      setIsTeacherInviteModalOpen(false);
+      setTeacherInviteMessage(
+        "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
+      );
+      showSnackbar("Invitation Sent", `${selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "Teacher"} has been invited to apply.`);
+    } catch (err) {
+      showSnackbar("Invitation failed", apiErrorMessage(err, "Unable to send this invitation right now."));
+    } finally {
+      setTeacherInviteSubmitting(false);
+    }
+  };
+
   const renderTeacherInviteModal = () => {
     const teacherName = selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "Teacher";
     const teacherRole = selectedTeacherProfile?.role || selectedTeacherProfile?.subject || "Teacher";
@@ -2686,19 +2861,18 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             <textarea
               className="school-teacher-invite-textarea"
               rows="5"
-              defaultValue="Hi Tunde, we were impressed by your profile and would love for you to apply for our open Further Mathematics position. We would be delighted to discuss the opportunity with you and learn more about your teaching experience."
+              value={teacherInviteMessage}
+              onChange={(event) => setTeacherInviteMessage(event.target.value)}
             />
           </div>
 
           <button
             type="button"
             className="school-teacher-invite-send-btn"
-            onClick={() => {
-              setIsTeacherInviteModalOpen(false);
-              showSnackbar("Invitation Sent", `${teacherName} has been invited to apply.`);
-            }}
+            onClick={handleSendTeacherInvite}
+            disabled={teacherInviteSubmitting}
           >
-            Send Invite
+            {teacherInviteSubmitting ? "Sending..." : "Send Invite"}
           </button>
 
           <button
@@ -2712,6 +2886,47 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
       </div>
     );
   };
+
+  const renderRejectModal = () => (
+    isRejectModalOpen && (
+      <div className="school-shortlist-modal-backdrop" onClick={() => setIsRejectModalOpen(false)}>
+        <div className="school-shortlist-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+          <div className="school-shortlist-modal-header">
+            <div className="school-shortlist-modal-heading">
+              <h3 id="reject-modal-title">Reject Application</h3>
+            </div>
+            <button type="button" className="school-shortlist-modal-close" onClick={() => setIsRejectModalOpen(false)} aria-label="Close reject modal">×</button>
+          </div>
+
+          <div className="school-shortlist-modal-body">
+            <label className="school-shortlist-field" style={{ display: 'block' }}>
+              <span style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: '#20252b' }}>Please provide a reason/message to the candidate.</span>
+              <textarea
+                rows={6}
+                value={rejectMessage}
+                onChange={(event) => setRejectMessage(event.target.value)}
+                placeholder="We appreciate your interest, but we have decided to move forward with other candidates."
+                style={{ width: '100%', resize: 'vertical', border: '1px solid #d8e1d7', borderRadius: '12px', padding: '12px 14px', font: 'inherit' }}
+              />
+            </label>
+
+            {rejectError && (
+              <p className="school-shortlist-error" role="alert">{rejectError}</p>
+            )}
+          </div>
+
+          <div className="school-shortlist-modal-actions">
+            <button type="button" className="school-shortlist-cancel-btn" onClick={() => setIsRejectModalOpen(false)}>
+              Cancel
+            </button>
+            <button type="button" className="school-shortlist-confirm-btn" onClick={handleRejectApplicant} disabled={rejectSubmitting}>
+              {rejectSubmitting ? "Rejecting..." : "Reject Application"}
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  );
 
   const renderShortlistModal = () => {
     const isAlreadyShortlisted =
@@ -3199,6 +3414,49 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     );
   };
 
+  const loadSavedTeachers = async () => {
+    try {
+      const response = await featureService.getSavedTeachers();
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const rawList = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload.saved_teachers)
+          ? payload.saved_teachers
+          : Array.isArray(payload.data)
+            ? payload.data
+            : [];
+      const savedIds = rawList
+        .map((item) => item?.teacher_user_id ?? item?.teacherId ?? item?.user_id ?? item?.teacher_id ?? item?.id ?? item?.teacher?.user_id ?? item?.teacherUserId)
+        .filter(Boolean)
+        .map((value) => String(value));
+      setSavedTeacherIds([...new Set(savedIds)]);
+    } catch (_err) {
+      setSavedTeacherIds([]);
+    }
+  };
+
+  const handleToggleSavedTeacher = async (teacher) => {
+    const teacherUserId = teacher?.teacher_id || teacher?.user_id || teacher?.id || teacher?.teacherUserId || teacher?.application_id;
+    if (!teacherUserId) return;
+
+    const teacherId = String(teacherUserId);
+    const isSaved = savedTeacherIds.includes(teacherId);
+
+    try {
+      if (isSaved) {
+        await featureService.deleteSavedTeacher(teacherId);
+        setSavedTeacherIds((prev) => prev.filter((id) => id !== teacherId));
+        showSnackbar("Teacher removed", `${teacher?.name || "Teacher"} was removed from saved teachers.`);
+      } else {
+        await featureService.saveTeacher(teacherId);
+        setSavedTeacherIds((prev) => [...new Set([...prev, teacherId])]);
+        showSnackbar("Teacher saved", `${teacher?.name || "Teacher"} was saved to your shortlist.`);
+      }
+    } catch (err) {
+      showSnackbar("Unable to update saved teachers", apiErrorMessage(err, "Unable to update this teacher."));
+    }
+  };
+
   const handleTeacherSearch = () => {
     setTeacherSearchSubmitted(teacherSearch.trim());
     setTeacherLocationMenuOpen(false);
@@ -3508,6 +3766,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     <button
                       type="button"
                       className="school-teacher-secondary-btn"
+                      onClick={() => handleToggleSavedTeacher(teacher)}
+                    >
+                      {savedTeacherIds.includes(String(teacher.teacher_id || teacher.user_id || teacher.id || teacher.teacherUserId || teacher.application_id)) ? 'Saved' : 'Save'}
+                    </button>
+                    <button
+                      type="button"
+                      className="school-teacher-secondary-btn"
                       onClick={() => handleViewTeacherProfile(teacher)}
                     >
                       View Profile
@@ -3556,7 +3821,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                   <span>
                     {isSchool && key === "applicants" ? "Teachers" : label}
                   </span>
-                  {key === "notifications" && (
+                  {key === "notifications" && notificationItems.some((item) => item.unread) && (
                     <i className="admin-sidebar-notification-dot" />
                   )}
                 </button>
@@ -3601,7 +3866,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                 aria-label="Notifications"
               >
                 <FiBell size={18} />
-                <span />
+                {notificationItems.some((item) => item.unread) && <span />}
               </button>
               <div className="admin-topbar-divider" />
               <div className="admin-topbar-user">
@@ -3644,7 +3909,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               aria-label="Notifications"
             >
               <FiBell size={20} />
-              <span />
+              {notificationItems.some((item) => item.unread) && <span />}
             </button>
           </header>
 
