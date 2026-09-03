@@ -122,6 +122,12 @@ export default function AdminDashboard() {
   const websiteInputRef = useRef(null);
   const addressTextareaRef = useRef(null);
   const [notificationItems, setNotificationItems] = useState([]);
+  const [selectedNotification, setSelectedNotification] = useState(null);
+  const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
+  const [notificationActionLoading, setNotificationActionLoading] = useState({});
+  const [visibleSchoolNotificationCount, setVisibleSchoolNotificationCount] = useState(10);
+  const [visibleTeacherCount, setVisibleTeacherCount] = useState(10);
+  const [visibleSchoolJobCount, setVisibleSchoolJobCount] = useState(10);
   const [schoolProfile, setSchoolProfile] = useState({});
   const [editingJobId, setEditingJobId] = useState(null);
   const [isShortlistModalOpen, setIsShortlistModalOpen] = useState(false);
@@ -144,6 +150,8 @@ export default function AdminDashboard() {
     useState(false);
   const [teacherSubject, setTeacherSubject] = useState("Subject");
   const [teacherSubjectMenuOpen, setTeacherSubjectMenuOpen] = useState(false);
+  const [teacherTrcn, setTeacherTrcn] = useState("TRCN");
+  const [teacherTrcnMenuOpen, setTeacherTrcnMenuOpen] = useState(false);
   const [shortlistForm, setShortlistForm] = useState({
     interviewType: "",
     responseTemplate: "",
@@ -217,6 +225,16 @@ export default function AdminDashboard() {
     setActiveTab("post-job");
   };
 
+  const openDraftJobForm = (job) => {
+    if (!job) return;
+    setPreviousTab("jobs");
+    setEditingJobId(null);
+    setJobForm({ ...emptyJobForm, ...job });
+    setSelectedJob(null);
+    setSelectedApplicant(null);
+    setActiveTab("post-job");
+  };
+
   const openJobDetails = (job) => {
     setSelectedJob(job);
     setSelectedApplicant(null);
@@ -280,6 +298,11 @@ export default function AdminDashboard() {
   };
 
   const handleNotificationItemClick = async (item) => {
+    if (!item) return;
+
+    setSelectedNotification(item);
+    setIsNotificationModalOpen(true);
+
     if (item.applicantName) {
       const matchedApplicant = allApplicants.find(
         (app) =>
@@ -293,20 +316,48 @@ export default function AdminDashboard() {
       }
     }
 
-    if (item.unread && item.key) {
-      try {
-        await featureService.markNotificationRead(item.key);
-        setNotificationItems((prev) =>
-          prev.map((entry) =>
-            entry.key === item.key ? { ...entry, unread: false } : entry,
-          ),
-        );
-      } catch (err) {
-        setError(apiErrorMessage(err, "Unable to mark this notification as read."));
-      }
-    }
+    if (item.unread && item.key) await markSchoolNotificationAsRead(item.key);
+  };
 
-    handleTabChange(item.tab);
+  const markSchoolNotificationAsRead = async (notificationId) => {
+    if (!notificationId) return;
+    setNotificationActionLoading((current) => ({ ...current, [notificationId]: "read" }));
+    try {
+      await featureService.markNotificationRead(notificationId);
+      setNotificationItems((prev) => prev.map((item) => (
+        item.key === notificationId ? { ...item, unread: false } : item
+      )));
+      setSelectedNotification((current) => (
+        current?.key === notificationId ? { ...current, unread: false } : current
+      ));
+    } catch (err) {
+      setError(apiErrorMessage(err, "Unable to mark this notification as read."));
+    } finally {
+      setNotificationActionLoading((current) => {
+        const next = { ...current };
+        delete next[notificationId];
+        return next;
+      });
+    }
+  };
+
+  const deleteSchoolNotification = async (notificationId) => {
+    if (!notificationId) return;
+    setNotificationActionLoading((current) => ({ ...current, [notificationId]: "delete" }));
+    try {
+      await featureService.deleteNotification(notificationId);
+      setNotificationItems((prev) => prev.filter((item) => item.key !== notificationId));
+      setIsNotificationModalOpen(false);
+      setSelectedNotification(null);
+    } catch (err) {
+      setError(apiErrorMessage(err, "Unable to delete this notification."));
+    } finally {
+      setNotificationActionLoading((current) => {
+        const next = { ...current };
+        delete next[notificationId];
+        return next;
+      });
+    }
   };
 
   useEffect(() => {
@@ -413,6 +464,14 @@ export default function AdminDashboard() {
       // Notifications are non-critical — silently keep whatever is already loaded
     }
   };
+
+  useEffect(() => {
+    if (!isSchool) return undefined;
+    const intervalId = window.setInterval(() => {
+      loadSchoolNotifications();
+    }, 60000);
+    return () => window.clearInterval(intervalId);
+  }, [isSchool]);
 
   const loadSchoolJobs = async () => {
     try {
@@ -1272,7 +1331,7 @@ export default function AdminDashboard() {
         </div>
         <div className="school-notifications-panel">
           <h3>Today</h3>
-          {notificationItems.slice(0, 3).map((item) => {
+          {notificationItems.slice(0, Math.min(3, visibleSchoolNotificationCount)).map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -1296,7 +1355,7 @@ export default function AdminDashboard() {
             );
           })}
           <h3>Yesterday</h3>
-          {notificationItems.slice(3, 5).map((item) => {
+          {notificationItems.slice(3, Math.min(5, visibleSchoolNotificationCount)).map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -1318,7 +1377,7 @@ export default function AdminDashboard() {
             );
           })}
           <h3>Earlier</h3>
-          {notificationItems.slice(5).map((item) => {
+          {notificationItems.slice(5, visibleSchoolNotificationCount).map((item) => {
             const Icon = item.icon;
             return (
               <button
@@ -1339,9 +1398,11 @@ export default function AdminDashboard() {
               </button>
             );
           })}
-          <button type="button" className="school-load-more">
-            Load More <FiChevronDown size={13} />
-          </button>
+          {notificationItems.length > visibleSchoolNotificationCount && (
+            <button type="button" className="school-load-more" onClick={() => setVisibleSchoolNotificationCount((count) => count + 10)}>
+              Load More <FiChevronDown size={13} />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1384,6 +1445,8 @@ export default function AdminDashboard() {
               value={jobForm.teaching_level}
               onChange={(e) => setJobForm({ ...jobForm, teaching_level: e.target.value })}
             >
+              <option>Pre KG</option>
+              <option>KG</option>
               <option>SS1 – SS3 (Senior Secondary)</option>
               <option>JSS1 – JSS3 (Junior Secondary)</option>
               <option>Primary School</option>
@@ -1622,6 +1685,7 @@ export default function AdminDashboard() {
               if (jobFilter === "Active") return jobStatus === "active" || jobStatus === "open" || jobStatus === "published";
               return jobStatus === jobFilter.toLowerCase();
             })
+            .slice(0, visibleSchoolJobCount)
             .map((job) => {
               const jobId = job.job_id || job.id;
               const rawStatus = String(job.status || "active").trim().toLowerCase();
@@ -1700,7 +1764,10 @@ export default function AdminDashboard() {
                       <>
                         <button
                           type="button"
-                          onClick={() => openJobForm("jobs")}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openDraftJobForm(job);
+                          }}
                           className="school-job-continue"
                         >
                           Continue
@@ -1832,6 +1899,16 @@ export default function AdminDashboard() {
                 </article>
               );
             })
+        )}
+        {jobs.filter((job) => {
+          if (jobFilter === "All Jobs") return true;
+          const jobStatus = String(job.status || "active").trim().toLowerCase();
+          if (jobFilter === "Active") return jobStatus === "active" || jobStatus === "open" || jobStatus === "published";
+          return jobStatus === jobFilter.toLowerCase();
+        }).length > visibleSchoolJobCount && (
+          <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
+            Load More <FiChevronDown size={13} />
+          </button>
         )}
       </div>
     </div>
@@ -2645,12 +2722,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                       <div className="school-job-applicant-menu">
                         <button
                           type="button"
+                          disabled={currentStatus === "shortlisted"}
                           onClick={() => handleShortlistApplicant(app)}
                         >
                           <span className="school-job-applicant-menu-icon">
                             <FiCheckCircle size={18} />
                           </span>
-                          <span>Shortlist</span>
+                          <span>{currentStatus === "shortlisted" ? "Shortlisted" : "Shortlist"}</span>
                         </button>
                         <button
                           type="button"
@@ -3308,6 +3386,15 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               />
             </label>
 
+            <div style={{ border: '1px solid #d8e9dd', borderRadius: '14px', overflow: 'hidden', background: '#f8fcf9' }}>
+              <div style={{ padding: '12px 16px', background: '#0d4e2e', color: '#fff', fontWeight: 700 }}>Staffroom Interview Invitation</div>
+              <div style={{ padding: '16px', color: '#334155', fontSize: '13px', lineHeight: 1.6 }}>
+                <strong>Dear {shortlistForm.recipientName || 'Candidate'},</strong>
+                <p style={{ whiteSpace: 'pre-wrap', margin: '10px 0 0' }}>{shortlistForm.candidateMessage || 'Your interview details will appear here.'}</p>
+                <small style={{ color: '#64748b' }}>Sent by {user?.school_name || user?.full_name || 'Your school'} via Staffroom</small>
+              </div>
+            </div>
+
             {shortlistError && (
               <p className="school-shortlist-error" role="alert">{shortlistError}</p>
             )}
@@ -3462,6 +3549,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     setTeacherLocationMenuOpen(false);
     setTeacherExperienceMenuOpen(false);
     setTeacherSubjectMenuOpen(false);
+    setTeacherTrcnMenuOpen(false);
   };
 
   const renderApplicants = () => {
@@ -3476,6 +3564,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         experience: userEntry?.experience || userEntry?.experience_years || "Not specified",
         subject: userEntry?.subject || userEntry?.role_title || "General",
         availability: userEntry?.availability || "Available",
+        trcnStatus: userEntry?.trcn_status || (userEntry?.trcn_verified || userEntry?.verified ? "Verified" : "Not verified"),
         summary:
           userEntry?.bio ||
           userEntry?.about ||
@@ -3511,6 +3600,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                 ? `${app.experience_years} Years`
                 : "Not specified",
               subject: app.skills || matchedJob?.role_type || "General",
+                  trcnStatus: app.trcn_status || (app.trcn_verified || app.verified ? "Verified" : "Not verified"),
               availability: app.availability || "Available",
               summary:
                 app.cover_letter ||
@@ -3539,6 +3629,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
       "Subject",
       ...new Set(teachers.map((t) => t.subject).filter((s) => s !== "General")),
     ];
+    const trcnOptions = ["TRCN", "Verified", "Not verified"];
 
     const teacherOptions = {
       locations: uniqueLocations,
@@ -3568,8 +3659,9 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         teacherExperience === "Experience" || teacher.experience === teacherExperience;
       const matchesSubject =
         teacherSubject === "Subject" || teacher.subject === teacherSubject;
+      const matchesTrcn = teacherTrcn === "TRCN" || teacher.trcnStatus === teacherTrcn;
 
-      return matchesQuery && matchesLocation && matchesExperience && matchesSubject;
+      return matchesQuery && matchesLocation && matchesExperience && matchesSubject && matchesTrcn;
     });
 
     return (
@@ -3615,6 +3707,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     setTeacherLocationMenuOpen((prev) => !prev);
                     setTeacherExperienceMenuOpen(false);
                     setTeacherSubjectMenuOpen(false);
+                    setTeacherTrcnMenuOpen(false);
                   }}
                 >
                   <span className="school-teachers-location-dot" />
@@ -3710,6 +3803,30 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                   </div>
                 )}
               </div>
+
+              <div className="school-teachers-dropdown-wrapper school-teachers-dropdown-wrapper--compact">
+                <button
+                  type="button"
+                  className="school-teachers-filter-tag"
+                  onClick={() => {
+                    setTeacherTrcnMenuOpen((prev) => !prev);
+                    setTeacherExperienceMenuOpen(false);
+                    setTeacherSubjectMenuOpen(false);
+                    setTeacherLocationMenuOpen(false);
+                  }}
+                >
+                  {teacherTrcn} ▾
+                </button>
+                {teacherTrcnMenuOpen && (
+                  <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
+                    {trcnOptions.map((option) => (
+                      <button key={option} type="button" className="school-teachers-menu-item" onClick={() => { setTeacherTrcn(option); setTeacherTrcnMenuOpen(false); }}>
+                        {option}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="school-teachers-header-row">
@@ -3720,7 +3837,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             </div>
 
             <div className="school-teachers-list">
-              {filteredTeachers.map((teacher, index) => (
+              {filteredTeachers.slice(0, visibleTeacherCount).map((teacher, index) => (
                 <div className="school-teacher-card" key={`${teacher.name}-${index}`}>
                   <div className="school-teacher-card-main">
                     <div className="school-teacher-badge">● {teacher.availability}</div>
@@ -3790,11 +3907,13 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               </div>
             )}
 
-            <div className="school-teachers-load-more-wrap">
-              <button type="button" className="school-teachers-load-more">
-                Load More Candidates ▾
-              </button>
-            </div>
+            {filteredTeachers.length > visibleTeacherCount && (
+              <div className="school-teachers-load-more-wrap">
+                <button type="button" className="school-teachers-load-more" onClick={() => setVisibleTeacherCount((count) => count + 10)}>
+                  Load More Candidates ▾
+                </button>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -4739,6 +4858,57 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
       {isTeacherInviteModalOpen && renderTeacherInviteModal()}
       {isShortlistModalOpen && renderShortlistModal()}
       {isShortlistSuccessOpen && renderShortlistSuccessModal()}
+      {isSchool && isNotificationModalOpen && selectedNotification && (
+        <div
+          className="admin-notification-modal-backdrop"
+          onClick={() => setIsNotificationModalOpen(false)}
+        >
+          <div
+            className="admin-notification-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="school-notification-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="admin-notification-modal-header">
+              <h2 id="school-notification-title">Notification</h2>
+              <button
+                type="button"
+                onClick={() => setIsNotificationModalOpen(false)}
+                aria-label="Close notification"
+              >
+                <FiX size={20} />
+              </button>
+            </div>
+            <div className="admin-notification-modal-content">
+              <span className="admin-notification-modal-label">{selectedNotification.label}</span>
+              <h3>{selectedNotification.title}</h3>
+              <p>{selectedNotification.description || "No additional details are available."}</p>
+              <time>{selectedNotification.time}</time>
+            </div>
+            <div className="admin-notification-modal-actions">
+              <button
+                type="button"
+                className="admin-notification-read-btn"
+                onClick={() => markSchoolNotificationAsRead(selectedNotification.key)}
+                disabled={!selectedNotification.unread || notificationActionLoading[selectedNotification.key] === "read"}
+              >
+                {notificationActionLoading[selectedNotification.key] === "read"
+                  ? "Marking as read..."
+                  : selectedNotification.unread ? "Mark as read" : "Read"}
+              </button>
+              <button
+                type="button"
+                className="admin-notification-delete-btn"
+                onClick={() => deleteSchoolNotification(selectedNotification.key)}
+                disabled={notificationActionLoading[selectedNotification.key] === "delete"}
+              >
+                {notificationActionLoading[selectedNotification.key] === "delete" ? "Deleting..." : "Delete"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {snackbar && (
         <div
           className={`admin-snackbar ${isSnackbarClosing ? "is-closing" : ""}`}
@@ -4761,6 +4931,21 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         </div>
       )}
       <style>{`
+    .admin-notification-modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .5); }
+    .admin-notification-modal { width: min(480px, 100%); border-radius: 22px; padding: 24px; background: #fff; box-shadow: 0 20px 60px rgba(15, 23, 42, .2); }
+    .admin-notification-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
+    .admin-notification-modal-header h2 { margin: 0; color: #0f172a; font-size: 22px; }
+    .admin-notification-modal-header button { display: grid; place-items: center; border: 0; background: transparent; color: #475569; cursor: pointer; }
+    .admin-notification-modal-content { margin-bottom: 20px; }
+    .admin-notification-modal-label { color: #15803d; font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .admin-notification-modal-content h3 { margin: 8px 0; color: #111827; font-size: 17px; }
+    .admin-notification-modal-content p { margin: 0 0 12px; color: #475569; line-height: 1.7; }
+    .admin-notification-modal-content time { color: #64748b; font-size: 12px; }
+    .admin-notification-modal-actions { display: flex; gap: 12px; }
+    .admin-notification-modal-actions button { flex: 1; min-height: 42px; border-radius: 12px; font-weight: 600; cursor: pointer; }
+    .admin-notification-read-btn { border: 0; background: #15803d; color: #fff; }
+    .admin-notification-delete-btn { border: 1px solid #e2e8f0; background: #fff; color: #0f172a; }
+    .admin-notification-modal-actions button:disabled { cursor: not-allowed; opacity: .65; }
 .admin-settings-shell {
           max-width: 1120px;
           margin: 0 auto;

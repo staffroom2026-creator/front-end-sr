@@ -141,7 +141,7 @@ const normalizeJobData = (job = {}, index = 0) => {
     timePosted,
     hot: Boolean(job.hot || job.featured || job.is_hot),
     featured: Boolean(job.featured || job.is_featured),
-    education: job.education || job.education_level || 'Secondary (SS1-SS3)',
+    education: job.education || job.education_level || job.teaching_level || 'Secondary (SS1-SS3)',
     color: job.color || 'td-bg-darkgreen',
     iconType: job.iconType || 'academic',
     about: job.about || job.description || 'No job description available yet.',
@@ -294,6 +294,7 @@ export default function TeacherDashboard() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileSubTab, setProfileSubTab] = useState('overview');
   const [selectedJob, setSelectedJob] = useState(null);
+  const [selectedJobOrigin, setSelectedJobOrigin] = useState('jobs');
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
   const [, setCurrentTime] = useState(() => Date.now());
@@ -1053,6 +1054,35 @@ export default function TeacherDashboard() {
     }
   };
 
+  useEffect(() => {
+    const refreshNotifications = async () => {
+      try {
+        const response = await featureService.getNotifications({ page: 1, per_page: 50 });
+        const notificationList = response?.data?.data?.notifications || response?.data?.notifications || [];
+        if (!Array.isArray(notificationList)) return;
+        setNotifications(notificationList.map((notification) => {
+          const readValue = notification.is_read ?? notification.read;
+          const read = readValue === true || readValue === 'true' || Number(readValue) === 1;
+          return {
+            id: notification.notification_id || notification.id,
+            type: notification.type || 'job',
+            title: notification.title || 'Notification',
+            description: notification.message || notification.description || '',
+            time: notification.created_at ? new Date(notification.created_at).toLocaleDateString() : 'Recently',
+            isNew: !read,
+            read,
+            category: notification.type === 'application_status' ? 'Job Alerts' : 'Account',
+          };
+        }));
+      } catch (_err) {
+        // Keep the current notification state when polling is unavailable.
+      }
+    };
+
+    const intervalId = window.setInterval(refreshNotifications, 60000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
   const handleDeleteNotification = async (notificationId) => {
     if (!notificationId) return;
 
@@ -1097,6 +1127,7 @@ export default function TeacherDashboard() {
   const [showSortDropdown, setShowSortDropdown] = useState(false);
   const [displayedJobsCount, setDisplayedJobsCount] = useState(10);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
+  const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
   // Filter Helpers
   const toggleEducation = (level) => {
@@ -1396,6 +1427,7 @@ export default function TeacherDashboard() {
                           className="td-job-item"
                           onClick={() => {
                             setActiveTab('jobs');
+                            setSelectedJobOrigin('dashboard');
                             setSelectedJob(job);
                           }}
                           style={{ cursor: 'pointer' }}
@@ -1439,6 +1471,7 @@ export default function TeacherDashboard() {
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setActiveTab('jobs');
+                                setSelectedJobOrigin('dashboard');
                                 setSelectedJob(job);
                               }}
                             >
@@ -1599,15 +1632,20 @@ export default function TeacherDashboard() {
               <div className="td-jobs-layout">
 
                 {/* Sidebar Filters */}
-                <div className="td-jobs-filters td-desktop-only">
+                <div className={`td-jobs-filters td-desktop-only ${filtersCollapsed ? 'td-jobs-filters--collapsed' : ''}`}>
                   <div className="td-filter-header">
                     <h3>Filters</h3>
-                    <button className="td-clear-btn" onClick={clearFilters}>Clear all</button>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                      <button type="button" className="td-clear-btn" onClick={clearFilters}>Clear all</button>
+                      <button type="button" className="td-clear-btn" onClick={() => setFiltersCollapsed((current) => !current)} aria-expanded={!filtersCollapsed}>
+                        {filtersCollapsed ? 'Expand' : 'Collapse'}
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="td-filter-group">
+                  {!filtersCollapsed && <div className="td-filter-group">
                     <h4>EDUCATION LEVEL</h4>
-                    {['Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'].map(level => (
+                    {['Pre KG', 'KG', 'Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'].map(level => (
                       <label key={level} className="td-checkbox-label" onClick={() => toggleEducation(level)}>
                         <div className={`td-checkbox-custom ${selectedEducation.includes(level) ? 'td-checked' : ''}`}>
                           {selectedEducation.includes(level) && <FiCheck size={12} />}
@@ -1615,9 +1653,9 @@ export default function TeacherDashboard() {
                         {level}
                       </label>
                     ))}
-                  </div>
+                  </div>}
 
-                  <div className="td-filter-group">
+                  {!filtersCollapsed && <div className="td-filter-group">
                     <h4>JOB TYPE</h4>
                     <div className="td-filter-tags">
                       {['Full-time', 'Part-time', 'Online', 'Contract'].map(type => (
@@ -1630,9 +1668,9 @@ export default function TeacherDashboard() {
                         </span>
                       ))}
                     </div>
-                  </div>
+                  </div>}
 
-                  <div className="td-filter-group">
+                  {!filtersCollapsed && <div className="td-filter-group">
                     <h4>MONTHLY SALARY (₦)</h4>
                     <div className="td-progress-scroll-wrapper">
                       <input
@@ -1649,7 +1687,7 @@ export default function TeacherDashboard() {
                         <span>₦1M+</span>
                       </div>
                     </div>
-                  </div>
+                  </div>}
                 </div>
 
                 {/* Job Cards */}
@@ -1709,7 +1747,7 @@ export default function TeacherDashboard() {
                             <div className="td-hot-salary-range">SALARY RANGE</div>
                             <div className="td-hot-footer">
                               <div className="td-hot-salary-value">{job.salaryStr}</div>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={() => setSelectedJob(job)}>
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
                                 Apply Fast
                               </motion.button>
                             </div>
@@ -1778,7 +1816,7 @@ export default function TeacherDashboard() {
                               {job.salaryStr.split(' / ')[0]} <span>{job.salaryStr.includes(' / ') ? `/ ${job.salaryStr.split(' / ')[1]}` : ''}</span>
                             </div>
                             <div className="td-fc-footer-actions">
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => setSelectedJob(job)}>
+                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
                                 View Details
                               </motion.button>
                             </div>
@@ -1810,8 +1848,8 @@ export default function TeacherDashboard() {
 
           {activeTab === 'jobs' && selectedJob && (
             <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-job-details-page">
-              <div className="td-jd-back-nav" onClick={() => setSelectedJob(null)}>
-                <FiArrowLeft /> Back to Jobs
+              <div className="td-jd-back-nav" onClick={() => { setSelectedJob(null); setActiveTab(selectedJobOrigin); }}>
+                <FiArrowLeft /> Back to {selectedJobOrigin === 'applications' ? 'Applications' : 'Jobs'}
               </div>
               <div className="td-jd-content-wrapper">
                 {/* Main Content */}
@@ -2216,7 +2254,7 @@ export default function TeacherDashboard() {
                 </div>
               )}
 
-              {filteredNotifications.length > 0 && (
+                  {filteredNotifications.length > visibleNotifCount && (
                 <div className="td-notif-footer td-desktop-only">
                   <p className="td-notif-count">Showing {Math.min(visibleNotifCount, filteredNotifications.length)} of {totalNotifications} notifications</p>
                   <motion.button
@@ -2266,7 +2304,7 @@ export default function TeacherDashboard() {
                     </div>
                     <div className="td-app-card-footer">
                       <span className={`td-app-status-badge td-app-status-badge--${getApplicationDisplayStatus(app).replace(/\s+/g, '-')}`}>{applicationStatusLabel(getApplicationDisplayStatus(app))}</span>
-                      <button type="button" className="td-app-action-btn" onClick={() => { const job = jobs.find((item) => String(item.id) === String(app.jobId)); if (job) { setSelectedJob(job); setActiveTab('jobs'); } }}>View Application</button>
+                      <button type="button" className="td-app-action-btn" onClick={() => { const job = jobs.find((item) => String(item.id) === String(app.jobId) || String(item.job_id) === String(app.jobId)); if (job) { setSelectedJobOrigin('applications'); setSelectedJob(job); setActiveTab('jobs'); } }}>View Application</button>
                     </div>
                   </div>
                 ))}
@@ -5721,7 +5759,8 @@ export default function TeacherDashboard() {
         .td-jobs-layout { display: flex; gap: 32px; align-items: flex-start; }
 
         /* Filters sidebar */
-        .td-jobs-filters { width: 220px; flex-shrink: 0; }
+        .td-jobs-filters { width: 220px; flex-shrink: 0; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; }
+        .td-jobs-filters--collapsed { max-height: none; overflow: visible; }
         .td-filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .td-filter-header h3 { font-size: 15px; font-weight: 800; color: #111; margin: 0; }
         .td-clear-btn { background: none; border: none; color: #16A34A; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
