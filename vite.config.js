@@ -13,6 +13,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
+      '/auth': {
+        target: 'https://api.staffroomng.com',
+        changeOrigin: true,
+        secure: true,
+      },
       '/health': {
         target: 'https://api.staffroomng.com',
         changeOrigin: true,

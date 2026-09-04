@@ -14,6 +14,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import ForgotPassword from './pages/ForgotPassword';
+import CheckEmail from './pages/CheckEmail';
+import ResetPassword from './pages/ResetPassword';
 import VerifyEmail from './pages/VerifyEmail';
 import AddPhoneNumber from './pages/AddPhoneNumber';
 import VerifyPhone from './pages/VerifyPhone';
@@ -55,6 +58,9 @@ function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
+        <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+        <Route path="/check-email" element={<PublicRoute><CheckEmail /></PublicRoute>} />
+        <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
         <Route path="/verify-email" element={<PublicRoute><VerifyEmail /></PublicRoute>} />
         <Route path="/add-phone-number" element={<PublicRoute><AddPhoneNumber /></PublicRoute>} />
         <Route path="/verify-phone" element={<PublicRoute><VerifyPhone /></PublicRoute>} />

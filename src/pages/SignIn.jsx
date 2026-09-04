@@ -190,9 +190,9 @@ export default function SignIn() {
                   />
                   Remember me
                 </label>
-                <a href="#" className="forgot-link">
+                <Link to="/forgot-password" className="forgot-link">
                   Forgot password?
-                </a>
+                </Link>
               </div>
 
               {/* Don't have account */}
