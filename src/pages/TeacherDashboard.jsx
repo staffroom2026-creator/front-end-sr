@@ -15,7 +15,7 @@ import {
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle,
-  FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiLock,
+  FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiUpload, FiLock,
   FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
 } from 'react-icons/fi';
 
@@ -43,6 +43,32 @@ const splitFullName = (fullName) => {
 const normalizeProfileValue = (value, fallback = 'Not provided') => {
   if (value === null || value === undefined || value === '') return fallback;
   return value;
+};
+
+const formatJobAge = (value) => {
+  if (!value) return 'Date unavailable';
+
+  const postedDate = new Date(value);
+  if (Number.isNaN(postedDate.getTime())) return 'Date unavailable';
+
+  const today = new Date();
+  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const startOfPostedDay = new Date(postedDate.getFullYear(), postedDate.getMonth(), postedDate.getDate());
+  const daysElapsed = Math.floor((startOfToday.getTime() - startOfPostedDay.getTime()) / 86400000);
+
+  if (daysElapsed <= 0) {
+    const day = String(postedDate.getDate()).padStart(2, '0');
+    const month = String(postedDate.getMonth() + 1).padStart(2, '0');
+    const year = postedDate.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+  if (daysElapsed < 7) return `${daysElapsed} day${daysElapsed === 1 ? '' : 's'} ago`;
+
+  const weeksElapsed = Math.floor(daysElapsed / 7);
+  if (weeksElapsed < 4) return `${weeksElapsed} week${weeksElapsed === 1 ? '' : 's'} ago`;
+
+  const monthsElapsed = Math.floor(daysElapsed / 30);
+  return `${monthsElapsed} month${monthsElapsed === 1 ? '' : 's'} ago`;
 };
 
 const parseSubjectList = (value) => {
@@ -121,8 +147,7 @@ const normalizeJobData = (job = {}, index = 0) => {
     ? `₦${salaryValue.toLocaleString()} / month`
     : (job.salaryStr || job.salary_range || 'Competitive');
 
-  const timePosted = job.timePosted || job.created_at || job.posted_at || new Date().toISOString();
-  const createdDate = timePosted ? new Date(timePosted) : new Date();
+  const timePosted = job.timePosted || job.created_at || job.posted_at || '';
 
   const realJobId = normalizeJobId(job.job_id || job.id || index, String(index));
   const relevanceScore = getJobRelevanceScore(job);
@@ -137,7 +162,7 @@ const normalizeJobData = (job = {}, index = 0) => {
     subject: job.subject || job.subject_area || 'Teaching',
     salaryStr,
     salaryMonthly: salaryValue,
-    timeLabel: job.timeLabel || (Number.isNaN(createdDate.getTime()) ? 'Recently' : 'Recently'),
+    timeLabel: timePosted ? formatJobAge(timePosted) : (job.timeLabel || 'Date unavailable'),
     timePosted,
     hot: Boolean(job.hot || job.featured || job.is_hot),
     featured: Boolean(job.featured || job.is_featured),
@@ -375,6 +400,20 @@ export default function TeacherDashboard() {
   const [personalEmail, setPersonalEmail] = useState('');
   const [personalCity, setPersonalCity] = useState('');
   const [personalState, setPersonalState] = useState('');
+  const [newPhoneNumber, setNewPhoneNumber] = useState('');
+  const [phoneChangeError, setPhoneChangeError] = useState('');
+  const [savingPhoneNumber, setSavingPhoneNumber] = useState(false);
+  const [newEmailAddress, setNewEmailAddress] = useState('');
+  const [emailChangeError, setEmailChangeError] = useState('');
+  const [savingEmailAddress, setSavingEmailAddress] = useState(false);
+  const [showEmailVerificationModal, setShowEmailVerificationModal] = useState(false);
+  const [pendingEmailAddress, setPendingEmailAddress] = useState('');
+  const [emailVerificationCode, setEmailVerificationCode] = useState(['', '', '', '', '', '']);
+  const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
+  const [pendingPhoneNumber, setPendingPhoneNumber] = useState('');
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState(['', '', '', '', '', '']);
+  const [showPhoneSuccessSnackbar, setShowPhoneSuccessSnackbar] = useState(false);
+  const [showEmailSuccessSnackbar, setShowEmailSuccessSnackbar] = useState(false);
 
   // ── Education Tab state ──
   const [educationList, setEducationList] = useState([]);
@@ -451,6 +490,20 @@ export default function TeacherDashboard() {
     return () => window.clearInterval(intervalId);
   }, []);
 
+  useEffect(() => {
+    if (!showPhoneSuccessSnackbar) return undefined;
+
+    const timeoutId = window.setTimeout(() => setShowPhoneSuccessSnackbar(false), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [showPhoneSuccessSnackbar]);
+
+  useEffect(() => {
+    if (!showEmailSuccessSnackbar) return undefined;
+
+    const timeoutId = window.setTimeout(() => setShowEmailSuccessSnackbar(false), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [showEmailSuccessSnackbar]);
+
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Teacher');
   const [profSummary, setProfSummary] = useState('');
@@ -463,6 +516,11 @@ export default function TeacherDashboard() {
   const [showAddSubject, setShowAddSubject] = useState(false);
   const [savingProfessionalInfo, setSavingProfessionalInfo] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
+  const [applicationReviewMode, setApplicationReviewMode] = useState(false);
+  const [applicationConsent, setApplicationConsent] = useState(false);
+  const [showApplicationSuccessModal, setShowApplicationSuccessModal] = useState(false);
+  const [reviewCoverLetterEditing, setReviewCoverLetterEditing] = useState(false);
+  const [reviewCvEditing, setReviewCvEditing] = useState(false);
   const [applicationStep, setApplicationStep] = useState(1);
   const [sortBy, setSortBy] = useState('Recommended');
 
@@ -763,6 +821,70 @@ export default function TeacherDashboard() {
       setNotifError(apiErrorMessage(err, 'Unable to load notifications.'));
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePhoneNumberUpdate = async (event) => {
+    event.preventDefault();
+    const phoneDigits = newPhoneNumber.replace(/\D/g, '');
+    if (phoneDigits.length < 10) {
+      setPhoneChangeError('Enter a valid Nigerian mobile number.');
+      return;
+    }
+
+    try {
+      setSavingPhoneNumber(true);
+      setPhoneChangeError('');
+      const response = await accountService.updateProfile({ phone: `+234${phoneDigits.slice(-10)}` });
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const updatedPhone = payload?.user?.phone || payload?.phone || `+234${phoneDigits.slice(-10)}`;
+      setPersonalPhone(updatedPhone);
+      setPendingPhoneNumber(updatedPhone);
+      setPhoneVerificationCode(['', '', '', '', '', '']);
+      setNewPhoneNumber('');
+      setShowPhoneVerificationModal(true);
+      await refreshTeacherProfile();
+    } catch (err) {
+      setPhoneChangeError(apiErrorMessage(err, 'Unable to update your phone number.'));
+    } finally {
+      setSavingPhoneNumber(false);
+    }
+  };
+
+  const handlePhoneVerificationSuccess = () => {
+    setShowPhoneVerificationModal(false);
+    setShowPhoneSuccessSnackbar(true);
+  };
+
+  const handleEmailVerificationSuccess = () => {
+    setShowEmailVerificationModal(false);
+    setShowEmailSuccessSnackbar(true);
+  };
+
+  const handleEmailAddressUpdate = async (event) => {
+    event.preventDefault();
+    const email = newEmailAddress.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailChangeError('Enter a valid email address.');
+      return;
+    }
+
+    try {
+      setSavingEmailAddress(true);
+      setEmailChangeError('');
+      const response = await accountService.updateEmail({ email });
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const updatedEmail = payload?.user?.email || payload?.email || email;
+      setPersonalEmail(updatedEmail);
+      setPendingEmailAddress(updatedEmail);
+      setEmailVerificationCode(['', '', '', '', '', '']);
+      setNewEmailAddress('');
+      setShowEmailVerificationModal(true);
+      await refreshTeacherProfile();
+    } catch (err) {
+      setEmailChangeError(apiErrorMessage(err, 'Unable to update your email address.'));
+    } finally {
+      setSavingEmailAddress(false);
     }
   };
 
@@ -1105,7 +1227,7 @@ export default function TeacherDashboard() {
     }
   }, [activeTab]);
 
-  const openApplyModal = async (targetJob = null) => {
+  const openApplyModal = async (targetJob = null, options = {}) => {
     const jobToApply = targetJob || selectedJob;
     if (!jobToApply) return;
 
@@ -1118,11 +1240,16 @@ export default function TeacherDashboard() {
       phone: personalPhone || user?.phone || '',
       yearsExperience: profYearsExp || '',
       resumeFile: null,
+      coverLetterFile: null,
       useExistingCv: true,
-      coverLetter: '',
+      coverLetter: profileState?.cover_letter || profileState?.coverLetter || '',
       additionalInfo: '',
     });
     setApplicationStep(1);
+    setApplicationReviewMode(Boolean(options.review));
+    setApplicationConsent(false);
+    setReviewCoverLetterEditing(false);
+    setReviewCvEditing(false);
     setAlreadyAppliedState(false);
     setApplicationError('');
     setApplyDetailsLoading(true);
@@ -1145,6 +1272,10 @@ export default function TeacherDashboard() {
 
   const closeApplyModal = () => {
     setShowApplyModal(false);
+    setApplicationReviewMode(false);
+    setApplicationConsent(false);
+    setReviewCoverLetterEditing(false);
+    setReviewCvEditing(false);
     setAlreadyAppliedState(false);
     setApplicationError('');
   };
@@ -1211,12 +1342,12 @@ export default function TeacherDashboard() {
     const jobId = normalizeJobId(selectedJob.job_id || selectedJob.id);
     const coverLetterText = applicationForm.coverLetter.trim();
 
-    if (!coverLetterText) {
+    if (!coverLetterText && !applicationForm.coverLetterFile) {
       setApplicationError('Please write a cover letter before submitting your application.');
       return;
     }
 
-    if (coverLetterText.length < 30) {
+    if (!applicationForm.coverLetterFile && coverLetterText.length < 30) {
       setApplicationError('Your cover letter must be at least 30 characters long.');
       return;
     }
@@ -1232,9 +1363,13 @@ export default function TeacherDashboard() {
       setApplicationError('');
 
       let payload;
-      if (!applicationForm.useExistingCv && applicationForm.resumeFile) {
+      if ((!applicationForm.useExistingCv && applicationForm.resumeFile) || applicationForm.coverLetterFile) {
         payload = new FormData();
-        payload.append('cover_letter', coverLetterText);
+        if (applicationForm.coverLetterFile) {
+          payload.append('cover_letter', applicationForm.coverLetterFile);
+        } else {
+          payload.append('cover_letter', coverLetterText);
+        }
         if (applicationForm.additionalInfo.trim()) {
           payload.append('additional_info', applicationForm.additionalInfo.trim());
         }
@@ -1255,7 +1390,12 @@ export default function TeacherDashboard() {
       }
 
       setShowApplyModal(false);
-      setActiveTab('application-submitted');
+      if (applicationReviewMode) {
+        setApplicationReviewMode(false);
+        setShowApplicationSuccessModal(true);
+      } else {
+        setActiveTab('application-submitted');
+      }
     } catch (err) {
       setApplicationError(apiErrorMessage(err, 'Unable to submit your application right now.'));
     } finally {
@@ -1553,10 +1693,6 @@ export default function TeacherDashboard() {
 
         {/* ── Desktop Top Bar ── */}
         <header className="td-topbar">
-          <div className="td-search-box">
-            <FiSearch className="td-search-icon" />
-            <input type="text" placeholder="Search vacancies in Lagos..." />
-          </div>
           <div className="td-topbar-actions">
             <div className="td-icon-badge" onClick={() => setActiveTab('notifications')} style={{ position: 'relative' }}>
               <FiBell />
@@ -1566,7 +1702,6 @@ export default function TeacherDashboard() {
                 </span>
               )}
             </div>
-            <div className="td-icon-badge"><FiMail /></div>
             <div className="td-user-avatar" onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); }} style={{ cursor: 'pointer' }}>
               <div className="td-avatar-initials td-avatar-initials--topbar" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
             </div>
@@ -1707,13 +1842,6 @@ export default function TeacherDashboard() {
                           style={{ cursor: 'pointer' }}
                         >
                           <div className="td-job-header-row">
-                            <div className="td-job-avatar td-job-avatar--math">
-                              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#687588" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <circle cx="12" cy="12" r="9" strokeDasharray="2 3" />
-                                <path d="M9 12h6" />
-                                <path d="M12 9v6" />
-                              </svg>
-                            </div>
                             <div className="td-job-info-main">
                               <div className="td-job-title-line">
                                 <h3>{job.title}</h3>
@@ -1747,7 +1875,7 @@ export default function TeacherDashboard() {
                                 openApplyModal(job);
                               }}
                             >
-                              Quick Apply →
+                              Apply →
                             </button>
                           </div>
                         </motion.div>
@@ -1901,7 +2029,7 @@ export default function TeacherDashboard() {
               </div>
 
               {/* ── Main layout ── */}
-              <div className="td-jobs-layout">
+              <div className={`td-jobs-layout ${filtersCollapsed ? 'td-jobs-layout--filters-collapsed' : ''}`}>
 
                 {/* Sidebar Filters */}
                 <div className={`td-jobs-filters td-desktop-only ${filtersCollapsed ? 'td-jobs-filters--collapsed' : ''}`}>
@@ -2042,18 +2170,6 @@ export default function TeacherDashboard() {
                               <div className="td-fc-title-row">
                                 <h3>{job.title}</h3>
                                 <div className="td-fc-title-actions">
-                                  <motion.button
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.9 }}
-                                    className={`td-bookmark-btn ${savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'td-bookmark-btn--saved' : ''}`}
-                                    onClick={() => handleToggleSaveJob(job.job_id || job.id)}
-                                    title={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved' : 'Save job'}
-                                  >
-                                    <FiBookmark
-                                      size={18}
-                                      style={{ fill: savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? '#15803D' : 'none' }}
-                                    />
-                                  </motion.button>
                                   {job.featured && (
                                     <div className="td-fc-badge-desktop">
                                       <span className="td-badge-featured"><FiCheck size={12} /> Featured</span>
@@ -2077,6 +2193,10 @@ export default function TeacherDashboard() {
                               <FiClock size={13} color="#6C757D" />
                               <span>{job.timeLabel}</span>
                             </div>
+                            <div className="td-fc-meta-item td-fc-meta-salary">
+                              <FiDollarSign size={13} />
+                              <span>{job.salaryStr || 'Salary available on request'}</span>
+                            </div>
                             {job.tags && job.tags.map(tag => (
                               <span key={tag} className="td-fc-meta-tag">{tag}</span>
                             ))}
@@ -2084,12 +2204,22 @@ export default function TeacherDashboard() {
 
                           {/* Actions */}
                           <div className="td-fc-footer">
-                            <div className="td-fc-salary">
-                              {job.salaryStr.split(' / ')[0]} <span>{job.salaryStr.includes(' / ') ? `/ ${job.salaryStr.split(' / ')[1]}` : ''}</span>
-                            </div>
                             <div className="td-fc-footer-actions">
                                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
                                 View Details
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                className={`td-bookmark-btn ${savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'td-bookmark-btn--saved' : ''}`}
+                                onClick={() => handleToggleSaveJob(job.job_id || job.id)}
+                                title={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved' : 'Save job'}
+                                aria-label={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved jobs' : 'Save job'}
+                              >
+                                <FiBookmark
+                                  size={18}
+                                  style={{ fill: savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? '#15803D' : 'none' }}
+                                />
                               </motion.button>
                             </div>
                           </div>
@@ -2258,7 +2388,7 @@ export default function TeacherDashboard() {
                       </div>
                     ) : (
                       <>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="td-jd-apply-btn" onClick={() => openApplyModal(selectedJob)}>Apply Now</motion.button>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="td-jd-apply-btn" onClick={() => openApplyModal(selectedJob, { review: true })}>Apply Now</motion.button>
                         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`td-jd-save-btn ${savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'td-jd-save-btn--saved' : ''}`} onClick={() => handleToggleSaveJob(selectedJob.job_id || selectedJob.id)}>
                           <FiBookmark size={18} style={{ strokeWidth: 2.5, fill: savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'currentColor' : 'none' }} />
                           {savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'Saved' : 'Save Job'}
@@ -3522,7 +3652,7 @@ export default function TeacherDashboard() {
                               <span>Used for 2FA</span>
                             </div>
                           </div>
-                          <button type="button" className="td-pers-contact-btn">
+                          <button type="button" className="td-pers-contact-btn" onClick={() => { setNewPhoneNumber(''); setPhoneChangeError(''); setProfileSubTab('change-phone'); }}>
                             Change Phone Number
                           </button>
                         </div>
@@ -3540,7 +3670,7 @@ export default function TeacherDashboard() {
                               <span>Verified</span>
                             </div>
                           </div>
-                          <button type="button" className="td-pers-contact-btn">
+                          <button type="button" className="td-pers-contact-btn" onClick={() => { setNewEmailAddress(''); setEmailChangeError(''); setProfileSubTab('change-email'); }}>
                             Change Email
                           </button>
                         </div>
@@ -3568,6 +3698,116 @@ export default function TeacherDashboard() {
                           >
                             Save Changes
                           </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Change Phone Number Tab */}
+                  {profileSubTab === 'change-phone' && (
+                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-change-phone-page">
+                      <button type="button" className="td-change-back-btn" onClick={() => setProfileSubTab('personal-info')}>
+                        <FiArrowLeft size={16} />
+                        <span>Personal Information</span>
+                      </button>
+                      <div className="td-change-phone-header">
+                        <h1 className="td-change-phone-title">Change phone number</h1>
+                        <p className="td-change-phone-desc">Enter your phone number. We'll send a verification code to confirm it.</p>
+                      </div>
+
+                      <form className="td-change-phone-card" onSubmit={handlePhoneNumberUpdate}>
+                        <label className="td-change-phone-field">
+                          <span>Current phone number</span>
+                          <div className="td-change-phone-current">
+                            <FiLock size={14} />
+                            <span>{personalPhone || 'No phone number available'}</span>
+                          </div>
+                        </label>
+
+                        <label className="td-change-phone-field">
+                          <span>New phone number</span>
+                          <div className="td-change-phone-input-wrap">
+                            <span className="td-change-phone-prefix">NG (+234)<FiChevronDown size={14} /></span>
+                            <input
+                              type="tel"
+                              inputMode="numeric"
+                              autoComplete="tel-national"
+                              placeholder="Enter mobile number"
+                              value={newPhoneNumber}
+                              onChange={(event) => setNewPhoneNumber(event.target.value.replace(/\D/g, '').slice(0, 11))}
+                              disabled={savingPhoneNumber}
+                            />
+                          </div>
+                        </label>
+
+                        {phoneChangeError && <p className="td-change-phone-error" role="alert">{phoneChangeError}</p>}
+
+                        <div className="td-change-phone-actions">
+                          <button type="button" className="td-change-phone-cancel" onClick={() => setProfileSubTab('personal-info')} disabled={savingPhoneNumber}>Cancel</button>
+                          <button type="submit" className="td-change-phone-submit" disabled={savingPhoneNumber || newPhoneNumber.replace(/\D/g, '').length < 10}>
+                            {savingPhoneNumber ? 'Saving...' : 'Continue'}
+                          </button>
+                        </div>
+                      </form>
+
+                      <div className="td-change-phone-security">
+                        <FiShield size={15} />
+                        <div>
+                          <strong>Secure Account Updates</strong>
+                          <p>Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Change Email Tab */}
+                  {profileSubTab === 'change-email' && (
+                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-change-email-page">
+                      <button type="button" className="td-change-back-btn" onClick={() => setProfileSubTab('personal-info')}>
+                        <FiArrowLeft size={16} />
+                        <span>Personal Information</span>
+                      </button>
+                      <div className="td-change-email-header">
+                        <h1 className="td-change-email-title">Change email address</h1>
+                        <p className="td-change-email-desc">Enter your new email address. We'll send a verification code to confirm it.</p>
+                      </div>
+
+                      <form className="td-change-email-card" onSubmit={handleEmailAddressUpdate}>
+                        <label className="td-change-email-field">
+                          <span>Current email</span>
+                          <div className="td-change-email-current">
+                            <FiLock size={14} />
+                            <span>{personalEmail || 'No email available'}</span>
+                          </div>
+                        </label>
+
+                        <label className="td-change-email-field">
+                          <span>New email address</span>
+                          <input
+                            type="email"
+                            autoComplete="email"
+                            placeholder="e.g. adeyemi.t@school.edu"
+                            value={newEmailAddress}
+                            onChange={(event) => setNewEmailAddress(event.target.value)}
+                            disabled={savingEmailAddress}
+                          />
+                        </label>
+
+                        {emailChangeError && <p className="td-change-email-error" role="alert">{emailChangeError}</p>}
+
+                        <div className="td-change-email-actions">
+                          <button type="button" className="td-change-email-cancel" onClick={() => setProfileSubTab('personal-info')} disabled={savingEmailAddress}>Cancel</button>
+                          <button type="submit" className="td-change-email-submit" disabled={savingEmailAddress || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmailAddress.trim())}>
+                            {savingEmailAddress ? 'Saving...' : 'Continue'}
+                          </button>
+                        </div>
+                      </form>
+
+                      <div className="td-change-email-security">
+                        <FiShield size={15} />
+                        <div>
+                          <strong>Secure Account Updates</strong>
+                          <p>Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
                         </div>
                       </div>
                     </motion.div>
@@ -4856,7 +5096,93 @@ export default function TeacherDashboard() {
       </div>
 
       {/* ── Application Modal ── */}
-      {showApplyModal && (
+      {showApplyModal && applicationReviewMode && (
+        <div className="td-review-modal-overlay" onClick={closeApplyModal}>
+          <div className="td-review-modal" onClick={(event) => event.stopPropagation()}>
+            <header className="td-review-modal-header">
+              <div>
+                <h2>Review Your Application</h2>
+                <p>Applying to {selectedJob?.school || 'this school'}</p>
+              </div>
+              <button type="button" className="td-review-modal-close" onClick={closeApplyModal} aria-label="Close application review">×</button>
+            </header>
+
+            <div className="td-review-modal-body">
+              <section className="td-review-applicant-card">
+                <h3>Applicant Summary</h3>
+                <div className="td-review-applicant-content">
+                  <div className="td-review-avatar">{getInitials(profileFullName)}</div>
+                  <div>
+                    <strong>{profileFullName}</strong>
+                    <p>{profileRoleTitle} • {profYearsExp}</p>
+                    <div className="td-review-pills">
+                      <span><FiMapPin size={12} />{profileLocation}</span>
+                      {isTrcnVerified && <span><FiCheckCircle size={12} />TRCN Verified</span>}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="td-review-section">
+                <div className="td-review-section-heading"><h3>Your CV / Resume</h3>{activeResume?.url && !reviewCvEditing && <button type="button" onClick={() => setReviewCvEditing(true)}>Update CV</button>}</div>
+                {activeResume?.url && !reviewCvEditing ? (
+                  <div className="td-review-document-row">
+                    <div className="td-review-document-icon"><FiFileText size={18} /></div>
+                    <div className="td-review-document-copy">
+                      <strong>{activeResume.name}</strong>
+                      <span>Last updated: {activeResume.uploadDate}</span>
+                    </div>
+                    <FiEye size={18} className="td-review-document-action" />
+                  </div>
+                ) : (
+                  <label className="td-review-upload-field">
+                    <FiUpload size={17} />
+                    <span>{applicationForm.resumeFile ? applicationForm.resumeFile.name : 'Upload a CV for this application'}</span>
+                    <input type="file" accept=".pdf,.doc,.docx" onChange={handleFileInput} />
+                  </label>
+                )}
+              </section>
+
+              <section className="td-review-section">
+                <div className="td-review-section-heading"><h3>Your Cover Letter</h3>{applicationForm.coverLetter.trim() && !reviewCoverLetterEditing && <button type="button" onClick={() => setReviewCoverLetterEditing(true)}>Update cover letter</button>}</div>
+                {applicationForm.coverLetter.trim() && !reviewCoverLetterEditing ? (
+                  <div className="td-review-existing-letter">{applicationForm.coverLetter}</div>
+                ) : (
+                  <label className="td-review-upload-field">
+                    <FiUpload size={17} />
+                    <span>{applicationForm.coverLetterFile ? applicationForm.coverLetterFile.name : 'Upload a cover letter for this application'}</span>
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx"
+                      onChange={(event) => setApplicationForm((current) => ({
+                        ...current,
+                        coverLetterFile: event.target.files?.[0] || null,
+                        coverLetter: '',
+                      }))}
+                    />
+                  </label>
+                )}
+              </section>
+
+              {applicationError && <p className="td-review-error" role="alert">{applicationError}</p>}
+
+              <label className="td-review-consent">
+                <input type="checkbox" checked={applicationConsent} onChange={(event) => setApplicationConsent(event.target.checked)} />
+                <span>I confirm that the information provided in this application is true and accurate to the best of my knowledge. I understand that any false statements may result in disqualification from the hiring process.</span>
+              </label>
+            </div>
+
+            <footer className="td-review-modal-footer">
+              <button type="button" className="td-review-back-btn" onClick={closeApplyModal} disabled={submittingApplication}>Back</button>
+              <button type="button" className="td-review-submit-btn" onClick={submitJobApplication} disabled={!applicationConsent || submittingApplication || (!(activeResume?.url || applicationForm.resumeFile)) || (!applicationForm.coverLetterFile && applicationForm.coverLetter.trim().length < 30)}>
+                {submittingApplication ? 'Submitting...' : 'Submit Application'}
+              </button>
+            </footer>
+          </div>
+        </div>
+      )}
+
+      {showApplyModal && !applicationReviewMode && (
         <div className="td-modal-overlay" onClick={closeApplyModal}>
           <div className="td-modal" onClick={(e) => e.stopPropagation()}>
             <div className="td-modal-header">
@@ -5082,6 +5408,162 @@ export default function TeacherDashboard() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {showPhoneVerificationModal && profileSubTab === 'change-phone' && (
+        <div className="td-phone-verify-overlay" onClick={() => setShowPhoneVerificationModal(false)}>
+          <div className="td-phone-verify-modal" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="td-phone-verify-close"
+              onClick={() => setShowPhoneVerificationModal(false)}
+              aria-label="Close phone verification"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+
+            <div className="td-phone-verify-icon"><FiMail size={17} /></div>
+            <h2>Verify your new<br />phone number</h2>
+            <p className="td-phone-verify-description">We sent a verification code to your new phone number</p>
+            <span className="td-phone-verify-number">
+              {pendingPhoneNumber ? `${pendingPhoneNumber.slice(0, 5)}${'*'.repeat(Math.max(0, pendingPhoneNumber.length - 9))}${pendingPhoneNumber.slice(-4)}` : 'Phone number'}
+            </span>
+
+            <div className="td-phone-verify-code" role="group" aria-label="Phone verification code">
+              {phoneVerificationCode.map((digit, index) => (
+                <input
+                  key={`phone-code-${index}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  aria-label={`Verification digit ${index + 1}`}
+                  onChange={(event) => {
+                    const value = event.target.value.replace(/\D/g, '').slice(-1);
+                    setPhoneVerificationCode((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+                    if (value) event.target.nextElementSibling?.focus();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Backspace' && !digit) event.currentTarget.previousElementSibling?.focus();
+                  }}
+                />
+              ))}
+            </div>
+
+            <button type="button" className="td-phone-verify-submit" onClick={handlePhoneVerificationSuccess} disabled={phoneVerificationCode.some((digit) => !digit)}>
+              Verify phone number <FiArrowRight size={15} />
+            </button>
+
+            <div className="td-phone-verify-divider" />
+            <p className="td-phone-verify-resend">Didn't receive the code? <button type="button">Resend code</button></p>
+            <button type="button" className="td-phone-verify-change" onClick={() => { setShowPhoneVerificationModal(false); setProfileSubTab('change-phone'); }}>Change phone number</button>
+          </div>
+        </div>
+      )}
+
+      {showEmailVerificationModal && profileSubTab === 'change-email' && (
+        <div className="td-email-verify-overlay" onClick={() => setShowEmailVerificationModal(false)}>
+          <div className="td-email-verify-modal" onClick={(event) => event.stopPropagation()}>
+            <button
+              type="button"
+              className="td-email-verify-close"
+              onClick={() => setShowEmailVerificationModal(false)}
+              aria-label="Close email verification"
+            >
+              <span aria-hidden="true">×</span>
+            </button>
+
+            <div className="td-email-verify-icon"><FiMail size={17} /></div>
+            <h2>Verify your new email</h2>
+            <p className="td-email-verify-description">We sent a verification code to your new email address.</p>
+            <span className="td-email-verify-address">
+              {pendingEmailAddress ? `${pendingEmailAddress.slice(0, 1)}****${pendingEmailAddress.slice(pendingEmailAddress.indexOf('@'))}` : 'Email address'}
+            </span>
+
+            <div className="td-email-verify-code" role="group" aria-label="Email verification code">
+              {emailVerificationCode.map((digit, index) => (
+                <input
+                  key={`email-code-${index}`}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={digit}
+                  aria-label={`Verification digit ${index + 1}`}
+                  onChange={(event) => {
+                    const value = event.target.value.replace(/\D/g, '').slice(-1);
+                    setEmailVerificationCode((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+                    if (value) event.target.nextElementSibling?.focus();
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Backspace' && !digit) event.currentTarget.previousElementSibling?.focus();
+                  }}
+                />
+              ))}
+            </div>
+
+            <button type="button" className="td-email-verify-submit" onClick={handleEmailVerificationSuccess} disabled={emailVerificationCode.some((digit) => !digit)}>
+              Verify email <FiArrowRight size={15} />
+            </button>
+
+            <div className="td-email-verify-divider" />
+            <p className="td-email-verify-resend">Didn't receive the code? <button type="button">Resend code</button></p>
+            <button type="button" className="td-email-verify-change" onClick={() => { setShowEmailVerificationModal(false); setProfileSubTab('change-email'); }}>Change email address</button>
+          </div>
+        </div>
+      )}
+
+      {showPhoneSuccessSnackbar && (
+        <div className="td-phone-success-snackbar" role="status">
+          <div className="td-phone-success-icon"><FiCheck size={15} /></div>
+          <div className="td-phone-success-copy">
+            <strong>Phone number successfully changed</strong>
+            <span>Your phone number has been changed successfully.</span>
+          </div>
+          <button type="button" onClick={() => setShowPhoneSuccessSnackbar(false)} aria-label="Dismiss success message">×</button>
+          <button type="button" className="td-phone-success-ok" onClick={() => setShowPhoneSuccessSnackbar(false)}>Okay</button>
+        </div>
+      )}
+
+      {showEmailSuccessSnackbar && (
+        <div className="td-phone-success-snackbar" role="status">
+          <div className="td-phone-success-icon"><FiCheck size={15} /></div>
+          <div className="td-phone-success-copy">
+            <strong>Email successfully changed</strong>
+            <span>Your email has been changed successfully.</span>
+          </div>
+          <button type="button" onClick={() => setShowEmailSuccessSnackbar(false)} aria-label="Dismiss success message">×</button>
+          <button type="button" className="td-phone-success-ok" onClick={() => setShowEmailSuccessSnackbar(false)}>Okay</button>
+        </div>
+      )}
+
+      {showApplicationSuccessModal && (
+        <div className="td-application-success-overlay" onClick={() => setShowApplicationSuccessModal(false)}>
+          <div className="td-application-success-modal" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="td-application-success-close" onClick={() => setShowApplicationSuccessModal(false)} aria-label="Close application success">×</button>
+            <div className="td-application-success-icon"><FiCheck size={22} /></div>
+            <h2>Application Submitted Successfully!</h2>
+            <p>Your professional profile has been delivered to the hiring committee.</p>
+
+            <div className="td-application-success-summary">
+              <div className="td-application-success-logo">
+                {selectedJob?.employerImage ? <img src={selectedJob.employerImage} alt="" /> : <FiAward size={23} />}
+              </div>
+              <div>
+                <span>POSITION APPLIED</span>
+                <strong>{selectedJob?.title || 'Teaching Opportunity'}</strong>
+                <p><FiBook size={12} /> {selectedJob?.school || 'School'} <i>•</i> <FiMapPin size={12} /> {selectedJob?.location || 'Location not provided'}</p>
+              </div>
+            </div>
+
+            <div className="td-application-success-actions">
+              <button type="button" className="td-application-success-note" onClick={() => setShowApplicationSuccessModal(false)}>Update Application Note</button>
+              <button type="button" className="td-application-success-status" onClick={() => { setShowApplicationSuccessModal(false); setActiveTab('applications'); }}>View Application Status</button>
+            </div>
+            <button type="button" className="td-application-success-more" onClick={() => { setShowApplicationSuccessModal(false); setSelectedJob(null); setActiveTab('jobs'); }}>
+              View More Jobs in Nigeria <FiArrowRight size={15} />
+            </button>
           </div>
         </div>
       )}
@@ -5754,22 +6236,30 @@ export default function TeacherDashboard() {
 
         /* 3 Mini Cards on Desktop */
         .td-mini-card {
-          background: #F8FAFC;
-          border-radius: 32px;
-          padding: 28px 24px;
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: 20px;
+          padding: 24px 22px;
           display: flex;
           flex-direction: column;
           position: relative;
-          border: none;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.015);
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+          overflow: hidden;
+          transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .td-mini-card:hover {
+          transform: translateY(-5px);
+          border-color: #CBD5E1;
+          box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
         }
         
         .td-mini-card--views::before {
           content: '';
           position: absolute;
           left: 0;
-          top: 24px;
-          bottom: 24px;
+          top: 18px;
+          bottom: 18px;
           width: 3px;
           background: #22C55E;
           border-radius: 0 4px 4px 0;
@@ -5779,8 +6269,8 @@ export default function TeacherDashboard() {
           content: '';
           position: absolute;
           left: 0;
-          top: 24px;
-          bottom: 24px;
+          top: 18px;
+          bottom: 18px;
           width: 3px;
           background: #22C55E;
           border-radius: 0 4px 4px 0;
@@ -5790,8 +6280,8 @@ export default function TeacherDashboard() {
           content: '';
           position: absolute;
           left: 0;
-          top: 24px;
-          bottom: 24px;
+          top: 18px;
+          bottom: 18px;
           width: 3px;
           background: #DC2626;
           border-radius: 0 4px 4px 0;
@@ -5806,7 +6296,7 @@ export default function TeacherDashboard() {
           align-items: center;
           justify-content: center;
           color: #22C55E;
-          margin-bottom: 28px;
+          margin-bottom: 22px;
           box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
         
@@ -5901,7 +6391,7 @@ export default function TeacherDashboard() {
         .td-job-item {
           background: #fff;
           border-radius: 28px;
-          padding: 28px 32px;
+          padding: 20px 32px;
           display: flex;
           flex-direction: column;
           border: 1px solid #F1F5F9;
@@ -6008,8 +6498,8 @@ export default function TeacherDashboard() {
           justify-content: space-between;
           align-items: center;
           border-top: 1px solid #F1F5F9;
-          margin-top: 20px;
-          padding-top: 20px;
+          margin-top: 14px;
+          padding-top: 14px;
         }
         .td-job-salary {
           font-size: 14px;
@@ -6190,10 +6680,13 @@ export default function TeacherDashboard() {
 
         /* Layout */
         .td-jobs-layout { display: flex; gap: 32px; align-items: flex-start; }
+        .td-jobs-layout--filters-collapsed { gap: 16px; }
 
         /* Filters sidebar */
-        .td-jobs-filters { width: 220px; flex-shrink: 0; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; }
-        .td-jobs-filters--collapsed { max-height: none; overflow: visible; }
+        .td-jobs-filters { width: 220px; flex-shrink: 0; position: sticky; top: 24px; max-height: calc(100vh - 48px); overflow-y: auto; transition: width 0.2s ease; }
+        .td-jobs-filters--collapsed { width: 100px; max-height: none; overflow: visible; }
+        .td-jobs-filters--collapsed .td-filter-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+        .td-jobs-filters--collapsed .td-clear-btn:first-of-type { display: none; }
         .td-filter-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
         .td-filter-header h3 { font-size: 15px; font-weight: 800; color: #111; margin: 0; }
         .td-clear-btn { background: none; border: none; color: #16A34A; font-size: 13px; font-weight: 600; cursor: pointer; padding: 0; }
@@ -6240,30 +6733,58 @@ export default function TeacherDashboard() {
         .td-feed-list { display: flex; flex-direction: column; gap: 12px; }
         .td-feed-card {
           background: #FFFFFF;
-          border-radius: 12px;
-          padding: 12px 14px;
-          border: 1px solid #E9ECEF;
+          border-radius: 16px;
+          padding: 16px 18px;
+          border: 1px solid #E2E8F0;
           display: flex;
           flex-wrap: wrap;
           align-items: center;
-          gap: 12px;
-          min-height: 88px;
+          gap: 16px;
+          min-height: 104px;
           position: relative;
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+          transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .td-feed-card:hover {
+          transform: translateY(-2px);
+          border-color: #BBF7D0;
+          box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+        }
+
+        .td-feed-card-standard {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          grid-template-areas: "header" "meta" "footer";
+          align-items: stretch;
+          gap: 12px;
+          min-height: 168px;
+          padding: 18px 24px;
+          border-radius: 24px;
+          border-color: #F1F5F9;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .td-feed-card-standard:hover {
+          border-color: #D1FAE5;
+          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.09);
         }
 
         /* Card header - icon + info */
         .td-fc-header { 
           display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          flex: 1;
+          align-items: center;
+          gap: 14px;
+          grid-area: header;
+          width: 100%;
+          flex: none;
           min-width: 250px;
         }
-        .td-fc-icon-wrapper { flex-shrink: 0; margin-top: 2px; }
+        .td-fc-icon-wrapper { flex-shrink: 0; }
         .td-fc-icon {
-          width: 40px;
-          height: 40px;
-          border-radius: 8px;
+          width: 44px;
+          height: 44px;
+          border-radius: 12px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -6279,12 +6800,12 @@ export default function TeacherDashboard() {
           min-width: 180px;
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 5px;
         }
         .td-fc-main-info h3 { 
-          font-size: 14px;
-          font-weight: 700;
-          color: #111;
+          font-size: 15px;
+          font-weight: 800;
+          color: #172033;
           margin: 0;
           line-height: 1.25;
           overflow: hidden;
@@ -6295,8 +6816,8 @@ export default function TeacherDashboard() {
           -webkit-box-orient: vertical;
         }
         .td-fc-school { 
-          font-size: 11px;
-          color: #999;
+          font-size: 12px;
+          color: #64748B;
           margin: 0;
           line-height: 1.2;
           overflow: hidden;
@@ -6338,7 +6859,8 @@ export default function TeacherDashboard() {
           gap: 8px;
           align-items: center;
           flex-wrap: nowrap;
-          order: 2;
+          grid-area: meta;
+          width: 100%;
           flex-basis: auto;
           margin: 0;
         }
@@ -6346,11 +6868,16 @@ export default function TeacherDashboard() {
           display: flex;
           align-items: center;
           gap: 4px;
-          font-size: 11px;
-          color: #666;
-          font-weight: 500;
+          font-size: 11.5px;
+          color: #475569;
+          font-weight: 600;
           white-space: nowrap;
           flex-shrink: 0;
+        }
+
+        .td-fc-meta-salary {
+          color: #15803D;
+          font-weight: 800;
         }
 
         /* Salary display */
@@ -6374,8 +6901,12 @@ export default function TeacherDashboard() {
           display: flex;
           align-items: center;
           gap: 6px;
+          grid-area: footer;
+          width: 100%;
+          justify-content: flex-start;
           flex-shrink: 0;
-          order: 4;
+          padding-top: 12px;
+          border-top: 1px solid #F1F5F9;
         }
         .td-fc-footer-actions { 
           display: flex;
@@ -6386,7 +6917,7 @@ export default function TeacherDashboard() {
           background: #15803D;
           color: white;
           border: none;
-          padding: 7px 16px;
+          padding: 10px 28px;
           border-radius: 50px;
           font-weight: 700;
           font-size: 12px;
@@ -7728,6 +8259,945 @@ export default function TeacherDashboard() {
           z-index: 1000;
           padding: 24px;
         }
+
+        .td-review-modal-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1050;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          background: rgba(15, 23, 42, 0.38);
+        }
+
+        .td-review-modal {
+          width: min(620px, 100%);
+          max-height: calc(100vh - 32px);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border: 1px solid #D9E1DC;
+          border-radius: 14px;
+          background: #FFFFFF;
+          box-shadow: 0 20px 56px rgba(15, 23, 42, 0.22);
+        }
+
+        .td-review-modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          padding: 14px 20px 12px;
+          border-bottom: 1px solid #E5E7EB;
+        }
+
+        .td-review-modal-header h2 {
+          color: #172033;
+          font-size: 22px;
+          font-weight: 800;
+        }
+
+        .td-review-modal-header p {
+          margin-top: 4px;
+          color: #64748B;
+          font-size: 12px;
+        }
+
+        .td-review-modal-close {
+          border: 0;
+          padding: 0;
+          color: #475569;
+          background: transparent;
+          font-size: 25px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .td-review-modal-body {
+          min-height: 0;
+          max-height: none;
+          flex: 1;
+          overflow-y: auto;
+          padding: 16px 20px;
+        }
+
+        .td-review-applicant-card {
+          padding: 11px 14px;
+          border: 1px solid #CBD8D0;
+          border-radius: 7px;
+          background: #F4F3F3;
+        }
+
+        .td-review-applicant-card h3,
+        .td-review-section-heading h3 {
+          color: #27364A;
+          font-size: 12px;
+          font-weight: 800;
+        }
+
+        .td-review-applicant-content {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-top: 12px;
+        }
+
+        .td-review-avatar {
+          display: grid;
+          place-items: center;
+          width: 46px;
+          height: 46px;
+          flex-shrink: 0;
+          border-radius: 50%;
+          color: #FFFFFF;
+          background: #64748B;
+          font-size: 15px;
+          font-weight: 800;
+        }
+
+        .td-review-applicant-content strong {
+          color: #172033;
+          font-size: 16px;
+        }
+
+        .td-review-applicant-content p {
+          margin-top: 2px;
+          color: #64748B;
+          font-size: 12px;
+        }
+
+        .td-review-pills {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 8px;
+        }
+
+        .td-review-pills span {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 4px 7px;
+          border-radius: 4px;
+          color: #475569;
+          background: #E7EEF0;
+          font-size: 10px;
+        }
+
+        .td-review-pills span:last-child {
+          color: #166534;
+          background: #D9F2E1;
+        }
+
+        .td-review-section {
+          margin-top: 13px;
+        }
+
+        .td-review-section-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 9px;
+        }
+
+        .td-review-section-heading span {
+          color: #166534;
+          font-size: 10px;
+          font-weight: 600;
+        }
+
+        .td-review-section-heading button {
+          border: 0;
+          padding: 0;
+          color: #166534;
+          background: transparent;
+          font: inherit;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-review-document-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-height: 62px;
+          padding: 10px 14px;
+          border: 1px solid #CBD8D0;
+          border-radius: 7px;
+        }
+
+        .td-review-document-icon {
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          border-radius: 4px;
+          color: #DC2626;
+          background: #FEE2E2;
+        }
+
+        .td-review-document-copy {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .td-review-document-copy strong,
+        .td-review-document-copy span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .td-review-document-copy strong {
+          color: #334155;
+          font-size: 13px;
+        }
+
+        .td-review-document-copy span {
+          color: #64748B;
+          font-size: 11px;
+        }
+
+        .td-review-document-action {
+          flex-shrink: 0;
+          color: #64748B;
+        }
+
+        .td-review-upload-field {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          min-height: 62px;
+          padding: 10px 14px;
+          border: 1px dashed #94A3B8;
+          border-radius: 7px;
+          color: #166534;
+          background: #F8FAFC;
+          font-size: 12px;
+          cursor: pointer;
+        }
+
+        .td-review-upload-field input {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          cursor: pointer;
+          opacity: 0;
+        }
+
+        .td-review-existing-letter {
+          max-height: 100px;
+          overflow-y: auto;
+          padding: 12px 13px;
+          border: 1px solid #CBD8D0;
+          border-radius: 7px;
+          color: #475569;
+          background: #F8FAFC;
+          font-size: 12px;
+          line-height: 1.5;
+          white-space: pre-wrap;
+        }
+
+        .td-review-cover-letter {
+          display: block;
+          width: 100%;
+          min-height: 82px;
+          resize: vertical;
+          padding: 11px 13px;
+          border: 1px solid #CBD8D0;
+          border-radius: 7px;
+          outline: none;
+          color: #334155;
+          background: #FFFFFF;
+          font: inherit;
+          font-size: 12px;
+        }
+
+        .td-review-cover-letter:focus {
+          border-color: #16A34A;
+          box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+        }
+
+        .td-review-error {
+          margin-top: 14px;
+          color: #B91C1C;
+          font-size: 12px;
+        }
+
+        .td-review-consent {
+          display: flex;
+          align-items: flex-start;
+          gap: 8px;
+          margin-top: 16px;
+          padding-top: 14px;
+          border-top: 1px solid #E5E7EB;
+          color: #475569;
+          font-size: 12px;
+          line-height: 1.45;
+          cursor: pointer;
+        }
+
+        .td-review-consent input {
+          width: 18px;
+          height: 18px;
+          flex-shrink: 0;
+          accent-color: #15803D;
+        }
+
+        .td-review-modal-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 12px 20px;
+          border-top: 1px solid #E5E7EB;
+          background: #F7F9FC;
+        }
+
+        .td-review-back-btn,
+        .td-review-submit-btn {
+          min-width: 110px;
+          padding: 11px 22px;
+          border-radius: 24px;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-review-back-btn {
+          color: #334155;
+          background: #FFFFFF;
+          border: 1px solid #94A3B8;
+        }
+
+        .td-review-submit-btn {
+          color: #FFFFFF;
+          background: #15803D;
+          border: 1px solid #15803D;
+        }
+
+        .td-review-submit-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.55;
+        }
+
+        .td-application-success-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1150;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          background: rgba(15, 23, 42, 0.42);
+        }
+
+        .td-application-success-modal {
+          position: relative;
+          width: min(505px, 100%);
+          padding: 28px 30px 25px;
+          border-radius: 14px;
+          background: #FFFFFF;
+          box-shadow: 0 22px 60px rgba(15, 23, 42, 0.25);
+          text-align: center;
+        }
+
+        .td-application-success-close {
+          position: absolute;
+          top: 16px;
+          right: 18px;
+          border: 0;
+          padding: 0;
+          color: #64748B;
+          background: transparent;
+          font-size: 24px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .td-application-success-icon {
+          display: grid;
+          place-items: center;
+          width: 48px;
+          height: 48px;
+          margin: 0 auto 14px;
+          border-radius: 50%;
+          color: #FFFFFF;
+          background: #15803D;
+        }
+
+        .td-application-success-modal h2 {
+          color: #172033;
+          font-size: 20px;
+          font-weight: 800;
+        }
+
+        .td-application-success-modal > p {
+          max-width: 330px;
+          margin: 8px auto 24px;
+          color: #64748B;
+          font-size: 12px;
+          line-height: 1.45;
+        }
+
+        .td-application-success-summary {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 15px;
+          border-radius: 16px;
+          background: #F1F3F4;
+          text-align: left;
+        }
+
+        .td-application-success-logo {
+          display: grid;
+          place-items: center;
+          width: 48px;
+          height: 48px;
+          flex-shrink: 0;
+          overflow: hidden;
+          border-radius: 50%;
+          color: #F59E0B;
+          background: #172033;
+        }
+
+        .td-application-success-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+
+        .td-application-success-summary > div:last-child {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+        }
+
+        .td-application-success-summary span {
+          width: fit-content;
+          padding: 3px 7px;
+          border-radius: 8px;
+          color: #166534;
+          background: #D9F2D2;
+          font-size: 9px;
+          font-weight: 800;
+        }
+
+        .td-application-success-summary strong {
+          overflow: hidden;
+          color: #172033;
+          font-size: 13px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .td-application-success-summary p {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: #64748B;
+          font-size: 10px;
+        }
+
+        .td-application-success-summary p i {
+          font-style: normal;
+          color: #94A3B8;
+        }
+
+        .td-application-success-actions {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 10px;
+          margin-top: 28px;
+        }
+
+        .td-application-success-note,
+        .td-application-success-status {
+          min-height: 35px;
+          border: 0;
+          border-radius: 20px;
+          padding: 8px 12px;
+          font: inherit;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-application-success-note {
+          color: #000000;
+          background: #2AE156;
+        }
+
+        .td-application-success-status {
+          color: #475569;
+          background: #E2E4E7;
+        }
+
+        .td-application-success-more {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          margin-top: 22px;
+          border: 0;
+          padding: 0;
+          color: #15803D;
+          background: transparent;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        @media (max-width: 640px) {
+          .td-review-modal-overlay {
+            padding: 12px;
+          }
+
+          .td-review-modal-header,
+          .td-review-modal-body,
+          .td-review-modal-footer {
+            padding-left: 18px;
+            padding-right: 18px;
+          }
+
+          .td-review-modal-footer {
+            justify-content: stretch;
+          }
+
+          .td-review-back-btn,
+          .td-review-submit-btn {
+            flex: 1;
+            min-width: 0;
+          }
+
+          .td-application-success-modal {
+            padding: 24px 18px 22px;
+          }
+
+          .td-application-success-actions {
+            grid-template-columns: 1fr;
+          }
+        }
+
+        .td-phone-verify-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          background: rgba(0, 0, 0, 0.43);
+        }
+
+        .td-phone-verify-modal {
+          position: relative;
+          width: min(486px, 100%);
+          padding: 26px 26px 20px;
+          border-radius: 8px;
+          background: #FFFFFF;
+          box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
+          text-align: center;
+        }
+
+        .td-phone-verify-close {
+          position: absolute;
+          top: -42px;
+          right: -42px;
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          border: 3px solid #111827;
+          border-radius: 50%;
+          color: #111827;
+          background: transparent;
+          font-size: 22px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .td-phone-verify-close span {
+          margin-top: -2px;
+        }
+
+        .td-phone-verify-icon {
+          display: grid;
+          place-items: center;
+          width: 35px;
+          height: 35px;
+          margin: 0 auto 17px;
+          border-radius: 50%;
+          color: #064E3B;
+          background: #E6F0FF;
+        }
+
+        .td-phone-verify-modal h2 {
+          color: #0F172A;
+          font-size: 20px;
+          font-weight: 800;
+          line-height: 1.18;
+        }
+
+        .td-phone-verify-description {
+          margin-top: 8px;
+          color: #64748B;
+          font-size: 11px;
+        }
+
+        .td-phone-verify-number {
+          display: inline-block;
+          margin-top: 9px;
+          padding: 3px 11px;
+          border-radius: 12px;
+          color: #1E293B;
+          background: #EEF4FF;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .td-phone-verify-code {
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+          margin: 20px 0;
+        }
+
+        .td-phone-verify-code input {
+          width: 37px;
+          height: 37px;
+          border: 1px solid #D9DEE6;
+          border-radius: 5px;
+          outline: none;
+          color: #0F172A;
+          background: #FFFFFF;
+          font: inherit;
+          font-size: 17px;
+          font-weight: 700;
+          text-align: center;
+        }
+
+        .td-phone-verify-code input:focus {
+          border-color: #134E4A;
+          box-shadow: 0 0 0 2px rgba(19, 78, 74, 0.1);
+        }
+
+        .td-phone-verify-submit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          width: min(275px, 100%);
+          min-height: 35px;
+          border: 1px solid #2AE156;
+          border-radius: 20px;
+          color: #000000;
+          background: #2AE156;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-phone-verify-submit:disabled {
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+
+        .td-phone-verify-divider {
+          height: 1px;
+          margin: 20px 0 10px;
+          background: #F1F5F9;
+        }
+
+        .td-phone-verify-resend {
+          color: #64748B;
+          font-size: 11px;
+        }
+
+        .td-phone-verify-resend button,
+        .td-phone-verify-change {
+          border: 0;
+          padding: 0;
+          color: #0F172A;
+          background: transparent;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .td-phone-verify-change {
+          margin-top: 12px;
+          color: #64748B;
+          font-weight: 500;
+        }
+
+        .td-email-verify-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          background: rgba(0, 0, 0, 0.43);
+        }
+
+        .td-email-verify-modal {
+          position: relative;
+          width: min(486px, 100%);
+          padding: 26px 26px 20px;
+          border-radius: 8px;
+          background: #FFFFFF;
+          box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
+          text-align: center;
+        }
+
+        .td-email-verify-close {
+          position: absolute;
+          top: -42px;
+          right: -42px;
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          border: 3px solid #111827;
+          border-radius: 50%;
+          color: #111827;
+          background: transparent;
+          font-size: 22px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .td-email-verify-close span {
+          margin-top: -2px;
+        }
+
+        .td-email-verify-icon {
+          display: grid;
+          place-items: center;
+          width: 35px;
+          height: 35px;
+          margin: 0 auto 17px;
+          border-radius: 50%;
+          color: #064E3B;
+          background: #E6F0FF;
+        }
+
+        .td-email-verify-modal h2 {
+          color: #0F172A;
+          font-size: 20px;
+          font-weight: 800;
+          line-height: 1.18;
+        }
+
+        .td-email-verify-description {
+          max-width: 240px;
+          margin: 8px auto 0;
+          color: #64748B;
+          font-size: 11px;
+          line-height: 1.45;
+        }
+
+        .td-email-verify-address {
+          display: inline-block;
+          margin-top: 9px;
+          padding: 3px 11px;
+          border-radius: 12px;
+          color: #1E293B;
+          background: #EEF4FF;
+          font-size: 10px;
+          font-weight: 700;
+        }
+
+        .td-email-verify-code {
+          display: flex;
+          justify-content: center;
+          gap: 20px;
+          margin: 20px 0;
+        }
+
+        .td-email-verify-code input {
+          width: 37px;
+          height: 37px;
+          border: 1px solid #D9DEE6;
+          border-radius: 5px;
+          outline: none;
+          color: #0F172A;
+          background: #FFFFFF;
+          font: inherit;
+          font-size: 17px;
+          font-weight: 700;
+          text-align: center;
+        }
+
+        .td-email-verify-code input:focus {
+          border-color: #134E4A;
+          box-shadow: 0 0 0 2px rgba(19, 78, 74, 0.1);
+        }
+
+        .td-email-verify-submit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          width: min(275px, 100%);
+          min-height: 35px;
+          border: 1px solid #2AE156;
+          border-radius: 20px;
+          color: #000000;
+          background: #2AE156;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-email-verify-submit:disabled {
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+
+        .td-email-verify-divider {
+          height: 1px;
+          margin: 20px 0 10px;
+          background: #F1F5F9;
+        }
+
+        .td-email-verify-resend {
+          color: #64748B;
+          font-size: 11px;
+        }
+
+        .td-email-verify-resend button,
+        .td-email-verify-change {
+          border: 0;
+          padding: 0;
+          color: #0F172A;
+          background: transparent;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+
+        .td-email-verify-change {
+          margin-top: 12px;
+          color: #64748B;
+          font-weight: 500;
+        }
+
+        .td-phone-success-snackbar {
+          position: fixed;
+          top: 56px;
+          left: 50%;
+          z-index: 1200;
+          display: grid;
+          grid-template-columns: 24px minmax(0, 1fr) 18px;
+          column-gap: 10px;
+          align-items: start;
+          width: min(270px, calc(100vw - 32px));
+          min-height: 123px;
+          padding: 12px 10px 10px 12px;
+          border: 1px solid #D9DEE6;
+          border-radius: 9px;
+          background: #FFFFFF;
+          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+          transform: translateX(-50%);
+        }
+
+        .td-phone-success-icon {
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 24px;
+          border-radius: 50%;
+          color: #FFFFFF;
+          background: #15803D;
+        }
+
+        .td-phone-success-copy {
+          display: grid;
+          min-width: 0;
+          align-content: start;
+          gap: 7px;
+          padding-top: 1px;
+          color: #111827;
+          font-size: 10.5px;
+          line-height: 1.35;
+        }
+
+        .td-phone-success-copy strong {
+          font-size: 10.5px;
+          font-weight: 800;
+          line-height: 1.25;
+        }
+
+        .td-phone-success-copy span {
+          color: #1F2937;
+          line-height: 1.35;
+        }
+
+        .td-phone-success-snackbar > button:not(.td-phone-success-ok) {
+          justify-self: end;
+          border: 0;
+          padding: 0;
+          color: #111827;
+          background: transparent;
+          font-size: 19px;
+          line-height: 18px;
+          cursor: pointer;
+        }
+
+        .td-phone-success-ok {
+          grid-column: 2 / 4;
+          justify-self: end;
+          min-width: 75px;
+          margin-top: 8px;
+          padding: 8px 19px;
+          border: 0;
+          border-radius: 20px;
+          color: #000000;
+          background: #2AE156;
+          font: inherit;
+          font-size: 10.5px;
+          font-weight: 500;
+          cursor: pointer;
+        }
+
+        @media (max-width: 640px) {
+          .td-phone-verify-modal {
+            padding: 24px 16px 18px;
+          }
+
+          .td-email-verify-modal {
+            padding: 24px 16px 18px;
+          }
+
+          .td-phone-verify-close {
+            top: -38px;
+            right: 0;
+          }
+
+          .td-email-verify-close {
+            top: -38px;
+            right: 0;
+          }
+
+          .td-phone-verify-code,
+          .td-email-verify-code {
+            gap: 8px;
+          }
+        }
+
         .td-modal-content {
           width: min(406px, 100%);
           overflow: hidden;
@@ -11767,6 +13237,371 @@ export default function TeacherDashboard() {
 
         .td-pers-save-btn:hover {
           background: #166534;
+        }
+
+        .td-change-back-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          margin-bottom: 24px;
+          border: 0;
+          padding: 0;
+          color: #1E293B;
+          background: transparent;
+          font: inherit;
+          font-size: 13.5px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: color 0.15s ease;
+        }
+
+        .td-change-back-btn:hover {
+          color: #16A34A;
+        }
+
+        .td-change-email-page {
+          max-width: 1050px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 8px 16px 60px;
+        }
+
+        .td-change-email-header {
+          margin-bottom: 28px;
+        }
+
+        .td-change-email-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 8px;
+          letter-spacing: -0.5px;
+        }
+
+        .td-change-email-desc {
+          max-width: 420px;
+          font-size: 14px;
+          color: #64748B;
+          line-height: 1.5;
+        }
+
+        .td-change-email-card {
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          padding: 20px 20px 16px;
+        }
+
+        .td-change-email-field {
+          display: grid;
+          gap: 7px;
+          margin-bottom: 14px;
+          color: #111827;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .td-change-email-current,
+        .td-change-email-field input {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          min-height: 32px;
+          border: 1px solid #D6DBE3;
+          border-radius: 20px;
+          color: #374151;
+          background: #F1F5FF;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .td-change-email-current {
+          gap: 8px;
+          padding: 0 10px;
+          color: #6B7280;
+        }
+
+        .td-change-email-field input {
+          padding: 7px 12px;
+          outline: none;
+          background: #FFFFFF;
+        }
+
+        .td-change-email-field input:focus {
+          border-color: #10B981;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .td-change-email-field input::placeholder {
+          color: #CBD0D9;
+        }
+
+        .td-change-email-error {
+          margin: -3px 0 10px;
+          color: #B91C1C;
+          font-size: 12px;
+        }
+
+        .td-change-email-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 12px;
+          padding-top: 14px;
+          border-top: 1px solid #F1F5F9;
+        }
+
+        .td-change-email-cancel,
+        .td-change-email-submit {
+          border-radius: 22px;
+          padding: 9px 22px;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-change-email-cancel {
+          color: #134E4A;
+          background: #FFFFFF;
+          border: 1px solid #134E4A;
+        }
+
+        .td-change-email-submit {
+          color: #FFFFFF;
+          background: #EEF0F3;
+          border: 1px solid #EEF0F3;
+        }
+
+        .td-change-email-submit:not(:disabled) {
+          color: #000000;
+          background: #2AE156;
+          border-color: #2AE156;
+        }
+
+        .td-change-email-cancel:disabled,
+        .td-change-email-submit:disabled {
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+
+        .td-change-email-security {
+          display: flex;
+          gap: 10px;
+          margin-top: 20px;
+          padding: 16px;
+          border-radius: 8px;
+          color: #14532D;
+          background: #EEF2FF;
+          font-size: 12px;
+        }
+
+        .td-change-email-security strong {
+          display: block;
+          margin-bottom: 2px;
+          color: #172554;
+        }
+
+        .td-change-email-security p {
+          max-width: 680px;
+          color: #475569;
+          line-height: 1.45;
+        }
+
+        @media (max-width: 640px) {
+          .td-change-email-card {
+            padding: 20px 16px 16px;
+          }
+
+          .td-change-email-actions {
+            justify-content: stretch;
+          }
+
+          .td-change-email-cancel,
+          .td-change-email-submit {
+            flex: 1;
+          }
+        }
+
+        .td-change-phone-page {
+          max-width: 1050px;
+          margin: 0 auto;
+          width: 100%;
+          padding: 8px 16px 60px;
+        }
+
+        .td-change-phone-header {
+          margin-bottom: 28px;
+        }
+
+        .td-change-phone-title {
+          font-size: 28px;
+          font-weight: 800;
+          color: #0F172A;
+          margin: 0 0 8px;
+          letter-spacing: -0.5px;
+        }
+
+        .td-change-phone-desc {
+          max-width: 420px;
+          font-size: 14px;
+          color: #64748B;
+          line-height: 1.5;
+        }
+
+        .td-change-phone-card {
+          background: #FFFFFF;
+          border: 1px solid #E5E7EB;
+          border-radius: 12px;
+          padding: 38px 40px 20px;
+        }
+
+        .td-change-phone-field {
+          display: grid;
+          gap: 7px;
+          margin-bottom: 20px;
+          color: #111827;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .td-change-phone-current,
+        .td-change-phone-input-wrap {
+          display: flex;
+          align-items: center;
+          min-height: 34px;
+          border: 1px solid #D6DBE3;
+          border-radius: 20px;
+          overflow: hidden;
+        }
+
+        .td-change-phone-current {
+          gap: 8px;
+          padding: 0 12px;
+          color: #6B7280;
+          background: #F1F5FF;
+          font-weight: 500;
+        }
+
+        .td-change-phone-input-wrap {
+          background: #FFFFFF;
+        }
+
+        .td-change-phone-prefix {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          align-self: stretch;
+          padding: 0 12px;
+          color: #374151;
+          background: #F1F5FF;
+          border-right: 1px solid #D6DBE3;
+          font-weight: 500;
+          white-space: nowrap;
+        }
+
+        .td-change-phone-input-wrap input {
+          min-width: 0;
+          flex: 1;
+          border: 0;
+          outline: 0;
+          padding: 8px 12px;
+          color: #111827;
+          background: transparent;
+          font: inherit;
+          font-weight: 500;
+        }
+
+        .td-change-phone-input-wrap input::placeholder {
+          color: #CBD0D9;
+        }
+
+        .td-change-phone-error {
+          margin: -4px 0 12px;
+          color: #B91C1C;
+          font-size: 12px;
+        }
+
+        .td-change-phone-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 32px;
+          padding-top: 14px;
+          border-top: 1px solid #F1F5F9;
+        }
+
+        .td-change-phone-cancel,
+        .td-change-phone-submit {
+          border-radius: 22px;
+          padding: 9px 22px;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-change-phone-cancel {
+          color: #134E4A;
+          background: #FFFFFF;
+          border: 1px solid #134E4A;
+        }
+
+        .td-change-phone-submit {
+          color: #FFFFFF;
+          background: #EEF0F3;
+          border: 1px solid #EEF0F3;
+        }
+
+        .td-change-phone-submit:not(:disabled) {
+          color: #000000;
+          background: #2AE156;
+          border-color: #2AE156;
+        }
+
+        .td-change-phone-cancel:disabled,
+        .td-change-phone-submit:disabled {
+          cursor: not-allowed;
+          opacity: 0.7;
+        }
+
+        .td-change-phone-security {
+          display: flex;
+          gap: 10px;
+          margin-top: 20px;
+          padding: 16px;
+          border-radius: 8px;
+          color: #14532D;
+          background: #EEF2FF;
+          font-size: 12px;
+        }
+
+        .td-change-phone-security strong {
+          display: block;
+          margin-bottom: 2px;
+          color: #172554;
+        }
+
+        .td-change-phone-security p {
+          max-width: 680px;
+          color: #475569;
+          line-height: 1.45;
+        }
+
+        @media (max-width: 640px) {
+          .td-change-phone-card {
+            padding: 24px 18px 18px;
+          }
+
+          .td-change-phone-actions {
+            justify-content: stretch;
+          }
+
+          .td-change-phone-cancel,
+          .td-change-phone-submit {
+            flex: 1;
+          }
         }
 
         /* ═══════════════════════════════════════
