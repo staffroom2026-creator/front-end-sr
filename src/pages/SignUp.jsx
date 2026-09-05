@@ -24,6 +24,15 @@ export default function SignUp() {
     schoolName: '',
   });
 
+  const handlePhoneChange = (event) => {
+    setForm((currentForm) => ({
+      ...currentForm,
+      phone: event.target.value.replace(/\D/g, ''),
+    }));
+  };
+
+  const passwordsDoNotMatch = Boolean(form.confirmPassword) && form.password !== form.confirmPassword;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -166,9 +175,9 @@ export default function SignUp() {
                     placeholder="Email Address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="su-mob-input" />
-                  <input id="mob-phone" type="tel" required autoComplete="tel"
+                  <input id="mob-phone" type="tel" inputMode="numeric" required autoComplete="tel"
                     placeholder="Phone number" value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={handlePhoneChange}
                     className="su-mob-input" />
                 </>
               )}
@@ -184,9 +193,9 @@ export default function SignUp() {
                     placeholder="Official Email address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="su-mob-input" />
-                  <input id="mob-school-phone" type="tel" required autoComplete="tel"
+                  <input id="mob-school-phone" type="tel" inputMode="numeric" required autoComplete="tel"
                     placeholder="Phone number" value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={handlePhoneChange}
                     className="su-mob-input" />
                 </>
               )}
@@ -206,12 +215,14 @@ export default function SignUp() {
               <div className="su-mob-input-wrap">
                 <input id="mob-confirm" type={showConfirm ? 'text' : 'password'} required
                   autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
+                  aria-invalid={passwordsDoNotMatch}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                   className="su-mob-input su-mob-input--icon" />
                 <button type="button" className="su-mob-eye" onClick={() => setShowConfirm(!showConfirm)}>
                   <EyeIcon open={showConfirm} />
                 </button>
               </div>
+              {passwordsDoNotMatch && <p className="su-password-error" role="alert">Passwords do not match.</p>}
 
               {/* Terms Checkbox */}
               <label className="su-mob-terms-row" htmlFor="mob-terms">
@@ -306,9 +317,9 @@ export default function SignUp() {
                     placeholder="Email address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="su-input" />
-                  <input id="signup-phone" type="tel" required autoComplete="tel"
+                  <input id="signup-phone" type="tel" inputMode="numeric" required autoComplete="tel"
                     placeholder="Phone number" value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={handlePhoneChange}
                     className="su-input" />
                 </>
               )}
@@ -324,9 +335,9 @@ export default function SignUp() {
                     placeholder="Official Email address" value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     className="su-input" />
-                  <input id="signup-school-phone" type="tel" required autoComplete="tel"
+                  <input id="signup-school-phone" type="tel" inputMode="numeric" required autoComplete="tel"
                     placeholder="Phone number" value={form.phone}
-                    onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                    onChange={handlePhoneChange}
                     className="su-input" />
                 </>
               )}
@@ -347,6 +358,7 @@ export default function SignUp() {
               <div className="su-input-wrap">
                 <input id="signup-confirm-password" type={showConfirm ? 'text' : 'password'} required
                   autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
+                  aria-invalid={passwordsDoNotMatch}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                   className="su-input su-input--icon" />
                 <button type="button" id="signup-toggle-confirm" className="su-eye-btn"
@@ -354,6 +366,7 @@ export default function SignUp() {
                   <EyeIcon open={showConfirm} />
                 </button>
               </div>
+              {passwordsDoNotMatch && <p className="su-password-error" role="alert">Passwords do not match.</p>}
 
               {/* Terms */}
               <label className="su-terms-row" htmlFor="signup-terms">
@@ -395,6 +408,8 @@ export default function SignUp() {
         .su-spin circle { opacity: 0.25; }
         .su-spin path { opacity: 0.75; }
         *, *::before, *::after { box-sizing: border-box; }
+        .su-password-error { margin: -4px 0 0; color: #b91c1c; font-size: 12px; line-height: 16px; }
+        .su-input[aria-invalid="true"], .su-mob-input[aria-invalid="true"] { border-color: #b91c1c; }
 
         .su-layout {
           min-height: 100vh;
