@@ -197,11 +197,15 @@ export default function TeacherInfo() {
 
       const payload = {
         subjects: subjectList,
-        skills: subjectList.join(', '),
+        skills: subjectList,
         teaching_levels: [form.level],
         location: `${form.state}, ${form.country}`.trim(),
         preferred_location: `${form.state}, ${form.country}`.trim(),
         preferred_employment_type: form.level === 'primary' ? 'full-time' : 'part-time',
+        role_title: 'Teacher',
+        bio: '',
+        experience_years: 0,
+        availability: 'Open',
         setup_completed: true,
       };
 
@@ -213,7 +217,11 @@ export default function TeacherInfo() {
       }
       navigate('/teacher-dashboard', { replace: true });
     } catch (err) {
-      setError(apiErrorMessage(err, 'Unable to save your profile right now.'));
+      const backendErrors = err?.response?.data?.errors;
+      const fieldDetails = backendErrors && typeof backendErrors === 'object'
+        ? Object.entries(backendErrors).map(([field, detail]) => `${field}: ${detail}`).join('; ')
+        : '';
+      setError(fieldDetails || apiErrorMessage(err, 'Unable to save your profile right now.'));
     } finally {
       setSaving(false);
     }
