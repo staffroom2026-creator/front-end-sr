@@ -79,6 +79,10 @@ const parseSubjectList = (value) => {
   return [];
 };
 
+const getProfileSubjects = (profile = {}) => parseSubjectList(profile.skills || profile.subjects || []);
+
+const normalizeTeachingLevels = (value) => parseSubjectList(value);
+
 const parseResponsibilityList = (value) => {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value !== 'string') return [];
