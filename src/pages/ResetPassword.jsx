@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2, ChevronLeft, Circle, Eye, EyeOff, X } from 'lucide-react';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
+import { apiErrorMessage } from '../services/api';
+import { authService } from '../services/authService';
 
 const passwordRules = [
   { label: 'At least 8 characters', test: (value) => value.length >= 8 },
@@ -35,16 +37,19 @@ function PasswordField({ id, label, value, onChange, visible, onToggle, placehol
 }
 
 export default function ResetPassword() {
+  const location = useLocation();
   const navigate = useNavigate();
+  const refreshToken = location.state?.refreshToken || '';
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const validPassword = passwordRules.every((rule) => rule.test(newPassword));
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     if (!validPassword) {
@@ -57,7 +62,25 @@ export default function ResetPassword() {
       return;
     }
 
-    setShowSuccess(true);
+    if (!refreshToken) {
+      setError('Your password reset session has expired. Please request a new reset code.');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError('');
+      await authService.resetPassword({
+        refresh_token: refreshToken,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
+      setShowSuccess(true);
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to reset your password. Please try again.'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const returnToSignIn = () => {
@@ -76,7 +99,7 @@ export default function ResetPassword() {
 
       <section className="new-password-panel" aria-labelledby="new-password-title">
         <div className="new-password-content">
-          <Link className="new-password-back" to="/check-email" aria-label="Back to check email">
+          <Link className="new-password-back" to="/check-email" state={{ email: location.state?.email }} aria-label="Back to check email">
             <ChevronLeft size={20} strokeWidth={2.5} aria-hidden="true" />
           </Link>
           <h1 id="new-password-title">Create new<br />password</h1>
@@ -92,7 +115,7 @@ export default function ResetPassword() {
               })}
             </ul>
             {error && <p className="new-password-error" role="alert">{error}</p>}
-            <button className="new-password-submit" type="submit">Reset Password</button>
+            <button className="new-password-submit" type="submit" disabled={submitting}>{submitting ? 'Resetting...' : 'Reset Password'}</button>
           </form>
         </div>
       </section>
@@ -138,6 +161,7 @@ export default function ResetPassword() {
         .new-password-error { margin: -3px 0 0; color: #b42318; font-size: 12px; line-height: 16px; }
         .new-password-submit { height: 48px; margin-top: 0; border: 0; border-radius: 12px; background: #25d94d; color: #102415; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color 160ms ease; }
         .new-password-submit:hover { background: #1ccb43; }
+        .new-password-submit:disabled { cursor: wait; opacity: 0.7; }
         .new-password-back:focus-visible, .new-password-input-wrap button:focus-visible, .new-password-submit:focus-visible { outline: 3px solid rgba(28, 203, 67, 0.35); outline-offset: 3px; }
         .password-success-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(19, 28, 23, 0.28); }
         .password-success-dialog { width: min(100%, 870px); min-height: 396px; padding: 30px 33px; border: 1px solid #a9afb0; border-radius: 29px; background: #fbfbfc; box-shadow: 0 6px 18px rgba(19, 28, 23, 0.18); color: #080909; }

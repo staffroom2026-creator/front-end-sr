@@ -226,6 +226,16 @@ Authenticates a user and issues a JWT token if their email is verified.
 
 ---
 
+### Password Reset Flow
+
+1. `POST /auth/forgot-password` with `{ "email": "teacher@example.com" }`. The API verifies the active account and emails a six-digit OTP. The OTP expires after ten minutes and is stored hashed.
+2. `POST /auth/verify-reset-otp` with `{ "email": "teacher@example.com", "otp": "123456" }`. A short-lived `refresh_token` with `purpose: password_reset` is returned after successful OTP validation.
+3. `POST /auth/reset-password` with `{ "refresh_token": "...", "new_password": "NewPassword123", "confirm_password": "NewPassword123" }`. The API validates the refresh token, changes the password, and invalidates the OTP.
+
+The reset refresh token is not a normal authenticated access token and cannot be used to access protected API resources. Passwords require at least eight characters, one letter, and one number.
+
+---
+
 ### `POST /auth/verify-email`
 Verifies a user's email address by validating the submitted 6-digit code against the hashed code stored in the database.
 - **Method:** `POST`

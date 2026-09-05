@@ -271,6 +271,34 @@ const normalizeEducationRecords = (value) => {
   }));
 };
 
+const isMeaningfulProfileValue = (value) => {
+  if (Array.isArray(value)) return value.some((item) => String(item || '').trim());
+  if (typeof value === 'number') return value >= 0;
+  return Boolean(String(value || '').trim());
+};
+
+const calculateTeacherProfileCompletion = (profile = {}) => {
+  const skills = parseSubjectList(profile.skills || profile.subjects || []);
+  const teachingLevels = parseSubjectList(profile.teaching_levels || []);
+  const education = normalizeEducationRecords(profile.education_history);
+  const experience = normalizeExperienceRecords(profile.teaching_experience ?? profile.work_experience ?? profile.experience_history);
+  const checks = [
+    isMeaningfulProfileValue(profile.role_title),
+    isMeaningfulProfileValue(profile.bio),
+    Number(profile.experience_years) >= 0,
+    isMeaningfulProfileValue(profile.preferred_employment_type),
+    isMeaningfulProfileValue(profile.availability),
+    skills.length > 0,
+    teachingLevels.length > 0,
+    isMeaningfulProfileValue(profile.preferred_location || profile.location),
+    education.length > 0,
+    experience.length > 0,
+    isMeaningfulProfileValue(profile.cv_url),
+  ];
+
+  return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+};
+
 const profileApiErrorMessage = (error, fallback) => {
   const responseData = error?.response?.data || {};
   const fieldErrors = responseData.errors && typeof responseData.errors === 'object'
@@ -521,7 +549,12 @@ export default function TeacherDashboard() {
     })
     .slice(0, 3);
   const getProfileStrengthValue = () => {
-    const strength = Number(profileState?.profile_strength ?? 0);
+    const rawServerStrength = profileState?.profile_strength;
+    const serverStrength = Number(rawServerStrength);
+    const hasServerStrength = rawServerStrength !== undefined && rawServerStrength !== null && rawServerStrength !== '';
+    const strength = hasServerStrength && Number.isFinite(serverStrength)
+      ? serverStrength
+      : calculateTeacherProfileCompletion(profileState);
     if (!Number.isFinite(strength)) return 0;
     return Math.min(100, Math.max(0, strength));
   };
@@ -1569,7 +1602,7 @@ export default function TeacherDashboard() {
                   {/* ── Stats Overview ── */}
                   <div className="td-stats-row">
                     {/* Profile Strength Card */}
-                    <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
+                    {profileStrengthValue < 100 && <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
                       <div className="td-card-header">
                         <span className="td-profile-title">Profile Strength</span>
                         <span className="td-percent-badge">{profileStrengthValue}%</span>
@@ -1598,7 +1631,7 @@ export default function TeacherDashboard() {
                         </p>
                         <button className="td-complete-profile-btn" onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                       </div>
-                    </motion.div>
+                    </motion.div>}
 
                     {/* Mini cards wrapper */}
                     <div className="td-stats-mini-wrapper">

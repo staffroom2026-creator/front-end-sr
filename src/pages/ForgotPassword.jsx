@@ -3,14 +3,29 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Mail } from 'lucide-react';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
+import { apiErrorMessage } from '../services/api';
+import { authService } from '../services/authService';
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    navigate('/check-email', { state: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+
+    try {
+      setSubmitting(true);
+      setError('');
+      await authService.forgotPassword({ email: normalizedEmail });
+      navigate('/check-email', { state: { email: normalizedEmail } });
+    } catch (err) {
+      setError(apiErrorMessage(err, 'Unable to send the password reset code.'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -30,7 +45,7 @@ export default function ForgotPassword() {
           </Link>
           <h1 id="forgot-password-title">Forgot your<br />password?</h1>
           <p className="password-reset-description">
-            No worries. Enter the email address linked to your Staffroom account and we&apos;ll send you a password reset link.
+            No worries. Enter the email address linked to your Staffroom account and we&apos;ll send you a password reset code.
           </p>
 
           <form className="password-reset-form" onSubmit={handleSubmit}>
@@ -47,7 +62,8 @@ export default function ForgotPassword() {
                 required
               />
             </div>
-            <button type="submit">Next</button>
+            {error && <p className="password-reset-feedback password-reset-error" role="alert">{error}</p>}
+            <button type="submit" disabled={submitting}>{submitting ? 'Sending...' : 'Next'}</button>
           </form>
         </div>
       </section>

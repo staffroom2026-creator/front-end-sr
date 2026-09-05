@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
+import { apiErrorMessage } from '../services/api';
+import { authService } from '../services/authService';
 
 export default function CheckEmail() {
   const location = useLocation();
@@ -10,6 +12,7 @@ export default function CheckEmail() {
   const email = location.state?.email || 'your email address';
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const inputRefs = useRef([]);
 
   const handleOtpChange = (index, value) => {
@@ -51,7 +54,7 @@ export default function CheckEmail() {
     inputRefs.current[Math.min(pastedOtp.length, 6) - 1]?.focus();
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     const fullOtp = otp.join('');
@@ -60,7 +63,24 @@ export default function CheckEmail() {
       return;
     }
 
-    navigate('/reset-password', { state: { email, otp: fullOtp } });
+    try {
+      setSubmitting(true);
+      setError('');
+      const response = await authService.verifyResetOtp({ email, otp: fullOtp });
+      const responseBody = response?.data || {};
+      const responseData = responseBody?.data || {};
+      const refreshToken = responseData?.refresh_token || responseBody?.refresh_token;
+
+      if (!refreshToken) {
+        throw new Error('The reset token was not returned. Please request a new code.');
+      }
+
+      navigate('/reset-password', { state: { email, refreshToken } });
+    } catch (err) {
+      setError(apiErrorMessage(err, 'The code could not be verified. Please try again.'));
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -102,8 +122,8 @@ export default function CheckEmail() {
               ))}
             </div>
             {error && <p className="check-email-error" role="alert">{error}</p>}
-            <button className="check-email-button" type="submit">
-              Continue
+            <button className="check-email-button" type="submit" disabled={submitting}>
+              {submitting ? 'Verifying...' : 'Continue'}
             </button>
           </form>
         </div>

@@ -115,6 +115,7 @@ export default function AdminDashboard() {
   const [websiteValue, setWebsiteValue] = useState("");
   const [isAddressEditing, setIsAddressEditing] = useState(false);
   const [addressValue, setAddressValue] = useState("");
+  const [savingSchoolProfile, setSavingSchoolProfile] = useState(false);
   const schoolLogoInputRef = useRef(null);
   const schoolNameInputRef = useRef(null);
   const emailInputRef = useRef(null);
@@ -287,6 +288,46 @@ export default function AdminDashboard() {
       setSchoolLogoPreview(reader.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleSaveSchoolProfile = async () => {
+    try {
+      setSavingSchoolProfile(true);
+      setError("");
+      await profileService.updateSchool({
+        school_name: schoolNameValue.trim(),
+        school_type: schoolProfile?.school_type || "private",
+        address: addressValue.trim(),
+        website: websiteValue.trim(),
+        email: emailValue.trim(),
+        phone: phoneValue.trim(),
+      });
+
+      const response = await profileService.getMe();
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const profile = payload?.profile || payload?.school_profile || payload?.school || {};
+      const account = payload?.user || payload;
+      const mergedProfile = { ...account, ...profile };
+
+      setSchoolProfile(mergedProfile);
+      setSchoolNameValue(mergedProfile.school_name || schoolNameValue);
+      setEmailValue(mergedProfile.email || account.email || emailValue);
+      setPhoneValue(mergedProfile.phone || account.phone || phoneValue);
+      setWebsiteValue(mergedProfile.website || websiteValue);
+      setAddressValue(mergedProfile.address || addressValue);
+      setIsSchoolNameEditing(false);
+      setIsEmailEditing(false);
+      setIsPhoneEditing(false);
+      setIsWebsiteEditing(false);
+      setIsAddressEditing(false);
+      showSnackbar("Profile updated", "Your school information has been saved successfully.");
+    } catch (err) {
+      const message = apiErrorMessage(err, "Unable to save school information.");
+      setError(message);
+      showSnackbar("Profile update failed", message);
+    } finally {
+      setSavingSchoolProfile(false);
+    }
   };
 
   const isNotificationUnread = (notification = {}) => {
@@ -4507,9 +4548,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                 Manage the core organizational details and public-facing contact information for your school.
                               </p>
                             </div>
-                            <button type="button" className="admin-school-save-btn">
+                            <button
+                              type="button"
+                              className="admin-school-save-btn"
+                              onClick={handleSaveSchoolProfile}
+                              disabled={savingSchoolProfile}
+                            >
                               <FiCheck size={14} />
-                              Save Changes
+                              {savingSchoolProfile ? "Saving..." : "Save Changes"}
                             </button>
                           </div>
 
