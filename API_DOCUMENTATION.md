@@ -1232,16 +1232,72 @@ All endpoints below use the `/api` prefix (the existing non-prefixed aliases rem
 
 ### Teacher profile and setup
 
-`GET /profiles/me` returns the authenticated account and role profile. For teachers, `data.profile.setup_completed` is the authoritative setup flag and `data.profile.subjects` is a de-duplicated array. `PUT /profiles/teacher` accepts `subjects` as an array and persists the complete subject list. It also accepts `setup_completed` and validates `experience_years`, `trcn_status`, `availability`, and `profile_visibility`.
+`GET /profiles/me` returns the authenticated account and role profile. For teachers, `data.profile.setup_completed` is the authoritative setup flag and `data.profile.subjects` is a de-duplicated array. The canonical teacher profile also returns `skills`, `teaching_levels`, `education_history`, and `teaching_experience` as arrays; empty history is returned as `[]`. Legacy `work_experience` and `experience_history` aliases are returned temporarily.
+
+`PUT /profiles/teacher` saves professional information and both history collections in one transaction. Omitted `education_history` or `teaching_experience` arrays are left unchanged; submitted empty arrays intentionally clear that category. Existing history IDs are updated only when owned by the authenticated teacher, and records omitted from a submitted category are deleted.
+
+Example request:
+
+```json
+{
+  "role_title": "Teacher",
+  "bio": "Experienced science teacher",
+  "experience_years": 5,
+  "preferred_employment_type": "full-time",
+  "availability": "Open",
+  "skills": ["Biology", "Lesson Planning"],
+  "teaching_levels": ["SS1 – SS3"],
+  "preferred_location": "Benin, Edo",
+  "education_history": [{
+    "education_id": null,
+    "degree": "B.Ed Biology",
+    "institution": "University of Benin",
+    "start_year": 2015,
+    "end_year": 2019,
+    "status": "Completed"
+  }],
+  "teaching_experience": [{
+    "experience_id": null,
+    "role": "Biology Teacher",
+    "school": "Example College",
+    "location": "Benin, Edo",
+    "start_date": "2020-01",
+    "end_date": "2024-06",
+    "description": "Taught biology to senior secondary students."
+  }]
+}
+```
+
+Education rules: `degree`, `institution`, `start_year`, and `status` are required; years must be four digits; `end_year` may be null but cannot precede `start_year`; status is `Completed`, `In Progress`, or `Pending`. Experience rules: `role`, `school`, and `start_date` are required; dates use `YYYY-MM`; `end_date` may be null but cannot precede `start_date`; descriptions are limited to 5000 characters. Profile updates require a teacher JWT and return the complete updated profile.
+
+Optional resource endpoints are also available: `POST /profiles/teacher/education`, `PUT|PATCH|DELETE /profiles/teacher/education/{education_id}`, and equivalent `/experience` routes. They enforce ownership through the authenticated `user_id`.
+
+Example curl:
+
+```bash
+curl -X PUT "https://api.staffroomng.com/api/profiles/teacher" \
+  -H "Authorization: Bearer $TEACHER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"role_title":"Teacher","experience_years":5,"skills":["Biology"],"teaching_levels":["SS1 – SS3"],"education_history":[],"teaching_experience":[]}'
+```
 
 ### Applications
 
+- `GET /applications/apply/{job_id}` is teacher-only and returns `already_applied`, `existing_cv_url`, and `requirements` so the frontend can render the apply form (CV, cover letter, additional info) before submission.
+- `POST /applications/apply/{job_id}` requires `cover_letter` (minimum 30 characters). A CV is required: send a `cv` file (multipart) or have one already on the teacher's profile; uploading a new `cv` here also updates the profile CV. `additional_info` is optional free text. The apply button alone (no cover letter or CV) is rejected with `400`.
 - `GET /applications/{application_id}` returns an application only to its teacher, owning school, or an administrator.
 - `GET /applications/my-applications?page=1&per_page=10` returns the teacher's applications and `pagination` metadata.
 - `GET /applications/job/{job_id}?page=1&per_page=10` returns applications for a job only when the authenticated school owns that job.
 - `PATCH /applications/{application_id}/status` accepts `status`. When `status` is `rejected`, `message` (or `rejection_message`) is required and is returned to the teacher. Repeating the current status returns `409`.
 
-Application list responses expose `application_id`, `job_id`, `teacher_id`, `status`, `rejection_message`, timestamps, and relevant job/teacher fields.
+Application list responses expose `application_id`, `job_id`, `teacher_id`, `status`, `rejection_message`, `cv_url`, `additional_info`, timestamps, and relevant job/teacher fields.
+
+Application email events:
+
+- After a teacher submits an application, the school account email receives a StaffRoom-branded message containing the teacher name, teacher email, job title, and application ID.
+- When a school changes an application to `shortlisted`, the teacher receives a StaffRoom-branded message explaining the next recruitment stage and that interview details will follow.
+- When the school schedules an interview, the teacher receives a StaffRoom-branded message containing the interview format, date, time, venue or meeting link, instructions, and candidate message.
+- These tailored emails replace the generic notification email for the same event, preventing duplicate messages. In-app notifications are still created.
 
 ### Search and pagination
 
@@ -1263,9 +1319,11 @@ Teacher levels `Pre KG` and `KG` are accepted as job/profile values without remo
 
 `GET /features/notifications?page=1&per_page=10` returns notifications, pagination, and `unread_count`. `PATCH /features/notifications/{notification_id}/read` marks only the owner's notification as read. `DELETE /features/notifications/{notification_id}` deletes only the owner's notification. Notification records may include `related_id` and `related_type`.
 
+After an in-app notification is persisted, the API also sends a Staffroom-branded email to the recipient by default. Set `email_notifications` to `false` through `PUT|PATCH /account/preferences` to opt out. SMTP failures are logged server-side and do not roll back the notification or recruitment event.
+
 ### Database migration
 
-Run `database/migrations/2026_09_03_staffroom_backend.sql` after reviewing duplicate data. It adds normalized `teacher_subjects`, `saved_teachers`, and `job_alert_preferences` tables, setup/rejection/notification metadata, uniqueness constraints, and query indexes.
+Run `database/migrations/2026_09_03_staffroom_backend.sql` followed by `database/migrations/2026_09_05_teacher_profile_unified.sql`. The latter adds teacher professional fields and normalized `teacher_education` and `teacher_experience` tables with uniqueness constraints and user indexes. The live hosting database does not enforce the optional foreign keys, so the API enforces ownership on every history read, update, and delete using the authenticated `user_id`.
 Starts and completes a verified email change. `POST` accepts `{ "email": "new@example.com" }`; `PATCH` accepts `{ "code": "123456" }`. The code is valid for ten minutes.
 
 All account and settings endpoints require a valid JWT.

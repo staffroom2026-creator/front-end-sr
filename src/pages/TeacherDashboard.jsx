@@ -179,6 +179,9 @@ const normalizeApplicationData = (application = {}, index = 0) => {
     icon: application.icon || '📄',
     tags: Array.isArray(application.tags) ? application.tags : [{ type: 'neutral', label: status }],
     actionText: application.actionText || 'View',
+      coverLetter: application.cover_letter || application.coverLetter || '',
+      additionalInfo: application.additional_info || application.additionalInfo || '',
+      cvUrl: application.cv_url || application.cvUrl || application.cv || '',
     interview: application.interview || null,
   };
 };
@@ -239,6 +242,7 @@ const normalizeExperienceRecords = (value) => {
     const endDate = record.end_date || record.endDate || record.end_month || '';
     return {
       ...record,
+      experience_id: record.experience_id || record.id || null,
       id: record.id || record.experience_id || `experience-${index}`,
       role: record.role || record.job_title || record.title || '',
       school: record.school || record.institution || record.company || '',
@@ -249,6 +253,30 @@ const normalizeExperienceRecords = (value) => {
       period: record.period || [formatMonthYear(startDate), formatMonthYear(endDate)].filter(Boolean).join(' - '),
     };
   });
+};
+
+const normalizeEducationRecords = (value) => {
+  if (!Array.isArray(value)) return [];
+
+  return value.map((record, index) => ({
+    ...record,
+    education_id: record.education_id || record.id || null,
+    id: record.education_id || record.id || `education-${index}`,
+    degree: record.degree || record.qualification || '',
+    institution: record.institution || record.school || '',
+    start_year: record.start_year || record.startYear || '',
+    end_year: record.end_year || record.endYear || '',
+    period: record.period || [record.start_year || record.startYear, record.end_year || record.endYear].filter(Boolean).join(' – '),
+    status: record.status || 'Completed',
+  }));
+};
+
+const profileApiErrorMessage = (error, fallback) => {
+  const responseData = error?.response?.data || {};
+  const fieldErrors = responseData.errors && typeof responseData.errors === 'object'
+    ? Object.entries(responseData.errors).map(([field, message]) => `${field}: ${message}`).join(' ')
+    : '';
+  return fieldErrors || apiErrorMessage(error, fallback);
 };
 
 const applicationStatusLabel = (status) => {
@@ -330,6 +358,9 @@ export default function TeacherDashboard() {
     endYear: '2019',
     status: 'Completed'
   });
+  const [educationError, setEducationError] = useState('');
+  const [savingEducation, setSavingEducation] = useState(false);
+  const [editingEducationId, setEditingEducationId] = useState(null);
 
   // ── Teaching Experience Tab state ──
   const [experienceList, setExperienceList] = useState([]);
@@ -507,8 +538,14 @@ export default function TeacherDashboard() {
     phone: '',
     yearsExperience: '',
     resumeFile: null,
-    motivation: ''
+    useExistingCv: true,
+    coverLetter: '',
+    additionalInfo: '',
   });
+  const [applyDetailsLoading, setApplyDetailsLoading] = useState(false);
+  const [alreadyAppliedState, setAlreadyAppliedState] = useState(false);
+  const [existingCvUrl, setExistingCvUrl] = useState('');
+  const [submittingApplication, setSubmittingApplication] = useState(false);
   const [applicationNote, setApplicationNote] = useState('');
   const [applicationError, setApplicationError] = useState('');
 
@@ -669,7 +706,7 @@ export default function TeacherDashboard() {
         : typeof profile.teaching_levels === 'string'
           ? parseSubjectList(profile.teaching_levels)
           : []);
-      setEducationList(Array.isArray(profile.education_history) ? profile.education_history : []);
+      setEducationList(normalizeEducationRecords(profile.education_history));
       setExperienceList(normalizeExperienceRecords(
         profile.teaching_experience ?? profile.work_experience ?? profile.experience_history
       ));
@@ -701,35 +738,175 @@ export default function TeacherDashboard() {
     loadAccountPreferences();
   }, []);
 
+  const getEditableTeacherProfilePayload = ({ education_history, teaching_experience } = {}) => ({
+    role_title: profTitle.trim(),
+    bio: profSummary.trim(),
+    experience_years: Math.max(0, Number.parseInt(profYearsExp, 10) || 0),
+    preferred_employment_type: profEmpPref,
+    availability: profTeachMode,
+    skills: Array.isArray(profSubjects) ? profSubjects.filter(Boolean) : [],
+    teaching_levels: Array.isArray(profTeachingLevels) ? profTeachingLevels.filter(Boolean) : [],
+    preferred_location: availLocation.trim(),
+    ...(education_history === undefined ? {} : { education_history }),
+    ...(teaching_experience === undefined ? {} : { teaching_experience }),
+  });
+
+  const applyCanonicalTeacherProfile = (profile) => {
+    const nextProfile = profile && typeof profile === 'object' ? profile : {};
+    setProfileState(nextProfile);
+    setProfTitle(nextProfile.role_title || 'Teacher');
+    setProfSummary(nextProfile.bio || '');
+    setProfYearsExp(nextProfile.experience_years ? `${nextProfile.experience_years}+ years` : '0+ years');
+    setProfEmpPref(nextProfile.preferred_employment_type || 'Open');
+    setProfTeachMode(nextProfile.availability || 'Open');
+    setProfSubjects(parseSubjectList(nextProfile.skills || nextProfile.subjects || []));
+    setProfTeachingLevels(Array.isArray(nextProfile.teaching_levels) ? nextProfile.teaching_levels : parseSubjectList(nextProfile.teaching_levels || []));
+    setAvailLocation(nextProfile.preferred_location || nextProfile.location || '');
+    setEducationList(normalizeEducationRecords(nextProfile.education_history));
+    setExperienceList(normalizeExperienceRecords(nextProfile.teaching_experience));
+    return nextProfile;
+  };
+
+  const saveUnifiedTeacherProfile = async (overrides = {}) => {
+    const response = await profileService.updateTeacher(getEditableTeacherProfilePayload(overrides));
+    const responseBody = response?.data || {};
+    const responseData = responseBody?.data || {};
+    const updatedProfile = responseData?.profile || responseBody?.profile || responseData?.teacher_profile || responseData;
+    applyCanonicalTeacherProfile(updatedProfile);
+    return updatedProfile;
+  };
+
+  const toEducationPayload = (records) => records.map(({ education_id, degree, institution, start_year, end_year, status }) => ({
+    education_id: education_id || null,
+    degree: degree.trim(),
+    institution: institution.trim(),
+    start_year: Number(start_year),
+    end_year: end_year ? Number(end_year) : null,
+    status,
+  }));
+
+  const toExperiencePayload = (records) => records.map(({ experience_id, role, school, location, start_date, end_date, description }) => ({
+    experience_id: experience_id || null,
+    role: role.trim(),
+    school: school.trim(),
+    location: location.trim(),
+    start_date,
+    end_date: end_date || null,
+    description: description.trim(),
+  }));
+
+  const handleSaveEducation = async () => {
+    const startYear = String(newEduForm.startYear || '');
+    const endYear = String(newEduForm.endYear || '');
+    if (!newEduForm.degree.trim() || !newEduForm.institution.trim()) {
+      setEducationError('Degree and institution are required.');
+      return;
+    }
+    if (!/^\d{4}$/.test(startYear) || (endYear && !/^\d{4}$/.test(endYear))) {
+      setEducationError('Start and end years must be four digits.');
+      return;
+    }
+    if (endYear && Number(endYear) < Number(startYear)) {
+      setEducationError('The end year must be after the start year.');
+      return;
+    }
+    if (!['Completed', 'In Progress', 'Pending'].includes(newEduForm.status)) {
+      setEducationError('Select a valid education status.');
+      return;
+    }
+
+    const educationRecord = {
+      education_id: editingEducationId || null,
+      degree: newEduForm.degree.trim(),
+      institution: newEduForm.institution.trim(),
+      start_year: startYear,
+      end_year: endYear,
+      status: newEduForm.status,
+    };
+    const nextEducationList = editingEducationId
+      ? educationList.map((item) => item.education_id === editingEducationId ? { ...item, ...educationRecord } : item)
+      : [...educationList, educationRecord];
+
+    try {
+      setSavingEducation(true);
+      setEducationError('');
+      await saveUnifiedTeacherProfile({
+        education_history: toEducationPayload(nextEducationList),
+        teaching_experience: toExperiencePayload(experienceList),
+      });
+      setNewEduForm({ degree: '', institution: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+      setEditingEducationId(null);
+      setShowAddEduModal(false);
+    } catch (err) {
+      setEducationError(profileApiErrorMessage(err, 'Unable to save education.'));
+    } finally {
+      setSavingEducation(false);
+    }
+  };
+
+  const handleDeleteExperience = async (experience) => {
+    const nextExperienceList = experienceList.filter((item) => item !== experience);
+    try {
+      setSavingExperience(true);
+      setExperienceError('');
+      await saveUnifiedTeacherProfile({
+        education_history: toEducationPayload(educationList),
+        teaching_experience: toExperiencePayload(nextExperienceList),
+      });
+    } catch (err) {
+      setExperienceError(profileApiErrorMessage(err, 'Unable to delete teaching experience.'));
+    } finally {
+      setSavingExperience(false);
+    }
+  };
+
+  const handleDeleteEducation = async (education) => {
+    const nextEducationList = educationList.filter((item) => item !== education);
+    try {
+      setSavingEducation(true);
+      setEducationError('');
+      await saveUnifiedTeacherProfile({
+        education_history: toEducationPayload(nextEducationList),
+        teaching_experience: toExperiencePayload(experienceList),
+      });
+    } catch (err) {
+      setEducationError(profileApiErrorMessage(err, 'Unable to delete education.'));
+    } finally {
+      setSavingEducation(false);
+    }
+  };
+
   const handleSaveProfessionalInfo = async () => {
     try {
       setSavingProfessionalInfo(true);
       setAppError('');
-      await profileService.updateTeacher({
-        role_title: profTitle.trim(),
-        bio: profSummary.trim(),
-        experience_years: Number.parseInt(profYearsExp, 10) || 0,
-        preferred_employment_type: profEmpPref,
-        availability: profTeachMode,
-        skills: profSubjects.join(', '),
-        teaching_levels: profTeachingLevels,
+      if (profSummary.length > 5000) {
+        setAppError('Bio must not exceed 5000 characters.');
+        return;
+      }
+      await saveUnifiedTeacherProfile({
+        education_history: toEducationPayload(educationList),
+        teaching_experience: toExperiencePayload(experienceList),
       });
-      await refreshTeacherProfile();
       setShowProfileUpdatedModal(true);
     } catch (err) {
-      setAppError(apiErrorMessage(err, 'Unable to save professional information.'));
+      setAppError(profileApiErrorMessage(err, 'Unable to save professional information.'));
     } finally {
       setSavingProfessionalInfo(false);
     }
   };
 
   const handleSaveExperience = async () => {
-    if (!expForm.role.trim() || !expForm.school.trim() || !expForm.start_date || !expForm.end_date) {
-      setExperienceError('Complete the role, school, start month, and end month.');
+    if (!expForm.role.trim() || !expForm.school.trim() || !/^\d{4}-\d{2}$/.test(expForm.start_date) || (expForm.end_date && !/^\d{4}-\d{2}$/.test(expForm.end_date))) {
+      setExperienceError('Complete the role, school, and valid start and end months.');
       return;
     }
-    if (expForm.end_date < expForm.start_date) {
+    if (expForm.end_date && expForm.end_date < expForm.start_date) {
       setExperienceError('The end month must be after the start month.');
+      return;
+    }
+    if (expForm.description.length > 5000) {
+      setExperienceError('Description must not exceed 5000 characters.');
       return;
     }
 
@@ -739,38 +916,20 @@ export default function TeacherDashboard() {
       school: expForm.school.trim(),
       location: expForm.location.trim(),
       description: expForm.description.trim(),
-      period: `${formatMonthYear(expForm.start_date)} - ${formatMonthYear(expForm.end_date)}`,
+      period: [formatMonthYear(expForm.start_date), formatMonthYear(expForm.end_date)].filter(Boolean).join(' - '),
     };
     const nextExperienceList = editingExpId
-      ? experienceList.map((item) => item.id === editingExpId ? { ...item, ...experienceRecord } : item)
-      : [...experienceList, { id: crypto.randomUUID(), ...experienceRecord }];
-    const teachingExperience = nextExperienceList.map(({ role, school, location, start_date, end_date, description }) => ({
-      role,
-      school,
-      location,
-      start_date,
-      end_date,
-      description,
-    }));
+      ? experienceList.map((item) => item.experience_id === editingExpId ? { ...item, ...experienceRecord, experience_id: editingExpId } : item)
+      : [...experienceList, { ...experienceRecord, experience_id: null }];
+    const teachingExperience = toExperiencePayload(nextExperienceList);
 
     try {
       setSavingExperience(true);
       setExperienceError('');
-      await profileService.updateTeacher({ teaching_experience: teachingExperience });
-      const profileResponse = await profileService.getMe();
-      const profileData = profileResponse?.data?.data || {};
-      const savedProfile = profileData?.profile || profileData?.teacher_profile || profileData || {};
-      const savedExperiences = normalizeExperienceRecords(
-        savedProfile.teaching_experience ?? savedProfile.work_experience ?? savedProfile.experience_history
-      );
-      if (!savedExperiences.length) {
-        setExperienceError('The experience was submitted, but the profile API did not return it. Please try again.');
-        return;
-      }
-      setExperienceList(savedExperiences);
+      await saveUnifiedTeacherProfile({ teaching_experience: teachingExperience });
       setShowAddExpModal(false);
     } catch (err) {
-      setExperienceError(apiErrorMessage(err, 'Unable to save teaching experience.'));
+      setExperienceError(profileApiErrorMessage(err, 'Unable to save teaching experience.'));
     } finally {
       setSavingExperience(false);
     }
@@ -913,13 +1072,48 @@ export default function TeacherDashboard() {
     }
   }, [activeTab]);
 
-  const openApplyModal = () => {
+  const openApplyModal = async (targetJob = null) => {
+    const jobToApply = targetJob || selectedJob;
+    if (!jobToApply) return;
+
+    setSelectedJob(jobToApply);
+    const jobId = normalizeJobId(jobToApply.job_id || jobToApply.id);
+
+    setApplicationForm({
+      name: profileFullName,
+      email: personalEmail || user?.email || '',
+      phone: personalPhone || user?.phone || '',
+      yearsExperience: profYearsExp || '',
+      resumeFile: null,
+      useExistingCv: true,
+      coverLetter: '',
+      additionalInfo: '',
+    });
     setApplicationStep(1);
+    setAlreadyAppliedState(false);
+    setApplicationError('');
+    setApplyDetailsLoading(true);
     setShowApplyModal(true);
+
+    try {
+      const response = await applicationService.getApplyDetails(jobId);
+      const payload = response?.data?.data ?? response?.data ?? {};
+      if (payload.already_applied) {
+        setAlreadyAppliedState(true);
+      }
+      const cvUrl = payload.existing_cv_url || activeResume?.url || profileState?.cv_url || '';
+      setExistingCvUrl(cvUrl);
+    } catch (_err) {
+      setExistingCvUrl(activeResume?.url || profileState?.cv_url || '');
+    } finally {
+      setApplyDetailsLoading(false);
+    }
   };
 
   const closeApplyModal = () => {
     setShowApplyModal(false);
+    setAlreadyAppliedState(false);
+    setApplicationError('');
   };
 
   const handleShareSelectedJob = async (mode) => {
@@ -940,7 +1134,7 @@ export default function TeacherDashboard() {
 
   const handleFileInput = (e) => {
     const file = e.target.files?.[0] || null;
-    setApplicationForm(prev => ({ ...prev, resumeFile: file }));
+    setApplicationForm(prev => ({ ...prev, resumeFile: file, useExistingCv: false }));
   };
 
   const refreshApplications = async () => {
@@ -954,38 +1148,85 @@ export default function TeacherDashboard() {
   };
 
   const goToNextStep = () => {
+    setApplicationError('');
+    if (applicationStep === 1) {
+      if (!applicationForm.name.trim() || !applicationForm.email.trim() || !applicationForm.phone.trim()) {
+        setApplicationError('Please complete your name, email address, and phone number before continuing.');
+        return;
+      }
+    } else if (applicationStep === 2) {
+      const hasCv = (applicationForm.useExistingCv && (existingCvUrl || activeResume?.url || profileState?.cv_url)) || Boolean(applicationForm.resumeFile);
+      if (!hasCv) {
+        setApplicationError('Please select your profile CV or upload a new CV document.');
+        return;
+      }
+    }
     setApplicationStep(prev => Math.min(prev + 1, 3));
   };
 
   const goToPrevStep = () => {
+    setApplicationError('');
     setApplicationStep(prev => Math.max(prev - 1, 1));
   };
 
-  const submitJobApplication = async ({ customNote } = {}) => {
+  const submitJobApplication = async () => {
     if (!selectedJob) {
       setApplicationError('Please select a job before applying.');
       return;
     }
 
     const jobId = normalizeJobId(selectedJob.job_id || selectedJob.id);
-    const coverLetter = customNote || applicationForm.motivation || applicationNote || 'I am highly interested in this role.';
+    const coverLetterText = applicationForm.coverLetter.trim();
+
+    if (!coverLetterText) {
+      setApplicationError('Please write a cover letter before submitting your application.');
+      return;
+    }
+
+    if (coverLetterText.length < 30) {
+      setApplicationError('Your cover letter must be at least 30 characters long.');
+      return;
+    }
+
+    const hasCv = (applicationForm.useExistingCv && (existingCvUrl || activeResume?.url || profileState?.cv_url)) || Boolean(applicationForm.resumeFile);
+    if (!hasCv) {
+      setApplicationError('Please upload a CV document or use your existing profile CV.');
+      return;
+    }
 
     try {
+      setSubmittingApplication(true);
       setApplicationError('');
-      await applicationService.applyToJob(jobId, {
-        cover_letter: coverLetter
-      });
+
+      let payload;
+      if (!applicationForm.useExistingCv && applicationForm.resumeFile) {
+        payload = new FormData();
+        payload.append('cover_letter', coverLetterText);
+        if (applicationForm.additionalInfo.trim()) {
+          payload.append('additional_info', applicationForm.additionalInfo.trim());
+        }
+        payload.append('cv', applicationForm.resumeFile);
+      } else {
+        payload = {
+          cover_letter: coverLetterText,
+          ...(applicationForm.additionalInfo.trim() ? { additional_info: applicationForm.additionalInfo.trim() } : {}),
+        };
+      }
+
+      await applicationService.applyToJob(jobId, payload);
 
       try {
         await refreshApplications();
       } catch (refreshError) {
-        setAppError(apiErrorMessage(refreshError, 'Application submitted, but applications could not be refreshed.'));
+        setAppError(apiErrorMessage(refreshError, 'Application submitted, but applications list could not be refreshed.'));
       }
 
       setShowApplyModal(false);
       setActiveTab('application-submitted');
     } catch (err) {
       setApplicationError(apiErrorMessage(err, 'Unable to submit your application right now.'));
+    } finally {
+      setSubmittingApplication(false);
     }
   };
 
@@ -1470,9 +1711,7 @@ export default function TeacherDashboard() {
                               className="td-quick-apply"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActiveTab('jobs');
-                                setSelectedJobOrigin('dashboard');
-                                setSelectedJob(job);
+                                openApplyModal(job);
                               }}
                             >
                               Quick Apply →
@@ -1747,7 +1986,7 @@ export default function TeacherDashboard() {
                             <div className="td-hot-salary-range">SALARY RANGE</div>
                             <div className="td-hot-footer">
                               <div className="td-hot-salary-value">{job.salaryStr}</div>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={(e) => { e.stopPropagation(); openApplyModal(job); }}>
                                 Apply Fast
                               </motion.button>
                             </div>
@@ -1986,7 +2225,7 @@ export default function TeacherDashboard() {
                       </div>
                     ) : (
                       <>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="td-jd-apply-btn" onClick={() => submitJobApplication({ customNote: applicationForm.motivation || applicationNote || 'I am highly interested in this role.' })}>Apply Now</motion.button>
+                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="td-jd-apply-btn" onClick={() => openApplyModal(selectedJob)}>Apply Now</motion.button>
                         <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`td-jd-save-btn ${savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'td-jd-save-btn--saved' : ''}`} onClick={() => handleToggleSaveJob(selectedJob.job_id || selectedJob.id)}>
                           <FiBookmark size={18} style={{ strokeWidth: 2.5, fill: savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'currentColor' : 'none' }} />
                           {savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'Saved' : 'Save Job'}
@@ -2300,6 +2539,8 @@ export default function TeacherDashboard() {
                         <p className="td-app-school">{app.school}</p>
                         <div className="td-app-meta"><span><FiMapPin /> {app.location || 'Location not available'}</span>{app.employmentType && <span><FiBriefcase /> {app.employmentType}</span>}<span><FiCalendar /> Applied: {app.appliedDate}</span></div>
                         {app.interview && <div className="td-app-interview"><FiCalendar /> Interview: {app.interview.interview_date || 'Date not provided'} at {app.interview.interview_time || 'Time not provided'}{app.interview.venue ? ` - ${app.interview.venue}` : app.interview.meeting_link ? ` - ${app.interview.meeting_link}` : ''}</div>}
+                        {app.coverLetter && <div className="td-app-cover-letter"><FiFileText /> <span><strong>Cover letter:</strong> {app.coverLetter}</span></div>}
+                        {app.additionalInfo && <div className="td-app-additional-info"><FiInfo /> <span><strong>Additional information:</strong> {app.additionalInfo}</span></div>}
                       </div>
                     </div>
                     <div className="td-app-card-footer">
@@ -3063,7 +3304,7 @@ export default function TeacherDashboard() {
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiUser size={18} />
                         </div>
-                        <FiArrowRight size={18} className="td-psc-arrow" />
+                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Personal Info</h3>
                     </motion.div>
@@ -3074,7 +3315,7 @@ export default function TeacherDashboard() {
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiBriefcase size={18} />
                         </div>
-                        <FiArrowRight size={18} className="td-psc-arrow" />
+                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Professional Info</h3>
                     </motion.div>
@@ -3088,7 +3329,7 @@ export default function TeacherDashboard() {
                             <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
                           </svg>
                         </div>
-                        <FiArrowRight size={18} className="td-psc-arrow" />
+                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Education</h3>
                     </motion.div>
@@ -3103,7 +3344,7 @@ export default function TeacherDashboard() {
                             <path d="M12 7v5l4 2" />
                           </svg>
                         </div>
-                        <FiArrowRight size={18} className="td-psc-arrow" />
+                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Teaching Experience</h3>
                     </motion.div>
@@ -3117,7 +3358,7 @@ export default function TeacherDashboard() {
                             <path d="M9 12l2 2 4-4" />
                           </svg>
                         </div>
-                        <FiArrowRight size={18} className="td-psc-arrow" />
+                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">TRCN Certification</h3>
                     </motion.div>
@@ -3128,7 +3369,7 @@ export default function TeacherDashboard() {
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiFileText size={18} />
                         </div>
-                        <FiArrowRight size={18} className="td-psc-arrow" />
+                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">CV / Resume</h3>
                     </motion.div>
@@ -3139,7 +3380,7 @@ export default function TeacherDashboard() {
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiClock size={18} />
                         </div>
-                        <FiArrowRight size={18} className="td-psc-arrow" />
+                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Availability</h3>
                     </motion.div>
@@ -3568,7 +3809,12 @@ export default function TeacherDashboard() {
                         <button
                           type="button"
                           className="td-edu-add-btn"
-                          onClick={() => setShowAddEduModal(true)}
+                          onClick={() => {
+                            setEditingEducationId(null);
+                            setEducationError('');
+                            setNewEduForm({ degree: '', institution: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+                            setShowAddEduModal(true);
+                          }}
                         >
                           + Add Education
                         </button>
@@ -3610,13 +3856,47 @@ export default function TeacherDashboard() {
                                 <span>{edu.status}</span>
                               </span>
                             </div>
+                            <div className="td-exp-actions">
+                              <button
+                                type="button"
+                                className="td-exp-action-btn td-exp-action-edit"
+                                onClick={() => {
+                                  setEditingEducationId(edu.education_id);
+                                  setNewEduForm({
+                                    degree: edu.degree,
+                                    institution: edu.institution,
+                                    startYear: String(edu.start_year || ''),
+                                    endYear: String(edu.end_year || ''),
+                                    status: edu.status || 'Completed',
+                                  });
+                                  setEducationError('');
+                                  setShowAddEduModal(true);
+                                }}
+                              >
+                                <FiEdit2 size={13} />
+                                <span>Edit</span>
+                              </button>
+                              <button
+                                type="button"
+                                className="td-exp-action-btn td-exp-action-delete"
+                                onClick={() => handleDeleteEducation(edu)}
+                              >
+                                <FiTrash2 size={13} />
+                                <span>Delete</span>
+                              </button>
+                            </div>
                           </div>
                         ))}
 
                         {/* Add Qualification Dashed Card */}
                         <div
                           className="td-edu-add-card"
-                          onClick={() => setShowAddEduModal(true)}
+                          onClick={() => {
+                            setEditingEducationId(null);
+                            setEducationError('');
+                            setNewEduForm({ degree: '', institution: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+                            setShowAddEduModal(true);
+                          }}
                         >
                           <div className="td-edu-add-icon-circle">
                             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -3637,7 +3917,7 @@ export default function TeacherDashboard() {
                         <div className="td-modal-overlay" onClick={() => setShowAddEduModal(false)}>
                           <div className="td-modal-content td-edu-modal-content" onClick={(e) => e.stopPropagation()}>
                             <div className="td-modal-header">
-                              <h2>Add Qualification</h2>
+                              <h2>{editingEducationId ? 'Edit Qualification' : 'Add Qualification'}</h2>
                               <button className="td-modal-close" onClick={() => setShowAddEduModal(false)}>✕</button>
                             </div>
                             <div className="td-modal-body">
@@ -3691,7 +3971,20 @@ export default function TeacherDashboard() {
                                   />
                                 </div>
                               </div>
+                              <div className="td-pers-field-group">
+                                <label className="td-pers-label">Status</label>
+                                <select
+                                  className="td-pers-input"
+                                  value={newEduForm.status}
+                                  onChange={(e) => setNewEduForm({ ...newEduForm, status: e.target.value })}
+                                >
+                                  <option value="Completed">Completed</option>
+                                  <option value="In Progress">In Progress</option>
+                                  <option value="Pending">Pending</option>
+                                </select>
+                              </div>
                             </div>
+                            {educationError && <p className="td-exp-modal-error">{educationError}</p>}
                             <div className="td-modal-footer">
                               <button
                                 type="button"
@@ -3703,30 +3996,10 @@ export default function TeacherDashboard() {
                               <button
                                 type="button"
                                 className="td-pers-save-btn"
-                                onClick={() => {
-                                  if (newEduForm.degree && newEduForm.institution) {
-                                    setEducationList([
-                                      ...educationList,
-                                      {
-                                        id: Date.now(),
-                                        degree: newEduForm.degree,
-                                        institution: newEduForm.institution,
-                                        period: `${newEduForm.startYear} – ${newEduForm.endYear}`,
-                                        status: 'Completed'
-                                      }
-                                    ]);
-                                    setNewEduForm({
-                                      degree: '',
-                                      institution: '',
-                                      startYear: '2015',
-                                      endYear: '2019',
-                                      status: 'Completed'
-                                    });
-                                    setShowAddEduModal(false);
-                                  }
-                                }}
+                                disabled={savingEducation}
+                                onClick={handleSaveEducation}
                               >
-                                Add Education
+                                {savingEducation ? 'Saving...' : editingEducationId ? 'Save Changes' : 'Add Education'}
                               </button>
                             </div>
                           </div>
@@ -3814,7 +4087,7 @@ export default function TeacherDashboard() {
                                   type="button"
                                   className="td-exp-action-btn td-exp-action-edit"
                                   onClick={() => {
-                                    setEditingExpId(exp.id);
+                                    setEditingExpId(exp.experience_id);
                                     setExpForm({
                                       role: exp.role,
                                       school: exp.school,
@@ -3834,7 +4107,7 @@ export default function TeacherDashboard() {
                                   type="button"
                                   className="td-exp-action-btn td-exp-action-delete"
                                   onClick={() => {
-                                    setExperienceList(experienceList.filter(item => item.id !== exp.id));
+                                    handleDeleteExperience(exp);
                                   }}
                                 >
                                   <FiTrash2 size={13} />
@@ -4498,7 +4771,8 @@ export default function TeacherDashboard() {
                             className="td-success-dashboard-btn"
                             onClick={() => {
                               setShowProfileUpdatedModal(false);
-                              setActiveTab('overview');
+                              setActiveTab('dashboard');
+                              setProfileSubTab('overview');
                             }}
                           >
                             Go to Dashboard
@@ -4548,107 +4822,233 @@ export default function TeacherDashboard() {
         </div>
       </div>
 
-      {/* ── Desktop FAB ── */}
+      {/* ── Application Modal ── */}
       {showApplyModal && (
-        <div className="td-modal-overlay">
-          <div className="td-modal">
+        <div className="td-modal-overlay" onClick={closeApplyModal}>
+          <div className="td-modal" onClick={(e) => e.stopPropagation()}>
             <div className="td-modal-header">
               <div>
-                <h2>Apply for {selectedJob?.title || 'this job'}</h2>
-                <p>Complete the application steps below to proceed.</p>
+                <h2>Apply for {selectedJob?.title || 'this position'}</h2>
+                <p>{selectedJob?.school} • {selectedJob?.location}</p>
               </div>
-              <button className="td-modal-close" onClick={closeApplyModal}>&times;</button>
+              <button type="button" className="td-modal-close" onClick={closeApplyModal}>&times;</button>
             </div>
 
-            <div className="td-modal-step-indicator">
-              <span className={applicationStep === 1 ? 'active' : ''}>1</span>
-              <span className={applicationStep === 2 ? 'active' : ''}>2</span>
-              <span className={applicationStep === 3 ? 'active' : ''}>3</span>
-            </div>
-
-            <form className="td-modal-form" onSubmit={handleSubmitApplication}>
-              {applicationError && (
-                <div className="td-form-error" style={{ marginBottom: '16px', color: '#b91c1c', fontSize: '14px' }}>{applicationError}</div>
-              )}
-
-              {applicationStep === 1 && (
-                <div className="td-modal-step">
-                  <h3>Personal details</h3>
-                  <label>
-                    Full name
-                    <input name="name" type="text" value={applicationForm.name} onChange={handleApplicationInput} required placeholder="Jane Doe" />
-                  </label>
-                  <label>
-                    Email address
-                    <input name="email" type="email" value={applicationForm.email} onChange={handleApplicationInput} required placeholder="jane@example.com" />
-                  </label>
-                  <label>
-                    Phone number
-                    <input name="phone" type="tel" value={applicationForm.phone} onChange={handleApplicationInput} required placeholder="+234 800 000 0000" />
-                  </label>
+            {applyDetailsLoading ? (
+              <div style={{ padding: '48px 24px', textAlign: 'center', color: '#64748b' }}>
+                <FiRotateCw size={28} className="spin" style={{ marginBottom: '14px', color: '#16a34a' }} />
+                <p style={{ fontWeight: 600 }}>Checking application requirements...</p>
+              </div>
+            ) : alreadyAppliedState ? (
+              <div style={{ padding: '28px 20px', textAlign: 'center' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#dcfce7', color: '#166534', display: 'grid', placeItems: 'center', margin: '0 auto 16px', fontSize: '24px', fontWeight: 700 }}>✓</div>
+                <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#0f172a', marginBottom: '8px' }}>Already Applied</h3>
+                <p style={{ color: '#475569', marginBottom: '24px', lineHeight: 1.6 }}>You have already submitted an application for this role at <strong>{selectedJob?.school}</strong>.</p>
+                <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="td-modal-primary-btn"
+                    onClick={() => {
+                      closeApplyModal();
+                      setActiveTab('applications');
+                    }}
+                  >
+                    View Application Status
+                  </button>
+                  <button type="button" className="td-modal-secondary-btn" onClick={closeApplyModal}>
+                    Close
+                  </button>
                 </div>
-              )}
+              </div>
+            ) : (
+              <>
+                <div className="td-modal-step-indicator">
+                  <span className={applicationStep === 1 ? 'active' : ''}>1</span>
+                  <span className={applicationStep === 2 ? 'active' : ''}>2</span>
+                  <span className={applicationStep === 3 ? 'active' : ''}>3</span>
+                </div>
 
-              {applicationStep === 2 && (
-                <div className="td-modal-step">
-                  <h3>Qualifications</h3>
-                  <label>
-                    Years of teaching experience
-                    <input name="yearsExperience" type="text" value={applicationForm.yearsExperience} onChange={handleApplicationInput} required placeholder="e.g. 5 years" />
-                  </label>
-                  <label className="td-upload-label">
-                    Resume or CV upload
-                    <div className="td-upload-input-wrapper">
-                      <input
-                        name="resumeFile"
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        onChange={handleFileInput}
-                        required
-                      />
-                      <div className="td-upload-placeholder">
-                        <span>Choose a file or drag it here</span>
-                        <small>Accepted: PDF, DOC, DOCX</small>
+                <form className="td-modal-form" onSubmit={handleSubmitApplication}>
+                  {applicationError && (
+                    <div className="td-form-error" style={{ padding: '12px 16px', borderRadius: '12px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '14px', marginBottom: '18px' }}>
+                      {applicationError}
+                    </div>
+                  )}
+
+                  {applicationStep === 1 && (
+                    <div className="td-modal-step">
+                      <h3>1. Candidate Details</h3>
+                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Verify your contact information before proceeding to your CV and cover letter.</p>
+                      <label>
+                        Full name
+                        <input name="name" type="text" value={applicationForm.name} onChange={handleApplicationInput} required placeholder="Jane Doe" />
+                      </label>
+                      <label>
+                        Email address
+                        <input name="email" type="email" value={applicationForm.email} onChange={handleApplicationInput} required placeholder="jane@example.com" />
+                      </label>
+                      <label>
+                        Phone number
+                        <input name="phone" type="tel" value={applicationForm.phone} onChange={handleApplicationInput} required placeholder="+234 800 000 0000" />
+                      </label>
+                      <label>
+                        Years of teaching experience
+                        <input name="yearsExperience" type="text" value={applicationForm.yearsExperience} onChange={handleApplicationInput} placeholder="e.g. 5 years" />
+                      </label>
+                    </div>
+                  )}
+
+                  {applicationStep === 2 && (
+                    <div className="td-modal-step">
+                      <h3>2. Curriculum Vitae (CV)</h3>
+                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Attach your CV to give the employer a complete view of your academic background.</p>
+
+                      {(existingCvUrl || activeResume?.url || profileState?.cv_url) && (
+                        <div
+                          style={{
+                            padding: '14px 16px',
+                            borderRadius: '14px',
+                            border: applicationForm.useExistingCv ? '2px solid #16a34a' : '1px solid #e2e8f0',
+                            background: applicationForm.useExistingCv ? '#f0fdf4' : '#fff',
+                            marginBottom: '16px',
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => setApplicationForm(prev => ({ ...prev, useExistingCv: true }))}
+                        >
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0, cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="cvChoice"
+                              checked={applicationForm.useExistingCv}
+                              onChange={() => setApplicationForm(prev => ({ ...prev, useExistingCv: true }))}
+                            />
+                            <div>
+                              <strong style={{ fontSize: '14px', color: '#0f172a' }}>Use profile CV on file</strong>
+                              <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+                                {(existingCvUrl || activeResume?.url || profileState?.cv_url)?.split('/').pop() || activeResume?.name || 'Current Profile CV'}
+                              </p>
+                            </div>
+                          </label>
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          padding: '14px 16px',
+                          borderRadius: '14px',
+                          border: !applicationForm.useExistingCv || !(existingCvUrl || activeResume?.url || profileState?.cv_url) ? '2px solid #16a34a' : '1px solid #e2e8f0',
+                          background: !applicationForm.useExistingCv || !(existingCvUrl || activeResume?.url || profileState?.cv_url) ? '#f0fdf4' : '#fff',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => setApplicationForm(prev => ({ ...prev, useExistingCv: false }))}
+                      >
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: 0, cursor: 'pointer' }}>
+                          <input
+                            type="radio"
+                            name="cvChoice"
+                            checked={!applicationForm.useExistingCv || !(existingCvUrl || activeResume?.url || profileState?.cv_url)}
+                            onChange={() => setApplicationForm(prev => ({ ...prev, useExistingCv: false }))}
+                          />
+                          <div>
+                            <strong style={{ fontSize: '14px', color: '#0f172a' }}>Upload a new CV document</strong>
+                            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>Upload a PDF, DOC, or DOCX document for this job application.</p>
+                          </div>
+                        </label>
+
+                        {(!applicationForm.useExistingCv || !(existingCvUrl || activeResume?.url || profileState?.cv_url)) && (
+                          <div className="td-upload-input-wrapper" style={{ marginTop: '14px' }}>
+                            <input
+                              name="resumeFile"
+                              type="file"
+                              accept=".pdf,.doc,.docx"
+                              onChange={(e) => {
+                                handleFileInput(e);
+                                setApplicationForm(prev => ({ ...prev, useExistingCv: false }));
+                              }}
+                            />
+                            <div className="td-upload-placeholder">
+                              <FiDownload size={22} color="#16a34a" />
+                              <span>Click to browse or drop your CV file here</span>
+                              <small>Accepted formats: PDF, DOC, DOCX</small>
+                            </div>
+                            {applicationForm.resumeFile && (
+                              <div className="td-upload-preview" style={{ width: '100%', textAlign: 'center', fontWeight: 600, color: '#166534' }}>
+                                Selected file: {applicationForm.resumeFile.name}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
-                    {applicationForm.resumeFile && (
-                      <div className="td-upload-preview">
-                        <strong>Selected file:</strong> {applicationForm.resumeFile.name}
+                  )}
+
+                  {applicationStep === 3 && (
+                    <div className="td-modal-step">
+                      <h3>3. Cover Letter & Additional Information</h3>
+                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Provide a tailored cover letter explaining why you are the best fit for this position.</p>
+
+                      <label>
+                        Cover letter <span style={{ color: '#dc2626' }}>*</span>
+                        <textarea
+                          name="coverLetter"
+                          value={applicationForm.coverLetter}
+                          onChange={handleApplicationInput}
+                          placeholder="Introduce yourself, your teaching experience, key accomplishments, and why you are interested in joining this school (minimum 30 characters)..."
+                          required
+                          style={{ minHeight: '130px' }}
+                        />
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
+                          <span style={{ color: applicationForm.coverLetter.trim().length >= 30 ? '#166534' : '#dc2626' }}>
+                            {applicationForm.coverLetter.trim().length >= 30
+                              ? '✓ Minimum length requirement satisfied'
+                              : `Must be at least 30 characters (${applicationForm.coverLetter.trim().length}/30)`}
+                          </span>
+                          <span style={{ color: '#64748b' }}>{applicationForm.coverLetter.trim().length} chars</span>
+                        </div>
+                      </label>
+
+                      <label style={{ marginTop: '14px' }}>
+                        Additional relevant information (Optional)
+                        <textarea
+                          name="additionalInfo"
+                          value={applicationForm.additionalInfo}
+                          onChange={handleApplicationInput}
+                          placeholder="Include any extra details such as your availability date, TRCN registration number, salary preferences, or references..."
+                          style={{ minHeight: '80px' }}
+                        />
+                      </label>
+
+                      <div className="td-modal-job-summary" style={{ marginTop: '16px' }}>
+                        <div><strong>Role:</strong> {selectedJob?.title}</div>
+                        <div><strong>School:</strong> {selectedJob?.school}</div>
+                        <div><strong>CV Attached:</strong> {applicationForm.useExistingCv ? 'Profile CV on file' : (applicationForm.resumeFile?.name || 'File attached')}</div>
                       </div>
+                    </div>
+                  )}
+
+                  <div className="td-modal-actions" style={{ marginTop: '24px' }}>
+                    {applicationStep > 1 ? (
+                      <button type="button" className="td-modal-secondary-btn" onClick={goToPrevStep} disabled={submittingApplication}>Back</button>
+                    ) : (
+                      <div />
                     )}
-                  </label>
-                </div>
-              )}
 
-              {applicationStep === 3 && (
-                <div className="td-modal-step">
-                  <h3>Why you</h3>
-                  <label>
-                    Why should this school hire you?
-                    <textarea name="motivation" value={applicationForm.motivation} onChange={handleApplicationInput} required placeholder="Tell them why you're the best fit."></textarea>
-                  </label>
-                  <div className="td-modal-job-summary">
-                    <strong>Role:</strong> {selectedJob?.title}
-                    <strong>School:</strong> {selectedJob?.school}
-                    <strong>Location:</strong> {selectedJob?.location}
+                    {applicationStep < 3 ? (
+                      <button type="button" className="td-modal-primary-btn" onClick={goToNextStep}>Next step</button>
+                    ) : (
+                      <button
+                        type="submit"
+                        className="td-modal-primary-btn"
+                        disabled={submittingApplication || applicationForm.coverLetter.trim().length < 30}
+                        style={{ opacity: submittingApplication || applicationForm.coverLetter.trim().length < 30 ? 0.7 : 1 }}
+                      >
+                        {submittingApplication ? 'Submitting Application...' : 'Submit Application'}
+                      </button>
+                    )}
                   </div>
-                </div>
-              )}
-
-              <div className="td-modal-actions">
-                {applicationStep > 1 ? (
-                  <button type="button" className="td-modal-secondary-btn" onClick={goToPrevStep}>Back</button>
-                ) : (
-                  <div />
-                )}
-
-                {applicationStep < 3 ? (
-                  <button type="button" className="td-modal-primary-btn" onClick={goToNextStep}>Next step</button>
-                ) : (
-                  <button type="submit" className="td-modal-primary-btn">Submit application</button>
-                )}
-              </div>
-            </form>
+                </form>
+              </>
+            )}
           </div>
         </div>
       )}
@@ -8286,6 +8686,25 @@ export default function TeacherDashboard() {
         .td-app-meta { display: flex; flex-wrap: wrap; gap: 9px; color: #8a95a3; font-size: 9px; }
         .td-app-meta span { display: inline-flex; align-items: center; gap: 3px; }
         .td-app-meta svg { width: 11px; height: 11px; }
+        .td-app-cover-letter,
+        .td-app-additional-info {
+          display: flex;
+          align-items: flex-start;
+          gap: 6px;
+          margin-top: 8px;
+          color: #64748b;
+          font-size: 10px;
+          line-height: 1.5;
+        }
+        .td-app-cover-letter svg { color: #15803d; flex-shrink: 0; margin-top: 2px; }
+        .td-app-additional-info svg { color: #2563eb; flex-shrink: 0; margin-top: 2px; }
+        .td-app-cover-letter span,
+        .td-app-additional-info span {
+          display: block;
+          overflow-wrap: anywhere;
+        }
+        .td-app-cover-letter strong,
+        .td-app-additional-info strong { color: #475569; }
         .td-app-card-footer { flex: 0 0 auto; min-width: 105px; padding: 0; border: 0; flex-direction: column; align-items: flex-end; gap: 26px; }
         .td-app-status-badge { padding: 3px 9px; border-radius: 999px; background: #fff1b8; color: #8a6910; font-size: 9px; text-transform: capitalize; }
         .td-app-status-badge--shortlisted { background: #d7f8d6; color: #238b37; }
@@ -8328,7 +8747,26 @@ export default function TeacherDashboard() {
           display: flex;
           flex-direction: column;
           gap: 16px;
-          max-width: 640px;
+          width: 100%;
+          max-width: 100%;
+        }
+        .td-psc-edit-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #059669;
+          background: #ecfdf5;
+          border: 1px solid #a7f3d0;
+          padding: 4px 10px;
+          border-radius: 999px;
+          transition: all 0.2s;
+        }
+        .td-profile-section-card:hover .td-psc-edit-badge {
+          background: #10b981;
+          color: #fff;
+          border-color: #10b981;
         }
         .td-settings-category-card {
           display: flex;
@@ -12196,7 +12634,7 @@ export default function TeacherDashboard() {
 
         .td-cv-grid-layout {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
           gap: 28px;
           align-items: start;
         }
@@ -12260,6 +12698,7 @@ export default function TeacherDashboard() {
           display: flex;
           align-items: center;
           gap: 14px;
+          min-width: 0;
         }
 
         .td-cv-pdf-icon-box {
@@ -12278,6 +12717,14 @@ export default function TeacherDashboard() {
           font-weight: 700;
           color: #1E293B;
           margin: 0 0 3px;
+          min-width: 0;
+          overflow-wrap: anywhere;
+          word-break: break-word;
+        }
+
+        .td-cv-file-info {
+          min-width: 0;
+          flex: 1 1 auto;
         }
 
         .td-cv-file-info span {

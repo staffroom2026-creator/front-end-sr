@@ -170,7 +170,18 @@ export default function AdminDashboard() {
     if (/^(data:|https?:\/\/)/i.test(assetPath)) return assetPath;
     return `${API_ORIGIN}/${String(assetPath).replace(/^\/+/, "")}`;
   };
-  const isSchool = user?.role === "school";
+  const normalizedUserRole = String(user?.role || user?.user_role || user?.role_name || "").toLowerCase();
+  const isSchool = normalizedUserRole === "school" || normalizedUserRole === "school_admin";
+
+  const extractApiList = (response, keys = []) => {
+    const payload = response?.data?.data ?? response?.data ?? response ?? {};
+    if (Array.isArray(payload)) return payload;
+    for (const key of keys) {
+      if (Array.isArray(payload?.[key])) return payload[key];
+    }
+    if (Array.isArray(payload?.data)) return payload.data;
+    return [];
+  };
 
   const normalizeJobPayload = (payload = {}) => {
     const title = String(payload.title ?? "").trim();
@@ -432,7 +443,7 @@ export default function AdminDashboard() {
   const loadSchoolNotifications = async () => {
     try {
       const response = await featureService.getNotifications();
-      const notifList = response?.data?.data?.notifications || response?.data?.notifications || [];
+      const notifList = extractApiList(response, ["notifications"]);
 
       const iconMap = {
         application_status: FiFileText,
@@ -476,7 +487,7 @@ export default function AdminDashboard() {
   const loadSchoolJobs = async () => {
     try {
       const response = await jobService.getJobs({});
-      const jobList = response?.data?.data?.jobs || response?.data?.jobs || [];
+      const jobList = extractApiList(response, ["jobs"]);
       const savedDrafts = readSchoolJobDrafts();
       const jobsWithDrafts = [...savedDrafts, ...jobList];
 
@@ -506,8 +517,8 @@ export default function AdminDashboard() {
     try {
       const response = await profileService.getMe();
       const payload = response?.data?.data ?? response?.data ?? {};
-      const profile = payload?.profile ?? payload?.school_profile ?? payload?.school ?? {};
-      const userProfile = payload?.user ?? {};
+      const profile = payload?.profile ?? payload?.school_profile ?? payload?.school ?? payload?.data?.profile ?? {};
+      const userProfile = payload?.user ?? payload?.data?.user ?? {};
       const mergedProfile = { ...userProfile, ...profile };
 
       setSchoolProfile(mergedProfile);
@@ -552,14 +563,7 @@ export default function AdminDashboard() {
   const loadUsers = async () => {
     try {
       const response = await adminService.getTeachers();
-      const payload = response?.data?.data ?? response?.data ?? {};
-      const users = Array.isArray(payload)
-        ? payload
-        : Array.isArray(payload?.teachers)
-          ? payload.teachers
-          : Array.isArray(payload?.users)
-            ? payload.users
-            : [];
+      const users = extractApiList(response, ["teachers", "users"]);
 
       const normalizedUsers = users
         .filter(Boolean)
@@ -671,10 +675,7 @@ export default function AdminDashboard() {
 
     try {
       const response = await applicationService.getApplicantsByJob(jobId);
-      const list =
-        response?.data?.data?.applications ||
-        response?.data?.applications ||
-        [];
+      const list = extractApiList(response, ["applications"]);
       const enrichedList = await Promise.all(list.map(async (app) => {
         const applicationId = app.application_id || app.id;
         if (!applicationId) return app;
@@ -1926,9 +1927,10 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     : Array.isArray(applicant.work_experience) ? applicant.work_experience : [];
   const applicantId = applicant.application_id || applicant.id;
   const jobId = job.job_id || job.id;
-  const summary = applicant.summary || applicant.bio || applicant.about || applicant.cover_letter || "No professional summary has been provided.";
+  const summary = applicant.summary || applicant.bio || applicant.about || "No professional summary has been provided.";
   const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
   const coverLetter = String(applicant.cover_letter || "").trim();
+  const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
 
   if (applicant) return (
     <div className="school-applicant-summary-page school-applicant-summary-page--api">
@@ -1936,7 +1938,15 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
       <div className="school-summary-container"><div className="school-summary-content">
         <section className="school-summary-section school-summary-section--first">
           <div className="school-summary-actions">
-            <button type="button" className="school-summary-shortlist-btn" onClick={() => handleShortlistApplicant(applicant)}>Shortlist Candidate</button>
+            <button
+              type="button"
+              className="school-summary-shortlist-btn"
+              disabled={Boolean(String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/))}
+              onClick={() => handleShortlistApplicant(applicant)}
+              style={String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
+            >
+              {String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
+            </button>
             <button type="button" className="school-summary-reject-btn" onClick={() => openRejectApplicantModal(jobId, applicantId)}>Reject Applicant</button>
           </div>
           <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
@@ -1946,7 +1956,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
         </div>
         <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
-        <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <button type="button" className="school-summary-cover-letter" onClick={() => window.alert(coverLetter)}><FiFileText /> View cover letter</button> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}</div></div>
+        <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <div className="school-summary-cover-letter"><FiFileText /><div><strong>Cover letter</strong><p>{coverLetter}</p></div></div> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
       </div></div>
     </div>
   );
@@ -1972,9 +1982,11 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               <button
                 type="button"
                 className="school-summary-shortlist-btn"
+                disabled={Boolean(String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/))}
                 onClick={() => handleShortlistApplicant(applicant)}
+                style={String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
               >
-                Shortlist Candidate
+                {String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
               </button>
 
               <button
