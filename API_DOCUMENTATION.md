@@ -443,6 +443,11 @@ Creates and publishes a new job vacancy.
   "salary_range": "100k-150k",
   "location": "Lagos",
   "requirements": "BSc Mathematics",
+  "responsibilities": [
+    "Prepare and deliver engaging mathematics lessons",
+    "Assess student progress and provide feedback",
+    "Participate in departmental meetings"
+  ],
   "teaching_level": "SS1 - SS3",
   "required_experience": "5+ years",
   "required_qualification": "B.Ed, TRCN Certification",
@@ -491,7 +496,11 @@ Updates an existing job posting. Only the school that created the job can modify
   "employment_type": "full-time",
   "salary_range": "150k-200k",
   "location": "Lagos",
-  "requirements": "BSc Mathematics with 5 years experience."
+  "requirements": "BSc Mathematics with 5 years experience.",
+  "responsibilities": [
+    "Lead mathematics instruction",
+    "Mentor junior teaching staff"
+  ]
 }
 ```
 
@@ -518,6 +527,219 @@ Updates an existing job posting. Only the school that created the job can modify
 
 ### `DELETE /jobs/{job_id}`
 Deletes a job posting and cascades deletion across related applications. Only the school owner can delete.
+
+---
+
+## 7. Current Endpoint Contract Snapshot (Updated for Frontend Integration)
+
+This is the contract the frontend should build against in the current codebase. All endpoints below are the working routes currently registered in `routes/api.php`.
+
+### Public auth endpoints
+
+- `POST /api/auth/register`
+- `POST /api/auth/register_sch`
+- `POST /api/auth/login`
+- `POST /api/auth/forgot-password`
+- `POST /api/auth/verify-reset-otp`
+- `POST /api/auth/reset-password`
+- `POST /api/auth/verify-email`
+- `POST /api/auth/resend-verification`
+
+Legacy aliases also exist without the `/api` prefix:
+
+- `POST /auth/register`
+- `POST /auth/register_sch`
+- `POST /auth/login`
+- `POST /auth/forgot-password`
+- `POST /auth/verify-reset-otp`
+- `POST /auth/reset-password`
+- `POST /auth/verify-email`
+- `POST /auth/resend-verification`
+
+### Authenticated user and profile endpoints
+
+- `GET /api/profiles/me`
+- `PUT /api/profiles/teacher`
+- `POST /api/profiles/teacher/education`
+- `GET /api/profiles/teacher/education`
+- `PUT /api/profiles/teacher/education/{id}`
+- `PATCH /api/profiles/teacher/education/{id}`
+- `DELETE /api/profiles/teacher/education/{id}`
+- `POST /api/profiles/teacher/experience`
+- `GET /api/profiles/teacher/experience`
+- `PUT /api/profiles/teacher/experience/{id}`
+- `PATCH /api/profiles/teacher/experience/{id}`
+- `DELETE /api/profiles/teacher/experience/{id}`
+- `PUT /api/profiles/school`
+- `POST /api/profiles/upload-cv`
+- `POST /api/profiles/upload-logo`
+
+### Job and application flow
+
+- `GET /api/jobs`
+- `GET /api/jobs/{id}`
+- `POST /api/jobs`  (school only)
+- `PUT /api/jobs/{id}` (school only)
+- `DELETE /api/jobs/{id}` (school only)
+
+- `GET /api/applications/apply/{jobId}`
+- `POST /api/applications/apply/{jobId}`
+- `GET /api/applications/my-applications` (teacher)
+- `GET /api/applications/{id}`
+- `GET /api/applications/job/{jobId}` (school)
+- `PATCH /api/applications/{id}/status` (school/admin)
+- `DELETE /api/applications/{id}` / `PATCH /api/applications/{id}/withdraw` (teacher)
+
+### School and teacher directory features
+
+- `GET /api/teachers`
+- `GET /api/teachers/{userId}`
+- `POST /api/teachers/{userId}/invite`
+
+- `POST /api/features/saved-jobs/{jobId}`
+- `GET /api/features/saved-jobs`
+- `DELETE /api/features/saved-jobs/{jobId}`
+- `GET /api/features/saved-teachers`
+- `POST /api/features/saved-teachers/{teacherId}`
+- `DELETE /api/features/saved-teachers/{teacherId}`
+- `GET /api/features/job-alerts`
+- `PUT /api/features/job-alerts`
+- `PATCH /api/features/job-alerts`
+- `GET /api/features/notifications`
+- `PATCH /api/features/notifications/{id}/read`
+- `DELETE /api/features/notifications/{id}`
+
+### Admin endpoints
+
+- `GET /api/admin/stats` (admin)
+- `GET /api/admin/verifications` (admin)
+- `PATCH /api/admin/verifications/{id}` (admin)
+
+### Important frontend behaviors to honor
+
+1. School signup follows the teacher-style flow.
+  - Register first with `POST /api/auth/register_sch`.
+  - Verify email via `POST /api/auth/verify-email` using the six-digit code.
+  - Login via `POST /api/auth/login`.
+  - If `onboarding_required === true`, show the school onboarding screen.
+  - Only after `PUT /api/profiles/school` with `setup_completed: true` should the user be treated as fully onboarded.
+
+2. Teacher application validation is strict.
+  - `GET /api/applications/apply/{jobId}` returns `requirements` and `existing_cv_url`.
+  - `POST /api/applications/apply/{jobId}` requires a `cover_letter` with at least 30 characters.
+  - A CV is required unless an existing CV already exists on the teacher profile.
+
+3. Password reset flow uses OTP then refresh token.
+  - `POST /api/auth/forgot-password`
+  - `POST /api/auth/verify-reset-otp`
+  - `POST /api/auth/reset-password`
+
+4. User profiles are normalized around the `user_id` field, not the DB integer `id`.
+  - Always use `user.user_id` from the auth/login/profile responses.
+
+5. Most API responses are wrapped in a common object shape:
+
+```json
+{
+  "success": true,
+  "message": "Request successful",
+  "data": { },
+  "errors": { }
+}
+```
+
+The `errors` object is present on validation failures, while successful responses usually also include a top-level alias payload such as `application`, `profile`, or `teacher_profile`.
+
+---
+
+## 8. Frontend Agent Integration Prompt
+
+Use this prompt when giving the frontend implementation task to a separate coding agent:
+
+```
+Please integrate the StaffRoom API into the frontend app against the current backend contract in this repository.
+
+Objectives:
+- Use the existing endpoints exactly as defined in routes/api.php and this API documentation.
+- Treat all protected calls as Bearer-token authenticated requests using the JWT returned from POST /api/auth/login.
+- Handle all auth and onboarding flows exactly as implemented by the backend, especially the school onboarding gating.
+
+Core API contract:
+
+Auth:
+- POST /api/auth/register
+- POST /api/auth/register_sch
+- POST /api/auth/login
+- POST /api/auth/verify-email
+- POST /api/auth/resend-verification
+- POST /api/auth/forgot-password
+- POST /api/auth/verify-reset-otp
+- POST /api/auth/reset-password
+
+Profile:
+- GET /api/profiles/me
+- PUT /api/profiles/teacher
+- POST /api/profiles/teacher/education
+- GET /api/profiles/teacher/education
+- PUT /api/profiles/teacher/education/{id}
+- PATCH /api/profiles/teacher/education/{id}
+- DELETE /api/profiles/teacher/education/{id}
+- POST /api/profiles/teacher/experience
+- GET /api/profiles/teacher/experience
+- PUT /api/profiles/teacher/experience/{id}
+- PATCH /api/profiles/teacher/experience/{id}
+- DELETE /api/profiles/teacher/experience/{id}
+- PUT /api/profiles/school
+- POST /api/profiles/upload-cv
+- POST /api/profiles/upload-logo
+
+Jobs and applications:
+- GET /api/jobs
+- GET /api/jobs/{id}
+- POST /api/jobs
+- PUT /api/jobs/{id}
+- DELETE /api/jobs/{id}
+- GET /api/applications/apply/{jobId}
+- POST /api/applications/apply/{jobId}
+- GET /api/applications/my-applications
+- GET /api/applications/{id}
+- GET /api/applications/job/{jobId}
+- PATCH /api/applications/{id}/status
+
+Important behavior to match:
+- The backend expects Authorization: Bearer <token>.
+- User IDs are exposed as user_id, not numeric id values.
+- School login returns: token, setup_completed, onboarding_required.
+- If onboarding_required is true, route the user to the onboarding page and only allow full app access after profile setup is complete.
+- Teacher application submission requires a cover letter of at least 30 characters and a CV file unless a profile CV already exists.
+- Forgot-password flow is: request OTP -> verify OTP -> reset password with refresh_token.
+- Success responses follow { success, message, data } and validation errors return { success, message, errors }.
+
+Please implement a clean API service layer, typed request/response handling, and a UX flow that matches the backend contract exactly.
+
+Do not invent new endpoint shapes or response fields. Match the backend names and semantics. When there is ambiguity, prefer the backend contract from this repo over assumptions.
+
+Also ensure the frontend handles these states properly:
+- unverified email before login
+- school onboarding pending state
+- application status updates and notifications
+- CV upload and school logo upload
+- saved jobs and saved teachers features
+
+Please keep the frontend experience consistent with the StaffRoom flow: premium, clear, and role-aware.
+```
+
+---
+
+## 9. Implementation Notes for the Frontend
+
+- Use a single centralized API module with all endpoints and response parsing.
+- Store the JWT in secure memory or a secure cookie strategy consistent with the app stack.
+- On login, read and persist the returned `user`, `token`, `setup_completed`, and `onboarding_required`.
+- Use the `user_id` returned from the backend as the canonical stable user identifier in client state.
+- For the school signup flow, do not treat the signup as complete until the user verifies email and finishes onboarding.
+- For teacher application submission, show validation warnings before submit if the profile CV is missing or the cover letter is too short.
+
 - **Method:** `DELETE`
 - **URL:** `https://api.staffroomng.com/api/jobs/1`
 - **Authentication Requirement:** Yes (`Authorization: Bearer <schoolToken>`)

@@ -9,5 +9,6 @@ export const authService = {
   forgotPassword: (payload) => api.post('/api/auth/forgot-password', payload),
   verifyResetOtp: (payload) => api.post('/api/auth/verify-reset-otp', payload),
   resetPassword: (payload) => api.post('/api/auth/reset-password', payload),
+  deleteAccount: (payload = {}) => api.delete('/api/auth/delete-account', { data: payload }),
   getCurrentProfile: () => api.get('/api/profiles/me'),
 };

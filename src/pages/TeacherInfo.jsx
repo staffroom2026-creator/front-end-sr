@@ -83,7 +83,7 @@ const parseSubjectList = (value) => {
 
 export default function TeacherInfo() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, setUser } = useAuth();
   const [form, setForm] = useState({
     country: '',
     state: '',
@@ -209,11 +209,24 @@ export default function TeacherInfo() {
         setup_completed: true,
       };
 
-      await profileService.updateTeacher(payload);
-      await profileService.getMe();
-      const nextUser = user ? { ...user, role: user.role || 'teacher' } : user;
+      const response = await profileService.updateTeacher(payload);
+      const responsePayload = response?.data?.data ?? response?.data ?? {};
+      const updatedProfile = responsePayload?.profile || responsePayload?.teacher_profile || responsePayload;
+      const nextUser = user ? {
+        ...user,
+        role: user.role || 'teacher',
+        setup_completed: true,
+        onboarding_required: false,
+        teacher_profile: updatedProfile,
+      } : {
+        role: 'teacher',
+        setup_completed: true,
+        onboarding_required: false,
+        teacher_profile: updatedProfile,
+      };
+      setUser(nextUser);
       if (nextUser) {
-        localStorage.setItem('staffroom_user', JSON.stringify(nextUser));
+        sessionStorage.setItem('staffroom_user', JSON.stringify(nextUser));
       }
       navigate('/teacher-dashboard', { replace: true });
     } catch (err) {

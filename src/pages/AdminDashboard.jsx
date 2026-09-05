@@ -212,6 +212,9 @@ export default function AdminDashboard() {
       .toLowerCase();
     const location = String(payload.location ?? "").trim();
     const responsibilities = normalizeResponsibilityList(payload.responsibilities || payload.requirements);
+    const requirements = Array.isArray(payload.requirements)
+      ? payload.requirements.map((item) => String(item).trim()).filter(Boolean).join('; ')
+      : String(payload.requirements ?? '').trim() || responsibilities.join('; ');
     const teachingLevel = String(payload.teaching_level ?? "").trim() || "SS1 – SS3 (Senior Secondary)";
     const requiredExperience = String(payload.required_experience ?? "").trim() || "5+ years";
     const requiredQualification = String(payload.required_qualification ?? "").trim() || "B.Ed or equivalent";
@@ -230,7 +233,7 @@ export default function AdminDashboard() {
       salary_range: String(payload.salary_range ?? "").trim() || "Competitive",
       location,
       responsibilities,
-      requirements: responsibilities,
+      requirements,
       teaching_level: teachingLevel,
       required_experience: requiredExperience,
       required_qualification: requiredQualification,
@@ -1209,27 +1212,29 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="school-profile-card">
-            <div className="school-profile-heading">
-              <span className="school-profile-icon">
-                <FiCheckCircle size={14} />
-              </span>
-              <div>
-                <strong>School Profile</strong>
-                <span>Attract top educators</span>
+          {schoolProfileCompletion < 100 && (
+            <div className="school-profile-card">
+              <div className="school-profile-heading">
+                <span className="school-profile-icon">
+                  <FiCheckCircle size={14} />
+                </span>
+                <div>
+                  <strong>School Profile</strong>
+                  <span>Attract top educators</span>
+                </div>
               </div>
+              <div className="school-profile-progress-label">
+                <span>Completeness</span>
+                <strong>{schoolProfileCompletion}%</strong>
+              </div>
+              <div className="school-profile-progress">
+                <span style={{ width: `${schoolProfileCompletion}%` }} />
+              </div>
+              <p>
+                <FiInfo size={11} /> Add a cover photo to reach 100%
+              </p>
             </div>
-            <div className="school-profile-progress-label">
-              <span>Completeness</span>
-              <strong>{schoolProfileCompletion}%</strong>
-            </div>
-            <div className="school-profile-progress">
-              <span style={{ width: `${schoolProfileCompletion}%` }} />
-            </div>
-            <p>
-              <FiInfo size={11} /> {schoolProfileCompletion >= 100 ? "Your school profile is complete." : "Add a cover photo to reach 100%"}
-            </p>
-          </div>
+          )}
         </section>
 
         <section

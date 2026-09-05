@@ -54,14 +54,23 @@ const normalizeApiError = (error) => {
   const responseData = error?.response?.data ?? {};
   const errors = responseData?.errors ?? {};
   const message = responseData?.message ?? error?.message ?? 'Something went wrong.';
+  const errorDetails = errors && typeof errors === 'object'
+    ? Object.entries(errors)
+        .filter(([, value]) => value !== undefined && value !== null && String(value).trim())
+        .map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`)
+        .join('; ')
+    : '';
+
+  if (typeof message === 'string' && message.trim() && errorDetails) {
+    return `${message}: ${errorDetails}`;
+  }
 
   if (typeof message === 'string' && message.trim()) {
     return message;
   }
 
-  if (errors && typeof errors === 'object') {
-    const firstError = Object.values(errors).find((value) => !!value && String(value).trim());
-    return firstError ? String(firstError) : 'Something went wrong.';
+  if (errorDetails) {
+    return errorDetails;
   }
 
   return 'Something went wrong.';
@@ -108,14 +117,23 @@ export const apiErrorMessage = (error, fallback = 'Something went wrong.') => {
   const responseData = error?.response?.data ?? {};
   const errors = responseData?.errors ?? {};
   const backendMessage = responseData?.message ?? error?.message ?? fallback;
+  const errorDetails = errors && typeof errors === 'object'
+    ? Object.entries(errors)
+        .filter(([, value]) => value !== undefined && value !== null && String(value).trim())
+        .map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(', ') : value}`)
+        .join('; ')
+    : '';
+
+  if (typeof backendMessage === 'string' && backendMessage.trim() && errorDetails) {
+    return `${backendMessage}: ${errorDetails}`;
+  }
 
   if (typeof backendMessage === 'string' && backendMessage.trim()) {
     return backendMessage;
   }
 
-  if (errors && typeof errors === 'object') {
-    const firstError = Object.values(errors).find((value) => !!value && String(value).trim());
-    return firstError ? String(firstError) : fallback;
+  if (errorDetails) {
+    return errorDetails;
   }
 
   return fallback;

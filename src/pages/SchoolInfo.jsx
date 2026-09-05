@@ -257,7 +257,6 @@ export default function SchoolInfo() {
 
       setUser(nextUser);
       sessionStorage.setItem('staffroom_user', JSON.stringify(nextUser));
-      localStorage.setItem('staffroom_user', JSON.stringify(nextUser));
 
       localStorage.removeItem('staffroom_school_signup_draft');
       localStorage.removeItem('staffroom_verification_email');

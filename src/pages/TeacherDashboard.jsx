@@ -79,6 +79,23 @@ const parseSubjectList = (value) => {
   return [];
 };
 
+const parseResponsibilityList = (value) => {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof value !== 'string') return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parseResponsibilityList(parsed);
+  } catch {
+    // Fall back to the API's plain text representation.
+  }
+
+  return value
+    .split(/[;|\n•]+/)
+    .map((item) => item.replace(/^[-*]\s*/, '').trim())
+    .filter(Boolean);
+};
+
 const parseLocationParts = (value) => {
   if (typeof value !== 'string') return [];
   return value.split(',').map((item) => item.trim()).filter(Boolean);
@@ -1371,12 +1388,7 @@ export default function TeacherDashboard() {
     const jobId = normalizeJobId(selectedJob.job_id || selectedJob.id);
     const coverLetterText = applicationForm.coverLetter.trim();
 
-    if (!coverLetterText && !applicationForm.coverLetterFile) {
-      setApplicationError('Please write a cover letter before submitting your application.');
-      return;
-    }
-
-    if (!applicationForm.coverLetterFile && coverLetterText.length < 30) {
+    if (coverLetterText.length < 30) {
       setApplicationError('Your cover letter must be at least 30 characters long.');
       return;
     }
@@ -1392,13 +1404,9 @@ export default function TeacherDashboard() {
       setApplicationError('');
 
       let payload;
-      if ((!applicationForm.useExistingCv && applicationForm.resumeFile) || applicationForm.coverLetterFile) {
+      if (!applicationForm.useExistingCv && applicationForm.resumeFile) {
         payload = new FormData();
-        if (applicationForm.coverLetterFile) {
-          payload.append('cover_letter', applicationForm.coverLetterFile);
-        } else {
-          payload.append('cover_letter', coverLetterText);
-        }
+        payload.append('cover_letter', coverLetterText);
         if (applicationForm.additionalInfo.trim()) {
           payload.append('additional_info', applicationForm.additionalInfo.trim());
         }

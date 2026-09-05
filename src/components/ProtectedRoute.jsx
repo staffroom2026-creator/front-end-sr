@@ -128,6 +128,15 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
     return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
   }
 
+  const onboardingRequired = user?.onboarding_required === true || user?.onboarding_required === 'true' || user?.onboarding_required === 1 || user?.onboarding_required === '1';
+  if (onboardingRequired && requireTeacherProfile && role === 'teacher' && location.pathname !== '/teacher-info') {
+    return <Navigate to="/teacher-info" replace state={{ from: location.pathname }} />;
+  }
+
+  if (onboardingRequired && requireSchoolProfile && role === 'school' && location.pathname !== '/sch-info') {
+    return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
+  }
+
   if (profileCheck.loading) {
     return <div className="flex min-h-screen items-center justify-center bg-[#FAF9F6] text-gray-700">Loading profile...</div>;
   }

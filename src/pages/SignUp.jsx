@@ -72,7 +72,7 @@ export default function SignUp() {
               terms: 1,
             };
 
-      const result = await register(payload);
+      await register(payload);
       const emailToVerify = form.email;
       const schoolDraft = role === 'school'
         ? {
