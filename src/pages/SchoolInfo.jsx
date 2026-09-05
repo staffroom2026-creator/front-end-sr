@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { Country, State, City } from 'country-state-city';
+import { useAuth } from '../context/AuthContext';
 import { profileService } from '../services/profileService';
 import { apiErrorMessage } from '../services/api';
 import BrandLogo from '../components/BrandLogo';
@@ -66,6 +67,7 @@ function SearchableSelect({ value, options, placeholder, disabled, onChange }) {
 
 export default function SchoolInfo() {
   const navigate = useNavigate();
+  const { user, setUser } = useAuth();
   const savedDraft = (() => {
     try {
       const raw = localStorage.getItem('staffroom_school_signup_draft');
@@ -98,6 +100,38 @@ export default function SchoolInfo() {
     schoolEmail: Boolean(savedDraft?.email),
     phone: Boolean(savedDraft?.phone)
   };
+
+  useEffect(() => {
+    let active = true;
+
+    profileService.getMe().then((response) => {
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const profile = payload?.profile || payload?.school_profile || payload?.school || {};
+      const account = payload?.user || {};
+      const locationParts = String(profile.location || '').split(',').map((part) => part.trim()).filter(Boolean);
+      const country = profile.country || locationParts.at(-1) || '';
+      const state = profile.state || (locationParts.length > 1 ? locationParts.at(-2) : '');
+      const city = profile.city || (locationParts.length > 2 ? locationParts.at(-3) : '');
+
+      if (active) {
+        setForm((current) => ({
+          ...current,
+          schoolName: profile.school_name || account.full_name || current.schoolName,
+          schoolEmail: profile.email || account.email || current.schoolEmail,
+          phone: profile.phone || account.phone || current.phone,
+          address: profile.address || current.address,
+          country: country || current.country,
+          state: state || current.state,
+          city: city || current.city,
+          type: profile.school_type || current.type,
+        }));
+      }
+    }).catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -192,7 +226,7 @@ export default function SchoolInfo() {
         await profileService.uploadLogo(logoFormData);
       }
 
-      await profileService.updateSchool({
+      const response = await profileService.updateSchool({
         school_name: form.schoolName.trim(),
         address: form.address.trim() || form.city.trim(),
         location: `${form.city.trim()}, ${form.state.trim()}, ${form.country}`,
@@ -201,14 +235,35 @@ export default function SchoolInfo() {
         city: form.city.trim(),
         email: form.schoolEmail.trim(),
         phone: form.phone.trim(),
+        setup_completed: true,
         school_type: form.type,
         website: '',
       });
 
+      const profilePayload = response?.data?.data ?? response?.data ?? {};
+      const updatedSchoolProfile = profilePayload?.profile || profilePayload?.school_profile || profilePayload?.school || profilePayload || {};
+      const nextUser = user ? {
+        ...user,
+        role: user.role || 'school',
+        setup_completed: true,
+        onboarding_required: false,
+        school_profile: updatedSchoolProfile,
+      } : {
+        role: 'school',
+        setup_completed: true,
+        onboarding_required: false,
+        school_profile: updatedSchoolProfile,
+      };
+
+      setUser(nextUser);
+      sessionStorage.setItem('staffroom_user', JSON.stringify(nextUser));
+      localStorage.setItem('staffroom_user', JSON.stringify(nextUser));
+
       localStorage.removeItem('staffroom_school_signup_draft');
       localStorage.removeItem('staffroom_verification_email');
       localStorage.removeItem('staffroom_verification_role');
-      navigate('/signin', { replace: true });
+
+      navigate('/school-dashboard', { replace: true });
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to save your school profile right now.'));
     } finally {

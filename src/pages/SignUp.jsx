@@ -63,12 +63,13 @@ export default function SignUp() {
               role: 'teacher',
             }
           : {
-              full_name: form.schoolName,
+              full_name: form.schoolName.trim(),
               email: form.email,
               phone: form.phone,
-              terms: 1,
               password: form.password,
               role: 'school',
+              school_type: 'private',
+              terms: 1,
             };
 
       const result = await register(payload);

@@ -239,12 +239,6 @@ export default function TeacherInfo() {
         <Link to="/" className="ti-logo">
           <BrandLogo />
         </Link>
-        <button onClick={() => navigate(setupAlreadyCompleted ? '/teacher-dashboard' : '/signup')} className="ti-back-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          <span>Back</span>
-        </button>
       </header>
 
       {/* ── Main Content ── */}
@@ -340,15 +334,11 @@ export default function TeacherInfo() {
             <div style={{ marginTop: '16px', color: '#b91c1c', fontSize: '14px', textAlign: 'center' }}>{error}</div>
           )}
 
-          {/* ── Next Button ── */}
+          {/* ── Submit Button ── */}
           <motion.div variants={itemVariants} className="ti-footer">
             <button className="ti-next-btn" onClick={handleNext} disabled={saving}>
-              {saving ? 'Saving…' : 'Next'}
+              {saving ? 'Saving…' : 'Submit'}
             </button>
-            <div className="ti-dots">
-              <span className="ti-dot" />
-              <span className="ti-dot ti-dot--active" />
-            </div>
           </motion.div>
         </div>
       </main>
@@ -362,30 +352,6 @@ export default function TeacherInfo() {
           flex-direction: column;
           color: #2D3748;
         }
-
-        .ti-header {
-          padding: 24px 40px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-
-        .ti-back-btn {
-          background: none;
-          border: none;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-          color: #718096;
-          font-weight: 500;
-          cursor: pointer;
-          transition: color 0.2s;
-        }
-
-        .ti-back-btn:hover {
-          color: #111;
-        }
-
         .ti-logo {
           display: inline-flex;
           align-items: center;

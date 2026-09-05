@@ -53,6 +53,23 @@ const parseSubjectList = (value) => {
   return [];
 };
 
+const getProfileSubjects = (profile = {}) => {
+  const subjects = Array.isArray(profile.subjects) && profile.subjects.length
+    ? profile.subjects
+    : profile.skills;
+  return parseSubjectList(subjects || []);
+};
+
+const normalizeTeachingLevels = (value) => parseSubjectList(value).map((level) => {
+  const normalized = level.toLowerCase();
+  if (normalized === 'jss' || normalized === 'jss (junior secondary)') return 'Junior Secondary';
+  if (normalized === 'senior secondary school') return 'Senior Secondary';
+  if (normalized === 'primary school') return 'Primary';
+  return level;
+});
+
+const teacherLevelOptions = ['Pre KG', 'KG', 'Primary', 'Junior Secondary', 'Senior Secondary', 'Tertiary'];
+
 const parseLocationParts = (value) => {
   if (typeof value !== 'string') return [];
   return value.split(',').map((item) => item.trim()).filter(Boolean);
@@ -615,6 +632,32 @@ export default function TeacherDashboard() {
     }
   };
 
+  const applyLoadedTeacherProfile = (profileData = {}) => {
+    const profile = profileData?.profile || profileData?.teacher_profile || profileData || {};
+    const account = profileData?.user || {};
+    const { firstName, lastName } = splitFullName(account.full_name || user?.full_name || 'Teacher');
+
+    setProfileState(profile);
+    setPersonalFirstName(firstName);
+    setPersonalLastName(lastName);
+    setPersonalPhone(account.phone || '');
+    setPersonalEmail(account.email || user?.email || '');
+    setAvailLocation(profile.preferred_location || profile.location || '');
+    setProfTitle(profile.role_title || 'Teacher');
+    setProfSummary(profile.bio || '');
+    setProfYearsExp(profile.experience_years !== undefined && profile.experience_years !== null
+      ? `${profile.experience_years}+ years`
+      : 'Not provided');
+    setProfEmpPref(profile.preferred_employment_type || 'Open');
+    setProfTeachMode(profile.availability || 'Open');
+    setProfSubjects(getProfileSubjects(profile));
+    setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
+    setEducationList(normalizeEducationRecords(profile.education_history));
+    setExperienceList(normalizeExperienceRecords(
+      profile.teaching_experience ?? profile.work_experience ?? profile.experience_history,
+    ));
+  };
+
   const handleToggleSaveJob = async (jobId) => {
     const realJobId = normalizeJobId(jobId);
 
@@ -733,12 +776,8 @@ export default function TeacherDashboard() {
       setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
       setProfEmpPref(profile.preferred_employment_type || 'Open');
       setProfTeachMode(profile.availability || 'Open');
-      setProfSubjects(parseSubjectList(profile.subjects || profile.skills || []));
-      setProfTeachingLevels(Array.isArray(profile.teaching_levels)
-        ? profile.teaching_levels
-        : typeof profile.teaching_levels === 'string'
-          ? parseSubjectList(profile.teaching_levels)
-          : []);
+      setProfSubjects(getProfileSubjects(profile));
+      setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
       setEducationList(normalizeEducationRecords(profile.education_history));
       setExperienceList(normalizeExperienceRecords(
         profile.teaching_experience ?? profile.work_experience ?? profile.experience_history
@@ -769,6 +808,13 @@ export default function TeacherDashboard() {
   useEffect(() => {
     refreshTeacherProfile();
     loadAccountPreferences();
+
+    profileService.getMe()
+      .then((response) => {
+        const profileData = response?.data?.data || response?.data || {};
+        applyLoadedTeacherProfile(profileData);
+      })
+      .catch(() => {});
   }, []);
 
   const getEditableTeacherProfilePayload = ({ education_history, teaching_experience } = {}) => ({
@@ -792,8 +838,8 @@ export default function TeacherDashboard() {
     setProfYearsExp(nextProfile.experience_years ? `${nextProfile.experience_years}+ years` : '0+ years');
     setProfEmpPref(nextProfile.preferred_employment_type || 'Open');
     setProfTeachMode(nextProfile.availability || 'Open');
-    setProfSubjects(parseSubjectList(nextProfile.skills || nextProfile.subjects || []));
-    setProfTeachingLevels(Array.isArray(nextProfile.teaching_levels) ? nextProfile.teaching_levels : parseSubjectList(nextProfile.teaching_levels || []));
+    setProfSubjects(getProfileSubjects(nextProfile));
+    setProfTeachingLevels(normalizeTeachingLevels(nextProfile.teaching_levels || []));
     setAvailLocation(nextProfile.preferred_location || nextProfile.location || '');
     setEducationList(normalizeEducationRecords(nextProfile.education_history));
     setExperienceList(normalizeExperienceRecords(nextProfile.teaching_experience));
@@ -3598,7 +3644,7 @@ export default function TeacherDashboard() {
                               {profSubjects.map((subject) => <button type="button" key={subject} onClick={() => setProfSubjects((items) => items.filter((item) => item !== subject))}>{subject} x</button>)}
                               {showAddSubject ? <input autoFocus value={newSubjectInput} onChange={(event) => setNewSubjectInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && newSubjectInput.trim()) { event.preventDefault(); setProfSubjects((items) => [...items, newSubjectInput.trim()]); setNewSubjectInput(''); setShowAddSubject(false); } }} onBlur={() => setShowAddSubject(false)} aria-label="New subject" /> : <button type="button" className="td-prof-add-subject" onClick={() => setShowAddSubject(true)}>+ Add Subject</button>}
                             </div>
-                            <div className="td-prof-edit-levels"><span className="td-prof-edit-label">Teaching Levels</span>{['JSS (Junior Secondary)', 'Senior Secondary', 'Primary'].map((level) => <label key={level}><input type="checkbox" checked={profTeachingLevels.includes(level)} onChange={() => setProfTeachingLevels((levels) => levels.includes(level) ? levels.filter((item) => item !== level) : [...levels, level])} />{level}</label>)}</div>
+                            <div className="td-prof-edit-levels"><span className="td-prof-edit-label">Teaching Levels</span>{teacherLevelOptions.map((level) => <label key={level}><input type="checkbox" checked={profTeachingLevels.includes(level)} onChange={() => setProfTeachingLevels((levels) => levels.includes(level) ? levels.filter((item) => item !== level) : [...levels, level])} />{level}</label>)}</div>
                           </section>
                           <button type="button" className="td-prof-save-btn" disabled={savingProfessionalInfo} onClick={handleSaveProfessionalInfo}>{savingProfessionalInfo ? 'Saving...' : 'Save Changes'}</button>
                         </aside>

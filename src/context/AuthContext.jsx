@@ -107,11 +107,18 @@ export function AuthProvider({ children }) {
     const result = response?.data ?? {};
     const userData = result?.data?.user ?? null;
     const newToken = result?.data?.token ?? '';
+    const resolvedUser = userData
+      ? {
+          ...userData,
+          setup_completed: result?.data?.setup_completed ?? userData?.setup_completed ?? undefined,
+          onboarding_required: result?.data?.onboarding_required ?? userData?.onboarding_required ?? undefined,
+        }
+      : null;
 
     // Only persist session when backend provides a token and the account is verified
-    const emailVerified = result?.data?.email_verified ?? userData?.email_verified;
-    if (newToken && userData && (emailVerified === undefined || emailVerified === true)) {
-      persistSession(userData, newToken);
+    const emailVerified = result?.data?.email_verified ?? resolvedUser?.email_verified;
+    if (newToken && resolvedUser && (emailVerified === undefined || emailVerified === true)) {
+      persistSession(resolvedUser, newToken);
     }
 
     return result;

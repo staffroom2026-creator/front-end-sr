@@ -6,6 +6,70 @@ import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
 import { authService } from '../services/authService';
+import { profileService } from '../services/profileService';
+
+const getSetupFlag = (profile = {}) => {
+  const setupFlag =
+    profile?.setup_completed ??
+    profile?.setupComplete ??
+    profile?.profile_complete ??
+    profile?.is_profile_complete ??
+    profile?.setupCompleted;
+
+  if (setupFlag === true || setupFlag === 'true' || setupFlag === 1 || setupFlag === '1') {
+    return true;
+  }
+
+  if (setupFlag === false || setupFlag === 'false' || setupFlag === 0 || setupFlag === '0') {
+    return false;
+  }
+
+  return undefined;
+};
+
+const hasCompletedTeacherSetup = (profile = {}) => {
+  const setupFlag = getSetupFlag(profile);
+  if (setupFlag !== undefined) {
+    return setupFlag;
+  }
+
+  const subjectText = String(profile?.skills || profile?.subjects || '').trim();
+  const locationText = String(profile?.location || profile?.preferred_location || '').trim();
+  const levels = Array.isArray(profile?.teaching_levels)
+    ? profile.teaching_levels
+    : typeof profile?.teaching_levels === 'string'
+      ? profile.teaching_levels.split(',').map((item) => item.trim()).filter(Boolean)
+      : [];
+
+  return Boolean(
+    subjectText ||
+    locationText ||
+    levels.length ||
+    String(profile?.bio || '').trim() ||
+    String(profile?.experience_years || '').trim()
+  );
+};
+
+const hasCompletedSchoolSetup = (profile = {}, account = {}) => {
+  const setupFlag = getSetupFlag(profile);
+  if (setupFlag !== undefined) {
+    return setupFlag;
+  }
+
+  return Boolean(
+    profile?.school_name ||
+    account?.full_name ||
+    profile?.school_type ||
+    profile?.address ||
+    profile?.city ||
+    profile?.state ||
+    profile?.country ||
+    profile?.email ||
+    account?.email ||
+    profile?.phone ||
+    account?.phone
+  );
+};
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -67,11 +131,23 @@ export default function SignIn() {
 
       const user = apiUser || result?.data?.user;
       const role = user?.role || 'teacher';
+      const loginSetupCompleted = getSetupFlag(apiData) ?? getSetupFlag(user) ?? undefined;
+      const onboardingRequired = Boolean(apiData?.onboarding_required ?? apiData?.setup_required ?? user?.onboarding_required ?? (loginSetupCompleted === false));
 
       if (role === 'teacher') {
-        navigate('/teacher-dashboard');
-      } else if (role === 'school') {
-        navigate('/school-dashboard');
+        if (onboardingRequired || loginSetupCompleted === false) {
+          navigate('/teacher-info', { state: { email: form.email, role, profile: user } });
+          return;
+        }
+
+        navigate('/teacher-dashboard', { state: { email: form.email, role, profile: user } });
+      } else if (role === 'school' || role === 'school_admin') {
+        if (onboardingRequired || loginSetupCompleted === false) {
+          navigate('/sch-info', { state: { email: form.email, role } });
+          return;
+        }
+
+        navigate('/school-dashboard', { state: { email: form.email, role, profile: user } });
       } else if (role === 'admin') {
         navigate('/admin-dashboard');
       } else {

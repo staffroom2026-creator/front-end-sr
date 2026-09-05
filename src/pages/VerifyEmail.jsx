@@ -105,11 +105,10 @@ export default function VerifyEmail() {
       await authService.verifyEmail({ email, code: fullCode });
       setSuccess(true);
       setTimeout(() => {
-        if (role === 'school') {
-          navigate('/sch-info', { replace: true, state: { email, role } });
-        } else {
-          navigate('/signin', { replace: true });
-        }
+        navigate('/signin', {
+          replace: true,
+          state: { email, role, verified: true },
+        });
       }, 1800);
     } catch (err) {
       setError(apiErrorMessage(err, 'Verification failed. Please check your code and try again.'));

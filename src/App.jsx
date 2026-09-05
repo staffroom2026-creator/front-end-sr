@@ -86,7 +86,7 @@ function App() {
         <Route
           path="/school-dashboard"
           element={
-            <ProtectedRoute allowedRoles={['school']}>
+            <ProtectedRoute allowedRoles={['school']} requireSchoolProfile>
               <AdminDashboard />
             </ProtectedRoute>
           }
