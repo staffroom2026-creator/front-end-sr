@@ -107,6 +107,7 @@ export default function AdminDashboard() {
   const [openJobMenuId, setOpenJobMenuId] = useState(null);
   const [openApplicantMenuId, setOpenApplicantMenuId] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
+  const isRestoringAdminHistory = useRef(false);
   const [jobDetailView, setJobDetailView] = useState("detail");
   const [applicantFilter, setApplicantFilter] = useState("All");
   const [applicantPage, setApplicantPage] = useState(1);
@@ -184,6 +185,67 @@ export default function AdminDashboard() {
     recipientName: "",
     recipientPhone: "",
   });
+
+  useEffect(() => {
+    const historyKey = "admin-dashboard-view";
+    const currentState = window.history.state || {};
+
+    if (!currentState[historyKey]) {
+      window.history.replaceState(
+        { ...currentState, [historyKey]: { activeTab: "overview", settingsSection: "overview", jobDetailView: "detail" } },
+        "",
+        window.location.href,
+      );
+    }
+
+    const handlePopState = (event) => {
+      const dashboardView = event.state?.[historyKey];
+      if (!dashboardView) return;
+
+      isRestoringAdminHistory.current = true;
+      setActiveTab(dashboardView.activeTab || "overview");
+      setSettingsSection(dashboardView.settingsSection || "overview");
+      setJobDetailView(dashboardView.jobDetailView || "detail");
+      setSelectedJob(dashboardView.selectedJob || null);
+      setSelectedApplicant(dashboardView.selectedApplicant || null);
+      setSelectedTeacherProfile(dashboardView.selectedTeacherProfile || null);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (isRestoringAdminHistory.current) {
+      isRestoringAdminHistory.current = false;
+      return;
+    }
+
+    const historyKey = "admin-dashboard-view";
+    const currentView = window.history.state?.[historyKey];
+    const nextView = {
+      activeTab,
+      settingsSection,
+      jobDetailView,
+      selectedJob,
+      selectedApplicant,
+      selectedTeacherProfile,
+    };
+    const sameView = currentView
+      && currentView.activeTab === activeTab
+      && currentView.settingsSection === settingsSection
+      && currentView.jobDetailView === jobDetailView
+      && (currentView.selectedJob?.job_id || currentView.selectedJob?.id || null) === (selectedJob?.job_id || selectedJob?.id || null)
+      && (currentView.selectedApplicant?.application_id || currentView.selectedApplicant?.id || null) === (selectedApplicant?.application_id || selectedApplicant?.id || null)
+      && (currentView.selectedTeacherProfile?.teacher_id || currentView.selectedTeacherProfile?.user_id || currentView.selectedTeacherProfile?.id || null) === (selectedTeacherProfile?.teacher_id || selectedTeacherProfile?.user_id || selectedTeacherProfile?.id || null);
+    if (sameView) return;
+
+    window.history.pushState(
+      { ...(window.history.state || {}), [historyKey]: nextView },
+      "",
+      window.location.href,
+    );
+  }, [activeTab, jobDetailView, selectedApplicant, selectedJob, selectedTeacherProfile, settingsSection]);
 
   const toAssetUrl = (assetPath) => {
     if (!assetPath) return "";
@@ -8437,7 +8499,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .admin-topbar-user strong { color: #20252b; font-size: 13px; font-weight: 700; }
         .admin-topbar-user span { color: #707a75; font-size: 11px; }
         .admin-topbar-avatar { display: grid; place-items: center; width: 36px; height: 36px; overflow: hidden; padding: 0; border: 2px solid #16843d; border-radius: 50%; background: #dcefe2; color: #166534; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
-        .admin-topbar-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .admin-topbar-avatar img { width: 100%; height: 100%; padding: 3px; border-radius: 50%; background: #fff; object-fit: contain; }
         .admin-mobile-notification-header { display: none; }
         @media (min-width: 769px) {
           .admin-desktop-sidebar { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; overflow-y: auto; }
@@ -8522,6 +8584,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
             font-size: 11px;
             font-weight: 800;
           }
+          .admin-mobile-avatar img { width: 100%; height: 100%; padding: 3px; border-radius: 50%; object-fit: contain; }
           .admin-mobile-bell {
             position: relative;
             display: grid;

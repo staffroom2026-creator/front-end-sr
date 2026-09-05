@@ -384,6 +384,8 @@ const getApplicationDisplayStatus = (application = {}) => {
   return rawStatus;
 };
 
+const teacherLevelOptions = ['Pre KG', 'KG', 'Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'];
+
 export default function TeacherDashboard() {
   const contentRef = useRef(null);
   const navigate = useNavigate();
@@ -391,6 +393,7 @@ export default function TeacherDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileSubTab, setProfileSubTab] = useState('overview');
+  const isRestoringDashboardHistory = useRef(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedJobOrigin, setSelectedJobOrigin] = useState('jobs');
   const [jobs, setJobs] = useState([]);
@@ -540,6 +543,49 @@ export default function TeacherDashboard() {
   const [reviewCvEditing, setReviewCvEditing] = useState(false);
   const [applicationStep, setApplicationStep] = useState(1);
   const [sortBy, setSortBy] = useState('Recommended');
+
+  useEffect(() => {
+    const historyKey = 'teacher-dashboard-view';
+    const currentState = window.history.state || {};
+
+    if (!currentState[historyKey]) {
+      window.history.replaceState(
+        { ...currentState, [historyKey]: { activeTab: 'dashboard', profileSubTab: 'overview' } },
+        '',
+        window.location.href
+      );
+    }
+
+    const handlePopState = (event) => {
+      const dashboardView = event.state?.[historyKey];
+      if (!dashboardView) return;
+
+      isRestoringDashboardHistory.current = true;
+      setActiveTab(dashboardView.activeTab || 'dashboard');
+      setProfileSubTab(dashboardView.profileSubTab || 'overview');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (isRestoringDashboardHistory.current) {
+      isRestoringDashboardHistory.current = false;
+      return;
+    }
+
+    const historyKey = 'teacher-dashboard-view';
+    const currentView = window.history.state?.[historyKey];
+    const nextView = { activeTab, profileSubTab };
+    if (currentView?.activeTab === activeTab && currentView?.profileSubTab === profileSubTab) return;
+
+    window.history.pushState(
+      { ...(window.history.state || {}), [historyKey]: nextView },
+      '',
+      window.location.href
+    );
+  }, [activeTab, profileSubTab]);
 
   const profileFullName = (user?.full_name || [personalFirstName, personalLastName].filter(Boolean).join(' ') || 'Teacher').trim() || 'Teacher';
   const profileLocation = profileState?.location || [personalCity, personalState].filter(Boolean).join(', ') || 'Location not set';
@@ -1294,7 +1340,7 @@ export default function TeacherDashboard() {
     setApplicationStep(1);
     setApplicationReviewMode(Boolean(options.review));
     setApplicationConsent(false);
-    setReviewCoverLetterEditing(false);
+    setReviewCoverLetterEditing(!(profileState?.cover_letter || profileState?.coverLetter || '').trim());
     setReviewCvEditing(false);
     setAlreadyAppliedState(false);
     setApplicationError('');
@@ -1909,7 +1955,7 @@ export default function TeacherDashboard() {
                               className="td-quick-apply"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                openApplyModal(job);
+                                openApplyModal(job, { review: true });
                               }}
                             >
                               Apply →
@@ -2184,7 +2230,7 @@ export default function TeacherDashboard() {
                             <div className="td-hot-salary-range">SALARY RANGE</div>
                             <div className="td-hot-footer">
                               <div className="td-hot-salary-value">{job.salaryStr}</div>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={(e) => { e.stopPropagation(); openApplyModal(job); }}>
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={(e) => { e.stopPropagation(); openApplyModal(job, { review: true }); }}>
                                 Apply Fast
                               </motion.button>
                             </div>
@@ -5161,12 +5207,12 @@ export default function TeacherDashboard() {
               </section>
 
               <section className="td-review-section">
-                <div className="td-review-section-heading"><h3>Your CV / Resume</h3>{activeResume?.url && !reviewCvEditing && <button type="button" onClick={() => setReviewCvEditing(true)}>Update CV</button>}</div>
-                {activeResume?.url && !reviewCvEditing ? (
+                <div className="td-review-section-heading"><h3>Your CV / Resume</h3>{(existingCvUrl || activeResume?.url || profileState?.cv_url) && !reviewCvEditing && <button type="button" onClick={() => setReviewCvEditing(true)}>Update CV</button>}</div>
+                {(existingCvUrl || activeResume?.url || profileState?.cv_url) && !reviewCvEditing ? (
                   <div className="td-review-document-row">
                     <div className="td-review-document-icon"><FiFileText size={18} /></div>
                     <div className="td-review-document-copy">
-                      <strong>{activeResume.name}</strong>
+                      <strong>{activeResume?.name || existingCvUrl.split('/').pop() || 'Profile CV'}</strong>
                       <span>Last updated: {activeResume.uploadDate}</span>
                     </div>
                     <FiEye size={18} className="td-review-document-action" />
@@ -5185,18 +5231,26 @@ export default function TeacherDashboard() {
                 {applicationForm.coverLetter.trim() && !reviewCoverLetterEditing ? (
                   <div className="td-review-existing-letter">{applicationForm.coverLetter}</div>
                 ) : (
-                  <label className="td-review-upload-field">
-                    <FiUpload size={17} />
-                    <span>{applicationForm.coverLetterFile ? applicationForm.coverLetterFile.name : 'Upload a cover letter for this application'}</span>
-                    <input
-                      type="file"
-                      accept=".pdf,.doc,.docx"
-                      onChange={(event) => setApplicationForm((current) => ({
-                        ...current,
-                        coverLetterFile: event.target.files?.[0] || null,
-                        coverLetter: '',
-                      }))}
-                    />
+                  <label className="td-review-letter-field">
+                    <span>Cover letter (minimum 30 characters)</span>
+                    <div className="td-review-letter-editor">
+                      <textarea
+                        value={applicationForm.coverLetter}
+                        onChange={(event) => setApplicationForm((current) => ({ ...current, coverLetter: event.target.value, coverLetterFile: null }))}
+                        placeholder="Explain why you are a good fit for this role."
+                        minLength={30}
+                        rows={6}
+                      />
+                      <button
+                        type="button"
+                        className="td-review-letter-confirm"
+                        onClick={() => setReviewCoverLetterEditing(false)}
+                        aria-label="Confirm cover letter"
+                        title="Confirm cover letter"
+                      >
+                        <FiCheck size={16} />
+                      </button>
+                    </div>
                   </label>
                 )}
               </section>
@@ -5211,7 +5265,7 @@ export default function TeacherDashboard() {
 
             <footer className="td-review-modal-footer">
               <button type="button" className="td-review-back-btn" onClick={closeApplyModal} disabled={submittingApplication}>Back</button>
-              <button type="button" className="td-review-submit-btn" onClick={submitJobApplication} disabled={!applicationConsent || submittingApplication || (!(activeResume?.url || applicationForm.resumeFile)) || (!applicationForm.coverLetterFile && applicationForm.coverLetter.trim().length < 30)}>
+              <button type="button" className="td-review-submit-btn" onClick={submitJobApplication} disabled={!applicationConsent || submittingApplication || (!(existingCvUrl || activeResume?.url || profileState?.cv_url || applicationForm.resumeFile)) || applicationForm.coverLetter.trim().length < 30}>
                 {submittingApplication ? 'Submitting...' : 'Submit Application'}
               </button>
             </footer>
@@ -8538,6 +8592,72 @@ export default function TeacherDashboard() {
           font-size: 12px;
           line-height: 1.5;
           white-space: pre-wrap;
+        }
+
+        .td-review-letter-field {
+          display: grid;
+          gap: 7px;
+          width: 100%;
+          color: #475569;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .td-review-letter-field textarea {
+          display: block;
+          width: 100%;
+          min-height: 132px;
+          padding: 12px 13px;
+          border: 1px solid #CBD8D0;
+          border-radius: 8px;
+          outline: none;
+          color: #334155;
+          background: #FFFFFF;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 400;
+          line-height: 1.55;
+          resize: vertical;
+        }
+
+        .td-review-letter-field textarea::placeholder {
+          color: #94A3B8;
+        }
+
+        .td-review-letter-field textarea:focus {
+          border-color: #16A34A;
+          box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+        }
+
+        .td-review-letter-editor {
+          position: relative;
+          width: 100%;
+        }
+
+        .td-review-letter-editor textarea {
+          padding-right: 48px;
+        }
+
+        .td-review-letter-confirm {
+          position: absolute;
+          right: 10px;
+          bottom: 10px;
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          padding: 0;
+          border: 0;
+          border-radius: 50%;
+          color: #FFFFFF;
+          background: #15803D;
+          cursor: pointer;
+          transition: background 0.2s ease, transform 0.2s ease;
+        }
+
+        .td-review-letter-confirm:hover {
+          background: #166534;
+          transform: scale(1.05);
         }
 
         .td-review-cover-letter {
