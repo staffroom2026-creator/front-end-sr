@@ -51,6 +51,7 @@ import {
 const emptyJobForm = {
   title: "",
   description: "",
+  responsibilities: [],
   role_type: "",
   employment_type: "full-time",
   salary_range: "",
@@ -61,6 +62,23 @@ const emptyJobForm = {
   required_qualification: "B.Ed or equivalent",
   application_deadline: "",
   is_featured: false,
+};
+
+const normalizeResponsibilityList = (value) => {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  if (typeof value !== "string") return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return normalizeResponsibilityList(parsed);
+  } catch {
+    // Parse legacy delimited requirements below.
+  }
+
+  return value
+    .split(/[;|\n•]+/)
+    .map((item) => item.replace(/^[-*]\s*/, "").trim())
+    .filter(Boolean);
 };
 
 
@@ -75,6 +93,7 @@ export default function AdminDashboard() {
   const [jobs, setJobs] = useState([]);
   const [applicantsByJob, setApplicantsByJob] = useState({});
   const [jobForm, setJobForm] = useState(emptyJobForm);
+  const [responsibilityInput, setResponsibilityInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -192,7 +211,7 @@ export default function AdminDashboard() {
       .trim()
       .toLowerCase();
     const location = String(payload.location ?? "").trim();
-    const requirements = String(payload.requirements ?? "").trim() || description;
+    const responsibilities = normalizeResponsibilityList(payload.responsibilities || payload.requirements);
     const teachingLevel = String(payload.teaching_level ?? "").trim() || "SS1 – SS3 (Senior Secondary)";
     const requiredExperience = String(payload.required_experience ?? "").trim() || "5+ years";
     const requiredQualification = String(payload.required_qualification ?? "").trim() || "B.Ed or equivalent";
@@ -210,7 +229,8 @@ export default function AdminDashboard() {
         : "full-time",
       salary_range: String(payload.salary_range ?? "").trim() || "Competitive",
       location,
-      requirements,
+      responsibilities,
+      requirements: responsibilities,
       teaching_level: teachingLevel,
       required_experience: requiredExperience,
       required_qualification: requiredQualification,
@@ -232,7 +252,12 @@ export default function AdminDashboard() {
     if (!job) return;
     setPreviousTab("jobs");
     setEditingJobId(job.job_id || job.id);
-    setJobForm({ ...emptyJobForm, ...job });
+    setJobForm({
+      ...emptyJobForm,
+      ...job,
+      responsibilities: normalizeResponsibilityList(job.responsibilities || job.requirements),
+    });
+    setResponsibilityInput("");
     setSelectedJob(null);
     setActiveTab("post-job");
   };
@@ -241,7 +266,12 @@ export default function AdminDashboard() {
     if (!job) return;
     setPreviousTab("jobs");
     setEditingJobId(null);
-    setJobForm({ ...emptyJobForm, ...job });
+    setJobForm({
+      ...emptyJobForm,
+      ...job,
+      responsibilities: normalizeResponsibilityList(job.responsibilities || job.requirements),
+    });
+    setResponsibilityInput("");
     setSelectedJob(null);
     setSelectedApplicant(null);
     setActiveTab("post-job");
@@ -474,6 +504,7 @@ export default function AdminDashboard() {
       ...prev.filter((job) => String(job.job_id || job.id) !== String(draftId)),
     ]);
     setJobForm(emptyJobForm);
+    setResponsibilityInput("");
     setEditingJobId(null);
     setSelectedJob(null);
     setSelectedApplicant(null);
@@ -780,6 +811,7 @@ export default function AdminDashboard() {
         employment_type: jobPayload?.employment_type || payload.employment_type,
         salary_range: jobPayload?.salary_range || payload.salary_range,
         location: jobPayload?.location || payload.location,
+        responsibilities: normalizeResponsibilityList(jobPayload?.responsibilities || payload.responsibilities),
         requirements: jobPayload?.requirements || payload.requirements,
         status: jobPayload?.status || "active",
       };
@@ -1468,6 +1500,24 @@ export default function AdminDashboard() {
     );
   };
 
+  const addResponsibility = () => {
+    const responsibility = responsibilityInput.trim();
+    if (!responsibility) return;
+
+    setJobForm((current) => ({
+      ...current,
+      responsibilities: [...normalizeResponsibilityList(current.responsibilities), responsibility],
+    }));
+    setResponsibilityInput("");
+  };
+
+  const removeResponsibility = (indexToRemove) => {
+    setJobForm((current) => ({
+      ...current,
+      responsibilities: normalizeResponsibilityList(current.responsibilities).filter((_, index) => index !== indexToRemove),
+    }));
+  };
+
   const renderJobForm = () => (
     <div className="school-job-form-page">
       <div className="school-job-form-breadcrumb">
@@ -1574,11 +1624,30 @@ export default function AdminDashboard() {
 
           <label>
             Key Responsibilities
-            <textarea
-              placeholder="List the primary duties for this role..."
-              value={jobForm.requirements}
-              onChange={(e) => setJobForm({ ...jobForm, requirements: e.target.value })}
-            />
+            <div className="school-responsibility-input-row">
+              <input
+                placeholder="e.g. Prepare lesson plans"
+                value={responsibilityInput}
+                onChange={(e) => setResponsibilityInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addResponsibility();
+                  }
+                }}
+              />
+              <button type="button" onClick={addResponsibility}><FiPlus size={14} /> Add</button>
+            </div>
+            {normalizeResponsibilityList(jobForm.responsibilities).length > 0 && (
+              <ul className="school-responsibility-list">
+                {normalizeResponsibilityList(jobForm.responsibilities).map((responsibility, index) => (
+                  <li key={`${responsibility}-${index}`}>
+                    <span>{responsibility}</span>
+                    <button type="button" onClick={() => removeResponsibility(index)} aria-label={`Remove ${responsibility}`}><FiX size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </label>
         </section>
 
@@ -1647,13 +1716,7 @@ export default function AdminDashboard() {
 
   const renderJobDetailPage = (job) => {
     const description = String(job.description || "").trim();
-    const requirementText = String(job.requirements || "").trim();
-    const requirements = requirementText
-      ? requirementText
-          .split(/\n|\r|;|•/)
-          .map((item) => item.replace(/^-\s*/, "").trim())
-          .filter(Boolean)
-      : [];
+    const requirements = normalizeResponsibilityList(job.responsibilities || job.requirements);
     const toDetailList = (value) => (Array.isArray(value) ? value : String(value || "").split(/\n|\r|;|•/))
       .map((item) => String(item).replace(/^-\s*/, "").trim())
       .filter(Boolean);
@@ -6798,6 +6861,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
         .school-input-with-icon > svg { position: absolute; top: 18px; left: 12px; z-index: 1; color: #526158; }
         .school-input-with-icon input { padding-left: 32px; }
         .school-job-description-card { gap: 17px; }
+        .school-responsibility-input-row { display: flex; gap: 8px; margin-top: 6px; }
+        .school-responsibility-input-row input { margin-top: 0 !important; flex: 1; }
+        .school-responsibility-input-row button { display: inline-flex; align-items: center; gap: 5px; flex-shrink: 0; height: 40px; padding: 0 14px; border: 1px solid #1a873c; border-radius: 9px; background: #ecfdf3; color: #166534; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .school-responsibility-input-row button:hover { background: #dcfce7; }
+        .school-responsibility-list { display: grid; gap: 7px; margin: 10px 0 0; padding: 0; list-style: none; }
+        .school-responsibility-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 34px; padding: 7px 9px 7px 11px; border: 1px solid #dfe6eb; border-radius: 8px; background: #f8fafc; color: #384056; font-size: 12px; font-weight: 500; }
+        .school-responsibility-list li button { display: grid; place-items: center; flex-shrink: 0; width: 24px; height: 24px; border: 0; border-radius: 50%; color: #64748b; background: transparent; cursor: pointer; }
+        .school-responsibility-list li button:hover { color: #b91c1c; background: #fee2e2; }
         .school-feature-option { display: flex !important; align-items: center; gap: 9px; align-self: end; padding-top: 18px; color: #5b665f !important; }
         .school-feature-option input { width: 14px; height: 14px; margin: 0; accent-color: #148038; }
         .school-job-form-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 17px 0 0; }

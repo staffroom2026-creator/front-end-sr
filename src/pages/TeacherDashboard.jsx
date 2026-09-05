@@ -79,6 +79,26 @@ const parseSubjectList = (value) => {
   return [];
 };
 
+const parseResponsibilityList = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+
+  if (typeof value !== 'string') return [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parseResponsibilityList(parsed);
+  } catch (_error) {
+    // Use the delimited text format below when the API returns plain text.
+  }
+
+  return value
+    .split(/[;|\n]+/)
+    .map((item) => item.replace(/^[-*•]\s*/, '').trim())
+    .filter(Boolean);
+};
+
 const parseLocationParts = (value) => {
   if (typeof value !== 'string') return [];
   return value.split(',').map((item) => item.trim()).filter(Boolean);
@@ -170,7 +190,7 @@ const normalizeJobData = (job = {}, index = 0) => {
     color: job.color || 'td-bg-darkgreen',
     iconType: job.iconType || 'academic',
     about: job.about || job.description || 'No job description available yet.',
-    responsibilities: Array.isArray(job.responsibilities) ? job.responsibilities : [],
+    responsibilities: parseResponsibilityList(job.responsibilities || job.job_responsibilities || job.duties),
     requirements: job.requirements || { essential: [], desirable: [] },
     employerInfo: job.employerInfo || job.employer_info || 'School information not provided.',
     employerImage: job.employerImage || job.employer_image || '',
@@ -2322,7 +2342,7 @@ export default function TeacherDashboard() {
                   <div className="td-jd-card-section">
                     <h2>Responsibilities</h2>
                     <ul className="td-jd-check-list">
-                      {selectedJob.responsibilities ? selectedJob.responsibilities.map((r, i) => (
+                      {selectedJob.responsibilities?.length ? selectedJob.responsibilities.map((r, i) => (
                         <li key={i}>
                           <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
                           <span>{r}</span>
@@ -2330,7 +2350,7 @@ export default function TeacherDashboard() {
                       )) : (
                         <li>
                           <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
-                          <span>Responsibilities will be shown when the school publishes the role details.</span>
+                          <span>No responsibilities have been provided for this role yet.</span>
                         </li>
                       )}
                     </ul>
