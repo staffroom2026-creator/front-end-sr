@@ -131,17 +131,27 @@ export default function SignIn() {
 
       const user = apiUser || result?.data?.user;
       const role = user?.role || 'teacher';
-      const loginSetupCompleted = getSetupFlag(apiData) ?? getSetupFlag(user) ?? undefined;
-      const onboardingRequired = Boolean(apiData?.onboarding_required ?? apiData?.setup_required ?? user?.onboarding_required ?? (loginSetupCompleted === false));
 
       if (role === 'teacher') {
-        if (onboardingRequired || loginSetupCompleted === false) {
+        try {
+          const profileResponse = await profileService.getMe();
+          const profilePayload = profileResponse?.data?.data ?? profileResponse?.data ?? {};
+          const teacherProfile = profilePayload?.profile || profilePayload?.teacher_profile || {};
+
+          if (!hasCompletedTeacherSetup(teacherProfile)) {
+            navigate('/teacher-info', { state: { email: form.email, role, profile: user } });
+            return;
+          }
+        } catch {
+          // A missing teacher profile means this is the first onboarding visit.
           navigate('/teacher-info', { state: { email: form.email, role, profile: user } });
           return;
         }
 
         navigate('/teacher-dashboard', { state: { email: form.email, role, profile: user } });
       } else if (role === 'school' || role === 'school_admin') {
+        const loginSetupCompleted = getSetupFlag(apiData) ?? getSetupFlag(user) ?? undefined;
+        const onboardingRequired = Boolean(apiData?.onboarding_required ?? apiData?.setup_required ?? user?.onboarding_required ?? (loginSetupCompleted === false));
         if (onboardingRequired || loginSetupCompleted === false) {
           navigate('/sch-info', { state: { email: form.email, role } });
           return;

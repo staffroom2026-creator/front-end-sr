@@ -79,6 +79,35 @@ const parseSubjectList = (value) => {
   return [];
 };
 
+const getProfileSubjects = (profile = {}) => parseSubjectList(
+  profile.subjects || profile.skills || profile.subject || profile.specializations || [],
+);
+
+const normalizeTeachingLevels = (value) => parseSubjectList(value)
+  .map((level) => level.replace(/\s+/g, ' ').trim())
+  .filter(Boolean);
+
+const normalizeTeachingMode = (profile = {}) => {
+  const value = String(profile.availability || profile.teaching_mode || profile.teachingMode || 'Open').trim().toLowerCase();
+  const modes = {
+    open: 'Open',
+    'in person': 'In Person',
+    in_person: 'In Person',
+    hybrid: 'Hybrid',
+    remote: 'Remote',
+  };
+  return modes[value] || 'Open';
+};
+
+const teacherLevelOptions = [
+  'Pre KG',
+  'KG',
+  'Primary School',
+  'JSS1 – JSS3 (Junior Secondary)',
+  'SS1 – SS3 (Senior Secondary)',
+  'College / Tertiary',
+];
+
 const parseResponsibilityList = (value) => {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value !== 'string') return [];
@@ -753,7 +782,7 @@ export default function TeacherDashboard() {
       ? `${profile.experience_years}+ years`
       : 'Not provided');
     setProfEmpPref(profile.preferred_employment_type || 'Open');
-    setProfTeachMode(profile.availability || 'Open');
+    setProfTeachMode(normalizeTeachingMode(profile));
     setProfSubjects(getProfileSubjects(profile));
     setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
     setEducationList(normalizeEducationRecords(profile.education_history));
@@ -879,7 +908,7 @@ export default function TeacherDashboard() {
       setProfSummary(profile.bio || '');
       setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
       setProfEmpPref(profile.preferred_employment_type || 'Open');
-      setProfTeachMode(profile.availability || 'Open');
+      setProfTeachMode(normalizeTeachingMode(profile));
       setProfSubjects(getProfileSubjects(profile));
       setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
       setEducationList(normalizeEducationRecords(profile.education_history));
@@ -1005,7 +1034,7 @@ export default function TeacherDashboard() {
     setProfSummary(nextProfile.bio || '');
     setProfYearsExp(nextProfile.experience_years ? `${nextProfile.experience_years}+ years` : '0+ years');
     setProfEmpPref(nextProfile.preferred_employment_type || 'Open');
-    setProfTeachMode(nextProfile.availability || 'Open');
+    setProfTeachMode(normalizeTeachingMode(nextProfile));
     setProfSubjects(getProfileSubjects(nextProfile));
     setProfTeachingLevels(normalizeTeachingLevels(nextProfile.teaching_levels || []));
     setAvailLocation(nextProfile.preferred_location || nextProfile.location || '');
@@ -3911,7 +3940,6 @@ export default function TeacherDashboard() {
                           <div className="td-prof-preferences">
                             <h2><FiFilter /> Preferences</h2>
                             <label>Employment Preference<select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Open">Open</option><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
-                            <label>Teaching Mode<select value={profTeachMode} onChange={(event) => setProfTeachMode(event.target.value)}><option value="Open">Open</option><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
                           </div>
                         </section>
                         <aside className="td-prof-edit-aside">
@@ -3922,6 +3950,7 @@ export default function TeacherDashboard() {
                               {showAddSubject ? <input autoFocus value={newSubjectInput} onChange={(event) => setNewSubjectInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && newSubjectInput.trim()) { event.preventDefault(); setProfSubjects((items) => [...items, newSubjectInput.trim()]); setNewSubjectInput(''); setShowAddSubject(false); } }} onBlur={() => setShowAddSubject(false)} aria-label="New subject" /> : <button type="button" className="td-prof-add-subject" onClick={() => setShowAddSubject(true)}>+ Add Subject</button>}
                             </div>
                             <div className="td-prof-edit-levels"><span className="td-prof-edit-label">Teaching Levels</span>{teacherLevelOptions.map((level) => <label key={level}><input type="checkbox" checked={profTeachingLevels.includes(level)} onChange={() => setProfTeachingLevels((levels) => levels.includes(level) ? levels.filter((item) => item !== level) : [...levels, level])} />{level}</label>)}</div>
+                            <label className="td-prof-edit-label">Teaching Mode<select value={profTeachMode} onChange={(event) => setProfTeachMode(event.target.value)}><option value="Open">Open</option><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
                           </section>
                           <button type="button" className="td-prof-save-btn" disabled={savingProfessionalInfo} onClick={handleSaveProfessionalInfo}>{savingProfessionalInfo ? 'Saving...' : 'Save Changes'}</button>
                         </aside>

@@ -67,7 +67,7 @@ export default function PublicRoute({ children }) {
 
   useEffect(() => {
     const role = user?.role || user?.user_role;
-    if (!token || !user || !role || !['teacher', 'school'].includes(role)) {
+    if (!token || !user || role !== 'school') {
       setProfileCheck({ loading: false, complete: true });
       return undefined;
     }
@@ -92,9 +92,7 @@ export default function PublicRoute({ children }) {
         const payload = response?.data?.data ?? response?.data ?? {};
         const profile = payload?.profile || payload?.teacher_profile || payload?.school_profile || payload?.school || payload || {};
         const account = payload?.user || {};
-        const complete = role === 'teacher'
-          ? hasCompletedTeacherSetup(profile)
-          : hasCompletedSchoolSetup(profile, account);
+        const complete = hasCompletedSchoolSetup(profile, account);
 
         if (active) setProfileCheck({ loading: false, complete });
       })
@@ -126,20 +124,6 @@ export default function PublicRoute({ children }) {
       user?.setupCompleted;
     const hasKnownSetupState = userSetupFlag !== undefined;
     const isSetupComplete = hasKnownSetupState && (userSetupFlag === true || userSetupFlag === 'true' || userSetupFlag === 1 || userSetupFlag === '1');
-
-    if (role === 'teacher') {
-      if (hasKnownSetupState && !isSetupComplete && location.pathname !== '/teacher-info') {
-        return <Navigate to="/teacher-info" replace state={{ from: location.pathname }} />;
-      }
-
-      if (hasKnownSetupState && isSetupComplete && location.pathname === '/teacher-info') {
-        return <Navigate to="/teacher-dashboard" replace state={{ from: location.pathname }} />;
-      }
-
-      if (!hasKnownSetupState && !profileCheck.complete && location.pathname !== '/teacher-info') {
-        return <Navigate to="/teacher-info" replace state={{ from: location.pathname }} />;
-      }
-    }
 
     if (role === 'school') {
       if (hasKnownSetupState && !isSetupComplete) {

@@ -73,7 +73,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
 
   useEffect(() => {
     const role = user?.role || user?.user_role;
-    const needsProfileCheck = (requireTeacherProfile && role === 'teacher') || (requireSchoolProfile && role === 'school');
+    const needsProfileCheck = requireSchoolProfile && role === 'school';
 
     if (!needsProfileCheck || !token) {
       setProfileCheck({ loading: false, complete: true });
@@ -99,9 +99,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
         const payload = response?.data?.data ?? response?.data ?? {};
         const profile = payload?.profile || payload?.teacher_profile || payload?.school_profile || payload?.school || payload || {};
         const account = payload?.user || {};
-        const complete = role === 'teacher'
-          ? hasCompletedTeacherProfile(profile)
-          : hasCompletedSchoolProfile(profile, account);
+        const complete = hasCompletedSchoolProfile(profile, account);
 
         if (active) setProfileCheck({ loading: false, complete });
       })
@@ -129,10 +127,6 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
   }
 
   const onboardingRequired = user?.onboarding_required === true || user?.onboarding_required === 'true' || user?.onboarding_required === 1 || user?.onboarding_required === '1';
-  if (onboardingRequired && requireTeacherProfile && role === 'teacher' && location.pathname !== '/teacher-info') {
-    return <Navigate to="/teacher-info" replace state={{ from: location.pathname }} />;
-  }
-
   if (onboardingRequired && requireSchoolProfile && role === 'school' && location.pathname !== '/sch-info') {
     return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
   }
@@ -150,16 +144,8 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
   const hasKnownSetupState = userSetupFlag !== undefined;
   const knownIsComplete = hasKnownSetupState && (userSetupFlag === true || userSetupFlag === 'true' || userSetupFlag === 1 || userSetupFlag === '1');
 
-  if (requireTeacherProfile && role === 'teacher' && hasKnownSetupState && !knownIsComplete) {
-    return <Navigate to="/teacher-info" replace state={{ from: location.pathname }} />;
-  }
-
   if (requireSchoolProfile && role === 'school' && hasKnownSetupState && !knownIsComplete) {
     return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
-  }
-
-  if (requireTeacherProfile && role === 'teacher' && !profileCheck.complete && !hasKnownSetupState) {
-    return <Navigate to="/teacher-info" replace state={{ from: location.pathname }} />;
   }
 
   if (requireSchoolProfile && role === 'school' && !profileCheck.complete && !hasKnownSetupState) {
