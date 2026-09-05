@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { adminService } from "../services/adminService";
 import { apiErrorMessage, API_ORIGIN } from "../services/api";
@@ -6,6 +6,7 @@ import { jobService } from "../services/jobService";
 import { applicationService } from "../services/applicationService";
 import { featureService } from "../services/featureService";
 import { profileService } from "../services/profileService";
+import { accountService } from "../services/accountService";
 import BrandLogo from "../components/BrandLogo";
 import {
   FiAlertCircle,
@@ -33,6 +34,8 @@ import {
   FiLogOut,
   FiMapPin,
   FiMessageSquare,
+  FiMail,
+  FiPhone,
   FiMoreVertical,
   FiPlus,
   FiSearch,
@@ -101,6 +104,59 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
   const [previousTab, setPreviousTab] = useState("overview");
   const [settingsSection, setSettingsSection] = useState("overview");
+  const [adminProfileForm, setAdminProfileForm] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+  });
+  const [adminProfileInitialForm, setAdminProfileInitialForm] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    email: "",
+  });
+  const [adminProfilePhoto, setAdminProfilePhoto] = useState("");
+  const [adminProfileLoading, setAdminProfileLoading] = useState(false);
+  const [savingAdminProfile, setSavingAdminProfile] = useState(false);
+  const [adminPhoneChangeValue, setAdminPhoneChangeValue] = useState("");
+  const [savingAdminPhone, setSavingAdminPhone] = useState(false);
+  const [showAdminPhoneVerificationModal, setShowAdminPhoneVerificationModal] = useState(false);
+  const [adminPhoneVerificationCode, setAdminPhoneVerificationCode] = useState(["", "", "", "", "", ""]);
+  const [pendingAdminPhone, setPendingAdminPhone] = useState("");
+  const [adminEmailChangeValue, setAdminEmailChangeValue] = useState("");
+  const [savingAdminEmail, setSavingAdminEmail] = useState(false);
+  const [showAdminEmailVerificationModal, setShowAdminEmailVerificationModal] = useState(false);
+  const [adminEmailVerificationCode, setAdminEmailVerificationCode] = useState(["", "", "", "", "", ""]);
+  const [pendingAdminEmail, setPendingAdminEmail] = useState("");
+  const [adminSuccessSnackbox, setAdminSuccessSnackbox] = useState(null);
+  const [changePasswordForm, setChangePasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [changePasswordVisibility, setChangePasswordVisibility] = useState({
+    current: false,
+    next: false,
+    confirm: false,
+  });
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [adminNotificationPreferences, setAdminNotificationPreferences] = useState({
+    new_applications: false,
+    new_applications_in_app: false,
+    new_applications_email: false,
+    application_updates: false,
+    application_updates_in_app: false,
+    application_updates_email: false,
+    job_review_updates: false,
+    job_review_updates_in_app: false,
+    job_review_updates_email: false,
+    staffroom_notifications: false,
+    staffroom_notifications_in_app: false,
+    staffroom_notifications_email: false,
+  });
+  const [adminNotificationPreferencesLoading, setAdminNotificationPreferencesLoading] = useState(false);
+  const [savingAdminNotificationPreferences, setSavingAdminNotificationPreferences] = useState(false);
   const [snackbar, setSnackbar] = useState(null);
   const [isSnackbarClosing, setIsSnackbarClosing] = useState(false);
   const [jobFilter, setJobFilter] = useState("All Jobs");
@@ -383,6 +439,636 @@ export default function AdminDashboard() {
       setSchoolLogoPreview(reader.result);
     };
     reader.readAsDataURL(file);
+  };
+
+  const loadAdminProfile = useCallback(async () => {
+    try {
+      setAdminProfileLoading(true);
+      const response = await accountService.getProfile();
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const account = payload?.user || payload?.profile || payload;
+      const fullName = String(account?.full_name || user?.full_name || "").trim();
+      const nameParts = fullName.split(/\s+/).filter(Boolean);
+      const firstName = account?.first_name || nameParts.shift() || "";
+      const lastName = account?.last_name || nameParts.join(" ");
+      const email = account?.email || user?.email || "";
+      const phone = account?.phone || user?.phone || "";
+
+      setAdminProfileForm({ firstName, lastName, phone, email });
+      setAdminProfileInitialForm({ firstName, lastName, phone, email });
+      setAdminProfilePhoto(toAssetUrl(
+        account?.profile_picture || account?.profile_image || account?.avatar_url || user?.profile_picture || user?.avatar_url || "",
+      ));
+    } catch (err) {
+      setError(apiErrorMessage(err, "Unable to load your profile."));
+    } finally {
+      setAdminProfileLoading(false);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (activeTab === "settings" && settingsSection === "profile") {
+      loadAdminProfile();
+    }
+  }, [activeTab, loadAdminProfile, settingsSection]);
+
+  const handleAdminProfilePhotoSelect = (event) => {
+    const file = event.target.files?.[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => setAdminProfilePhoto(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveAdminProfile = async () => {
+    const firstName = adminProfileForm.firstName.trim();
+    const lastName = adminProfileForm.lastName.trim();
+    const email = adminProfileForm.email.trim();
+
+    if (!firstName || !lastName || !email) {
+      showSnackbar("Profile update failed", "First name, last name, and email are required.");
+      return;
+    }
+
+    try {
+      setSavingAdminProfile(true);
+      setError("");
+      await accountService.updateProfile({
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`.trim(),
+        phone: adminProfileForm.phone.trim(),
+      });
+
+      await loadAdminProfile();
+      setAdminSuccessSnackbox({
+        title: "Profile updated successfully",
+        message: "Your profile has been updated successfully.",
+      });
+    } catch (err) {
+      const message = apiErrorMessage(err, "Unable to save your profile.");
+      setError(message);
+      showSnackbar("Profile update failed", message);
+    } finally {
+      setSavingAdminProfile(false);
+    }
+  };
+
+  const handleAdminEmailChange = async () => {
+    const email = adminEmailChangeValue.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showSnackbar("Email update failed", "Enter a valid email address.");
+      return;
+    }
+
+    try {
+      setSavingAdminEmail(true);
+      await accountService.updateEmail({ email });
+      setAdminProfileForm((current) => ({ ...current, email }));
+      setPendingAdminEmail(email);
+      setAdminEmailVerificationCode(["", "", "", "", "", ""]);
+      setShowAdminEmailVerificationModal(true);
+    } catch (err) {
+      showSnackbar("Email update failed", apiErrorMessage(err, "Unable to update your email address."));
+    } finally {
+      setSavingAdminEmail(false);
+    }
+  };
+
+  const handleAdminEmailVerificationSuccess = () => {
+    setShowAdminEmailVerificationModal(false);
+    setSettingsSection("profile");
+    setAdminSuccessSnackbox({ title: "Email changed successfully", message: "Your email has been changed successfully." });
+  };
+
+  useEffect(() => {
+    if (!adminSuccessSnackbox) return undefined;
+
+    const timeoutId = window.setTimeout(() => {
+      setAdminSuccessSnackbox(null);
+    }, 1500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [adminSuccessSnackbox]);
+
+  const handleAdminPhoneChange = async () => {
+    const phone = adminPhoneChangeValue.trim();
+    if (!phone) {
+      showSnackbar("Phone update failed", "Enter a phone number.");
+      return;
+    }
+
+    try {
+      setSavingAdminPhone(true);
+      await accountService.updateProfile({ phone });
+      setAdminProfileForm((current) => ({ ...current, phone }));
+      setPendingAdminPhone(phone);
+      setAdminPhoneVerificationCode(["", "", "", "", "", ""]);
+      setShowAdminPhoneVerificationModal(true);
+    } catch (err) {
+      showSnackbar("Phone update failed", apiErrorMessage(err, "Unable to update your phone number."));
+    } finally {
+      setSavingAdminPhone(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    const { currentPassword, newPassword, confirmPassword } = changePasswordForm;
+    if (newPassword.length < 8 || !/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword) || newPassword !== confirmPassword) return;
+
+    try {
+      setSavingPassword(true);
+      await accountService.updatePassword({
+        current_password: currentPassword,
+        new_password: newPassword,
+        confirm_password: confirmPassword,
+      });
+      setChangePasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setAdminSuccessSnackbox({ title: "Password changed successfully", message: "Your password has been changed successfully." });
+    } catch (err) {
+      showSnackbar("Password update failed", apiErrorMessage(err, "Unable to change your password."));
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const loadAdminNotificationPreferences = useCallback(async () => {
+    try {
+      setAdminNotificationPreferencesLoading(true);
+      const response = await accountService.getPreferences();
+      const payload = response?.data?.data ?? response?.data?.preferences ?? response?.data ?? {};
+      const preferences = payload && typeof payload === "object" && !Array.isArray(payload) ? payload : {};
+      const value = (key, ...aliases) => Boolean(preferences[key] ?? aliases.map((alias) => preferences[alias]).find((item) => item !== undefined) ?? false);
+
+      setAdminNotificationPreferences({
+        new_applications: value("new_applications", "newApplications"),
+        new_applications_in_app: value("new_applications_in_app", "newApplicationsInApp"),
+        new_applications_email: value("new_applications_email", "newApplicationsEmail"),
+        application_updates: value("application_updates", "applicationUpdates"),
+        application_updates_in_app: value("application_updates_in_app", "applicationUpdatesInApp"),
+        application_updates_email: value("application_updates_email", "applicationUpdatesEmail"),
+        job_review_updates: value("job_review_updates", "jobReviewUpdates"),
+        job_review_updates_in_app: value("job_review_updates_in_app", "jobReviewUpdatesInApp"),
+        job_review_updates_email: value("job_review_updates_email", "jobReviewUpdatesEmail"),
+        staffroom_notifications: value("staffroom_notifications", "staffroomNotifications"),
+        staffroom_notifications_in_app: value("staffroom_notifications_in_app", "staffroomNotificationsInApp"),
+        staffroom_notifications_email: value("staffroom_notifications_email", "staffroomNotificationsEmail"),
+      });
+    } catch (err) {
+      showSnackbar("Preferences unavailable", apiErrorMessage(err, "Unable to load notification preferences."));
+    } finally {
+      setAdminNotificationPreferencesLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeTab === "settings" && settingsSection === "notifications-privacy") {
+      loadAdminNotificationPreferences();
+    }
+  }, [activeTab, loadAdminNotificationPreferences, settingsSection]);
+
+  const handleAdminNotificationPreferenceChange = (key) => {
+    setAdminNotificationPreferences((current) => ({ ...current, [key]: !current[key] }));
+  };
+
+  const handleSaveAdminNotificationPreferences = async () => {
+    try {
+      setSavingAdminNotificationPreferences(true);
+      await accountService.updatePreferences(adminNotificationPreferences);
+      setAdminSuccessSnackbox({ title: "Preferences saved successfully", message: "Your notification preferences have been updated successfully." });
+    } catch (err) {
+      showSnackbar("Preferences update failed", apiErrorMessage(err, "Unable to save notification preferences."));
+    } finally {
+      setSavingAdminNotificationPreferences(false);
+    }
+  };
+
+  const renderAdminNotificationsPrivacy = () => {
+    const notificationRows = [
+      ["new_applications", "New Applications", "Get notified when a teacher applies for one of your jobs."],
+      ["application_updates", "Application Updates", "Get notified about important updates to applications."],
+      ["job_review_updates", "Job Review Updates", "Get notified when Staffroom reviews a job you submitted."],
+    ];
+
+    const renderPreferenceToggle = (key, label) => (
+      <button
+        type="button"
+        className={`admin-notification-toggle ${adminNotificationPreferences[key] ? "is-on" : ""}`}
+        aria-label={`${label} ${adminNotificationPreferences[key] ? "enabled" : "disabled"}`}
+        aria-pressed={adminNotificationPreferences[key]}
+        onClick={() => handleAdminNotificationPreferenceChange(key)}
+      >
+        <span />
+      </button>
+    );
+
+    return (
+      <div className="admin-settings-shell admin-settings-subpage admin-notifications-page">
+        <div className="admin-settings-breadcrumb-row">
+          <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("overview")}>Settings</button>
+          <span className="admin-settings-breadcrumb-separator">›</span>
+          <span>Notifications &amp; Privacy</span>
+        </div>
+
+        <div className="admin-notifications-header">
+          <h1>Notifications</h1>
+          <p>Manage how and where you receive updates about your institutional activity.</p>
+        </div>
+
+        {adminNotificationPreferencesLoading ? (
+          <p className="admin-notifications-loading">Loading notification preferences...</p>
+        ) : (
+          <>
+            <section className="admin-notification-preference-card">
+              <div className="admin-notification-card-heading"><FiBriefcase size={14} /><span>Jobs &amp; Applications</span></div>
+              {notificationRows.map(([key, title, description]) => (
+                <div className="admin-notification-preference-row" key={key}>
+                  <div><strong>{title}</strong><p>{description}</p></div>
+                  <div className="admin-notification-channel-group">
+                    <label><small>IN-APP</small>{renderPreferenceToggle(`${key}_in_app`, `${title} in-app notifications`)}</label>
+                    <label><small>EMAIL</small>{renderPreferenceToggle(`${key}_email`, `${title} email notifications`)}</label>
+                  </div>
+                </div>
+              ))}
+            </section>
+
+            <section className="admin-notification-preference-card">
+              <div className="admin-notification-card-heading"><FiLock size={14} /><span>Security</span></div>
+              <div className="admin-notification-security-copy">Important security notifications are always sent to help protect your account and cannot be disabled.</div>
+              <div className="admin-notification-security-row"><div><strong>Security Alerts</strong><p>Important notifications about security activity on your account.</p></div><span className="admin-notification-always-enabled"><FiShield size={12} /> Always enabled</span></div>
+            </section>
+
+            <section className="admin-notification-preference-card">
+              <div className="admin-notification-card-heading green"><FiBell size={14} /><span>Staffroom</span></div>
+              <div className="admin-notification-preference-row">
+                <div><strong>Important Staffroom Notifications</strong><p>Receive important notifications about your Staffroom account and services.</p></div>
+                <div className="admin-notification-channel-group">
+                  <label><small>IN-APP</small>{renderPreferenceToggle("staffroom_notifications_in_app", "Staffroom in-app notifications")}</label>
+                  <label><small>EMAIL</small>{renderPreferenceToggle("staffroom_notifications_email", "Staffroom email notifications")}</label>
+                </div>
+              </div>
+            </section>
+
+            <div className="admin-notifications-actions">
+              <button type="button" className="admin-notifications-discard" onClick={loadAdminNotificationPreferences} disabled={savingAdminNotificationPreferences}>Discard Changes</button>
+              <button type="button" className="admin-notifications-save" onClick={handleSaveAdminNotificationPreferences} disabled={savingAdminNotificationPreferences}>{savingAdminNotificationPreferences ? "Saving..." : "Save Preferences"}</button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  const renderAdminPasswordChange = () => {
+    const { currentPassword, newPassword, confirmPassword } = changePasswordForm;
+    const hasMinimumLength = newPassword.length >= 8;
+    const hasLetter = /[A-Za-z]/.test(newPassword);
+    const hasNumber = /\d/.test(newPassword);
+    const canChangePassword = Boolean(currentPassword && hasMinimumLength && hasLetter && hasNumber && newPassword === confirmPassword);
+    const passwordInput = (field, label, placeholder, value) => (
+      <label className="admin-password-field">
+        <span>{label}</span>
+        <div className="admin-password-input-wrap">
+          <input
+            type={changePasswordVisibility[field] ? "text" : "password"}
+            placeholder={placeholder}
+            value={value}
+            onChange={(event) => setChangePasswordForm((current) => ({ ...current, [field === "current" ? "currentPassword" : field === "next" ? "newPassword" : "confirmPassword"]: event.target.value }))}
+          />
+          <button type="button" aria-label={`${changePasswordVisibility[field] ? "Hide" : "Show"} ${label.toLowerCase()}`} onClick={() => setChangePasswordVisibility((current) => ({ ...current, [field]: !current[field] }))}>
+            <FiEye size={18} />
+          </button>
+        </div>
+      </label>
+    );
+
+    return (
+      <div className="admin-settings-shell admin-settings-subpage admin-password-change-page">
+        <div className="admin-settings-breadcrumb-row">
+          <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("account-security")}>Account &amp; Security</button>
+          <span className="admin-settings-breadcrumb-separator">›</span>
+          <span>Change password</span>
+        </div>
+
+        <section className="admin-password-card">
+          <div className="admin-password-header">
+            <h1>Change password</h1>
+            <p>Create a new password for your Staffroom account.</p>
+          </div>
+          <div className="admin-password-content">
+            {passwordInput("current", "Current password", "Enter current password", currentPassword)}
+            {passwordInput("next", "New password", "Enter new password", newPassword)}
+            <div className="admin-password-requirements">
+              <strong>Password requirements:</strong>
+              <span className={hasMinimumLength ? "is-met" : ""}><i />At least 8 characters</span>
+              <span className={hasLetter ? "is-met" : ""}><i />Contains a letter</span>
+              <span className={hasNumber ? "is-met" : ""}><i />Contains a number</span>
+            </div>
+            {passwordInput("confirm", "Confirm new password", "Re-enter new password", confirmPassword)}
+          </div>
+          <div className="admin-password-footer">
+            <button type="button" className="admin-profile-cancel-btn" onClick={() => setSettingsSection("account-security")} disabled={savingPassword}>Cancel</button>
+            <button type="button" className="admin-password-save-btn" onClick={handleChangePassword} disabled={savingPassword || !canChangePassword}>
+              {savingPassword ? "Changing..." : "Change password"}
+            </button>
+          </div>
+        </section>
+      </div>
+    );
+  };
+
+  const handleAdminPhoneVerificationSuccess = () => {
+    setShowAdminPhoneVerificationModal(false);
+    setSettingsSection("profile");
+    setAdminSuccessSnackbox({ title: "Phone number changed successfully", message: "Your phone number has been changed successfully." });
+  };
+
+  const renderAdminPhoneChange = () => (
+    <div className="admin-settings-shell admin-settings-subpage admin-email-change-page">
+      <div className="admin-settings-breadcrumb-row">
+        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("profile")}>Profile</button>
+        <span className="admin-settings-breadcrumb-separator">›</span>
+        <span>Change phone number</span>
+      </div>
+
+      <div className="admin-email-change-header">
+        <h1 className="admin-settings-subpage-title">Change phone number</h1>
+        <p>Enter your new phone number. We&apos;ll send a verification code to confirm it.</p>
+      </div>
+
+      <section className="admin-email-change-card">
+        <label className="admin-email-change-field">
+          <span>Current phone number</span>
+          <div className="admin-email-current-value"><FiLock size={16} />{adminProfileForm.phone}</div>
+        </label>
+        <label className="admin-email-change-field">
+          <span>New phone number</span>
+          <input type="tel" autoFocus placeholder="e.g. 081 4835 5892" value={adminPhoneChangeValue} onChange={(event) => setAdminPhoneChangeValue(event.target.value)} />
+        </label>
+        <div className="admin-email-change-actions">
+          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("profile")}>Cancel</button>
+          <button type="button" className="admin-email-continue-btn" onClick={handleAdminPhoneChange} disabled={savingAdminPhone || !adminPhoneChangeValue.trim() || adminPhoneChangeValue.trim() === adminProfileForm.phone.trim()}>
+            {savingAdminPhone ? "Updating..." : "Continue"}
+          </button>
+        </div>
+      </section>
+
+      <aside className="admin-email-security-note">
+        <FiShield size={17} />
+        <div><strong>Secure Account Updates</strong><p>Updating your phone number will require verification to ensure your account remains secure.</p></div>
+      </aside>
+      {renderAdminPhoneVerificationModal()}
+    </div>
+  );
+
+  const renderAdminPhoneVerificationModal = () => showAdminPhoneVerificationModal && (
+    <div className="admin-email-verify-overlay" onClick={() => setShowAdminPhoneVerificationModal(false)}>
+      <div className="admin-email-verify-modal" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="admin-email-verify-close" onClick={() => setShowAdminPhoneVerificationModal(false)} aria-label="Close phone verification">
+          <span aria-hidden="true">×</span>
+        </button>
+        <div className="admin-email-verify-icon"><FiPhone size={17} /></div>
+        <h2>Verify your new<br />phone number</h2>
+        <p className="admin-email-verify-description">We sent a verification code to your new phone number.</p>
+        <span className="admin-email-verify-address">
+          {pendingAdminPhone ? `${pendingAdminPhone.slice(0, 4)}********${pendingAdminPhone.slice(-3)}` : "Phone number"}
+        </span>
+        <div className="admin-email-verify-code" role="group" aria-label="Phone verification code">
+          {adminPhoneVerificationCode.map((digit, index) => (
+            <input
+              key={`admin-phone-code-${index}`}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              aria-label={`Verification digit ${index + 1}`}
+              onChange={(event) => {
+                const value = event.target.value.replace(/\D/g, "").slice(-1);
+                setAdminPhoneVerificationCode((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+                if (value) event.target.nextElementSibling?.focus();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Backspace" && !digit) event.currentTarget.previousElementSibling?.focus();
+              }}
+            />
+          ))}
+        </div>
+        <button type="button" className="admin-email-verify-submit" onClick={handleAdminPhoneVerificationSuccess} disabled={adminPhoneVerificationCode.some((digit) => !digit)}>
+          Verify phone number <FiArrowRight size={15} />
+        </button>
+        <div className="admin-email-verify-divider" />
+        <p className="admin-email-verify-resend">Didn&apos;t receive the code? <button type="button">Resend code</button></p>
+        <button type="button" className="admin-email-verify-change" onClick={() => { setShowAdminPhoneVerificationModal(false); setAdminPhoneChangeValue(pendingAdminPhone); }}>
+          Change phone number
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderAdminEmailVerificationModal = () => showAdminEmailVerificationModal && (
+    <div className="admin-email-verify-overlay" onClick={() => setShowAdminEmailVerificationModal(false)}>
+      <div className="admin-email-verify-modal" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="admin-email-verify-close" onClick={() => setShowAdminEmailVerificationModal(false)} aria-label="Close email verification">
+          <span aria-hidden="true">×</span>
+        </button>
+        <div className="admin-email-verify-icon"><FiMail size={17} /></div>
+        <h2>Verify your new email</h2>
+        <p className="admin-email-verify-description">We sent a verification code to your new email address.</p>
+        <span className="admin-email-verify-address">
+          {pendingAdminEmail ? `${pendingAdminEmail.slice(0, 1)}****${pendingAdminEmail.slice(pendingAdminEmail.indexOf("@"))}` : "Email address"}
+        </span>
+        <div className="admin-email-verify-code" role="group" aria-label="Email verification code">
+          {adminEmailVerificationCode.map((digit, index) => (
+            <input
+              key={`admin-email-code-${index}`}
+              type="text"
+              inputMode="numeric"
+              maxLength={1}
+              value={digit}
+              aria-label={`Verification digit ${index + 1}`}
+              onChange={(event) => {
+                const value = event.target.value.replace(/\D/g, "").slice(-1);
+                setAdminEmailVerificationCode((current) => current.map((item, itemIndex) => itemIndex === index ? value : item));
+                if (value) event.target.nextElementSibling?.focus();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Backspace" && !digit) event.currentTarget.previousElementSibling?.focus();
+              }}
+            />
+          ))}
+        </div>
+        <button type="button" className="admin-email-verify-submit" onClick={handleAdminEmailVerificationSuccess} disabled={adminEmailVerificationCode.some((digit) => !digit)}>
+          Verify email <FiArrowRight size={15} />
+        </button>
+        <div className="admin-email-verify-divider" />
+        <p className="admin-email-verify-resend">Didn&apos;t receive the code? <button type="button">Resend code</button></p>
+        <button type="button" className="admin-email-verify-change" onClick={() => { setShowAdminEmailVerificationModal(false); setAdminEmailChangeValue(pendingAdminEmail); }}>
+          Change email address
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderAdminEmailChange = () => (
+    <div className="admin-settings-shell admin-settings-subpage admin-email-change-page">
+      <div className="admin-settings-breadcrumb-row">
+        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("profile")}>
+          Profile
+        </button>
+        <span className="admin-settings-breadcrumb-separator">›</span>
+        <span>Change email</span>
+      </div>
+
+      <div className="admin-email-change-header">
+        <h1 className="admin-settings-subpage-title">Change email address</h1>
+        <p>Enter your new email address. We&apos;ll send a verification code to confirm it.</p>
+      </div>
+
+      <section className="admin-email-change-card">
+        <label className="admin-email-change-field">
+          <span>Current email</span>
+          <div className="admin-email-current-value">
+            <FiLock size={16} />
+            {adminProfileForm.email}
+          </div>
+        </label>
+        <label className="admin-email-change-field">
+          <span>New email address</span>
+          <input
+            type="email"
+            autoFocus
+            placeholder="e.g. adeyemi@school.edu"
+            value={adminEmailChangeValue}
+            onChange={(event) => setAdminEmailChangeValue(event.target.value)}
+          />
+        </label>
+        <div className="admin-email-change-actions">
+          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("profile")}>Cancel</button>
+          <button
+            type="button"
+            className="admin-email-continue-btn"
+            onClick={handleAdminEmailChange}
+            disabled={savingAdminEmail
+              || !adminEmailChangeValue.trim()
+              || adminEmailChangeValue.trim().toLowerCase() === adminProfileForm.email.trim().toLowerCase()}
+          >
+            {savingAdminEmail ? "Updating..." : "Continue"}
+          </button>
+        </div>
+      </section>
+
+      <aside className="admin-email-security-note">
+        <FiShield size={17} />
+        <div>
+          <strong>Secure Account Updates</strong>
+          <p>Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
+        </div>
+      </aside>
+      {renderAdminEmailVerificationModal()}
+    </div>
+  );
+
+  const renderAdminProfile = () => {
+    const initials = `${adminProfileForm.firstName.charAt(0)}${adminProfileForm.lastName.charAt(0)}`.toUpperCase() || "A";
+    const hasAdminProfileChanges = ["firstName", "lastName", "phone", "email"]
+      .some((field) => adminProfileForm[field].trim() !== adminProfileInitialForm[field].trim());
+
+    return (
+      <div className="admin-settings-shell admin-settings-subpage">
+        <div className="admin-settings-breadcrumb-row">
+          <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("overview")}>
+            Settings
+          </button>
+          <span className="admin-settings-breadcrumb-separator">›</span>
+          <span>Profile</span>
+        </div>
+
+        <div className="admin-settings-panel admin-profile-panel">
+          <div className="admin-profile-header">
+            <div>
+              <h1 className="admin-settings-subpage-title">Edit Profile</h1>
+              <p className="admin-settings-subpage-subtitle">Update your personal information and contact details.</p>
+            </div>
+          </div>
+
+          <section className="admin-profile-card">
+            {adminProfileLoading ? (
+              <p className="admin-profile-loading">Loading profile...</p>
+            ) : (
+              <>
+                <div className="admin-profile-photo-row">
+                  <div className="admin-profile-photo">
+                    {adminProfilePhoto ? <img src={adminProfilePhoto} alt="Administrator profile" /> : <span>{initials}</span>}
+                  </div>
+                  <div className="admin-profile-photo-copy">
+                    <h2>Profile Photo</h2>
+                    <p>Recommended size is 256x256px. Maximum file size is 5MB.</p>
+                    <input id="admin-profile-photo-input" type="file" accept="image/*" hidden onChange={handleAdminProfilePhotoSelect} />
+                    <div className="admin-profile-photo-actions">
+                      <label htmlFor="admin-profile-photo-input" className="admin-profile-photo-btn">Change Photo</label>
+                      <button type="button" className="admin-profile-remove-btn" onClick={() => setAdminProfilePhoto("")}>Remove</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="admin-profile-divider" />
+
+                <div className="admin-profile-form-grid">
+                  <label className="admin-profile-field">
+                    <span>First Name</span>
+                    <input value={adminProfileForm.firstName} onChange={(event) => setAdminProfileForm((current) => ({ ...current, firstName: event.target.value }))} />
+                  </label>
+                  <label className="admin-profile-field">
+                    <span>Last Name</span>
+                    <input value={adminProfileForm.lastName} onChange={(event) => setAdminProfileForm((current) => ({ ...current, lastName: event.target.value }))} />
+                  </label>
+                  <label className="admin-profile-field">
+                    <span>Phone Number</span>
+                    <div className="admin-profile-input-action-row">
+                      <input id="admin-profile-phone" readOnly value={adminProfileForm.phone} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminPhoneChangeValue(adminProfileForm.phone);
+                          setSettingsSection("phone-change");
+                        }}
+                      >
+                        Change Number
+                      </button>
+                    </div>
+                  </label>
+                  <label className="admin-profile-field">
+                    <span>Email Address</span>
+                    <div className="admin-profile-input-action-row">
+                      <input id="admin-profile-email" type="email" readOnly value={adminProfileForm.email} />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAdminEmailChangeValue(adminProfileForm.email);
+                          setSettingsSection("email-change");
+                        }}
+                      >
+                        Change Email
+                      </button>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="admin-profile-footer">
+                  <button type="button" className="admin-profile-cancel-btn" onClick={loadAdminProfile} disabled={adminProfileLoading || savingAdminProfile}>Cancel</button>
+                  <button type="button" className="admin-profile-save-btn" onClick={handleSaveAdminProfile} disabled={adminProfileLoading || savingAdminProfile || !hasAdminProfileChanges}>
+                    <FiCheck size={14} />
+                    {savingAdminProfile ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </>
+            )}
+          </section>
+        </div>
+
+      </div>
+    );
   };
 
   const handleSaveSchoolProfile = async () => {
@@ -1147,18 +1833,18 @@ export default function AdminDashboard() {
 
   const navItems = isSchool
     ? [
-        ["overview", "Dashboard", FiGrid],
-        ["jobs", "Jobs", FiBriefcase],
-        ["applicants", "Applicants", FiUsers],
-        ["notifications", "Notifications", FiBell],
-        ["settings", "Settings", FiSettings],
-      ]
+      ["overview", "Dashboard", FiGrid],
+      ["jobs", "Jobs", FiBriefcase],
+      ["applicants", "Applicants", FiUsers],
+      ["notifications", "Notifications", FiBell],
+      ["settings", "Settings", FiSettings],
+    ]
     : [
-        ["overview", "Dashboard", FiGrid],
-        ["verifications", "Verifications", FiCheckCircle],
-        ["notifications", "Notifications", FiBell],
-        ["settings", "Settings", FiSettings],
-      ];
+      ["overview", "Dashboard", FiGrid],
+      ["verifications", "Verifications", FiCheckCircle],
+      ["notifications", "Notifications", FiBell],
+      ["settings", "Settings", FiSettings],
+    ];
 
   const allApplicants = Object.entries(applicantsByJob).flatMap(
     ([jobId, applicants]) => applicants.map((app) => ({ ...app, jobId })),
@@ -1396,12 +2082,12 @@ export default function AdminDashboard() {
             {(jobs.length
               ? jobs.slice(0, 2)
               : [
-                  {
-                    job_id: "empty",
-                    title: "No active postings",
-                    location: "Create your first job",
-                  },
-                ]
+                {
+                  job_id: "empty",
+                  title: "No active postings",
+                  location: "Create your first job",
+                },
+              ]
             ).map((job) => {
               const jobId = job.job_id || job.id;
               return (
@@ -1496,9 +2182,8 @@ export default function AdminDashboard() {
               <button
                 key={item.key}
                 type="button"
-                className={`school-notification-${item.type} ${
-                  item.accent ? `school-notification-${item.type}--${item.accent}` : ""
-                } ${item.unread ? "is-unread" : ""}`}
+                className={`school-notification-${item.type} ${item.accent ? `school-notification-${item.type}--${item.accent}` : ""
+                  } ${item.unread ? "is-unread" : ""}`}
                 onClick={() => handleNotificationItemClick(item)}
               >
                 <span className="school-notification-icon">
@@ -2096,77 +2781,37 @@ export default function AdminDashboard() {
           if (jobFilter === "Active") return jobStatus === "active" || jobStatus === "open" || jobStatus === "published";
           return jobStatus === jobFilter.toLowerCase();
         }).length > visibleSchoolJobCount && (
-          <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
-            Load More <FiChevronDown size={13} />
-          </button>
-        )}
-      </div>
-    </div>
-  );
-
-const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
-  const toApplicantList = (value) => Array.isArray(value)
-    ? value.filter(Boolean)
-    : String(value || "").split(/[,;\n|]/).map((item) => item.trim()).filter(Boolean);
-  const applicantSubjects = toApplicantList(applicant.subjects || applicant.skills);
-  const applicantSkills = toApplicantList(applicant.skills || applicant.subjects);
-  const applicantQualifications = toApplicantList(applicant.qualifications || applicant.qualification || applicant.education);
-  const applicantExperience = Array.isArray(applicant.teaching_experience)
-    ? applicant.teaching_experience
-    : Array.isArray(applicant.work_experience) ? applicant.work_experience : [];
-  const applicantId = applicant.application_id || applicant.id;
-  const jobId = job.job_id || job.id;
-  const summary = applicant.summary || applicant.bio || applicant.about || "No professional summary has been provided.";
-  const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
-  const coverLetter = String(applicant.cover_letter || "").trim();
-  const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
-
-  if (applicant) return (
-    <div className="school-applicant-summary-page school-applicant-summary-page--api">
-      <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
-      <div className="school-summary-container"><div className="school-summary-content">
-        <section className="school-summary-section school-summary-section--first">
-          <div className="school-summary-actions">
-            <button
-              type="button"
-              className="school-summary-shortlist-btn"
-              disabled={Boolean(String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/))}
-              onClick={() => handleShortlistApplicant(applicant)}
-              style={String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
-            >
-              {String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
+            <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
+              Load More <FiChevronDown size={13} />
             </button>
-            <button type="button" className="school-summary-reject-btn" onClick={() => openRejectApplicantModal(jobId, applicantId)}>Reject Applicant</button>
-          </div>
-          <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
-        </section>
-        <div className="school-summary-grid-2col">
-          <section className="school-summary-section"><div className="school-summary-section-header"><FiBook className="school-summary-icon" /><h2>Teaching Subjects</h2></div>{applicantSubjects.length ? <div className="school-summary-tags">{applicantSubjects.map((subject, index) => <span key={`${subject}-${index}`} className="school-summary-tag">{subject}</span>)}</div> : <p className="school-summary-text">No subjects provided.</p>}</section>
-          <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
-        </div>
-        <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
-        <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <div className="school-summary-cover-letter"><FiFileText /><div><strong>Cover letter</strong><p>{coverLetter}</p></div></div> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
-      </div></div>
+          )}
+      </div>
+
     </div>
   );
 
-  return (
-    <div className="school-applicant-summary-page">
-      <button
-        type="button"
-        className="school-summary-back-btn"
-        onClick={() => setSelectedApplicant(null)}
-      >
-        <FiArrowLeft /> Back
-      </button>
+  const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
+    const toApplicantList = (value) => Array.isArray(value)
+      ? value.filter(Boolean)
+      : String(value || "").split(/[,;\n|]/).map((item) => item.trim()).filter(Boolean);
+    const applicantSubjects = toApplicantList(applicant.subjects || applicant.skills);
+    const applicantSkills = toApplicantList(applicant.skills || applicant.subjects);
+    const applicantQualifications = toApplicantList(applicant.qualifications || applicant.qualification || applicant.education);
+    const applicantExperience = Array.isArray(applicant.teaching_experience)
+      ? applicant.teaching_experience
+      : Array.isArray(applicant.work_experience) ? applicant.work_experience : [];
+    const applicantId = applicant.application_id || applicant.id;
+    const jobId = job.job_id || job.id;
+    const summary = applicant.summary || applicant.bio || applicant.about || "No professional summary has been provided.";
+    const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
+    const coverLetter = String(applicant.cover_letter || "").trim();
+    const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
 
-      <div className="school-summary-container">
-        <div className="school-summary-content">
-
-          {/* 1. Professional Summary */}
+    if (applicant) return (
+      <div className="school-applicant-summary-page school-applicant-summary-page--api">
+        <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
+        <div className="school-summary-container"><div className="school-summary-content">
           <section className="school-summary-section school-summary-section--first">
-
-            {/* Action Buttons - Right Side */}
             <div className="school-summary-actions">
               <button
                 type="button"
@@ -2177,268 +2822,309 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
               >
                 {String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
               </button>
-
-              <button
-                type="button"
-                className="school-summary-reject-btn"
-                onClick={() => openRejectApplicantModal(jobId, applicantId)}
-              >
-                Reject Applicant
-              </button>
+              <button type="button" className="school-summary-reject-btn" onClick={() => openRejectApplicantModal(jobId, applicantId)}>Reject Applicant</button>
             </div>
-
-            {/* Professional Summary Content */}
-            <div className="school-summary-summary-content">
-              <div className="school-summary-header-title">
-                <FiFileText className="school-summary-icon" />
-                <h2>Professional Summary</h2>
-              </div>
-
-              <p className="school-summary-text">
-                {applicant.summary ||
-                  "Seasoned Mathematics educator with over 12 years of experience in preparing students for WAEC, NECO, and IGCSE examinations. Proven track record of improving student performance by 35% through innovative teaching methodologies and personalized learning paths. Dedicated to fostering a deep understanding of complex mathematical concepts and further mathematics logic."}
-              </p>
-            </div>
-
-            {/* Clear floated buttons */}
-            <div className="school-summary-clearfix" />
+            <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
           </section>
-
-          {/* 2. Teaching Subjects & Qualifications (2-Column Grid) */}
           <div className="school-summary-grid-2col">
-
-            <section className="school-summary-section">
-              <div className="school-summary-section-header">
-                <FiBook className="school-summary-icon" />
-                <h2>Teaching Subjects</h2>
-              </div>
-
-              <div className="school-summary-tags">
-                {applicantSubjects.map((subject, idx) => (
-                  <span
-                    key={idx}
-                    className="school-summary-tag"
-                  >
-                    {subject}
-                  </span>
-                ))}
-              </div>
-            </section>
-
-            <section className="school-summary-section">
-              <div className="school-summary-section-header">
-                <FiAward className="school-summary-icon" />
-                <h2>Qualifications</h2>
-              </div>
-
-              <div className="school-summary-qualifications">
-                <div className="school-summary-qualification">
-                  <strong>B.Sc Mathematics</strong>
-                  <span className="school-summary-qual-year">
-                    UNILAG, 2011
-                  </span>
-                </div>
-
-                <div className="school-summary-qualification">
-                  <strong>M.Ed Educational Admin</strong>
-                  <span className="school-summary-qual-year">
-                    UI, 2015
-                  </span>
-                </div>
-
-                <div className="school-summary-badge-wrapper">
-                  <span className="school-summary-badge">
-                    TRCN VERIFIED
-                  </span>
-                </div>
-              </div>
-            </section>
-
+            <section className="school-summary-section"><div className="school-summary-section-header"><FiBook className="school-summary-icon" /><h2>Teaching Subjects</h2></div>{applicantSubjects.length ? <div className="school-summary-tags">{applicantSubjects.map((subject, index) => <span key={`${subject}-${index}`} className="school-summary-tag">{subject}</span>)}</div> : <p className="school-summary-text">No subjects provided.</p>}</section>
+            <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
           </div>
+          <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
+          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <div className="school-summary-cover-letter"><FiFileText /><div><strong>Cover letter</strong><p>{coverLetter}</p></div></div> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
+        </div></div>
+      </div>
+    );
 
-          {/* 3. Teaching Experience */}
-          <section className="school-summary-section">
+    return (
+      <div className="school-applicant-summary-page">
+        <button
+          type="button"
+          className="school-summary-back-btn"
+          onClick={() => setSelectedApplicant(null)}
+        >
+          <FiArrowLeft /> Back
+        </button>
 
-            <div className="school-summary-section-header">
-              <FiBriefcase className="school-summary-icon" />
-              <h2>Teaching Experience</h2>
-            </div>
+        <div className="school-summary-container">
+          <div className="school-summary-content">
 
-            <div className="school-summary-experience-timeline">
+            {/* 1. Professional Summary */}
+            <section className="school-summary-section school-summary-section--first">
 
-              {/* Experience 1 */}
-              <div className="school-summary-timeline-item">
+              {/* Action Buttons - Right Side */}
+              <div className="school-summary-actions">
+                <button
+                  type="button"
+                  className="school-summary-shortlist-btn"
+                  disabled={Boolean(String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/))}
+                  onClick={() => handleShortlistApplicant(applicant)}
+                  style={String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
+                >
+                  {String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
+                </button>
 
-                <div className="school-summary-timeline-bullet school-summary-timeline-bullet--active" />
+                <button
+                  type="button"
+                  className="school-summary-reject-btn"
+                  onClick={() => openRejectApplicantModal(jobId, applicantId)}
+                >
+                  Reject Applicant
+                </button>
+              </div>
 
-                <div className="school-summary-job">
+              {/* Professional Summary Content */}
+              <div className="school-summary-summary-content">
+                <div className="school-summary-header-title">
+                  <FiFileText className="school-summary-icon" />
+                  <h2>Professional Summary</h2>
+                </div>
 
-                  <div className="school-summary-job-header">
-                    <div>
-                      <strong>Senior Math Teacher</strong>
+                <p className="school-summary-text">
+                  {applicant.summary ||
+                    "Seasoned Mathematics educator with over 12 years of experience in preparing students for WAEC, NECO, and IGCSE examinations. Proven track record of improving student performance by 35% through innovative teaching methodologies and personalized learning paths. Dedicated to fostering a deep understanding of complex mathematical concepts and further mathematics logic."}
+                </p>
+              </div>
 
-                      <p className="school-summary-job-school">
-                        Grange School, Lagos
-                      </p>
-                    </div>
+              {/* Clear floated buttons */}
+              <div className="school-summary-clearfix" />
+            </section>
 
-                    <span className="school-summary-date school-summary-date--current">
-                      2018 - Present
+            {/* 2. Teaching Subjects & Qualifications (2-Column Grid) */}
+            <div className="school-summary-grid-2col">
+
+              <section className="school-summary-section">
+                <div className="school-summary-section-header">
+                  <FiBook className="school-summary-icon" />
+                  <h2>Teaching Subjects</h2>
+                </div>
+
+                <div className="school-summary-tags">
+                  {applicantSubjects.map((subject, idx) => (
+                    <span
+                      key={idx}
+                      className="school-summary-tag"
+                    >
+                      {subject}
+                    </span>
+                  ))}
+                </div>
+              </section>
+
+              <section className="school-summary-section">
+                <div className="school-summary-section-header">
+                  <FiAward className="school-summary-icon" />
+                  <h2>Qualifications</h2>
+                </div>
+
+                <div className="school-summary-qualifications">
+                  <div className="school-summary-qualification">
+                    <strong>B.Sc Mathematics</strong>
+                    <span className="school-summary-qual-year">
+                      UNILAG, 2011
                     </span>
                   </div>
 
-                  <p className="school-summary-job-desc">
-                    Leading the department in curriculum redesign and
-                    implementing tech-enabled learning modules for
-                    advanced calculus and statistics.
-                  </p>
-
-                </div>
-              </div>
-
-              {/* Experience 2 */}
-              <div className="school-summary-timeline-item">
-
-                <div className="school-summary-timeline-bullet" />
-
-                <div className="school-summary-job">
-
-                  <div className="school-summary-job-header">
-                    <div>
-                      <strong>Mathematics Educator</strong>
-
-                      <p className="school-summary-job-school">
-                        Corona Secondary School
-                      </p>
-                    </div>
-
-                    <span className="school-summary-date">
-                      2014 - 2018
+                  <div className="school-summary-qualification">
+                    <strong>M.Ed Educational Admin</strong>
+                    <span className="school-summary-qual-year">
+                      UI, 2015
                     </span>
                   </div>
 
-                  <p className="school-summary-job-desc">
-                    Managed standardized testing preparation and
-                    extracurricular math Olympiad coaching for senior
-                    students.
-                  </p>
-
+                  <div className="school-summary-badge-wrapper">
+                    <span className="school-summary-badge">
+                      TRCN VERIFIED
+                    </span>
+                  </div>
                 </div>
-              </div>
+              </section>
 
             </div>
-          </section>
 
-          {/* 4. Key Skills & Uploaded Documents */}
-          <div className="school-summary-bottom-row">
-
-            {/* Key Skills */}
-            <section className="school-summary-section school-summary-section--skills">
+            {/* 3. Teaching Experience */}
+            <section className="school-summary-section">
 
               <div className="school-summary-section-header">
-                <h2>Key Skills</h2>
+                <FiBriefcase className="school-summary-icon" />
+                <h2>Teaching Experience</h2>
               </div>
 
-              <div className="school-summary-skills">
-                {applicantSkills.map((skill, idx) => (
-                  <span
-                    key={idx}
-                    className="school-summary-skill-tag"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
+              <div className="school-summary-experience-timeline">
 
+                {/* Experience 1 */}
+                <div className="school-summary-timeline-item">
+
+                  <div className="school-summary-timeline-bullet school-summary-timeline-bullet--active" />
+
+                  <div className="school-summary-job">
+
+                    <div className="school-summary-job-header">
+                      <div>
+                        <strong>Senior Math Teacher</strong>
+
+                        <p className="school-summary-job-school">
+                          Grange School, Lagos
+                        </p>
+                      </div>
+
+                      <span className="school-summary-date school-summary-date--current">
+                        2018 - Present
+                      </span>
+                    </div>
+
+                    <p className="school-summary-job-desc">
+                      Leading the department in curriculum redesign and
+                      implementing tech-enabled learning modules for
+                      advanced calculus and statistics.
+                    </p>
+
+                  </div>
+                </div>
+
+                {/* Experience 2 */}
+                <div className="school-summary-timeline-item">
+
+                  <div className="school-summary-timeline-bullet" />
+
+                  <div className="school-summary-job">
+
+                    <div className="school-summary-job-header">
+                      <div>
+                        <strong>Mathematics Educator</strong>
+
+                        <p className="school-summary-job-school">
+                          Corona Secondary School
+                        </p>
+                      </div>
+
+                      <span className="school-summary-date">
+                        2014 - 2018
+                      </span>
+                    </div>
+
+                    <p className="school-summary-job-desc">
+                      Managed standardized testing preparation and
+                      extracurricular math Olympiad coaching for senior
+                      students.
+                    </p>
+
+                  </div>
+                </div>
+
+              </div>
             </section>
 
-            {/* Uploaded Documents */}
-            <div className="school-summary-documents">
+            {/* 4. Key Skills & Uploaded Documents */}
+            <div className="school-summary-bottom-row">
 
-              {/* CV */}
-              <div className="school-summary-document">
+              {/* Key Skills */}
+              <section className="school-summary-section school-summary-section--skills">
 
-                <div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf">
-                  <span>PDF</span>
+                <div className="school-summary-section-header">
+                  <h2>Key Skills</h2>
                 </div>
 
-                <div className="school-summary-doc-info">
-                  <p className="school-summary-doc-name">
-                    Tunde_Bello_CV.pdf
-                  </p>
-
-                  <p className="school-summary-doc-size">
-                    1.2 MB • Updated 2 days ago
-                  </p>
+                <div className="school-summary-skills">
+                  {applicantSkills.map((skill, idx) => (
+                    <span
+                      key={idx}
+                      className="school-summary-skill-tag"
+                    >
+                      {skill}
+                    </span>
+                  ))}
                 </div>
 
-                <div className="school-summary-doc-actions">
+              </section>
 
-                  <button
-                    type="button"
-                    title="View"
-                    className="school-summary-doc-btn"
-                  >
-                    <FiEye size={18} />
-                  </button>
+              {/* Uploaded Documents */}
+              <div className="school-summary-documents">
 
-                  <button
-                    type="button"
-                    title="Download"
-                    className="school-summary-doc-btn"
-                  >
-                    <FiDownload size={18} />
-                  </button>
+                {/* CV */}
+                <div className="school-summary-document">
 
+                  <div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf">
+                    <span>PDF</span>
+                  </div>
+
+                  <div className="school-summary-doc-info">
+                    <p className="school-summary-doc-name">
+                      Tunde_Bello_CV.pdf
+                    </p>
+
+                    <p className="school-summary-doc-size">
+                      1.2 MB • Updated 2 days ago
+                    </p>
+                  </div>
+
+                  <div className="school-summary-doc-actions">
+
+                    <button
+                      type="button"
+                      title="View"
+                      className="school-summary-doc-btn"
+                    >
+                      <FiEye size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      title="Download"
+                      className="school-summary-doc-btn"
+                    >
+                      <FiDownload size={18} />
+                    </button>
+
+                  </div>
                 </div>
+
+                {/* Cover Letter */}
+                <div className="school-summary-document">
+
+                  <div className="school-summary-doc-icon-box school-summary-doc-icon-box--doc">
+                    <FiFileText size={20} />
+                  </div>
+
+                  <div className="school-summary-doc-info">
+                    <p className="school-summary-doc-name">
+                      Cover_Letter.docx
+                    </p>
+
+                    <p className="school-summary-doc-size">
+                      450 KB • Updated 2 days ago
+                    </p>
+                  </div>
+
+                  <div className="school-summary-doc-actions">
+
+                    <button
+                      type="button"
+                      title="View"
+                      className="school-summary-doc-btn"
+                    >
+                      <FiEye size={18} />
+                    </button>
+
+                    <button
+                      type="button"
+                      title="Download"
+                      className="school-summary-doc-btn"
+                    >
+                      <FiDownload size={18} />
+                    </button>
+
+                  </div>
+                </div>
+
               </div>
-
-              {/* Cover Letter */}
-              <div className="school-summary-document">
-
-                <div className="school-summary-doc-icon-box school-summary-doc-icon-box--doc">
-                  <FiFileText size={20} />
-                </div>
-
-                <div className="school-summary-doc-info">
-                  <p className="school-summary-doc-name">
-                    Cover_Letter.docx
-                  </p>
-
-                  <p className="school-summary-doc-size">
-                    450 KB • Updated 2 days ago
-                  </p>
-                </div>
-
-                <div className="school-summary-doc-actions">
-
-                  <button
-                    type="button"
-                    title="View"
-                    className="school-summary-doc-btn"
-                  >
-                    <FiEye size={18} />
-                  </button>
-
-                  <button
-                    type="button"
-                    title="Download"
-                    className="school-summary-doc-btn"
-                  >
-                    <FiDownload size={18} />
-                  </button>
-
-                </div>
-              </div>
-
             </div>
-          </div>
 
+          </div>
         </div>
       </div>
-    </div>
-  );
-};
+    );
+  };
 
   const normalizeMultiValueList = (value) => {
     if (Array.isArray(value)) {
@@ -3371,119 +4057,119 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
 
                 {(shortlistForm.interviewType === "Physical Interview" ||
                   shortlistForm.interviewType === "Virtual Interview") && (
-                  <div className="school-shortlist-interview-details">
-                    <div className="school-shortlist-interview-header">
-                      <span className="school-shortlist-calendar-icon">▣</span>
-                      <h4>Interview Details</h4>
-                    </div>
-
-                    <div className="school-shortlist-details-grid">
-                      <div className="school-shortlist-detail-block">
-                        <label>Date</label>
-                        <input
-                          type="date"
-                          value={shortlistForm.interviewDate}
-                          onChange={(event) =>
-                            setShortlistForm((prev) => ({
-                              ...prev,
-                              interviewDate: event.target.value,
-                            }))
-                          }
-                        />
+                    <div className="school-shortlist-interview-details">
+                      <div className="school-shortlist-interview-header">
+                        <span className="school-shortlist-calendar-icon">▣</span>
+                        <h4>Interview Details</h4>
                       </div>
 
-                      <div className="school-shortlist-detail-block">
-                        <label>Time</label>
-                        <input
-                          type="time"
-                          value={shortlistForm.interviewTime}
-                          onChange={(event) =>
-                            setShortlistForm((prev) => ({
-                              ...prev,
-                              interviewTime: event.target.value,
-                            }))
-                          }
-                        />
+                      <div className="school-shortlist-details-grid">
+                        <div className="school-shortlist-detail-block">
+                          <label>Date</label>
+                          <input
+                            type="date"
+                            value={shortlistForm.interviewDate}
+                            onChange={(event) =>
+                              setShortlistForm((prev) => ({
+                                ...prev,
+                                interviewDate: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+
+                        <div className="school-shortlist-detail-block">
+                          <label>Time</label>
+                          <input
+                            type="time"
+                            value={shortlistForm.interviewTime}
+                            onChange={(event) =>
+                              setShortlistForm((prev) => ({
+                                ...prev,
+                                interviewTime: event.target.value,
+                              }))
+                            }
+                          />
+                        </div>
+
+                        {shortlistForm.interviewType === "Physical Interview" ? (
+                          <>
+                            <div className="school-shortlist-detail-block school-shortlist-detail-block--wide">
+                              <label>Venue</label>
+                              <div className="school-shortlist-input-wrap school-shortlist-input-wrap--venue">
+                                <span className="school-shortlist-location-dot">◉</span>
+                                <input
+                                  type="text"
+                                  value={shortlistForm.interviewVenue}
+                                  onChange={(event) =>
+                                    setShortlistForm((prev) => ({
+                                      ...prev,
+                                      interviewVenue: event.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="school-shortlist-detail-block school-shortlist-detail-block--right">
+                              <label>Recipient contact</label>
+                              <input
+                                type="text"
+                                className="school-shortlist-recipient-input"
+                                placeholder="Name"
+                                value={shortlistForm.recipientName}
+                                readOnly
+                              />
+                              <input
+                                type="tel"
+                                className="school-shortlist-recipient-input"
+                                placeholder="Phone Number"
+                                value={shortlistForm.recipientPhone}
+                                readOnly
+                              />
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="school-shortlist-detail-block school-shortlist-detail-block--wide">
+                              <label>Link</label>
+                              <div className="school-shortlist-input-wrap school-shortlist-input-wrap--link">
+                                <span className="school-shortlist-link-icon">◫</span>
+                                <input
+                                  type="text"
+                                  value={shortlistForm.interviewLink}
+                                  onChange={(event) =>
+                                    setShortlistForm((prev) => ({
+                                      ...prev,
+                                      interviewLink: event.target.value,
+                                    }))
+                                  }
+                                />
+                              </div>
+                            </div>
+
+                            <div className="school-shortlist-detail-block school-shortlist-detail-block--right">
+                              <label>Recipient contact</label>
+                              <input
+                                type="text"
+                                className="school-shortlist-recipient-input"
+                                placeholder="Name"
+                                value={shortlistForm.recipientName}
+                                readOnly
+                              />
+                              <input
+                                type="tel"
+                                className="school-shortlist-recipient-input"
+                                placeholder="Phone Number"
+                                value={shortlistForm.recipientPhone}
+                                readOnly
+                              />
+                            </div>
+                          </>
+                        )}
                       </div>
-
-                      {shortlistForm.interviewType === "Physical Interview" ? (
-                        <>
-                          <div className="school-shortlist-detail-block school-shortlist-detail-block--wide">
-                            <label>Venue</label>
-                            <div className="school-shortlist-input-wrap school-shortlist-input-wrap--venue">
-                              <span className="school-shortlist-location-dot">◉</span>
-                              <input
-                                type="text"
-                                value={shortlistForm.interviewVenue}
-                                onChange={(event) =>
-                                  setShortlistForm((prev) => ({
-                                    ...prev,
-                                    interviewVenue: event.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-                          </div>
-
-                          <div className="school-shortlist-detail-block school-shortlist-detail-block--right">
-                            <label>Recipient contact</label>
-                            <input
-                              type="text"
-                              className="school-shortlist-recipient-input"
-                              placeholder="Name"
-                              value={shortlistForm.recipientName}
-                              readOnly
-                            />
-                            <input
-                              type="tel"
-                              className="school-shortlist-recipient-input"
-                              placeholder="Phone Number"
-                              value={shortlistForm.recipientPhone}
-                              readOnly
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="school-shortlist-detail-block school-shortlist-detail-block--wide">
-                            <label>Link</label>
-                            <div className="school-shortlist-input-wrap school-shortlist-input-wrap--link">
-                              <span className="school-shortlist-link-icon">◫</span>
-                              <input
-                                type="text"
-                                value={shortlistForm.interviewLink}
-                                onChange={(event) =>
-                                  setShortlistForm((prev) => ({
-                                    ...prev,
-                                    interviewLink: event.target.value,
-                                  }))
-                                }
-                              />
-                            </div>
-                          </div>
-
-                          <div className="school-shortlist-detail-block school-shortlist-detail-block--right">
-                            <label>Recipient contact</label>
-                            <input
-                              type="text"
-                              className="school-shortlist-recipient-input"
-                              placeholder="Name"
-                              value={shortlistForm.recipientName}
-                              readOnly
-                            />
-                            <input
-                              type="tel"
-                              className="school-shortlist-recipient-input"
-                              placeholder="Phone Number"
-                              value={shortlistForm.recipientPhone}
-                              readOnly
-                            />
-                          </div>
-                        </>
-                      )}
                     </div>
-                  </div>
-                )}
+                  )}
               </>
             )}
 
@@ -3523,7 +4209,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                 </span>
                 <span className="school-shortlist-dropdown-caret" aria-hidden="true">
                   <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M5 7.5L10 12.5L15 7.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 </span>
               </div>
@@ -3783,40 +4469,40 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     const teachers = teacherUsers.length
       ? teacherUsers
       : allApplicants
-          .map((app) => {
-            const name = app.teacher_name || app.teacher_email || "Teacher";
-            const dedupeKey = (app.teacher_email || name).toLowerCase();
-            if (seenTeachers.has(dedupeKey)) return null;
-            seenTeachers.add(dedupeKey);
+        .map((app) => {
+          const name = app.teacher_name || app.teacher_email || "Teacher";
+          const dedupeKey = (app.teacher_email || name).toLowerCase();
+          if (seenTeachers.has(dedupeKey)) return null;
+          seenTeachers.add(dedupeKey);
 
-            const matchedJob = jobs.find(
-              (job) => (job.job_id || job.id) === app.jobId,
-            );
+          const matchedJob = jobs.find(
+            (job) => (job.job_id || job.id) === app.jobId,
+          );
 
-            return {
-              name,
-              role: matchedJob?.title || matchedJob?.role_type || "Teaching Professional",
-              location: matchedJob?.location || app.location || "Nigeria",
-              experience: app.experience_years
-                ? `${app.experience_years} Years`
-                : "Not specified",
-              subject: app.skills || matchedJob?.role_type || "General",
-                  trcnStatus: app.trcn_status || (app.trcn_verified || app.verified ? "Verified" : "Not verified"),
-              availability: app.availability || "Available",
-              summary:
-                app.cover_letter ||
-                app.bio ||
-                `Applied for ${matchedJob?.title || "a teaching position"} at your school.`,
-              accent: accentColors[seenTeachers.size % accentColors.length],
-              email: app.teacher_email || "",
-              phone: app.teacher_phone || "",
-              cv_url: app.cv_url || "",
-              status: app.status || "pending",
-              application_id: app.application_id || app.id,
-              teacher_id: app.teacher_id || "",
-            };
-          })
-          .filter(Boolean);
+          return {
+            name,
+            role: matchedJob?.title || matchedJob?.role_type || "Teaching Professional",
+            location: matchedJob?.location || app.location || "Nigeria",
+            experience: app.experience_years
+              ? `${app.experience_years} Years`
+              : "Not specified",
+            subject: app.skills || matchedJob?.role_type || "General",
+            trcnStatus: app.trcn_status || (app.trcn_verified || app.verified ? "Verified" : "Not verified"),
+            availability: app.availability || "Available",
+            summary:
+              app.cover_letter ||
+              app.bio ||
+              `Applied for ${matchedJob?.title || "a teaching position"} at your school.`,
+            accent: accentColors[seenTeachers.size % accentColors.length],
+            email: app.teacher_email || "",
+            phone: app.teacher_phone || "",
+            cv_url: app.cv_url || "",
+            status: app.status || "pending",
+            application_id: app.application_id || app.id,
+            teacher_id: app.teacher_id || "",
+          };
+        })
+        .filter(Boolean);
 
     const uniqueLocations = [
       "All Locations",
@@ -4605,7 +5291,17 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                     </>
                   )}
                   {activeTab === "settings" && (
-                    settingsSection === "account-security" ? (
+                    settingsSection === "notifications-privacy" ? (
+                      renderAdminNotificationsPrivacy()
+                    ) : settingsSection === "password-change" ? (
+                      renderAdminPasswordChange()
+                    ) : settingsSection === "phone-change" ? (
+                      renderAdminPhoneChange()
+                    ) : settingsSection === "email-change" ? (
+                      renderAdminEmailChange()
+                    ) : settingsSection === "profile" ? (
+                      renderAdminProfile()
+                    ) : settingsSection === "account-security" ? (
                       <div className="admin-settings-shell admin-settings-subpage">
                         <div className="admin-settings-breadcrumb-row">
                           <button
@@ -4642,7 +5338,7 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
                                 <div className="admin-security-password-mask">••••••••••••••••</div>
                               </div>
 
-                              <button type="button" className="admin-security-action-btn">
+                              <button type="button" className="admin-security-action-btn" onClick={() => setSettingsSection("password-change")}>
                                 <FiLock size={14} />
                                 Change Password
                               </button>
@@ -5136,6 +5832,19 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           </button>
         </div>
       )}
+      {adminSuccessSnackbox && (
+        <div className="admin-email-success-snackbox" role="status">
+          <div className="admin-email-success-icon"><FiCheck size={21} /></div>
+          <div className="admin-email-success-copy">
+            <strong>{adminSuccessSnackbox.title}</strong>
+            <p>{adminSuccessSnackbox.message}</p>
+          </div>
+          <button type="button" className="admin-email-success-close" onClick={() => setAdminSuccessSnackbox(null)} aria-label="Dismiss success message">
+            <FiX size={22} />
+          </button>
+          <button type="button" className="admin-email-success-ok" onClick={() => setAdminSuccessSnackbox(null)}>Okay</button>
+        </div>
+      )}
       <style>{`
     .admin-notification-modal-backdrop { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; background: rgba(15, 23, 42, .5); }
     .admin-notification-modal { width: min(480px, 100%); border-radius: 22px; padding: 24px; background: #fff; box-shadow: 0 20px 60px rgba(15, 23, 42, .2); }
@@ -5152,6 +5861,14 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
     .admin-notification-read-btn { border: 0; background: #15803d; color: #fff; }
     .admin-notification-delete-btn { border: 1px solid #e2e8f0; background: #fff; color: #0f172a; }
     .admin-notification-modal-actions button:disabled { cursor: not-allowed; opacity: .65; }
+    .admin-email-success-snackbox { position: fixed; top: 42px; left: 50%; z-index: 1200; display: grid; grid-template-columns: 34px minmax(0, 1fr) 24px; align-items: start; gap: 10px; width: min(318px, calc(100vw - 32px)); padding: 12px 12px 10px; border: 1px solid #cbd2d4; border-radius: 14px; background: #f8f9fa; box-shadow: 0 14px 32px rgba(15, 23, 42, .14); transform: translateX(-50%); }
+    .admin-email-success-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #138a35; color: #fff; }
+    .admin-email-success-copy { padding-top: 2px; }
+    .admin-email-success-copy strong { display: block; color: #111827; font-size: 13px; line-height: 1.3; }
+    .admin-email-success-copy p { margin: 7px 0 0; color: #111827; font-size: 11px; line-height: 1.4; }
+    .admin-email-success-close { display: grid; place-items: center; width: 24px; height: 24px; border: 0; background: transparent; color: #111; cursor: pointer; }
+    .admin-email-success-ok { grid-column: 2 / 4; justify-self: end; min-width: 90px; min-height: 40px; margin-top: 8px; border: 0; border-radius: 999px; background: #2ae156; color: #000; font-size: 12px; cursor: pointer; }
+    @media (max-width: 480px) { .admin-email-success-snackbox { top: 20px; } }
 .admin-settings-shell {
           max-width: 1120px;
           margin: 0 auto;
@@ -5451,6 +6168,748 @@ const renderApplicantSummaryPage = (applicant = {}, job = {}) => {
           margin-top: 8px;
           padding: 26px 0 0;
           border-top: 1px solid #dfe3df;
+        }
+        .admin-profile-panel {
+          max-width: 860px;
+          padding-top: 0;
+          border-top: 0;
+        }
+        .admin-profile-header {
+          display: flex;
+          align-items: flex-start;
+          gap: 18px;
+          margin-bottom: 24px;
+        }
+        .admin-profile-panel .admin-settings-subpage-title {
+          margin-bottom: 4px;
+          font-size: 24px;
+          line-height: 1.2;
+          letter-spacing: -0.03em;
+        }
+        .admin-profile-panel .admin-settings-subpage-subtitle {
+          margin-bottom: 0;
+          color: #a2aaa7;
+          font-size: 13px;
+          line-height: 1.4;
+        }
+        .admin-profile-card {
+          padding: 28px 24px 22px;
+          border: 1px solid #dfe3df;
+          border-radius: 10px;
+          background: #fff;
+        }
+        .admin-profile-photo-row {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+        }
+        .admin-profile-photo {
+          display: grid;
+          place-items: center;
+          width: 72px;
+          height: 72px;
+          aspect-ratio: 1;
+          flex: 0 0 72px;
+          overflow: hidden;
+          border: 1px solid #dfe3df;
+          border-radius: 50%;
+          background: #fff;
+          color: #1b9c63;
+          font-size: 22px;
+          font-weight: 700;
+        }
+        .admin-profile-photo img {
+          width: 100%;
+          height: 100%;
+          padding: 4px;
+          object-fit: contain;
+          object-position: center;
+        }
+        .admin-profile-photo-copy h2 {
+          margin: 0 0 4px;
+          color: #1f2d2d;
+          font-size: 16px;
+        }
+        .admin-profile-photo-copy p {
+          margin: 0 0 10px;
+          color: #b1b7b4;
+          font-size: 10px;
+        }
+        .admin-profile-photo-actions {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+        }
+        .admin-profile-photo-btn {
+          display: inline-flex;
+          align-items: center;
+          min-height: 27px;
+          padding: 0 11px;
+          border: 1px solid #d5dad8;
+          border-radius: 4px;
+          background: #fff;
+          color: #344542;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-profile-remove-btn {
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #f07c6e;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-profile-divider {
+          height: 1px;
+          margin: 24px 0 20px;
+          background: #e0e5e2;
+        }
+        .admin-profile-form-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 20px 18px;
+        }
+        .admin-profile-field {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          color: #273a36;
+          font-size: 10px;
+          font-weight: 700;
+        }
+        .admin-profile-input-action-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .admin-profile-field input {
+          width: 100%;
+          min-height: 38px;
+          padding: 0 12px;
+          border: 1px solid #d9dfdc;
+          border-radius: 6px;
+          background: #fff;
+          color: #34423f;
+          font-size: 12px;
+          outline: none;
+        }
+        .admin-profile-input-action-row button {
+          flex: 0 0 auto;
+          min-height: 38px;
+          padding: 0 11px;
+          border: 1px solid #707b83;
+          border-radius: 6px;
+          background: #fff;
+          color: #3e4650;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-profile-field input:focus {
+          border-color: #1d9a66;
+          box-shadow: 0 0 0 3px rgba(29, 154, 102, 0.1);
+        }
+        .admin-profile-field input[readonly] {
+          background: #f4f5f4;
+          color: #a6adaa;
+          cursor: default;
+        }
+        .admin-profile-loading {
+          margin: 0;
+          color: #63716d;
+          font-size: 14px;
+        }
+        .admin-profile-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 28px;
+          padding-top: 14px;
+          border-top: 1px solid #e0e5e2;
+        }
+        .admin-profile-cancel-btn,
+        .admin-profile-save-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          min-height: 38px;
+          padding: 0 20px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-profile-cancel-btn {
+          border: 1px solid #dfe3df;
+          background: #fff;
+          color: #4a5554;
+        }
+        .admin-profile-save-btn {
+          border: 1px solid #f3f4f3;
+          background: #f5f6f5;
+          color: #4c5554;
+        }
+        .admin-profile-save-btn:not(:disabled) {
+          border-color: #2ae156;
+          background: #2ae156;
+          color: #000;
+        }
+        .admin-profile-save-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+        .admin-password-change-page {
+          max-width: 860px;
+          padding-top: 0;
+        }
+        .admin-password-card {
+          margin-top: 24px;
+          overflow: hidden;
+          border: 1px solid #cfd7d3;
+          border-radius: 18px;
+          background: #fff;
+        }
+        .admin-password-header {
+          padding: 28px 26px 24px;
+          border-bottom: 1px solid #dfe3df;
+        }
+        .admin-password-header h1 {
+          margin: 0 0 5px;
+          color: #1f2d2d;
+          font-size: 21px;
+          line-height: 1.25;
+        }
+        .admin-password-header p {
+          margin: 0;
+          color: #64716e;
+          font-size: 13px;
+        }
+        .admin-password-content {
+          width: min(450px, calc(100% - 40px));
+          margin: 24px auto 36px;
+        }
+        .admin-password-field {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          margin-bottom: 20px;
+          color: #273a36;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .admin-password-input-wrap {
+          position: relative;
+        }
+        .admin-password-input-wrap input {
+          width: 100%;
+          min-height: 38px;
+          padding: 0 42px 0 12px;
+          border: 1px solid #d4dbd8;
+          border-radius: 7px;
+          background: #fff;
+          color: #273a36;
+          font-size: 13px;
+          outline: none;
+        }
+        .admin-password-input-wrap input:focus {
+          border-color: #2ae156;
+          box-shadow: 0 0 0 3px rgba(42, 225, 86, 0.12);
+        }
+        .admin-password-input-wrap input::placeholder {
+          color: #b6bdb9;
+        }
+        .admin-password-input-wrap button {
+          position: absolute;
+          top: 50%;
+          right: 10px;
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 24px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #b2b9b6;
+          cursor: pointer;
+          transform: translateY(-50%);
+        }
+        .admin-password-requirements {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          margin: -7px 0 24px;
+          padding: 12px;
+          border: 1px solid #d8ddda;
+          border-radius: 7px;
+          background: #f7f7f8;
+          color: #b1b7b4;
+          font-size: 10px;
+        }
+        .admin-password-requirements strong {
+          margin-bottom: 1px;
+          color: #34413e;
+          font-size: 11px;
+        }
+        .admin-password-requirements span {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+        .admin-password-requirements i {
+          width: 10px;
+          height: 10px;
+          border: 1px solid #bfc7c3;
+          border-radius: 50%;
+          background: transparent;
+        }
+        .admin-password-requirements span.is-met {
+          color: #16873c;
+        }
+        .admin-password-requirements span.is-met i {
+          border-color: #16873c;
+          background: #2ae156;
+        }
+        .admin-password-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          padding: 24px 26px;
+          background: #f7f8f7;
+        }
+        .admin-password-save-btn {
+          min-height: 42px;
+          padding: 0 22px;
+          border: 1px solid #f0f1f0;
+          border-radius: 999px;
+          background: #f0eff1;
+          color: #4b4d5e;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-password-save-btn:not(:disabled) {
+          border-color: #2ae156;
+          background: #2ae156;
+          color: #000;
+        }
+        .admin-password-save-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+        .admin-notifications-page {
+          max-width: 860px;
+          padding-top: 0;
+        }
+        .admin-notifications-header {
+          margin: 28px 0 24px;
+        }
+        .admin-notifications-header h1 {
+          margin: 0 0 6px;
+          color: #16873c;
+          font-size: 24px;
+        }
+        .admin-notifications-header p {
+          margin: 0;
+          color: #64716e;
+          font-size: 12px;
+        }
+        .admin-notification-preference-card {
+          margin-bottom: 24px;
+          overflow: hidden;
+          border: 1px solid #dfe3df;
+          border-radius: 7px;
+          background: #fff;
+        }
+        .admin-notification-card-heading {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 35px;
+          padding: 0 16px;
+          border-bottom: 1px solid #dfe3df;
+          color: #273a36;
+          font-size: 11px;
+          font-weight: 800;
+          text-transform: uppercase;
+        }
+        .admin-notification-card-heading.green { color: #16873c; }
+        .admin-notification-preference-row,
+        .admin-notification-security-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          min-height: 72px;
+          padding: 13px 16px;
+          border-bottom: 1px solid #e4e8e5;
+        }
+        .admin-notification-preference-row:last-child { border-bottom: 0; }
+        .admin-notification-preference-row strong,
+        .admin-notification-security-row strong {
+          display: block;
+          margin-bottom: 4px;
+          color: #273a36;
+          font-size: 10px;
+        }
+        .admin-notification-preference-row p,
+        .admin-notification-security-row p {
+          max-width: 480px;
+          margin: 0;
+          color: #64716e;
+          font-size: 9px;
+          line-height: 1.4;
+        }
+        .admin-notification-channel-group {
+          display: flex;
+          align-items: center;
+          gap: 18px;
+          flex: 0 0 auto;
+        }
+        .admin-notification-channel-group label {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+          color: #8b9691;
+          font-size: 7px;
+          font-weight: 800;
+        }
+        .admin-notification-toggle {
+          position: relative;
+          width: 29px;
+          height: 16px;
+          padding: 0;
+          border: 0;
+          border-radius: 999px;
+          background: #c8cfcb;
+          cursor: pointer;
+        }
+        .admin-notification-toggle span {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.18);
+          transition: transform 0.2s ease;
+        }
+        .admin-notification-toggle.is-on { background: #16873c; }
+        .admin-notification-toggle.is-on span { transform: translateX(13px); }
+        .admin-notification-security-copy {
+          padding: 14px 16px;
+          border-bottom: 1px solid #e4e8e5;
+          color: #64716e;
+          font-size: 9px;
+        }
+        .admin-notification-security-row { border-bottom: 0; }
+        .admin-notification-always-enabled {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 6px 10px;
+          border-radius: 7px;
+          background: #e9f7ee;
+          color: #16873c;
+          font-size: 8px;
+          font-weight: 800;
+          text-transform: uppercase;
+          white-space: nowrap;
+        }
+        .admin-notifications-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          padding-top: 4px;
+        }
+        .admin-notifications-discard,
+        .admin-notifications-save {
+          min-height: 34px;
+          padding: 0 18px;
+          border-radius: 999px;
+          font-size: 9px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+        .admin-notifications-discard {
+          border: 1px solid #aab5b0;
+          background: #fff;
+          color: #4c5a55;
+        }
+        .admin-notifications-save {
+          border: 1px solid #2ae156;
+          background: #2ae156;
+          color: #000;
+        }
+        .admin-notifications-discard:disabled,
+        .admin-notifications-save:disabled { cursor: not-allowed; opacity: 0.65; }
+        .admin-notifications-loading { color: #64716e; font-size: 12px; }
+        .admin-profile-cancel-btn:disabled,
+        .admin-profile-save-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+        .admin-email-change-page {
+          max-width: 860px;
+          padding-top: 0;
+        }
+        .admin-email-change-header {
+          margin: 18px 0 26px;
+        }
+        .admin-email-change-header .admin-settings-subpage-title {
+          margin-bottom: 8px;
+          font-size: 28px;
+          line-height: 1.2;
+        }
+        .admin-email-change-header p {
+          margin: 0;
+          max-width: 420px;
+          color: #64716e;
+          font-size: 13px;
+          line-height: 1.55;
+        }
+        .admin-email-change-card {
+          padding: 26px 24px 24px;
+          border: 1px solid #dfe5e1;
+          border-radius: 10px;
+          background: #fff;
+          box-shadow: 0 10px 26px rgba(20, 35, 30, 0.03);
+        }
+        .admin-email-change-field {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          margin-bottom: 17px;
+          color: #273a36;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .admin-email-current-value,
+        .admin-email-change-field input {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          min-height: 42px;
+          padding: 0 12px;
+          border: 1px solid #dce3e0;
+          border-radius: 7px;
+          font-size: 13px;
+        }
+        .admin-email-current-value {
+          gap: 9px;
+          background: #eef2ff;
+          color: #596675;
+        }
+        .admin-email-change-field input {
+          background: #fff;
+          color: #273a36;
+          outline: none;
+        }
+        .admin-email-change-field input::placeholder {
+          color: #b7c0bd;
+        }
+        .admin-email-change-field input:focus {
+          border-color: #1d9a66;
+          box-shadow: 0 0 0 3px rgba(29, 154, 102, 0.1);
+        }
+        .admin-email-change-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          margin-top: 15px;
+          padding-top: 18px;
+          border-top: 1px solid #e6ebe8;
+        }
+        .admin-email-cancel-btn,
+        .admin-email-continue-btn {
+          min-height: 42px;
+          padding: 0 26px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-email-cancel-btn {
+          border: 1px solid #3c5a53;
+          background: #fff;
+          color: #30453f;
+        }
+        .admin-email-continue-btn {
+          border: 1px solid #f0f1f0;
+          background: #f0eff1;
+          color: #4b4d5e;
+        }
+        .admin-email-continue-btn:not(:disabled) {
+          border-color: #2ae156;
+          background: #2ae156;
+          color: #000;
+        }
+        .admin-email-continue-btn:disabled {
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+        .admin-email-security-note {
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          margin-top: 24px;
+          padding: 20px 18px;
+          border-radius: 10px;
+          background: #eef2ff;
+          color: #195f50;
+        }
+        .admin-email-security-note strong {
+          display: block;
+          margin-bottom: 4px;
+          color: #344457;
+          font-size: 12px;
+        }
+        .admin-email-security-note p {
+          max-width: 650px;
+          margin: 0;
+          color: #596675;
+          font-size: 11px;
+          line-height: 1.55;
+        }
+        .admin-email-verify-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1100;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          background: rgba(0, 0, 0, 0.43);
+        }
+        .admin-email-verify-modal {
+          position: relative;
+          width: min(458px, 100%);
+          padding: 26px 26px 20px;
+          border-radius: 8px;
+          background: #fff;
+          box-shadow: 0 18px 48px rgba(15, 23, 42, 0.24);
+          text-align: center;
+        }
+        .admin-email-verify-close {
+          position: absolute;
+          top: -42px;
+          right: -42px;
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          border: 2px solid #111827;
+          border-radius: 50%;
+          color: #111827;
+          background: transparent;
+          font-size: 22px;
+          line-height: 1;
+          cursor: pointer;
+        }
+        .admin-email-verify-icon {
+          display: grid;
+          place-items: center;
+          width: 35px;
+          height: 35px;
+          margin: 0 auto 17px;
+          border-radius: 50%;
+          color: #064e3b;
+          background: #e6f0ff;
+        }
+        .admin-email-verify-modal h2 {
+          margin: 0;
+          color: #0f172a;
+          font-size: 20px;
+          font-weight: 800;
+          line-height: 1.18;
+        }
+        .admin-email-verify-description {
+          max-width: 240px;
+          margin: 8px auto 0;
+          color: #64748b;
+          font-size: 11px;
+          line-height: 1.45;
+        }
+        .admin-email-verify-address {
+          display: inline-block;
+          margin-top: 9px;
+          padding: 3px 11px;
+          border-radius: 12px;
+          color: #1e293b;
+          background: #eef4ff;
+          font-size: 10px;
+          font-weight: 700;
+        }
+        .admin-email-verify-code {
+          display: flex;
+          justify-content: center;
+          gap: 18px;
+          margin: 20px 0;
+        }
+        .admin-email-verify-code input {
+          width: 37px;
+          height: 37px;
+          border: 1px solid #d9dee6;
+          border-radius: 5px;
+          outline: none;
+          color: #0f172a;
+          background: #fff;
+          font-size: 17px;
+          font-weight: 700;
+          text-align: center;
+        }
+        .admin-email-verify-code input:focus {
+          border-color: #134e4a;
+          box-shadow: 0 0 0 2px rgba(19, 78, 74, 0.1);
+        }
+        .admin-email-verify-submit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          width: min(275px, 100%);
+          min-height: 35px;
+          border: 1px solid #2ae156;
+          border-radius: 20px;
+          color: #000;
+          background: #2ae156;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .admin-email-verify-submit:disabled {
+          cursor: not-allowed;
+          opacity: 0.65;
+        }
+        .admin-email-verify-divider {
+          height: 1px;
+          margin: 20px 0 10px;
+          background: #f1f5f9;
+        }
+        .admin-email-verify-resend {
+          margin: 0;
+          color: #64748b;
+          font-size: 11px;
+        }
+        .admin-email-verify-resend button,
+        .admin-email-verify-change {
+          border: 0;
+          padding: 0;
+          color: #0f172a;
+          background: transparent;
+          font-size: 11px;
+          font-weight: 800;
+          cursor: pointer;
+        }
+        .admin-email-verify-change {
+          margin-top: 12px;
+          color: #64748b;
+          font-weight: 500;
         }
         .admin-settings-subpage-title {
           margin: 0 0 6px;
