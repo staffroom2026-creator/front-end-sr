@@ -1009,6 +1009,24 @@ export default function AdminDashboard() {
       : `${API_ORIGIN}/${String(schoolProfileLogoPath).replace(/^\/+/, "")}`
     : "";
 
+  const schoolProfileCompletion = useMemo(() => {
+    const completionFields = [
+      schoolNameValue || schoolProfile?.school_name || user?.school_name || user?.full_name,
+      emailValue || schoolProfile?.email || user?.email,
+      phoneValue || schoolProfile?.phone || user?.phone,
+      websiteValue || schoolProfile?.website || user?.website,
+      addressValue || schoolProfile?.address || schoolProfile?.location,
+      schoolProfileLogo || schoolProfile?.logo_url || schoolProfile?.school_logo || schoolProfile?.logo,
+    ];
+
+    const completedCount = completionFields.filter((value) => {
+      if (typeof value === "string") return value.trim().length > 0;
+      return Boolean(value);
+    }).length;
+
+    return Math.min(100, Math.max(0, Math.round((completedCount / completionFields.length) * 100)));
+  }, [addressValue, emailValue, phoneValue, schoolNameValue, schoolProfile, schoolProfileLogo, user, websiteValue]);
+
   const schoolDisplayName =
     schoolProfile?.school_name ||
     user?.school_name ||
@@ -1171,13 +1189,13 @@ export default function AdminDashboard() {
             </div>
             <div className="school-profile-progress-label">
               <span>Completeness</span>
-              <strong>75%</strong>
+              <strong>{schoolProfileCompletion}%</strong>
             </div>
             <div className="school-profile-progress">
-              <span />
+              <span style={{ width: `${schoolProfileCompletion}%` }} />
             </div>
             <p>
-              <FiInfo size={11} /> Add a cover photo to reach 100%
+              <FiInfo size={11} /> {schoolProfileCompletion >= 100 ? "Your school profile is complete." : "Add a cover photo to reach 100%"}
             </p>
           </div>
         </section>
