@@ -4987,14 +4987,6 @@ export default function AdminDashboard() {
         <div className="admin-dashboard-main-wrapper flex min-w-0 flex-1 flex-col">
           <header className="admin-desktop-header flex items-center justify-between border-b border-[#e3e8e4] bg-white px-5 py-4 md:px-8">
             <div className="admin-topbar-spacer" />
-            <label className="admin-topbar-search">
-              <FiSearch size={18} />
-              <input
-                type="search"
-                placeholder="Search vacancies in Lagos..."
-                aria-label="Search vacancies"
-              />
-            </label>
             <div className="admin-topbar-account">
               <button
                 type="button"
