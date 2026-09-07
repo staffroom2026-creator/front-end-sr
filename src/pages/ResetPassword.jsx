@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Check, CheckCircle2, ChevronLeft, Circle, Eye, EyeOff, X } from 'lucide-react';
 import authHero from '../assets/auth-hero.webp';
@@ -46,8 +46,20 @@ export default function ResetPassword() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isSuccessClosing, setIsSuccessClosing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const validPassword = passwordRules.every((rule) => rule.test(newPassword));
+
+  useEffect(() => {
+    if (!showSuccess) return undefined;
+    setIsSuccessClosing(false);
+    const closeStartId = window.setTimeout(() => setIsSuccessClosing(true), 1200);
+    const removeId = window.setTimeout(() => setShowSuccess(false), 1500);
+    return () => {
+      window.clearTimeout(closeStartId);
+      window.clearTimeout(removeId);
+    };
+  }, [showSuccess]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -122,7 +134,7 @@ export default function ResetPassword() {
 
       {showSuccess && (
         <div className="password-success-backdrop">
-          <section className="password-success-dialog" role="dialog" aria-modal="true" aria-labelledby="password-success-title">
+          <section className={`password-success-dialog ${isSuccessClosing ? 'is-closing' : ''}`} role="dialog" aria-modal="true" aria-labelledby="password-success-title">
             <div className="password-success-header">
               <span className="password-success-icon"><Check size={40} strokeWidth={3} aria-hidden="true" /></span>
               <h2 id="password-success-title">Password reset successfully</h2>
@@ -163,14 +175,16 @@ export default function ResetPassword() {
         .new-password-submit:hover { background: #1ccb43; }
         .new-password-submit:disabled { cursor: wait; opacity: 0.7; }
         .new-password-back:focus-visible, .new-password-input-wrap button:focus-visible, .new-password-submit:focus-visible { outline: 3px solid rgba(28, 203, 67, 0.35); outline-offset: 3px; }
-        .password-success-backdrop { position: fixed; z-index: 50; inset: 0; display: grid; place-items: center; padding: 18px; background: rgba(19, 28, 23, 0.28); }
-        .password-success-dialog { width: min(100%, 870px); min-height: 396px; padding: 30px 33px; border: 1px solid #a9afb0; border-radius: 29px; background: #fbfbfc; box-shadow: 0 6px 18px rgba(19, 28, 23, 0.18); color: #080909; }
-        .password-success-header { display: flex; align-items: center; gap: 32px; }
-        .password-success-icon { display: grid; width: 80px; height: 80px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #138435; color: #fff; }
-        .password-success-header h2 { margin: 0; flex: 1; font-family: 'Sora', sans-serif; font-size: 30px; font-weight: 700; line-height: 1.2; }
-        .password-success-header button { display: grid; width: 46px; height: 46px; place-items: center; border: 0; background: transparent; color: #080909; cursor: pointer; }
-        .password-success-dialog > p { margin: 34px 0 0 87px; font-size: 30px; line-height: 1.2; }
-        .password-success-confirm { display: block; width: 244px; height: 96px; margin: 84px 0 0 auto; border: 0; border-radius: 50px; background: #25d94d; color: #152238; font: inherit; font-size: 30px; cursor: pointer; }
+        .password-success-backdrop { position: fixed; z-index: 50; top: 18px; left: 50%; width: min(420px, calc(100% - 32px)); transform: translateX(-50%); }
+        .password-success-dialog { position: relative; width: 100%; min-height: 172px; padding: 18px 18px 16px; border: 1px solid #d5d7da; border-radius: 16px; background: #fff; box-shadow: 0 4px 15px rgba(24, 31, 26, 0.16); color: #080909; }
+        .password-success-dialog.is-closing { animation: password-success-exit 300ms ease-in-out forwards; }
+        @keyframes password-success-exit { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-14px); } }
+        .password-success-header { display: grid; grid-template-columns: 42px 1fr; align-items: center; gap: 16px; }
+        .password-success-icon { display: grid; width: 42px; height: 42px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #138435; color: #fff; }
+        .password-success-header h2 { margin: 0; padding-right: 30px; font-family: 'Sora', sans-serif; font-size: 16px; font-weight: 700; line-height: 1.15; }
+        .password-success-header button { position: absolute; top: 14px; right: 14px; display: grid; width: 24px; height: 24px; place-items: center; border: 0; background: transparent; color: #080909; cursor: pointer; }
+        .password-success-dialog > p { margin: 25px 0 0 58px; font-size: 14px; line-height: 1.2; }
+        .password-success-confirm { display: block; width: 105px; height: 40px; margin: 25px 0 0 auto; border: 0; border-radius: 22px; background: #25d94d; color: #152238; font: inherit; font-size: 14px; cursor: pointer; }
         .password-success-confirm:hover { background: #1ccb43; }
         .password-success-header button:focus-visible, .password-success-confirm:focus-visible { outline: 3px solid rgba(28, 203, 67, 0.35); outline-offset: 3px; }
 
@@ -180,13 +194,7 @@ export default function ResetPassword() {
           .new-password-logo { top: 28px; left: 24px; }
           .new-password-panel { min-height: calc(100vh - 168px); align-items: flex-start; padding: 36px 24px 48px; }
           .new-password-content { margin: 0; }
-          .password-success-dialog { min-height: 300px; padding: 24px; border-radius: 20px; }
-          .password-success-header { gap: 16px; }
-          .password-success-icon { width: 54px; height: 54px; }
-          .password-success-header h2 { font-size: 21px; }
-          .password-success-header button { width: 32px; height: 32px; }
-          .password-success-dialog > p { margin: 32px 0 0; font-size: 22px; }
-          .password-success-confirm { width: 170px; height: 62px; margin-top: 54px; font-size: 22px; }
+          .password-success-dialog { min-height: 172px; padding: 18px; border-radius: 16px; }
         }
       `}</style>
     </main>
