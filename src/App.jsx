@@ -13,6 +13,7 @@ import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import SignIn from './pages/SignIn';
+import AdminSignIn from './pages/AdminSignIn';
 import SignUp from './pages/SignUp';
 import ForgotPassword from './pages/ForgotPassword';
 import CheckEmail from './pages/CheckEmail';
@@ -24,6 +25,7 @@ import TeacherInfo from './pages/TeacherInfo';
 import SchoolInfo from './pages/SchoolInfo';
 import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import InternalAdminDashboard from './pages/InternalAdminDashboard';
 import ApplicationSubmitted from './pages/ApplicationSubmitted';
 import PageExplorer from './pages/PageExplorer';
 import About from './pages/About';
@@ -57,6 +59,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
+        <Route path="/admin-signin" element={<PublicRoute><AdminSignIn /></PublicRoute>} />
         <Route path="/signup" element={<PublicRoute><SignUp /></PublicRoute>} />
         <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
         <Route path="/check-email" element={<PublicRoute><CheckEmail /></PublicRoute>} />
@@ -75,6 +78,10 @@ function App() {
           }
         />
         <Route path="/application-submitted" element={<ApplicationSubmitted />} />
+        <Route
+          path="/internal-admin-dashboard"
+          element={<InternalAdminDashboard />}
+        />
         <Route
           path="/admin-dashboard"
           element={
