@@ -298,6 +298,10 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [activeTab, settingsSection, jobDetailView, selectedJob, selectedApplicant, selectedTeacherProfile]);
+
+  useEffect(() => {
     if (isRestoringAdminHistory.current) {
       isRestoringAdminHistory.current = false;
       return;
@@ -6016,28 +6020,28 @@ export default function AdminDashboard() {
           color: #6d7672;
         }
         .admin-settings-title {
-          margin: 12px 0 8px;
+          margin: 8px 0 6px;
           color: #1f2e2d;
           font-family: 'Sora', sans-serif;
-          font-size: 48px;
+          font-size: 34px;
           font-weight: 700;
-          letter-spacing: -0.096px;
-          line-height: 56px;
+          letter-spacing: -0.07px;
+          line-height: 40px;
         }
         .admin-settings-subtitle {
-          max-width: 840px;
-          margin: 0 0 16px;
+          max-width: 820px;
+          margin: 0 0 12px;
           color: #5e6967;
-          font-size: 18px;
+          font-size: 15px;
           font-weight: 400;
-          line-height: 1.45;
+          line-height: 1.4;
         }
         .admin-settings-group {
           display: flex;
           flex-direction: column;
-          gap: 12px;
-          margin-top: 22px;
-          padding-top: 18px;
+          gap: 10px;
+          margin-top: 18px;
+          padding-top: 14px;
           border-top: 1px solid #dfe3df;
         }
         .admin-settings-group:first-of-type {
@@ -6048,19 +6052,19 @@ export default function AdminDashboard() {
         .admin-settings-section-head {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 8px;
           margin-bottom: 2px;
           color: #1f2d2d;
-          font-size: 17px;
+          font-size: 14px;
           font-weight: 700;
           letter-spacing: -0.02em;
         }
         .admin-settings-section-icon {
           display: grid;
           place-items: center;
-          width: 22px;
-          height: 22px;
-          border-radius: 7px;
+          width: 18px;
+          height: 18px;
+          border-radius: 6px;
           background: rgba(39, 176, 110, 0.08);
           color: #1a9f63;
         }
@@ -6070,12 +6074,12 @@ export default function AdminDashboard() {
         }
         .admin-settings-card {
           display: grid;
-          grid-template-columns: 34px minmax(0, 1fr) 18px;
+          grid-template-columns: 28px minmax(0, 1fr) 18px;
           align-items: center;
-          gap: 16px;
+          gap: 12px;
           width: 100%;
-          min-height: 120px;
-          padding: 14px 16px 14px 14px;
+          min-height: 86px;
+          padding: 10px 12px 10px 10px;
           border: 1px solid #dfe3df;
           border-radius: 12px;
           background: #f3f5f4;
@@ -6110,18 +6114,18 @@ export default function AdminDashboard() {
           min-width: 0;
         }
         .admin-settings-card-copy h3 {
-          margin: 0 0 6px;
+          margin: 0 0 3px;
           color: #1f2d2d;
-          font-size: 25px;
+          font-size: 18px;
           font-weight: 700;
-          line-height: 1.25;
+          line-height: 1.2;
           letter-spacing: -0.04em;
         }
         .admin-settings-card-copy p {
           margin: 0;
           color: #697875;
-          font-size: 16px;
-          line-height: 1.45;
+          font-size: 13px;
+          line-height: 1.4;
           max-width: 640px;
         }
         .admin-settings-card-arrow {
@@ -6636,13 +6640,16 @@ export default function AdminDashboard() {
         }
         .admin-notifications-header h1 {
           margin: 0 0 6px;
-          color: #16873c;
-          font-size: 24px;
+          color: #1f2d2d;
+          font-size: 28px;
+          font-weight: 700;
+          letter-spacing: -0.04em;
         }
         .admin-notifications-header p {
           margin: 0;
-          color: #64716e;
-          font-size: 12px;
+          color: #4d5e5b;
+          font-size: 14px;
+          line-height: 1.5;
         }
         .admin-notification-preference-card {
           margin-bottom: 24px;
@@ -6658,8 +6665,8 @@ export default function AdminDashboard() {
           min-height: 35px;
           padding: 0 16px;
           border-bottom: 1px solid #dfe3df;
-          color: #273a36;
-          font-size: 11px;
+          color: #253b39;
+          font-size: 12px;
           font-weight: 800;
           text-transform: uppercase;
         }
@@ -6679,16 +6686,17 @@ export default function AdminDashboard() {
         .admin-notification-security-row strong {
           display: block;
           margin-bottom: 4px;
-          color: #273a36;
-          font-size: 10px;
+          color: #1f2d2d;
+          font-size: 14px;
+          font-weight: 700;
         }
         .admin-notification-preference-row p,
         .admin-notification-security-row p {
           max-width: 480px;
           margin: 0;
-          color: #64716e;
-          font-size: 9px;
-          line-height: 1.4;
+          color: #546663;
+          font-size: 12px;
+          line-height: 1.5;
         }
         .admin-notification-channel-group {
           display: flex;
@@ -6731,8 +6739,9 @@ export default function AdminDashboard() {
         .admin-notification-security-copy {
           padding: 14px 16px;
           border-bottom: 1px solid #e4e8e5;
-          color: #64716e;
-          font-size: 9px;
+          color: #536863;
+          font-size: 12px;
+          line-height: 1.5;
         }
         .admin-notification-security-row { border-bottom: 0; }
         .admin-notification-always-enabled {

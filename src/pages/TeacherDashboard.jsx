@@ -510,6 +510,10 @@ export default function TeacherDashboard() {
   const [preferencesError, setPreferencesError] = useState('');
 
   useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [activeTab, profileSubTab, settingsSubTab, selectedJob, selectedJobOrigin, applicationStatusFilter]);
+
+  useEffect(() => {
     const intervalId = window.setInterval(() => setCurrentTime(Date.now()), 30000);
     return () => window.clearInterval(intervalId);
   }, []);
@@ -1890,17 +1894,17 @@ export default function TeacherDashboard() {
                         <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
                       </motion.div>
 
-                      {/* Upcoming Interviews */}
-                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--interview td-desktop-only-card">
-                        <div className="td-mini-icon-circle">
+                      {/* Pending Interviews */}
+                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
+                        <div className="td-mini-icon-circle td-mini-icon-circle--pending">
                           <FiCalendar size={18} />
                         </div>
-                        <p className="td-mini-label">UPCOMING INTERVIEW</p>
+                        <p className="td-mini-label td-mini-label--pending">PENDING</p>
                         <div className="td-mini-value-row">
-                          <span className="td-mini-value">{upcomingInterviews.length}</span>
-                          <span className="td-mini-unit">scheduled</span>
+                          <span className="td-mini-value td-mini-value--pending">{upcomingInterviews.length}</span>
+                          <span className="td-mini-unit td-mini-unit--pending">Action Req.</span>
                         </div>
-                        <span className="td-mobile-subtext td-mobile-subtext--gray">{upcomingInterviews.length > 0 ? 'Next steps ready' : 'No interviews yet'}</span>
+                        <span className="td-mobile-subtext td-mobile-subtext--gray">{upcomingInterviews.length > 0 ? 'Follow up required' : 'No action required'}</span>
                       </motion.div>
                     </div>
                   </div>
@@ -6365,8 +6369,7 @@ export default function TeacherDashboard() {
         }
         
         .td-mini-card--views::before,
-        .td-mini-card--applied::before,
-        .td-mini-card--interview::before {
+        .td-mini-card--applied::before {
           content: '';
           position: absolute;
           left: 0;
@@ -6400,8 +6403,8 @@ export default function TeacherDashboard() {
           margin-bottom: 20px;
           box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.08);
         }
-        
-        .td-mini-card--pending .td-mini-icon-circle {
+
+        .td-mini-icon-circle--pending {
           background: #fef2f2;
           color: #dc2626;
         }
@@ -6412,6 +6415,10 @@ export default function TeacherDashboard() {
           color: #1A202C;
           letter-spacing: 0.6px;
           margin-bottom: 8px;
+        }
+
+        .td-mini-label--pending {
+          color: #000000;
         }
         .td-mini-value-row {
           display: flex;
@@ -6433,6 +6440,13 @@ export default function TeacherDashboard() {
           font-size: 13px;
           font-weight: 600;
           color: #4A5568;
+        }
+        .td-mini-unit--pending {
+          color: #dc2626;
+          font-weight: 700;
+        }
+        .td-mini-value--pending {
+          color: #000000;
         }
         .td-mini-action {
           font-size: 12px;
