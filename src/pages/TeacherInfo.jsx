@@ -350,7 +350,7 @@ export default function TeacherInfo() {
           {/* ── Submit Button ── */}
           <motion.div variants={itemVariants} className="ti-footer">
             <button className="ti-next-btn" onClick={handleNext} disabled={saving}>
-              {saving ? 'Saving…' : 'Submit'}
+              {saving ? 'Saving…' : 'Save'}
             </button>
           </motion.div>
         </div>

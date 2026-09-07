@@ -51,6 +51,18 @@ import {
   FiDownload,
 } from "react-icons/fi";
 
+const qualificationOptions = [
+  "SSCE",
+  "NCE",
+  "OND",
+  "B.Ed.",
+  "B.Sc. (Ed.) / B.A. (Ed.)",
+  "B.Sc. / B.A. / HND (Only)",
+  "M.Sc. / M.A.",
+  "M.Ed.",
+  "Ph.D.",
+];
+
 const emptyJobForm = {
   title: "",
   description: "",
@@ -59,10 +71,10 @@ const emptyJobForm = {
   employment_type: "full-time",
   salary_range: "",
   location: "",
-  requirements: "",
+  requirements: [],
   teaching_level: "SS1 – SS3 (Senior Secondary)",
   required_experience: "5+ years",
-  required_qualification: "B.Ed or equivalent",
+  required_qualification: [],
   application_deadline: "",
   is_featured: false,
 };
@@ -97,10 +109,12 @@ export default function AdminDashboard() {
   const [applicantsByJob, setApplicantsByJob] = useState({});
   const [jobForm, setJobForm] = useState(emptyJobForm);
   const [responsibilityInput, setResponsibilityInput] = useState("");
+  const [otherRequirementInput, setOtherRequirementInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [statusUpdating, setStatusUpdating] = useState({});
+  const [qualificationOpen, setQualificationOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [previousTab, setPreviousTab] = useState("overview");
   const [settingsSection, setSettingsSection] = useState("overview");
@@ -198,6 +212,7 @@ export default function AdminDashboard() {
   const phoneInputRef = useRef(null);
   const websiteInputRef = useRef(null);
   const addressTextareaRef = useRef(null);
+  const qualificationDropdownRef = useRef(null);
   const [notificationItems, setNotificationItems] = useState([]);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
@@ -241,6 +256,17 @@ export default function AdminDashboard() {
     recipientName: "",
     recipientPhone: "",
   });
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (qualificationDropdownRef.current && !qualificationDropdownRef.current.contains(event.target)) {
+        setQualificationOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const historyKey = "admin-dashboard-view";
@@ -330,12 +356,18 @@ export default function AdminDashboard() {
       .toLowerCase();
     const location = String(payload.location ?? "").trim();
     const responsibilities = normalizeResponsibilityList(payload.responsibilities || payload.requirements);
-    const requirements = Array.isArray(payload.requirements)
-      ? payload.requirements.map((item) => String(item).trim()).filter(Boolean).join('; ')
-      : String(payload.requirements ?? '').trim() || responsibilities.join('; ');
+    const requirementList = normalizeResponsibilityList(payload.requirements);
+    const requirements = requirementList.length
+      ? requirementList.join("; ")
+      : responsibilities.join("; ");
     const teachingLevel = String(payload.teaching_level ?? "").trim() || "SS1 – SS3 (Senior Secondary)";
     const requiredExperience = String(payload.required_experience ?? "").trim() || "5+ years";
-    const requiredQualification = String(payload.required_qualification ?? "").trim() || "B.Ed or equivalent";
+    const requiredQualificationList = Array.isArray(payload.required_qualification)
+      ? payload.required_qualification
+      : normalizeResponsibilityList(payload.required_qualification);
+    const requiredQualification = requiredQualificationList.length
+      ? requiredQualificationList.join("; ")
+      : "B.Ed or equivalent";
     const applicationDeadline = String(payload.application_deadline ?? "").trim();
     const isFeatured = Boolean(payload.is_featured);
 
@@ -391,8 +423,12 @@ export default function AdminDashboard() {
       ...emptyJobForm,
       ...job,
       responsibilities: normalizeResponsibilityList(job.responsibilities || job.requirements),
+      requirements: normalizeResponsibilityList(job.requirements),
+      required_qualification: normalizeResponsibilityList(job.required_qualification),
+      required_qualification: normalizeResponsibilityList(job.required_qualification),
     });
     setResponsibilityInput("");
+    setOtherRequirementInput("");
     setSelectedJob(null);
     setSelectedApplicant(null);
     setActiveTab("post-job");
@@ -1256,6 +1292,7 @@ export default function AdminDashboard() {
     ]);
     setJobForm(emptyJobForm);
     setResponsibilityInput("");
+    setOtherRequirementInput("");
     setEditingJobId(null);
     setSelectedJob(null);
     setSelectedApplicant(null);
@@ -1576,6 +1613,8 @@ export default function AdminDashboard() {
       }
 
       setJobForm(emptyJobForm);
+      setResponsibilityInput("");
+      setOtherRequirementInput("");
       setEditingJobId(null);
       setSelectedJob(null);
       setSelectedApplicant(null);
@@ -1954,9 +1993,6 @@ export default function AdminDashboard() {
               <button type="button" onClick={() => openJobForm("overview")}>
                 <FiPlus size={14} /> Post a Job
               </button>
-              <button type="button" onClick={() => handleTabChange("applicants")}>
-                View Applicants
-              </button>
             </div>
           </div>
 
@@ -2270,6 +2306,26 @@ export default function AdminDashboard() {
     }));
   };
 
+  const addOtherRequirement = () => {
+    const requirement = otherRequirementInput.trim();
+    if (!requirement) return;
+
+    setJobForm((current) => ({
+      ...current,
+      requirements: [...normalizeResponsibilityList(current.requirements), requirement],
+    }));
+    setOtherRequirementInput("");
+  };
+
+  const removeOtherRequirement = (indexToRemove) => {
+    setJobForm((current) => ({
+      ...current,
+      requirements: normalizeResponsibilityList(current.requirements).filter((_, index) => index !== indexToRemove),
+    }));
+  };
+
+  const selectedQualifications = Array.isArray(jobForm.required_qualification) ? jobForm.required_qualification : [];
+
   const renderJobForm = () => (
     <div className="school-job-form-page">
       <div className="school-job-form-breadcrumb">
@@ -2365,7 +2421,7 @@ export default function AdminDashboard() {
 
         <section className="school-job-form-card school-job-description-card">
           <label>
-            Job Description
+            Job Summary
             <textarea
               placeholder="Describe the role, what the school is looking for, and the teaching environment..."
               value={jobForm.description}
@@ -2401,6 +2457,7 @@ export default function AdminDashboard() {
               </ul>
             )}
           </label>
+
         </section>
 
         <section className="school-job-form-card school-job-extra-fields">
@@ -2418,13 +2475,80 @@ export default function AdminDashboard() {
             </select>
           </label>
 
+          <label className="school-qualification-label">
+            Educational Qualification
+            <div className="school-qualification-picker" ref={qualificationDropdownRef}>
+              <button
+                type="button"
+                className={`school-qualification-trigger ${qualificationOpen ? "is-open" : ""}`}
+                onClick={() => setQualificationOpen((current) => !current)}
+              >
+                <span className="school-qualification-trigger-text">
+                  {selectedQualifications.length > 0 ? selectedQualifications.join(", ") : "Select qualifications"}
+                </span>
+                <FiChevronDown size={14} />
+              </button>
+
+              {qualificationOpen && (
+                <div className="school-qualification-menu" role="listbox" aria-multiselectable="true">
+                  {qualificationOptions.map((option) => {
+                    const isSelected = selectedQualifications.includes(option);
+
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        className={`school-qualification-option ${isSelected ? "is-selected" : ""}`}
+                        onClick={() => {
+                          setJobForm((current) => ({
+                            ...current,
+                            required_qualification: isSelected
+                              ? (Array.isArray(current.required_qualification) ? current.required_qualification.filter((item) => item !== option) : [])
+                              : [...(Array.isArray(current.required_qualification) ? current.required_qualification : []), option],
+                          }));
+                        }}
+                      >
+                        <span className="school-qualification-check">
+                          {isSelected ? "✓" : ""}
+                        </span>
+                        <span>{option}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <small className="school-field-helper-text">
+              Selecting multiple qualifications means applicants with any of the selected degrees can apply
+            </small>
+          </label>
+
           <label>
-            Required Qualification
-            <input
-              placeholder="e.g. B.Ed, TRCN Certification"
-              value={jobForm.required_qualification}
-              onChange={(e) => setJobForm({ ...jobForm, required_qualification: e.target.value })}
-            />
+            Other Requirements
+            <div className="school-responsibility-input-row">
+              <input
+                placeholder="e.g. TRCN certification"
+                value={otherRequirementInput}
+                onChange={(e) => setOtherRequirementInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addOtherRequirement();
+                  }
+                }}
+              />
+              <button type="button" onClick={addOtherRequirement}><FiPlus size={14} /> Add</button>
+            </div>
+            {normalizeResponsibilityList(jobForm.requirements).length > 0 && (
+              <ul className="school-responsibility-list">
+                {normalizeResponsibilityList(jobForm.requirements).map((requirement, index) => (
+                  <li key={`${requirement}-${index}`}>
+                    <span>{requirement}</span>
+                    <button type="button" onClick={() => removeOtherRequirement(index)} aria-label={`Remove ${requirement}`}><FiX size={14} /></button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </label>
 
           <label>
@@ -2520,6 +2644,9 @@ export default function AdminDashboard() {
     <div className="school-jobs-page">
       <div className="school-jobs-heading">
         <h2>Jobs</h2>
+        <button type="button" onClick={() => openJobForm("overview")}>
+          <FiPlus size={14} /> Post a Job
+        </button>
       </div>
       <div className="school-jobs-toolbar">
         <div className="school-job-filters">
@@ -8380,6 +8507,20 @@ export default function AdminDashboard() {
         .school-job-form input::placeholder, .school-job-form textarea::placeholder { color: #93a0ab; }
         .school-job-form input:focus, .school-job-form textarea:focus, .school-job-form select:focus, .school-select-field:focus { border-color: #1a873c; box-shadow: 0 0 0 3px rgba(28, 203, 67, .1); }
         .school-job-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+        .school-field-helper-text { display: block; margin-top: 7px; color: #667085; font-size: 10px; font-weight: 500; line-height: 1.5; }
+        .school-qualification-label { position: relative; }
+        .school-qualification-picker { position: relative; margin-top: 6px; }
+        .school-qualification-trigger { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 40px; padding: 10px 12px; border: 1px solid #dfe6eb; border-radius: 11px; background: #fff; color: #384056; text-align: left; cursor: pointer; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+        .school-qualification-trigger.is-open { border-color: #1a873c; box-shadow: 0 0 0 3px rgba(28, 203, 67, .1); }
+        .school-qualification-trigger svg { color: #60707d; transition: transform 0.2s ease; }
+        .school-qualification-trigger.is-open svg { transform: rotate(180deg); }
+        .school-qualification-trigger-text { display: inline-block; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; }
+        .school-qualification-menu { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; right: 0; display: grid; gap: 4px; padding: 8px; border: 1px solid #dfe6eb; border-radius: 12px; background: #fff; box-shadow: 0 16px 34px rgba(15, 23, 42, .12); }
+        .school-qualification-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #384056; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
+        .school-qualification-option:hover { background: #f6faf7; border-color: #dfeee4; }
+        .school-qualification-option.is-selected { background: #eafaf0; border-color: #cfe9d8; color: #0d5e2d; font-weight: 600; }
+        .school-qualification-check { display: inline-flex; align-items: center; justify-content: center; width: 16px; min-width: 16px; height: 16px; border: 1px solid #9db3a4; border-radius: 4px; background: #fff; font-size: 11px; font-weight: 700; }
+        .school-qualification-option.is-selected .school-qualification-check { border-color: #1a873c; background: #1a873c; color: #fff; }
         .school-employment-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 6px; }
         .school-employment-options button { height: 40px; border: 1px solid #dfe6eb; border-radius: 11px; background: #fff; color: #384056; font: inherit; font-size: 11px; cursor: pointer; }
         .school-employment-options button.is-selected { border-color: #148038; background: #148038; color: #fff; }
@@ -9771,19 +9912,94 @@ export default function AdminDashboard() {
         }
         .school-overview-actions button { padding: 9px 14px; }
         .school-overview-actions button:first-child { display: inline-flex; align-items: center; gap: 5px; border-color: #1ccb43; background: #1ccb43; }
-        .school-profile-card { padding: 25px 16px 16px; }
-        .school-profile-heading { display: flex; align-items: center; gap: 10px; }
-        .school-profile-icon { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #e1f0d5; color: #356947; }
-        .school-profile-heading div { display: flex; flex-direction: column; gap: 3px; }
-        .school-profile-heading strong { font-size: 13px; font-weight: 500; }
-        .school-profile-heading span:last-child { color: #6c7276; font-size: 11px; }
-        .school-profile-progress-label { display: flex; justify-content: space-between; margin-top: 16px; font-size: 11px; }
-        .school-profile-progress-label strong { font-weight: 700; }
-        .school-profile-progress { height: 5px; margin-top: 5px; overflow: hidden; border-radius: 999px; background: #e2e5e6; }
-        .school-profile-progress span { display: block; width: 75%; height: 100%; border-radius: inherit; background: #073e32; }
-        .school-profile-card p { display: flex; align-items: center; gap: 4px; margin: 10px 0 0; color: #62686d; font-size: 10px; }
+        .school-profile-card {
+          padding: 24px 20px 20px;
+          border: none;
+          border-radius: 28px;
+          background: #fff;
+          box-shadow: 0 10px 30px rgba(15, 23, 42, 0.03);
+        }
+        .school-profile-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .school-profile-heading > div {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-width: 0;
+        }
+        .school-profile-icon {
+          display: grid;
+          place-items: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #dcfce7;
+          color: #15803d;
+          flex-shrink: 0;
+        }
+        .school-profile-heading strong {
+          display: block;
+          font-size: 16px;
+          font-weight: 700;
+          color: #1a202c;
+        }
+        .school-profile-heading span:last-child {
+          display: block;
+          color: #6b7280;
+          font-size: 12px;
+          line-height: 1.35;
+        }
+        .school-profile-progress-label {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-top: 20px;
+          font-size: 12px;
+          color: #1a202c;
+          font-weight: 600;
+        }
+        .school-profile-progress-label strong {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 46px;
+          padding: 4px 10px;
+          border-radius: 12px;
+          background: #68d391;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .school-profile-progress {
+          height: 8px;
+          margin-top: 8px;
+          overflow: hidden;
+          border-radius: 999px;
+          background: #edf2f7;
+        }
+        .school-profile-progress span {
+          display: block;
+          width: 75%;
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
+          transition: width 0.8s ease;
+        }
+        .school-profile-card p {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          margin: 16px 0 0;
+          color: #718096;
+          font-size: 12px;
+          line-height: 1.4;
+        }
         .school-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 30px; }
-        .school-stat-card { position: relative; min-height: 105px; padding: 13px 15px; border: 1px solid #d9dddf; border-radius: 18px; background: #f5f6f7; }
+        .school-stat-card { position: relative; min-height: 105px; padding: 13px 15px; border: 1px solid #d9dddf; border-radius: 18px; background: #ffffff; }
         .school-stat-card > span { display: block; font-size: 11px; }
         .school-stat-card > svg { position: absolute; top: 13px; right: 14px; color: #c5cacc; }
         .school-stat-card > strong { display: block; margin-top: 43px; font-size: 29px; font-weight: 700; line-height: 1; }

@@ -281,12 +281,6 @@ export default function SchoolInfo() {
         <Link to="/" className="si-logo">
           <BrandLogo />
         </Link>
-        <button onClick={() => navigate('/signup')} className="si-back-btn">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-          <span>Back</span>
-        </button>
       </header>
 
       <main className="si-main">
@@ -394,25 +388,8 @@ export default function SchoolInfo() {
         .si-header {
           padding: 26px 40px 22px;
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-start;
           align-items: center;
-        }
-
-        .si-back-btn {
-          background: none;
-          border: none;
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          color: #68727d;
-          font-weight: 500;
-          font-size: 13px;
-          cursor: pointer;
-          transition: color 0.2s ease;
-        }
-
-        .si-back-btn:hover {
-          color: #111827;
         }
 
         .si-logo {
