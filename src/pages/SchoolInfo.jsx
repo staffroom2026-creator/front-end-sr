@@ -286,11 +286,6 @@ export default function SchoolInfo() {
       <main className="si-main">
         <div className="si-container">
           <div className="si-page-intro">
-            <button onClick={() => navigate('/signup')} className="si-intro-back" aria-label="Back to sign up">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-                <path d="M15 18l-6-6 6-6" />
-              </svg>
-            </button>
             <div>
               <h1>Let's set up your school</h1>
               <p>Add a few details to get your school profile ready. You can complete the rest later.</p>
@@ -414,23 +409,7 @@ export default function SchoolInfo() {
         .si-page-intro {
           display: flex;
           align-items: flex-start;
-          gap: 12px;
           margin-bottom: 20px;
-        }
-
-        .si-intro-back {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 26px;
-          height: 26px;
-          margin-top: 2px;
-          padding: 0;
-          border: none;
-          border-radius: 50%;
-          background: transparent;
-          color: #111827;
-          cursor: pointer;
         }
 
         .si-page-intro h1 {
