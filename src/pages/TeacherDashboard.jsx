@@ -79,6 +79,10 @@ const parseSubjectList = (value) => {
   return [];
 };
 
+const getProfileSubjects = (profile = {}) => parseSubjectList(profile.skills || profile.subjects || []);
+
+const normalizeTeachingLevels = (value) => parseSubjectList(value);
+
 const parseResponsibilityList = (value) => {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value !== 'string') return [];
@@ -504,6 +508,10 @@ export default function TeacherDashboard() {
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [preferencesMessage, setPreferencesMessage] = useState('');
   const [preferencesError, setPreferencesError] = useState('');
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [activeTab, profileSubTab, settingsSubTab, selectedJob, selectedJobOrigin, applicationStatusFilter]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setCurrentTime(Date.now()), 30000);
@@ -1841,12 +1849,14 @@ export default function TeacherDashboard() {
                       </div>
                       {/* Desktop layout */}
                       <div className="td-desktop-profile-strength">
-                        <div className="td-progress-bar">
-                          <div className="td-progress-fill" style={{ width: `${profileStrengthValue}%` }}></div>
+                        <div className="td-profile-content-block">
+                          <div className="td-progress-bar">
+                            <div className="td-progress-fill" style={{ width: `${profileStrengthValue}%` }}></div>
+                          </div>
+                          <p className="td-card-hint">
+                            {profileState?.bio ? 'Your profile is ready for job applications.' : 'Complete your profile to unlock more opportunities.'}
+                          </p>
                         </div>
-                        <p className="td-card-hint">
-                          {profileState?.bio ? 'Your profile is ready for job applications.' : 'Complete your profile to unlock more opportunities.'}
-                        </p>
                         <button className="td-complete-profile-btn" onClick={() => setActiveTab('profile')}>Complete Profile →</button>
                       </div>
                     </motion.div>}
@@ -1884,16 +1894,17 @@ export default function TeacherDashboard() {
                         <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
                       </motion.div>
 
-                      {/* Pending Review (desktop only) */}
+                      {/* Pending Interviews */}
                       <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
-                        <div className="td-mini-icon-circle">
-                          <FiFileText size={18} />
+                        <div className="td-mini-icon-circle td-mini-icon-circle--pending">
+                          <FiCalendar size={18} />
                         </div>
-                        <p className="td-mini-label">PENDING REVIEW</p>
+                        <p className="td-mini-label td-mini-label--pending">PENDING</p>
                         <div className="td-mini-value-row">
-                          <span className="td-mini-value">{pendingApplications}</span>
-                          <span className="td-mini-action">Action Req.</span>
+                          <span className="td-mini-value td-mini-value--pending">{upcomingInterviews.length}</span>
+                          <span className="td-mini-unit td-mini-unit--pending">Action Req.</span>
                         </div>
+                        <span className="td-mobile-subtext td-mobile-subtext--gray">{upcomingInterviews.length > 0 ? 'Follow up required' : 'No action required'}</span>
                       </motion.div>
                     </div>
                   </div>
@@ -6227,7 +6238,7 @@ export default function TeacherDashboard() {
         ═══════════════════════════════════════ */
         .td-stats-row {
           display: grid;
-          grid-template-columns: 1.35fr 1fr 1fr 1fr;
+          grid-template-columns: 1fr;
           gap: 24px;
           margin-bottom: 48px;
           align-items: stretch;
@@ -6236,20 +6247,23 @@ export default function TeacherDashboard() {
           width: 100%;
         }
         .td-stats-mini-wrapper {
-          display: contents; /* on desktop, children participate in parent grid directly */
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 24px;
         }
 
         .td-stat-card {
-          background: #fff;
-          border-radius: 32px;
-          padding: 28px 24px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+          background: #ffffff;
+          border: 1px solid #edf1f3;
+          border-radius: 24px;
+          padding: 22px 20px;
+          box-shadow: 0 8px 22px rgba(15, 23, 42, 0.03);
           position: relative;
         }
         
         .td-profile-card {
-          border: none;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+          border: 1px solid #edf1f3;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.03);
           display: flex;
           flex-direction: column;
           justify-content: space-between;
@@ -6258,60 +6272,69 @@ export default function TeacherDashboard() {
         /* Desktop profile card internals */
         .td-mobile-profile-strength { display: none; }
         .td-desktop-profile-strength {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) auto;
+          align-items: end;
+          gap: 18px;
+          flex: 1;
+        }
+        .td-profile-content-block {
           display: flex;
           flex-direction: column;
-          flex: 1;
-          justify-content: space-between;
+          min-width: 0;
         }
 
         .td-card-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 20px;
+          margin-bottom: 18px;
         }
         .td-profile-title {
-          font-size: 16px;
+          font-size: 15px;
           font-weight: 700;
-          color: #1A202C;
+          color: #1f2937;
         }
         .td-percent-badge {
-          background: #68D391;
-          color: #fff;
-          padding: 4px 10px;
-          border-radius: 12px;
+          background: #dcfce7;
+          color: #166534;
+          padding: 5px 10px;
+          border-radius: 999px;
           font-size: 12px;
           font-weight: 700;
         }
 
         .td-progress-bar {
-          height: 8px;
-          background: #EDF2F7;
+          height: 10px;
+          background: #edf2f7;
           border-radius: 9999px;
-          margin-bottom: 20px;
+          margin-bottom: 14px;
           overflow: hidden;
         }
         .td-progress-fill {
           height: 100%;
-          background: linear-gradient(90deg, #22C55E 0%, #4ADE80 100%);
+          background: linear-gradient(90deg, #22c55e 0%, #4ade80 100%);
           border-radius: 9999px;
           transition: width 0.8s ease;
         }
 
         .td-card-hint {
           font-size: 13px;
-          color: #718096;
-          line-height: 1.4;
-          margin-bottom: 24px;
+          color: #667085;
+          line-height: 1.45;
+          margin: 0;
+          max-width: 260px;
         }
 
         .td-complete-profile-btn {
-          width: 100%;
-          background: #22C55E;
+          width: auto;
+          min-width: 180px;
+          height: 46px;
+          background: #22c55e;
           color: #fff;
           border: none;
-          padding: 14px 20px;
-          border-radius: 14px;
+          padding: 10px 20px;
+          border-radius: 12px;
           font-weight: 700;
           font-size: 14px;
           cursor: pointer;
@@ -6319,7 +6342,7 @@ export default function TeacherDashboard() {
           display: flex;
           align-items: center;
           justify-content: center;
-          box-shadow: 0 4px 14px rgba(34, 197, 94, 0.25);
+          box-shadow: 0 6px 18px rgba(34, 197, 94, 0.18);
         }
         .td-complete-profile-btn:hover {
           background: #16A34A;
@@ -6327,72 +6350,63 @@ export default function TeacherDashboard() {
 
         /* 3 Mini Cards on Desktop */
         .td-mini-card {
-          background: #FFFFFF;
-          border: 1px solid #E5E7EB;
+          background: #ffffff;
+          border: 1px solid #e6ebee;
           border-radius: 20px;
-          padding: 24px 22px;
+          padding: 20px 18px;
           display: flex;
           flex-direction: column;
           position: relative;
-          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
           overflow: hidden;
           transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
         }
 
         .td-mini-card:hover {
-          transform: translateY(-5px);
-          border-color: #CBD5E1;
-          box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12);
+          transform: translateY(-3px);
+          border-color: #d8e7dc;
+          box-shadow: 0 12px 24px rgba(15, 23, 42, 0.08);
         }
         
-        .td-mini-card--views::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 18px;
-          bottom: 18px;
-          width: 3px;
-          background: #22C55E;
-          border-radius: 0 4px 4px 0;
-        }
-        
+        .td-mini-card--views::before,
         .td-mini-card--applied::before {
           content: '';
           position: absolute;
           left: 0;
-          top: 18px;
-          bottom: 18px;
-          width: 3px;
-          background: #22C55E;
-          border-radius: 0 4px 4px 0;
+          top: 0;
+          bottom: 0;
+          width: 5px;
+          background: linear-gradient(180deg, #22c55e 0%, #4ade80 100%);
+          border-radius: 20px 0 0 20px;
         }
 
         .td-mini-card--pending::before {
           content: '';
           position: absolute;
           left: 0;
-          top: 18px;
-          bottom: 18px;
-          width: 3px;
-          background: #DC2626;
-          border-radius: 0 4px 4px 0;
+          top: 0;
+          bottom: 0;
+          width: 5px;
+          background: linear-gradient(180deg, #ef4444 0%, #f87171 100%);
+          border-radius: 20px 0 0 20px;
         }
 
         .td-mini-icon-circle {
-          width: 42px;
-          height: 42px;
-          border-radius: 50%;
-          background: #fff;
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: #ecfdf5;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #22C55E;
-          margin-bottom: 22px;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+          color: #15803d;
+          margin-bottom: 20px;
+          box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.08);
         }
-        
-        .td-mini-card--pending .td-mini-icon-circle {
-          color: #DC2626;
+
+        .td-mini-icon-circle--pending {
+          background: #fef2f2;
+          color: #dc2626;
         }
 
         .td-mini-label {
@@ -6401,6 +6415,10 @@ export default function TeacherDashboard() {
           color: #1A202C;
           letter-spacing: 0.6px;
           margin-bottom: 8px;
+        }
+
+        .td-mini-label--pending {
+          color: #000000;
         }
         .td-mini-value-row {
           display: flex;
@@ -6422,6 +6440,13 @@ export default function TeacherDashboard() {
           font-size: 13px;
           font-weight: 600;
           color: #4A5568;
+        }
+        .td-mini-unit--pending {
+          color: #dc2626;
+          font-weight: 700;
+        }
+        .td-mini-value--pending {
+          color: #000000;
         }
         .td-mini-action {
           font-size: 12px;
