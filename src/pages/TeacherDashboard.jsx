@@ -316,6 +316,8 @@ const normalizeEducationRecords = (value) => {
     education_id: record.education_id || record.id || null,
     id: record.education_id || record.id || `education-${index}`,
     degree: record.degree || record.qualification || '',
+    field_of_study: record.field_of_study || record.fieldOfStudy || '',
+    class_of_degree: record.class_of_degree || record.degree_class || record.classOfDegree || '',
     institution: record.institution || record.school || '',
     start_year: record.start_year || record.startYear || '',
     end_year: record.end_year || record.endYear || '',
@@ -396,6 +398,16 @@ const getApplicationDisplayStatus = (application = {}) => {
 };
 
 const teacherLevelOptions = ['Pre KG', 'KG', 'Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'];
+const degreeOptions = ['B.Ed', 'B.A.', 'B.Sc.', 'M.Ed', 'M.A.', 'M.Sc.', 'Ph.D.', 'ND', 'NCE', 'HND', 'PGDE', 'Diploma', 'Certificate', 'Others'];
+const degreeClassOptions = [
+  'First Class Honours / Distinction',
+  'Second Class Honours (Upper Division) / Upper Credit',
+  'Second Class Honours (Lower Division) / Lower Credit',
+  'Third Class Honours',
+  'Credit',
+  'Merit',
+  'Pass',
+];
 
 export default function TeacherDashboard() {
   const contentRef = useRef(null);
@@ -451,7 +463,10 @@ export default function TeacherDashboard() {
   const [showAddEduModal, setShowAddEduModal] = useState(false);
   const [newEduForm, setNewEduForm] = useState({
     degree: '',
+    degreeOther: '',
     institution: '',
+    fieldOfStudy: '',
+    classOfDegree: '',
     startYear: '2015',
     endYear: '2019',
     status: 'Completed'
@@ -1038,10 +1053,12 @@ export default function TeacherDashboard() {
     return updatedProfile;
   };
 
-  const toEducationPayload = (records) => records.map(({ education_id, degree, institution, start_year, end_year, status }) => ({
+  const toEducationPayload = (records) => records.map(({ education_id, degree, institution, field_of_study, class_of_degree, start_year, end_year, status }) => ({
     education_id: education_id || null,
     degree: degree.trim(),
     institution: institution.trim(),
+    field_of_study: (field_of_study || '').trim(),
+    class_of_degree: (class_of_degree || '').trim(),
     start_year: Number(start_year),
     end_year: end_year ? Number(end_year) : null,
     status,
@@ -1060,7 +1077,8 @@ export default function TeacherDashboard() {
   const handleSaveEducation = async () => {
     const startYear = String(newEduForm.startYear || '');
     const endYear = String(newEduForm.endYear || '');
-    if (!newEduForm.degree.trim() || !newEduForm.institution.trim()) {
+    const degree = newEduForm.degree === 'Others' ? newEduForm.degreeOther : newEduForm.degree;
+    if (!degree.trim() || !newEduForm.institution.trim()) {
       setEducationError('Degree and institution are required.');
       return;
     }
@@ -1079,8 +1097,10 @@ export default function TeacherDashboard() {
 
     const educationRecord = {
       education_id: editingEducationId || null,
-      degree: newEduForm.degree.trim(),
+      degree: degree.trim(),
       institution: newEduForm.institution.trim(),
+      field_of_study: newEduForm.fieldOfStudy.trim(),
+      class_of_degree: newEduForm.classOfDegree,
       start_year: startYear,
       end_year: endYear,
       status: newEduForm.status,
@@ -1096,7 +1116,7 @@ export default function TeacherDashboard() {
         education_history: toEducationPayload(nextEducationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
-      setNewEduForm({ degree: '', institution: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+      setNewEduForm({ degree: '', degreeOther: '', institution: '', fieldOfStudy: '', classOfDegree: '', startYear: '2015', endYear: '2019', status: 'Completed' });
       setEditingEducationId(null);
       setShowAddEduModal(false);
     } catch (err) {
@@ -1961,13 +1981,14 @@ export default function TeacherDashboard() {
                             </div>
                           </div>
 
+                          <div className="td-job-tags td-desktop-tags">
+                            <span><FiBook aria-hidden="true" size={12} />{job.subject || 'Teaching'}</span>
+                            <span><FiClock aria-hidden="true" size={12} />{job.type || 'Full-time'}</span>
+                            <span><FiMapPin aria-hidden="true" size={12} />{job.location}</span>
+                            <span><FiCreditCard aria-hidden="true" size={12} />{job.salaryStr || 'Competitive'}</span>
+                          </div>
+
                           <div className="td-job-footer">
-                            <div className="td-job-tags td-desktop-tags">
-                              <span><FiBook aria-hidden="true" size={12} />{job.subject || 'Teaching'}</span>
-                              <span><FiClock aria-hidden="true" size={12} />{job.type || 'Full-time'}</span>
-                              <span><FiMapPin aria-hidden="true" size={12} />{job.location}</span>
-                              <span><FiCreditCard aria-hidden="true" size={12} />{job.salaryStr || 'Competitive'}</span>
-                            </div>
                             <button
                               type="button"
                               className="td-quick-apply"
@@ -2198,7 +2219,7 @@ export default function TeacherDashboard() {
                     <div className="td-mobile-showing">
                       <div className="td-mobile-rec-info">
                         <h3>Recommended for you</h3>
-                        <span>124 JOBS FOUND</span>
+                        <span>{filteredJobs.length} JOBS FOUND</span>
                       </div>
                       <button 
                         className={`td-mobile-saved-btn ${showSavedOnly ? 'td-mobile-saved-btn--active' : ''}`}
@@ -2291,29 +2312,31 @@ export default function TeacherDashboard() {
                             </div>
                           </div>
 
+                          {/* Meta row */}
+                          <div className="td-fc-meta">
+                            <div className="td-fc-meta-item">
+                              <FiClock size={13} color="#6C757D" />
+                              <span>{job.type}</span>
+                            </div>
+                            <div className="td-fc-meta-item">
+                              <FiClock size={13} color="#6C757D" />
+                              <span>{job.timeLabel}</span>
+                            </div>
+                            <div className="td-fc-meta-item">
+                              <FiMapPin size={13} />
+                              <span>{job.location}</span>
+                            </div>
+                            <div className="td-fc-meta-item td-fc-meta-salary">
+                              <FiCreditCard size={13} />
+                              <span>{job.salaryStr || 'Salary available on request'}</span>
+                            </div>
+                            {job.tags && job.tags.map(tag => (
+                              <span key={tag} className="td-fc-meta-tag">{tag}</span>
+                            ))}
+                          </div>
+
                           {/* Actions */}
                           <div className="td-fc-footer">
-                            <div className="td-fc-meta">
-                              <div className="td-fc-meta-item">
-                                <FiClock size={13} color="#6C757D" />
-                                <span>{job.type}</span>
-                              </div>
-                              <div className="td-fc-meta-item">
-                                <FiClock size={13} color="#6C757D" />
-                                <span>{job.timeLabel}</span>
-                              </div>
-                              <div className="td-fc-meta-item">
-                                <FiMapPin size={13} />
-                                <span>{job.location}</span>
-                              </div>
-                              <div className="td-fc-meta-item td-fc-meta-salary">
-                                <FiDollarSign size={13} />
-                                <span>{job.salaryStr || 'Salary available on request'}</span>
-                              </div>
-                              {job.tags && job.tags.map(tag => (
-                                <span key={tag} className="td-fc-meta-tag">{tag}</span>
-                              ))}
-                            </div>
                             <div className="td-fc-footer-actions">
                               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
                                 View Details
@@ -4182,7 +4205,7 @@ export default function TeacherDashboard() {
                           onClick={() => {
                             setEditingEducationId(null);
                             setEducationError('');
-                            setNewEduForm({ degree: '', institution: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+                            setNewEduForm({ degree: '', degreeOther: '', institution: '', fieldOfStudy: '', classOfDegree: '', startYear: '2015', endYear: '2019', status: 'Completed' });
                             setShowAddEduModal(true);
                           }}
                         >
@@ -4191,7 +4214,7 @@ export default function TeacherDashboard() {
                       </div>
 
                       {/* Education Cards Grid */}
-                      <div className="td-edu-grid">
+                      <div className={`td-edu-grid ${educationList.length === 0 ? 'td-edu-grid--empty' : ''}`}>
                         {educationList.map((edu) => (
                           <div key={edu.id} className="td-edu-card">
                             {/* Decorative background circle */}
@@ -4233,8 +4256,11 @@ export default function TeacherDashboard() {
                                 onClick={() => {
                                   setEditingEducationId(edu.education_id);
                                   setNewEduForm({
-                                    degree: edu.degree,
+                                    degree: degreeOptions.includes(edu.degree) ? edu.degree : 'Others',
+                                    degreeOther: degreeOptions.includes(edu.degree) ? '' : edu.degree,
                                     institution: edu.institution,
+                                    fieldOfStudy: edu.field_of_study || '',
+                                    classOfDegree: edu.class_of_degree || '',
                                     startYear: String(edu.start_year || ''),
                                     endYear: String(edu.end_year || ''),
                                     status: edu.status || 'Completed',
@@ -4258,28 +4284,13 @@ export default function TeacherDashboard() {
                           </div>
                         ))}
 
-                        {/* Add Qualification Dashed Card */}
-                        <div
-                          className="td-edu-add-card"
-                          onClick={() => {
-                            setEditingEducationId(null);
-                            setEducationError('');
-                            setNewEduForm({ degree: '', institution: '', startYear: '2015', endYear: '2019', status: 'Completed' });
-                            setShowAddEduModal(true);
-                          }}
-                        >
-                          <div className="td-edu-add-icon-circle">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1E293B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <circle cx="12" cy="12" r="10" />
-                              <line x1="12" y1="8" x2="12" y2="16" />
-                              <line x1="8" y1="12" x2="16" y2="12" />
-                            </svg>
+                        {educationList.length === 0 && (
+                          <div className="td-profile-empty-state td-edu-empty-state">
+                            <FiBook size={34} />
+                            <h3>No educational qualification added</h3>
+                            <p>Add your degrees, diplomas, or relevant certificates to complete your academic profile.</p>
                           </div>
-                          <h3 className="td-edu-add-title">Add Qualification</h3>
-                          <p className="td-edu-add-desc">
-                            Include your degrees, diplomas, or relevant certificates.
-                          </p>
-                        </div>
+                        )}
                       </div>
 
                       {/* Modal for adding education */}
@@ -4293,14 +4304,27 @@ export default function TeacherDashboard() {
                             <div className="td-modal-body">
                               <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
                                 <label className="td-pers-label">Degree / Certificate</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. B.Ed Mathematics"
+                                <select
                                   className="td-pers-input"
                                   value={newEduForm.degree}
-                                  onChange={(e) => setNewEduForm({ ...newEduForm, degree: e.target.value })}
-                                />
+                                  onChange={(e) => setNewEduForm({ ...newEduForm, degree: e.target.value, degreeOther: e.target.value === 'Others' ? newEduForm.degreeOther : '' })}
+                                >
+                                  <option value="" disabled>Select a degree or certificate</option>
+                                  {degreeOptions.map((degreeOption) => <option key={degreeOption} value={degreeOption}>{degreeOption}</option>)}
+                                </select>
                               </div>
+                              {newEduForm.degree === 'Others' && (
+                                <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
+                                  <label className="td-pers-label">Other Degree / Certificate</label>
+                                  <input
+                                    type="text"
+                                    placeholder="Enter your degree or certificate"
+                                    className="td-pers-input"
+                                    value={newEduForm.degreeOther}
+                                    onChange={(e) => setNewEduForm({ ...newEduForm, degreeOther: e.target.value })}
+                                  />
+                                </div>
+                              )}
                               <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
                                 <label className="td-pers-label">Institution / University</label>
                                 <input
@@ -4311,7 +4335,17 @@ export default function TeacherDashboard() {
                                   onChange={(e) => setNewEduForm({ ...newEduForm, institution: e.target.value })}
                                 />
                               </div>
-                              <div className="td-pers-grid" style={{ marginBottom: '16px' }}>
+                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
+                                <label className="td-pers-label">Field of Study</label>
+                                <input
+                                  type="text"
+                                  placeholder="e.g. Mathematics Education"
+                                  className="td-pers-input"
+                                  value={newEduForm.fieldOfStudy}
+                                  onChange={(e) => setNewEduForm({ ...newEduForm, fieldOfStudy: e.target.value })}
+                                />
+                              </div>
+                              <div className="td-pers-grid td-edu-years-grid" style={{ marginBottom: '16px' }}>
                                 <div className="td-pers-field-group">
                                   <label className="td-pers-label">Start Year</label>
                                   <input
@@ -4351,6 +4385,17 @@ export default function TeacherDashboard() {
                                   <option value="Completed">Completed</option>
                                   <option value="In Progress">In Progress</option>
                                   <option value="Pending">Pending</option>
+                                </select>
+                              </div>
+                              <div className="td-pers-field-group" style={{ marginTop: '16px' }}>
+                                <label className="td-pers-label">Class of Degree</label>
+                                <select
+                                  className="td-pers-input"
+                                  value={newEduForm.classOfDegree}
+                                  onChange={(e) => setNewEduForm({ ...newEduForm, classOfDegree: e.target.value })}
+                                >
+                                  <option value="" disabled>Select class of degree</option>
+                                  {degreeClassOptions.map((degreeClass) => <option key={degreeClass} value={degreeClass}>{degreeClass}</option>)}
                                 </select>
                               </div>
                             </div>
@@ -4418,7 +4463,13 @@ export default function TeacherDashboard() {
 
                       {/* Timeline & Experience List */}
                       <div className="td-exp-timeline-container">
-                        {experienceList.map((exp, index) => (
+                        {experienceList.length === 0 ? (
+                          <div className="td-profile-empty-state td-exp-empty-state">
+                            <FiBriefcase size={34} />
+                            <h3>No teaching experience added</h3>
+                            <p>Add your teaching roles and work history to build a stronger professional profile.</p>
+                          </div>
+                        ) : experienceList.map((exp, index) => (
                           <div key={exp.id} className="td-exp-timeline-item">
                             {/* Left Timeline Marker Column */}
                             <div className="td-exp-timeline-marker-col">
@@ -6191,7 +6242,7 @@ export default function TeacherDashboard() {
           font-size: 32px;
           font-weight: 800;
           color: #2D3748;
-          margin-bottom: 8px;
+          margin-bottom: 16px;
           letter-spacing: -0.5px;
         }
         .td-subtitle {
@@ -6540,12 +6591,17 @@ export default function TeacherDashboard() {
 
         .td-job-info-main {
           flex: 1;
+          display: flex;
+          flex-direction: column;
+          justify-content: flex-start;
         }
         .td-job-title-line {
+          position: relative;
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
           margin-bottom: 4px;
+          min-height: 26px;
         }
         .td-job-title-line h3 {
           font-size: 17px;
@@ -6554,6 +6610,9 @@ export default function TeacherDashboard() {
         }
 
         .td-job-badge-col {
+          position: absolute;
+          top: 0;
+          right: 0;
           display: flex;
           flex-direction: column;
           align-items: flex-end;
@@ -6585,7 +6644,7 @@ export default function TeacherDashboard() {
         .td-job-school {
           font-size: 13px;
           color: #718096;
-          margin-bottom: 14px;
+          margin: 0;
           display: flex;
           align-items: center;
           gap: 6px;
@@ -6612,12 +6671,12 @@ export default function TeacherDashboard() {
           align-items: center;
           gap: 5px;
         }
-        .td-desktop-tags { display: flex; }
+        .td-desktop-tags { display: flex; margin-top: 24px; }
         .td-mobile-only-tags { display: none; }
 
         .td-job-footer {
           display: flex;
-          justify-content: space-between;
+          justify-content: flex-end;
           align-items: center;
           border-top: 1px solid #F1F5F9;
           margin-top: 14px;
@@ -6879,7 +6938,7 @@ export default function TeacherDashboard() {
         .td-feed-card-standard {
           display: grid;
           grid-template-columns: minmax(0, 1fr);
-          grid-template-areas: "header" "footer";
+          grid-template-areas: "header" "meta" "footer";
           align-items: stretch;
           gap: 14px;
           min-height: 168px;
@@ -6904,6 +6963,7 @@ export default function TeacherDashboard() {
           flex: none;
           min-width: 250px;
           padding-right: 46px;
+          margin-bottom: 8px;
         }
         .td-fc-icon-wrapper { flex-shrink: 0; }
         .td-fc-icon {
@@ -6984,6 +7044,8 @@ export default function TeacherDashboard() {
           gap: 8px;
           align-items: center;
           flex-wrap: wrap;
+          grid-area: meta;
+          width: 100%;
           min-width: 0;
           margin: 0;
         }
@@ -7030,7 +7092,7 @@ export default function TeacherDashboard() {
           gap: 6px;
           grid-area: footer;
           width: 100%;
-          justify-content: space-between;
+          justify-content: flex-end;
           flex-shrink: 0;
           padding-top: 12px;
           border-top: 1px solid #F1F5F9;
@@ -9400,6 +9462,12 @@ export default function TeacherDashboard() {
           border-radius: 12px;
           box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28);
         }
+        .td-edu-modal-content {
+          width: min(520px, 100%);
+          max-height: calc(100vh - 32px);
+          display: flex;
+          flex-direction: column;
+        }
         .td-edu-modal-content .td-modal-header {
           align-items: center;
           margin: 0;
@@ -9423,8 +9491,11 @@ export default function TeacherDashboard() {
           font-size: 18px;
         }
         .td-edu-modal-content .td-modal-close:hover { background: #f1f5f9; color: #1e293b; }
-        .td-edu-modal-content .td-modal-body { padding: 20px 22px 4px; }
-        .td-edu-modal-content .td-pers-field-group { margin-bottom: 17px !important; }
+        .td-edu-modal-content .td-modal-body {
+          padding: 18px 22px 4px;
+          overflow-y: auto;
+        }
+        .td-edu-modal-content .td-pers-field-group { margin-bottom: 12px !important; }
         .td-edu-modal-content .td-pers-label { color: #475569; font-size: 11px; font-weight: 700; }
         .td-edu-modal-content .td-pers-input { min-height: 40px; border-color: #d9e0e7; background: #fff; }
         .td-edu-modal-content .td-pers-input:focus { border-color: #15946e; box-shadow: 0 0 0 3px rgba(21, 148, 110, .12); }
@@ -9435,6 +9506,7 @@ export default function TeacherDashboard() {
           padding: 16px 22px 20px;
           border-top: 1px solid #edf1f4;
           background: #fbfcfd;
+          flex-shrink: 0;
         }
         .td-edu-modal-content .td-pers-cancel-btn, .td-edu-modal-content .td-pers-save-btn { min-height: 38px; padding: 0 17px; border-radius: 7px; font-size: 12px; }
         .td-edu-modal-content .td-pers-save-btn { background: #0d7c57; }
@@ -9467,7 +9539,8 @@ export default function TeacherDashboard() {
         @media (max-width: 480px) {
           .td-modal-overlay { padding: 16px; }
           .td-edu-modal-content .td-modal-header { padding: 18px 18px 14px; }
-          .td-edu-modal-content .td-modal-body { padding: 18px 18px 2px; }
+          .td-edu-modal-content { width: min(100%, 520px); max-height: calc(100vh - 24px); }
+          .td-edu-modal-content .td-modal-body { padding: 16px 18px 2px; }
           .td-edu-modal-content .td-modal-footer { padding: 14px 18px 18px; }
           .td-exp-modal-content .td-modal-header { padding: 18px 18px 14px; }
           .td-exp-modal-content .td-modal-body { padding: 18px 18px 2px; }
@@ -12170,7 +12243,7 @@ export default function TeacherDashboard() {
         .td-prof-edit-card input[type='text'], .td-prof-edit-card select { height: 31px; padding: 0 10px; }
         .td-prof-edit-card textarea { min-height: 78px; padding: 10px; resize: vertical; line-height: 1.5; }
         .td-prof-edit-card input:focus, .td-prof-edit-card textarea:focus, .td-prof-edit-card select:focus { border-color: #0b8b66; box-shadow: 0 0 0 2px rgba(11, 139, 102, .12); }
-        .td-prof-preferences { max-width: 235px; margin-top: 15px; padding: 17px 14px; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .06); }
+        .td-prof-preferences { width: 100%; margin-top: 15px; padding: 17px 14px; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .06); }
         .td-prof-preferences h2 { margin: -1px -14px 0; padding: 0 14px 10px; }
         .td-prof-edit-label { display: block; margin-top: 15px; color: #475467; font-size: 11px; font-weight: 600; }
         .td-prof-edit-subjects { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
@@ -13888,6 +13961,27 @@ export default function TeacherDashboard() {
           align-items: stretch;
         }
 
+        .td-edu-grid--empty { grid-template-columns: minmax(0, 1fr); }
+
+        .td-profile-empty-state {
+          grid-column: 1 / -1;
+          min-height: calc(100vh - 330px);
+          padding: 48px 24px;
+          border: 1px dashed #CBD5E1;
+          border-radius: 16px;
+          background: #FFFFFF;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          color: #94A3B8;
+        }
+
+        .td-profile-empty-state svg { color: #94A3B8; margin-bottom: 16px; }
+        .td-profile-empty-state h3 { margin: 0 0 8px; color: #1E293B; font-size: 18px; font-weight: 800; }
+        .td-profile-empty-state p { max-width: 360px; margin: 0 0 20px; color: #64748B; font-size: 13px; line-height: 1.5; }
+
         .td-edu-card {
           background: #FFFFFF;
           border-radius: 16px;
@@ -14123,6 +14217,8 @@ export default function TeacherDashboard() {
           gap: 0;
           position: relative;
         }
+
+        .td-exp-empty-state { width: 100%; }
 
         .td-exp-timeline-item {
           display: flex;
