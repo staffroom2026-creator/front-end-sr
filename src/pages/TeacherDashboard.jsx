@@ -14,7 +14,7 @@ import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
-  FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiSend, FiCalendar, FiAlertTriangle,
+  FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiCreditCard, FiSend, FiCalendar, FiAlertTriangle,
   FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiUpload, FiLock,
   FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
 } from 'react-icons/fi';
@@ -172,13 +172,20 @@ const normalizeJobData = (job = {}, index = 0) => {
 
   const realJobId = normalizeJobId(job.job_id || job.id || index, String(index));
   const relevanceScore = getJobRelevanceScore(job);
+  const city = String(job.city || job.location_city || job.school_city || '').trim();
+  const state = String(job.state || job.location_state || job.school_state || '').trim();
+  const location = city && state
+    ? `${city}, ${state}`
+    : (job.location || city || state || 'Nigeria');
 
   return {
     id: realJobId,
     job_id: realJobId,
     title: job.title || job.role || job.position || 'Teaching Opportunity',
     school: job.school || job.school_name || job.employer || 'School',
-    location: job.location || job.city || job.state || 'Nigeria',
+    location,
+    city,
+    state,
     type: job.type || job.job_type || job.employment_type || 'Full-time',
     subject: job.subject || job.subject_area || 'Teaching',
     salaryStr,
@@ -1944,23 +1951,23 @@ export default function TeacherDashboard() {
                                   <span className="td-job-time-ago">{job.timeLabel}</span>
                                 </div>
                               </div>
-                              <p className="td-job-school">{job.school} <span className="td-job-bullet">•</span> {job.location}</p>
+                              <p className="td-job-school">{job.school}</p>
 
                               <div className="td-job-tags td-mobile-only-tags">
                                 <span className="td-mobile-tag--green">{String(job.location || '').toUpperCase()}</span>
                                 <span className="td-mobile-tag--gray">{job.timeLabel}</span>
                               </div>
 
-                              <div className="td-job-tags td-desktop-tags">
-                                <span>{job.subject || 'Teaching'}</span>
-                                <span>{job.type || 'Full-time'}</span>
-                                <span>{job.salaryStr || 'Competitive'}</span>
-                              </div>
                             </div>
                           </div>
 
                           <div className="td-job-footer">
-                            <span className="td-job-salary">{job.salaryStr || 'Salary available on request'}</span>
+                            <div className="td-job-tags td-desktop-tags">
+                              <span><FiBook aria-hidden="true" size={12} />{job.subject || 'Teaching'}</span>
+                              <span><FiClock aria-hidden="true" size={12} />{job.type || 'Full-time'}</span>
+                              <span><FiMapPin aria-hidden="true" size={12} />{job.location}</span>
+                              <span><FiCreditCard aria-hidden="true" size={12} />{job.salaryStr || 'Competitive'}</span>
+                            </div>
                             <button
                               type="button"
                               className="td-quick-apply"
@@ -2251,15 +2258,22 @@ export default function TeacherDashboard() {
 
                       return (
                         <motion.div key={job.id} variants={cardVariants} className="td-feed-card td-feed-card-standard">
+                          <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`td-bookmark-btn ${savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'td-bookmark-btn--saved' : ''}`}
+                            onClick={() => handleToggleSaveJob(job.job_id || job.id)}
+                            title={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved' : 'Save job'}
+                            aria-label={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved jobs' : 'Save job'}
+                          >
+                            <FiBookmark
+                              size={18}
+                              style={{ fill: savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? '#15803D' : 'none' }}
+                            />
+                          </motion.button>
+
                           {/* Card Header */}
                           <div className="td-fc-header">
-                            <div className="td-fc-icon-wrapper">
-                              <div className={`td-fc-icon ${job.color || 'td-bg-darkgreen'}`}>
-                                {job.iconType === 'academic' ? <FiBook size={20} /> :
-                                  job.iconType === 'science' ? <FiZap size={20} /> :
-                                    <FiBriefcase size={20} />}
-                              </div>
-                            </div>
                             <div className="td-fc-main-info">
                               <div className="td-fc-title-row">
                                 <h3>{job.title}</h3>
@@ -2272,48 +2286,37 @@ export default function TeacherDashboard() {
                                 </div>
                               </div>
                               <p className="td-fc-school">
-                                {job.school} {job.location && <><span className="td-dot">•</span> {job.location}</>}
+                                {job.school}
                               </p>
                             </div>
                           </div>
 
-                          {/* Meta row */}
-                          <div className="td-fc-meta">
-                            <div className="td-fc-meta-item">
-                              <FiClock size={13} color="#6C757D" />
-                              <span>{job.type}</span>
-                            </div>
-                            <div className="td-fc-meta-item">
-                              <FiClock size={13} color="#6C757D" />
-                              <span>{job.timeLabel}</span>
-                            </div>
-                            <div className="td-fc-meta-item td-fc-meta-salary">
-                              <FiDollarSign size={13} />
-                              <span>{job.salaryStr || 'Salary available on request'}</span>
-                            </div>
-                            {job.tags && job.tags.map(tag => (
-                              <span key={tag} className="td-fc-meta-tag">{tag}</span>
-                            ))}
-                          </div>
-
                           {/* Actions */}
                           <div className="td-fc-footer">
+                            <div className="td-fc-meta">
+                              <div className="td-fc-meta-item">
+                                <FiClock size={13} color="#6C757D" />
+                                <span>{job.type}</span>
+                              </div>
+                              <div className="td-fc-meta-item">
+                                <FiClock size={13} color="#6C757D" />
+                                <span>{job.timeLabel}</span>
+                              </div>
+                              <div className="td-fc-meta-item">
+                                <FiMapPin size={13} />
+                                <span>{job.location}</span>
+                              </div>
+                              <div className="td-fc-meta-item td-fc-meta-salary">
+                                <FiDollarSign size={13} />
+                                <span>{job.salaryStr || 'Salary available on request'}</span>
+                              </div>
+                              {job.tags && job.tags.map(tag => (
+                                <span key={tag} className="td-fc-meta-tag">{tag}</span>
+                              ))}
+                            </div>
                             <div className="td-fc-footer-actions">
-                                <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
+                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
                                 View Details
-                              </motion.button>
-                              <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className={`td-bookmark-btn ${savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'td-bookmark-btn--saved' : ''}`}
-                                onClick={() => handleToggleSaveJob(job.job_id || job.id)}
-                                title={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved' : 'Save job'}
-                                aria-label={savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'Remove from saved jobs' : 'Save job'}
-                              >
-                                <FiBookmark
-                                  size={18}
-                                  style={{ fill: savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? '#15803D' : 'none' }}
-                                />
                               </motion.button>
                             </div>
                           </div>
@@ -6605,6 +6608,9 @@ export default function TeacherDashboard() {
           letter-spacing: 0.6px;
           padding: 6px 14px;
           border-radius: 9999px;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
         }
         .td-desktop-tags { display: flex; }
         .td-mobile-only-tags { display: none; }
@@ -6617,19 +6623,21 @@ export default function TeacherDashboard() {
           margin-top: 14px;
           padding-top: 14px;
         }
-        .td-job-salary {
-          font-size: 14px;
-          font-weight: 800;
-          color: #22C55E;
-        }
         .td-quick-apply {
-          font-size: 13px;
+          background: #22C55E;
+          color: white;
+          border: none;
+          padding: 10px 28px;
+          border-radius: 50px;
           font-weight: 700;
-          color: #22C55E;
-          text-decoration: none;
+          font-size: 12px;
+          cursor: pointer;
+          transition: background 0.2s;
+          font-family: inherit;
+          white-space: nowrap;
         }
         .td-quick-apply:hover {
-          text-decoration: underline;
+          background: #16A34A;
         }
 
         /* Mobile CTA Card */
@@ -6871,19 +6879,19 @@ export default function TeacherDashboard() {
         .td-feed-card-standard {
           display: grid;
           grid-template-columns: minmax(0, 1fr);
-          grid-template-areas: "header" "meta" "footer";
+          grid-template-areas: "header" "footer";
           align-items: stretch;
-          gap: 12px;
+          gap: 14px;
           min-height: 168px;
-          padding: 18px 24px;
-          border-radius: 24px;
-          border-color: #F1F5F9;
-          box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+          padding: 20px 32px;
+          border-radius: 28px;
+          border: 1px solid #F1F5F9;
+          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.015);
         }
 
         .td-feed-card-standard:hover {
-          border-color: #D1FAE5;
-          box-shadow: 0 14px 30px rgba(15, 23, 42, 0.09);
+          border-color: #BBF7D0;
+          box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
         }
 
         /* Card header - icon + info */
@@ -6895,6 +6903,7 @@ export default function TeacherDashboard() {
           width: 100%;
           flex: none;
           min-width: 250px;
+          padding-right: 46px;
         }
         .td-fc-icon-wrapper { flex-shrink: 0; }
         .td-fc-icon {
@@ -6974,26 +6983,28 @@ export default function TeacherDashboard() {
           display: flex;
           gap: 8px;
           align-items: center;
-          flex-wrap: nowrap;
-          grid-area: meta;
-          width: 100%;
-          flex-basis: auto;
+          flex-wrap: wrap;
+          min-width: 0;
           margin: 0;
         }
         .td-fc-meta-item { 
           display: flex;
           align-items: center;
           gap: 4px;
-          font-size: 11.5px;
+          padding: 6px 10px;
+          border-radius: 9999px;
+          background: #F1F5F9;
+          font-size: 10px;
           color: #475569;
-          font-weight: 600;
+          font-weight: 800;
+          letter-spacing: 0.3px;
           white-space: nowrap;
           flex-shrink: 0;
         }
 
         .td-fc-meta-salary {
+          background: #E8F9ED;
           color: #15803D;
-          font-weight: 800;
         }
 
         /* Salary display */
@@ -7019,7 +7030,7 @@ export default function TeacherDashboard() {
           gap: 6px;
           grid-area: footer;
           width: 100%;
-          justify-content: flex-start;
+          justify-content: space-between;
           flex-shrink: 0;
           padding-top: 12px;
           border-top: 1px solid #F1F5F9;
@@ -7044,6 +7055,9 @@ export default function TeacherDashboard() {
         }
         .td-fc-action:hover { background: #166534; }
         .td-bookmark-btn {
+          position: absolute;
+          top: 20px;
+          right: 32px;
           background: #FFFFFF;
           border: 1.5px solid #E5E7EB;
           color: #9CA3AF;
@@ -7253,6 +7267,7 @@ export default function TeacherDashboard() {
             display: flex;
             gap: 12px;
             align-items: flex-start;
+            padding-right: 40px;
           }
           .td-feed-card-standard .td-fc-icon-wrapper {
             width: 48px;
@@ -7298,6 +7313,8 @@ export default function TeacherDashboard() {
             margin: 0;
           }
           .td-feed-card-standard .td-bookmark-btn {
+            top: 20px;
+            right: 18px;
             background: transparent;
             border: none;
             color: #94A3B8;
@@ -7318,19 +7335,12 @@ export default function TeacherDashboard() {
             margin: 0;
           }
           .td-feed-card-standard .td-fc-meta {
-            margin-left: 0;
-            margin-top: 0;
-            display: flex;
-            gap: 14px;
-            align-items: center;
+            gap: 8px;
           }
           .td-feed-card-standard .td-fc-meta-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: #475569;
-            font-weight: 600;
+            padding: 5px 8px;
+            font-size: 10px;
+            gap: 4px;
           }
           .td-feed-card-standard .td-fc-meta-tag {
             margin-left: auto;
@@ -7811,6 +7821,7 @@ export default function TeacherDashboard() {
           /* Card Header */
           .td-feed-card-standard .td-fc-header {
             gap: 10px;
+            padding-right: 34px;
           }
           .td-feed-card-standard .td-fc-icon-wrapper {
             width: 44px;
@@ -7831,6 +7842,8 @@ export default function TeacherDashboard() {
             line-height: 1.3;
           }
           .td-feed-card-standard .td-bookmark-btn {
+            top: 16px;
+            right: 14px;
             margin-left: 0;
             min-width: 24px;
           }
@@ -7844,7 +7857,8 @@ export default function TeacherDashboard() {
           /* Meta Info */
           .td-feed-card-standard .td-fc-meta {
             gap: 10px;
-            margin-bottom: 4px;
+            flex: 1;
+            margin-bottom: 0;
           }
           .td-feed-card-standard .td-fc-meta-item {
             font-size: 11px;
@@ -7866,7 +7880,6 @@ export default function TeacherDashboard() {
           .td-feed-card-standard .td-fc-action {
             padding: 8px 16px;
             font-size: 12px;
-            flex-grow: 1;
             min-width: 100px;
           }
 
