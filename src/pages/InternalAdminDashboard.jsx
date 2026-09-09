@@ -22,6 +22,7 @@ import {
   FiCheck,
   FiDownload,
   FiMapPin,
+  FiMail,
   FiUserCheck,
   FiX,
 } from 'react-icons/fi';
@@ -31,6 +32,7 @@ const navItems = [
   ['jobs', 'Jobs', FiBriefcase],
   ['verification', 'Schools', FiShield],
   ['teachers', 'Teachers', FiUsers],
+  ['admin-management', 'Admin Management', FiUserCheck],
   ['reports', 'Reports', FiClipboard],
   ['notifications', 'Notifications', FiBell],
   ['settings', 'Settings', FiSettings],
@@ -111,6 +113,103 @@ const teacherDataset = Array.from({ length: 45 }, (_, index) => {
   const teacher = teacherRows[index % teacherRows.length];
   return index < teacherRows.length ? teacher : { ...teacher, name: `${teacher.name} ${index + 1}`, contact: `teacher${index + 1}@staffroom.school` };
 });
+
+const roleIcons = {
+  'Super Admin': FiShield,
+  'Verification Admin': FiCheckCircle,
+  'Support Admin': FiUser,
+  'Operations Admin': FiBriefcase,
+};
+
+const adminRoleOptions = ['Super Admin', 'Operations Admin', 'Verification Admin', 'Support Admin'];
+
+const adminRoleDescriptions = {
+  'Super Admin': 'Unrestricted access to Staffroom global infrastructure, sensitive encryption keys, fiscal configurations, and executive user management.',
+  'Operations Admin': 'Oversee day-to-day ecosystem ops: manage educators, institutional accounts, hiring pipelines, and automated reporting systems.',
+  'Verification Admin': 'Dedicated authority for TRCN teacher credentials, identity audits, school accreditation checks, and regulatory compliance.',
+  'Support Admin': 'Manage incoming educator help tickets, school onboarding queries, dispute mediation, and localized account resolutions.',
+};
+
+const adminPermissionMatrix = [
+  { key: 'users', module: 'Users (Teachers & Schools)', description: 'Core identity registries and credential records', permissions: { view: true, create: false, edit: true, approve: false, delete: false } },
+  { key: 'schools', module: 'Schools Directory', description: 'Accredited campuses, staffing allotments, and contacts', permissions: { view: true, create: false, edit: true, approve: false, delete: false } },
+  { key: 'jobs', module: 'Jobs & Postings', description: 'Open vacancies, compensation bands, and listing states', permissions: { view: true, create: true, edit: true, approve: true, delete: true } },
+  { key: 'applications', module: 'Applications Pipeline', description: 'Teacher applications, interviews, and offer tracking', permissions: { view: true, create: false, edit: true, approve: false, delete: false } },
+  { key: 'verification', module: 'Verification Requests', description: 'TRCN licensing and background screening checks', permissions: { view: true, create: false, edit: false, approve: true, delete: false } },
+  { key: 'reports', module: 'Reports & Moderation', description: 'Aggregated platform statistics and flagged content mediation', permissions: { view: true, create: false, edit: true, approve: true, delete: false } },
+  { key: 'admins', module: 'Internal Admins', description: 'Internal staff profiles and role assignments', permissions: { view: true, create: false, edit: false, approve: false, delete: false } },
+  { key: 'settings', module: 'Platform Settings', description: 'System flags, payment workflows, API configurations', permissions: { view: true, create: false, edit: true, approve: false, delete: false } },
+];
+
+const buildPermissionMatrixForRole = (role) => {
+  const defaults = adminPermissionMatrix.reduce((acc, item) => ({
+    ...acc,
+    [item.key]: { ...item.permissions },
+  }), {});
+
+  const overrides = {
+    'Super Admin': {
+      users: { view: true, create: true, edit: true, approve: true, delete: true },
+      schools: { view: true, create: true, edit: true, approve: true, delete: true },
+      jobs: { view: true, create: true, edit: true, approve: true, delete: true },
+      applications: { view: true, create: true, edit: true, approve: true, delete: true },
+      verification: { view: true, create: true, edit: true, approve: true, delete: true },
+      reports: { view: true, create: true, edit: true, approve: true, delete: true },
+      admins: { view: true, create: true, edit: true, approve: true, delete: true },
+      settings: { view: true, create: true, edit: true, approve: true, delete: true },
+    },
+    'Operations Admin': {
+      users: { view: true, create: false, edit: true, approve: false, delete: false },
+      schools: { view: true, create: false, edit: true, approve: false, delete: false },
+      jobs: { view: true, create: true, edit: true, approve: true, delete: true },
+      applications: { view: true, create: false, edit: true, approve: false, delete: false },
+      verification: { view: true, create: false, edit: false, approve: true, delete: false },
+      reports: { view: true, create: false, edit: true, approve: true, delete: false },
+      admins: { view: true, create: false, edit: false, approve: false, delete: false },
+      settings: { view: true, create: false, edit: true, approve: false, delete: false },
+    },
+    'Verification Admin': {
+      users: { view: true, create: false, edit: false, approve: true, delete: false },
+      schools: { view: true, create: false, edit: false, approve: true, delete: false },
+      jobs: { view: true, create: false, edit: false, approve: true, delete: false },
+      applications: { view: true, create: false, edit: false, approve: false, delete: false },
+      verification: { view: true, create: false, edit: false, approve: true, delete: false },
+      reports: { view: true, create: false, edit: false, approve: true, delete: false },
+      admins: { view: true, create: false, edit: false, approve: false, delete: false },
+      settings: { view: false, create: false, edit: false, approve: false, delete: false },
+    },
+    'Support Admin': {
+      users: { view: true, create: false, edit: false, approve: false, delete: false },
+      schools: { view: true, create: false, edit: true, approve: false, delete: false },
+      jobs: { view: true, create: false, edit: false, approve: false, delete: false },
+      applications: { view: true, create: false, edit: false, approve: false, delete: false },
+      verification: { view: false, create: false, edit: false, approve: false, delete: false },
+      reports: { view: true, create: false, edit: false, approve: false, delete: false },
+      admins: { view: false, create: false, edit: false, approve: false, delete: false },
+      settings: { view: false, create: false, edit: false, approve: false, delete: false },
+    },
+  };
+
+  return Object.keys(defaults).reduce((acc, key) => ({
+    ...acc,
+    [key]: { ...defaults[key], ...(overrides[role]?.[key] || {}) },
+  }), {});
+};
+
+const adminRoleDefaults = {
+  'Super Admin': { schoolProfile: true, manageAccess: true, reviewJobs: true },
+  'Operations Admin': { schoolProfile: true, manageAccess: true, reviewJobs: true },
+  'Verification Admin': { schoolProfile: true, manageAccess: false, reviewJobs: true },
+  'Support Admin': { schoolProfile: true, manageAccess: true, reviewJobs: false },
+};
+
+const adminManagementRows = [
+  { name: 'Christopher Osazuwa', role: 'Super Admin', email: 'christopher@staffroom.com', access: 'Full Access', lastActive: '5 minutes ago', status: 'Active', ip: '197.210.44.12', created: 'Jan 12, 2026', addedBy: 'System', permissions: 'All' },
+  { name: 'Sarah Adeyemi', role: 'Verification Admin', email: 'sarah@staffroom.com', access: 'Schools', lastActive: '2 hours ago', status: 'Active', ip: '102.89.33.19', created: 'Aug 21, 2026', addedBy: 'System', permissions: 'Access: schools' },
+  { name: 'Michael-Eze', role: 'Support Admin', email: 'michael-e@staffroom.com', access: 'Schools', lastActive: '3 days ago', status: 'Suspended', ip: '197.210.44.12', created: 'May 06, 2026', addedBy: 'System', permissions: 'Flagged' },
+  { name: 'Amina Bello', role: 'Operations Admin', email: 'amina@staffroom.com', access: 'Operations', lastActive: '1 hour ago', status: 'Active', ip: '197.211.58.4', created: 'Feb 14, 2026', addedBy: 'System', permissions: 'Access: ops' },
+  { name: 'Emeka Okonkwo', role: 'Verification Admin', email: 'emeka@staffroom.com', access: 'Verification', lastActive: 'Never', status: 'Pending', ip: 'Never', created: 'Sep 02, 2026', addedBy: 'System', permissions: 'Invitation' },
+];
 
 const allJobs = [
   {
@@ -373,6 +472,24 @@ export default function InternalAdminDashboard() {
   const [activeTeacherPage, setActiveTeacherPage] = useState(1);
   const [teacherSearch, setTeacherSearch] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState(null);
+  const [adminRows, setAdminRows] = useState(adminManagementRows);
+  const [adminSearch, setAdminSearch] = useState('');
+  const [adminRoleFilter, setAdminRoleFilter] = useState('All Roles');
+  const [adminStatusFilter, setAdminStatusFilter] = useState('All Statuses');
+  const [adminTimeFilter, setAdminTimeFilter] = useState('Any time');
+  const [adminPage, setAdminPage] = useState(1);
+  const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [addAdminStep, setAddAdminStep] = useState(1);
+  const [addAdminForm, setAddAdminForm] = useState({
+    firstName: 'David',
+    lastName: 'Okafor',
+    email: 'david@staffroom.com',
+    role: 'Operations Admin',
+    permissions: {
+      ...adminRoleDefaults['Operations Admin'],
+      matrix: buildPermissionMatrixForRole('Operations Admin'),
+    },
+  });
   const activeTabLabel = navItems.find(([key]) => key === activeTab)?.[1] || 'Dashboard';
   const filteredJobs = jobDataset.filter((job) => activeJobFilter === 'All' || job.status === activeJobFilter);
   const totalJobPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE));
@@ -413,6 +530,31 @@ export default function InternalAdminDashboard() {
     return items;
   }, []);
   if (paginationPages[paginationPages.length - 1] < totalJobPages) paginationItems.push('ellipsis-end');
+
+  const adminPageSize = 10;
+  const filteredAdmins = adminRows.filter((admin) => {
+    const matchesSearch = `${admin.name} ${admin.email} ${admin.role}`.toLowerCase().includes(adminSearch.toLowerCase());
+    const matchesRole = adminRoleFilter === 'All Roles' || admin.role === adminRoleFilter;
+    const matchesStatus = adminStatusFilter === 'All Statuses' || admin.status === adminStatusFilter;
+    const matchesTime = adminTimeFilter === 'Any time' || adminTimeFilter === 'All time' || (adminTimeFilter === 'Recent' && (admin.lastActive.includes('minute') || admin.lastActive.includes('hour')));
+    return matchesSearch && matchesRole && matchesStatus && matchesTime;
+  });
+  const isStepOneValid = addAdminForm.firstName.trim() && addAdminForm.lastName.trim() && /\S+@\S+\.\S+/.test(addAdminForm.email);
+  const resetAddAdminFlow = () => {
+    setAddAdminStep(1);
+    setAddAdminForm({
+      firstName: 'David',
+      lastName: 'Okafor',
+      email: 'david@staffroom.com',
+      role: 'Operations Admin',
+      permissions: {
+        ...adminRoleDefaults['Operations Admin'],
+        matrix: buildPermissionMatrixForRole('Operations Admin'),
+      },
+    });
+  };
+  const adminTotalPages = Math.max(1, Math.ceil(filteredAdmins.length / adminPageSize));
+  const visibleAdmins = filteredAdmins.slice((adminPage - 1) * adminPageSize, adminPage * adminPageSize);
 
   const openJobReview = (job) => {
     setSelectedJob(job);
@@ -480,7 +622,7 @@ export default function InternalAdminDashboard() {
           </header>
 
           <main className="internal-admin-content">
-            {activeTab !== 'job-review' && activeTab !== 'school-profile' && activeTab !== 'teacher-profile' && <div className="internal-admin-overview-header">
+            {activeTab !== 'job-review' && activeTab !== 'school-profile' && activeTab !== 'teacher-profile' && activeTab !== 'admin-management' && activeTab !== 'add-admin' && <div className="internal-admin-overview-header">
               <div>
                 <div className="internal-admin-breadcrumb">Dashboard / {activeTabLabel}</div>
                 <h1>{activeTab === 'jobs' ? 'All Jobs' : activeTabLabel === 'Dashboard' ? 'Overview' : activeTabLabel}</h1>
@@ -733,6 +875,504 @@ export default function InternalAdminDashboard() {
               <section className="internal-admin-teachers-view">
                 <div className="internal-admin-teachers-toolbar"><label className="internal-admin-teacher-search"><FiUsers size={17} /><input value={teacherSearch} onChange={(event) => { setTeacherSearch(event.target.value); setActiveTeacherPage(1); }} placeholder="Search by name, email, subject or location..." aria-label="Search teachers" /></label><div className="internal-admin-school-filters" role="tablist" aria-label="Filter teachers">{teacherFilters.map((filter) => <button key={filter} type="button" role="tab" aria-selected={activeTeacherFilter === filter} className={activeTeacherFilter === filter ? 'is-active' : ''} onClick={() => { setActiveTeacherFilter(filter); setActiveTeacherPage(1); }}>{filter}</button>)}</div></div>
                 <div className="internal-admin-schools-table-wrap internal-admin-teachers-table-wrap"><div className="internal-admin-teachers-table"><div className="internal-admin-teachers-row internal-admin-schools-heading"><span>Teacher</span><span>Professional Title</span><span>Primary Subject</span><span>Location</span><span>Contact</span><span>Date Joined</span><span>Status</span><span>Action</span></div>{visibleTeachers.length > 0 ? visibleTeachers.map((teacher) => <div className="internal-admin-teachers-row" key={teacher.name}><strong><span className="internal-admin-teacher-mini-avatar">{teacher.name.charAt(0)}</span>{teacher.name}</strong><span>{teacher.title}</span><span>{teacher.subject}</span><span>{teacher.location}</span><span>{teacher.contact}</span><span>{teacher.joined}</span><span><span className={`internal-admin-school-status ${teacher.status.toLowerCase()}`}>{teacher.status}</span></span><button type="button" className="internal-admin-school-action" onClick={() => openTeacherProfile(teacher)}>View<br />Profile ›</button></div>) : <div className="internal-admin-schools-empty">No teachers found for this search or filter.</div>}</div><footer className="internal-admin-schools-footer"><span>Showing {filteredTeachers.length ? (activeTeacherPage - 1) * TEACHERS_PER_PAGE + 1 : 0} to {Math.min(activeTeacherPage * TEACHERS_PER_PAGE, filteredTeachers.length)} of {filteredTeachers.length} entries</span><div className="internal-admin-school-pagination" aria-label="Teacher pages"><button type="button" aria-label="Previous teacher page" disabled={activeTeacherPage === 1} onClick={() => setActiveTeacherPage((page) => Math.max(1, page - 1))}>‹</button>{teacherPaginationItems.map((item) => item.toString().startsWith('ellipsis') ? <span key={item}>...</span> : <button key={item} type="button" className={activeTeacherPage === item ? 'is-active' : ''} onClick={() => setActiveTeacherPage(item)}>{item}</button>)}<button type="button" aria-label="Next teacher page" disabled={activeTeacherPage >= teacherTotalPages} onClick={() => setActiveTeacherPage((page) => Math.min(teacherTotalPages, page + 1))}>›</button></div></footer></div>
+              </section>
+            ) : activeTab === 'add-admin' ? (
+              <section className="internal-admin-add-admin-flow">
+                <div className="internal-admin-add-admin-breadcrumb">Admin management <span>›</span> Add New Admin</div>
+
+                <div className="internal-admin-add-admin-header-row">
+                  <h1>Add New Admin</h1>
+                  <div className="internal-admin-add-admin-status-pill">
+                    <span className="internal-admin-add-admin-status-dot" aria-hidden="true" />
+                    AUTH STEP: {String(addAdminStep).padStart(2, '0')} OF 03
+                  </div>
+                </div>
+
+                <p className="internal-admin-add-admin-subtitle">
+                  Invite a new administrator to help manage Staffroom governance and school networks.
+                </p>
+
+                <div className="internal-admin-add-admin-steps">
+                  {[1, 2, 3].map((step) => (
+                    <div key={step} className={`internal-admin-add-admin-step ${addAdminStep === step ? 'is-active' : ''} ${addAdminStep > step ? 'is-done' : ''}`}>
+                      <span className="internal-admin-add-admin-step-number">{step}</span>
+                      <div className="internal-admin-add-admin-step-copy">
+                        <strong>{step === 1 ? 'Admin Details' : step === 2 ? 'Role & Permissions' : 'Review & Send'}</strong>
+                        <small>{step === 1 ? (addAdminStep === 1 ? 'In Progress' : 'Completed') : step === 2 ? (addAdminStep === 2 ? 'In Progress' : addAdminStep > 2 ? 'Completed' : 'Next Step') : (addAdminStep === 3 ? 'In Progress' : 'Upcoming')}</small>
+                      </div>
+                      {step < 3 && <span className="internal-admin-add-admin-step-line" aria-hidden="true" />}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="internal-admin-add-admin-card">
+                  {addAdminStep === 1 ? (
+                    <>
+                      <div className="internal-admin-add-admin-card-label">STEP 01</div>
+                      <h2>Personal &amp; Contact Information</h2>
+
+                      <div className="internal-admin-add-admin-field-group">
+                        <label className="internal-admin-add-admin-field">
+                          <span>First Name</span>
+                          <div className={`internal-admin-add-admin-input-shell ${addAdminForm.firstName.trim() ? 'has-value' : ''}`}>
+                            <input
+                              value={addAdminForm.firstName}
+                              onChange={(event) => setAddAdminForm((current) => ({ ...current, firstName: event.target.value }))}
+                            />
+                            {addAdminForm.firstName.trim() && <span className="internal-admin-add-admin-valid-mark" aria-hidden="true"><FiCheck size={14} /></span>}
+                          </div>
+                        </label>
+
+                        <label className="internal-admin-add-admin-field">
+                          <span>Last Name</span>
+                          <div className={`internal-admin-add-admin-input-shell ${addAdminForm.lastName.trim() ? 'has-value' : ''}`}>
+                            <input
+                              value={addAdminForm.lastName}
+                              onChange={(event) => setAddAdminForm((current) => ({ ...current, lastName: event.target.value }))}
+                            />
+                            {addAdminForm.lastName.trim() && <span className="internal-admin-add-admin-valid-mark" aria-hidden="true"><FiCheck size={14} /></span>}
+                          </div>
+                        </label>
+
+                        <label className="internal-admin-add-admin-field">
+                          <span>Work Email Address</span>
+                          <div className={`internal-admin-add-admin-input-shell ${/\S+@\S+\.\S+/.test(addAdminForm.email) ? 'has-value' : ''}`}>
+                            <span className="internal-admin-add-admin-input-icon" aria-hidden="true"><FiMail size={16} /></span>
+                            <input
+                              value={addAdminForm.email}
+                              onChange={(event) => setAddAdminForm((current) => ({ ...current, email: event.target.value }))}
+                            />
+                            {/\S+@\S+\.\S+/.test(addAdminForm.email) && <span className="internal-admin-add-admin-valid-mark" aria-hidden="true"><FiCheck size={14} /></span>}
+                          </div>
+                        </label>
+                      </div>
+                    </>
+                  ) : addAdminStep === 2 ? (
+                    <>
+                      <div className="internal-admin-add-admin-card-label">STEP 02</div>
+                      <h2>Role &amp; Permissions</h2>
+
+                      <div className="internal-admin-add-admin-role-summary">
+                        <div className="internal-admin-add-admin-role-avatar">DO</div>
+                        <div className="internal-admin-add-admin-role-summary-copy">
+                          <div className="internal-admin-add-admin-role-summary-header">
+                            <strong>{`${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'David Okafor'}</strong>
+                            <span className="internal-admin-add-admin-role-badge">DRAFT INVITATION</span>
+                          </div>
+                          <div className="internal-admin-add-admin-role-contact">
+                            <span>
+                              <FiMail size={12} />
+                              <em>{addAdminForm.email}</em>
+                            </span>
+                            <span>
+                              <FiCheck size={12} />
+                              <em>+234 803 123 4567</em>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="internal-admin-role-picker-header">
+                        <span>Select Primary Administrative Role</span>
+                        <small>Roles</small>
+                      </div>
+
+                      <div className="internal-admin-role-options">
+                        {adminRoleOptions.map((role) => (
+                          <button
+                            key={role}
+                            type="button"
+                            className={`internal-admin-role-option ${addAdminForm.role === role ? 'is-selected' : ''}`}
+                            onClick={() => setAddAdminForm((current) => ({
+                              ...current,
+                              role,
+                              permissions: {
+                                ...(adminRoleDefaults[role] || current.permissions),
+                                matrix: buildPermissionMatrixForRole(role),
+                              },
+                            }))}
+                          >
+                            <div className="internal-admin-role-option-top-row">
+                              <span className="internal-admin-role-option-icon">{React.createElement(roleIcons[role] || FiUser, { size: 14 })}</span>
+                              {addAdminForm.role === role && <span className="internal-admin-role-option-check"><FiCheck size={12} /></span>}
+                            </div>
+                            <strong>{role}</strong>
+                            <p>{adminRoleDescriptions[role]}</p>
+                            <div className="internal-admin-role-option-meta">
+                              <span>{role === 'Super Admin' ? '8 / 8 modules unlocked' : role === 'Operations Admin' ? '6 / 8 advanced edit' : role === 'Verification Admin' ? '4 / 8 compliance keepers' : '3 / 8 read & resolve scope'}</span>
+                              <span className="internal-admin-role-option-tag">{role === 'Super Admin' ? 'All access' : role === 'Operations Admin' ? 'Advanced edit' : role === 'Verification Admin' ? 'Compliance' : 'Support'}</span>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="internal-admin-permission-box">
+                        <div className="internal-admin-permission-box-header">
+                          <h3>Permissions inherited from {addAdminForm.role}</h3>
+                          <button
+                            type="button"
+                            className="internal-admin-permission-reset"
+                            onClick={() => setAddAdminForm((current) => ({
+                              ...current,
+                              permissions: {
+                                ...(adminRoleDefaults[current.role] || {}),
+                                matrix: buildPermissionMatrixForRole(current.role),
+                              },
+                            }))}
+                          >
+                            Reset
+                          </button>
+                        </div>
+
+                        <div className="internal-admin-permission-table" role="table" aria-label="Permission matrix">
+                          <div className="internal-admin-permission-table-head" role="row">
+                            <span role="columnheader">Resource / Module</span>
+                            {['View', 'Create', 'Edit', 'Approve', 'Delete'].map((label) => (
+                              <span key={label} role="columnheader">{label}</span>
+                            ))}
+                          </div>
+
+                          {adminPermissionMatrix.map((row) => {
+                            const permissionState = addAdminForm.permissions?.matrix?.[row.key] || row.permissions;
+                            return (
+                              <div key={row.module} className="internal-admin-permission-table-row" role="row">
+                                <div className="internal-admin-permission-module" role="cell">
+                                  <span className="internal-admin-permission-module-name">{row.module}</span>
+                                  <small>{row.description}</small>
+                                </div>
+                                {['view', 'create', 'edit', 'approve', 'delete'].map((key) => (
+                                  <button
+                                    key={`${row.module}-${key}`}
+                                    type="button"
+                                    className={`internal-admin-permission-cell ${permissionState[key] ? 'is-enabled' : 'is-disabled'}`}
+                                    role="cell"
+                                    aria-label={`${row.module} ${key} ${permissionState[key] ? 'enabled' : 'disabled'}`}
+                                    onClick={() => setAddAdminForm((current) => ({
+                                      ...current,
+                                      permissions: {
+                                        ...(current.permissions || {}),
+                                        ...((adminRoleDefaults[current.role] || {})),
+                                        matrix: {
+                                          ...(current.permissions?.matrix || {}),
+                                          [row.key]: {
+                                            ...(current.permissions?.matrix?.[row.key] || row.permissions),
+                                            [key]: !permissionState[key],
+                                          },
+                                        },
+                                      },
+                                    }))}
+                                  >
+                                    {permissionState[key] ? <FiCheck size={12} /> : '—'}
+                                  </button>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="internal-admin-add-admin-card-label">STEP 03</div>
+                      <h2>Review &amp; Send</h2>
+
+                      <div className="internal-admin-review-summary">
+                        <div className="internal-admin-review-item">
+                          <span>Admin</span>
+                          <strong>{`${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'New Admin'}</strong>
+                        </div>
+                        <div className="internal-admin-review-item">
+                          <span>Email</span>
+                          <strong>{addAdminForm.email}</strong>
+                        </div>
+                        <div className="internal-admin-review-item">
+                          <span>Role</span>
+                          <strong>{addAdminForm.role}</strong>
+                        </div>
+                        <div className="internal-admin-review-item">
+                          <span>Permissions</span>
+                          <strong>
+                            {Object.entries(addAdminForm.permissions)
+                              .filter(([, enabled]) => enabled)
+                              .map(([key]) => key === 'schoolProfile' ? 'School profiles' : key === 'manageAccess' ? 'Access management' : 'Job review')
+                              .join(', ') || 'No permission selected'}
+                          </strong>
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="internal-admin-add-admin-footer-actions">
+                    <button type="button" className="internal-admin-add-admin-cancel" onClick={() => { resetAddAdminFlow(); setActiveTab('admin-management'); }}>
+                      <FiArrowLeft size={16} /> Cancel
+                    </button>
+
+                    <button
+                      type="button"
+                      className="internal-admin-add-admin-continue"
+                      disabled={addAdminStep === 1 && !isStepOneValid}
+                      onClick={() => {
+                        if (addAdminStep === 1 && !isStepOneValid) return;
+                        if (addAdminStep < 3) {
+                          setAddAdminStep((step) => step + 1);
+                          return;
+                        }
+
+                        const newAdmin = {
+                          name: `${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'New Admin',
+                          role: addAdminForm.role,
+                          email: addAdminForm.email || `new.admin${Date.now()}@staffroom.com`,
+                          access: 'Schools',
+                          lastActive: 'Just now',
+                          status: 'Active',
+                          ip: '197.211.66.18',
+                          created: 'Today',
+                          addedBy: 'Admin',
+                          permissions: 'New',
+                        };
+                        setAdminRows((current) => [newAdmin, ...current]);
+                        setSelectedAdmin(newAdmin);
+                        resetAddAdminFlow();
+                        setActiveTab('admin-management');
+                      }}
+                    >
+                      {addAdminStep === 3 ? 'Send Invite' : 'Continue'} <FiChevronRight size={18} />
+                    </button>
+                  </div>
+                </div>
+              </section>
+            ) : activeTab === 'admin-management' ? (
+              <section className="internal-admin-admin-management-view">
+                <div className="internal-admin-admin-breadcrumb">Admin management</div>
+
+                <div className="internal-admin-admin-header-row">
+                  <h1>Admin Management</h1>
+                  <button
+                    type="button"
+                    className="internal-admin-add-admin-button"
+                    onClick={() => {
+                      resetAddAdminFlow();
+                      setActiveTab('add-admin');
+                    }}
+                  >
+                    <FiUserCheck size={14} /> Add Admin
+                  </button>
+                </div>
+
+                <p className="internal-admin-admin-subtitle">
+                  Manage Staffroom administrators, access roles, and granular security permissions across institutional nodes.
+                </p>
+
+                <div className="internal-admin-admin-stat-grid">
+                  <div className="internal-admin-admin-stat-card">
+                    <div className="internal-admin-admin-stat-header">
+                      <span>Total Admins</span>
+                      <span className="internal-admin-admin-stat-icon"><FiUsers size={17} /></span>
+                    </div>
+                    <div className="internal-admin-admin-stat-main">
+                      <strong>8</strong>
+                      <small>10% active role-bound</small>
+                    </div>
+                    <div className="internal-admin-admin-progress"><span style={{ width: '65%' }} /></div>
+                  </div>
+
+                  <div className="internal-admin-admin-stat-card active">
+                    <div className="internal-admin-admin-stat-header">
+                      <span>Active Admins</span>
+                      <span className="internal-admin-admin-stat-icon"><FiCheckCircle size={17} /></span>
+                    </div>
+                    <div className="internal-admin-admin-stat-main">
+                      <strong>6</strong>
+                      <small>75% of cohort</small>
+                    </div>
+                    <div className="internal-admin-admin-progress"><span style={{ width: '75%' }} /></div>
+                  </div>
+
+                  <div className="internal-admin-admin-stat-card suspended">
+                    <div className="internal-admin-admin-stat-header">
+                      <span>Suspended Admins</span>
+                      <span className="internal-admin-admin-stat-icon"><FiX size={17} /></span>
+                    </div>
+                    <div className="internal-admin-admin-stat-main">
+                      <strong>1</strong>
+                      <small>Revoked session</small>
+                    </div>
+                    <div className="internal-admin-admin-progress"><span style={{ width: '15%' }} /></div>
+                  </div>
+                </div>
+
+                <div className="internal-admin-admin-chip-row">
+                  {['All Admins', 'Pending Invitations', 'Roles & Permissions', 'Audit Log'].map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      className={`internal-admin-admin-chip ${chip === 'All Admins' ? 'selected' : ''}`}
+                      onClick={() => {
+                        if (chip === 'Pending Invitations') {
+                          setAdminStatusFilter('Pending');
+                        } else if (chip === 'All Admins') {
+                          setAdminStatusFilter('All Statuses');
+                        }
+                      }}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="internal-admin-admin-controls">
+                  <label className="internal-admin-admin-search">
+                    <FiUser size={14} />
+                    <input
+                      value={adminSearch}
+                      onChange={(event) => {
+                        setAdminSearch(event.target.value);
+                        setAdminPage(1);
+                      }}
+                      placeholder="Filter by admin name, email, or role..."
+                      aria-label="Filter admins"
+                    />
+                  </label>
+
+                  <select value={adminRoleFilter} onChange={(event) => {
+                    setAdminRoleFilter(event.target.value);
+                    setAdminPage(1);
+                  }}>
+                    <option>All Roles</option>
+                    <option>Super Admin</option>
+                    <option>Verification Admin</option>
+                    <option>Support Admin</option>
+                    <option>Operations Admin</option>
+                  </select>
+
+                  <select value={adminStatusFilter} onChange={(event) => {
+                    setAdminStatusFilter(event.target.value);
+                    setAdminPage(1);
+                  }}>
+                    <option>All Statuses</option>
+                    <option>Active</option>
+                    <option>Suspended</option>
+                    <option>Pending</option>
+                  </select>
+
+                  <select value={adminTimeFilter} onChange={(event) => {
+                    setAdminTimeFilter(event.target.value);
+                    setAdminPage(1);
+                  }}>
+                    <option>Any time</option>
+                    <option>Recent</option>
+                    <option>All time</option>
+                  </select>
+
+                  <button type="button" className="internal-admin-admin-clear" onClick={() => {
+                    setAdminSearch('');
+                    setAdminRoleFilter('All Roles');
+                    setAdminStatusFilter('All Statuses');
+                    setAdminTimeFilter('Any time');
+                    setAdminPage(1);
+                  }}>
+                    Clear
+                  </button>
+                </div>
+
+                <div className="internal-admin-admin-table-wrap">
+                  <div className="internal-admin-admin-table" role="table" aria-label="Admin management table">
+                    <div className="internal-admin-admin-row internal-admin-admin-header-row-table" role="row">
+                      <span className="internal-admin-admin-check"><input type="checkbox" aria-label="Select all admins" /></span>
+                      <span role="columnheader">Admin</span>
+                      <span role="columnheader">Role</span>
+                      <span role="columnheader">Assigned role</span>
+                      <span role="columnheader">Status</span>
+                      <span role="columnheader">Last active</span>
+                      <span role="columnheader">Created</span>
+                      <span role="columnheader">Actions</span>
+                    </div>
+
+                    {visibleAdmins.length > 0 ? visibleAdmins.map((admin) => (
+                      <div className="internal-admin-admin-row" role="row" key={`${admin.email}-${admin.name}`}>
+                        <span className="internal-admin-admin-check"><input type="checkbox" aria-label={`Select ${admin.name}`} /></span>
+
+                        <div className="internal-admin-admin-user" role="cell">
+                          <div className="internal-admin-admin-avatar">{admin.name.split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase()}</div>
+                          <div className="internal-admin-admin-user-meta">
+                            <strong className={admin.status === 'Suspended' ? 'internal-admin-admin-name-suspended' : ''}>{admin.name}</strong>
+                            <small>{admin.email}</small>
+                          </div>
+                        </div>
+
+                        <span className="internal-admin-admin-role-badge" role="cell">
+                          {React.createElement(roleIcons[admin.role] || FiUser, { size: 11 })}
+                          {admin.role}
+                        </span>
+                        <span role="cell">{admin.access}</span>
+                        <span role="cell">
+                          {admin.status === 'Pending' ? (
+                            <span className="internal-admin-admin-status pending internal-admin-admin-status-invitation" aria-label="Pending invitation status">
+                              <span className="internal-admin-admin-status-icon" aria-hidden="true"><FiMail size={10} /></span>
+                              <span className="internal-admin-admin-status-copy">
+                                <span>Pending</span>
+                                <span>Invitation</span>
+                              </span>
+                            </span>
+                          ) : (
+                            <span className={`internal-admin-admin-status ${admin.status.toLowerCase()}`} aria-label={`${admin.status} status`}>
+                              <span className="internal-admin-admin-status-dot" aria-hidden="true" />
+                              {admin.status}
+                            </span>
+                          )}
+                        </span>
+                        <span role="cell">{admin.lastActive}</span>
+                        <span role="cell">{admin.created}</span>
+                        <div className="internal-admin-admin-actions" role="cell">
+                          {admin.status === 'Suspended' ? (
+                            <>
+                              <button type="button" className="internal-admin-admin-reactivate" onClick={() => {
+                                setAdminRows((current) => current.map((row) => row.email === admin.email ? { ...row, status: 'Active', lastActive: 'Just now' } : row));
+                                setSelectedAdmin(null);
+                              }}>Reactivate</button>
+                              <button type="button" className="internal-admin-admin-more" aria-label={`More actions for ${admin.name}`}>⋮</button>
+                            </>
+                          ) : (
+                            <>
+                              <button type="button" onClick={() => setSelectedAdmin(admin)}>View</button>
+                              <button type="button" onClick={() => setSelectedAdmin(admin)}>Edit Role</button>
+                              <button type="button" className="internal-admin-admin-more" aria-label={`More actions for ${admin.name}`}>⋮</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )) : (
+                      <div className="internal-admin-admin-empty">No admins found for this filter.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="internal-admin-admin-footer">
+                  <span>Showing {filteredAdmins.length ? (adminPage - 1) * adminPageSize + 1 : 0}–{Math.min(adminPage * adminPageSize, filteredAdmins.length)} of {filteredAdmins.length} administrators</span>
+                  <div className="internal-admin-admin-pagination">
+                    <button type="button" disabled={adminPage === 1} onClick={() => setAdminPage((page) => Math.max(1, page - 1))}>Prev</button>
+                    <button type="button" className="is-active">{adminPage}</button>
+                    <button type="button" disabled={adminPage >= adminTotalPages} onClick={() => setAdminPage((page) => Math.min(adminTotalPages, page + 1))}>Next</button>
+                  </div>
+                </div>
+
+                {selectedAdmin && (
+                  <div className="internal-admin-admin-detail-panel" role="dialog" aria-live="polite">
+                    <div className="internal-admin-admin-detail-header">
+                      <div>
+                        <strong>{selectedAdmin.name}</strong>
+                        <small>{selectedAdmin.role}</small>
+                      </div>
+                      <button type="button" onClick={() => setSelectedAdmin(null)} aria-label="Close admin details">×</button>
+                    </div>
+                    <div className="internal-admin-admin-detail-grid">
+                      <div><span>Email</span><strong>{selectedAdmin.email}</strong></div>
+                      <div><span>Access</span><strong>{selectedAdmin.access}</strong></div>
+                      <div><span>Last active</span><strong>{selectedAdmin.lastActive}</strong></div>
+                      <div><span>Status</span><strong>{selectedAdmin.status}</strong></div>
+                    </div>
+                  </div>
+                )}
               </section>
             ) : (
               <section className="internal-admin-tab-placeholder">
@@ -1018,6 +1658,1224 @@ export default function InternalAdminDashboard() {
         .internal-admin-tab-placeholder p {
           margin: 0;
           font-size: 13px;
+        }
+
+        .internal-admin-add-admin-flow {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          min-width: 0;
+          max-width: 100%;
+          padding: 16px 0 0;
+          color: #1e2d2a;
+        }
+
+        .internal-admin-add-admin-breadcrumb {
+          color: #6f7b74;
+          font-size: 12px;
+          font-weight: 500;
+        }
+
+        .internal-admin-add-admin-breadcrumb span {
+          margin: 0 6px;
+          color: #8a9390;
+        }
+
+        .internal-admin-add-admin-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .internal-admin-add-admin-header-row h1 {
+          margin: 0;
+          color: #111917;
+          font-size: 28px;
+          line-height: 1.1;
+          letter-spacing: -0.03em;
+        }
+
+        .internal-admin-add-admin-status-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 8px 12px;
+          border-radius: 999px;
+          background: #edf3ee;
+          color: #1d4533;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-add-admin-status-dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #1d4533;
+        }
+
+        .internal-admin-add-admin-subtitle {
+          margin: 0;
+          color: #5a665f;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .internal-admin-add-admin-steps {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 0;
+          width: 100%;
+          padding: 18px 18px 12px;
+          border: 1px solid #dfe5e0;
+          border-radius: 12px;
+          background: #ffffff;
+        }
+
+        .internal-admin-add-admin-step {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-height: 68px;
+          padding: 10px 14px 10px 8px;
+          color: #6d7a75;
+        }
+
+        .internal-admin-add-admin-step.is-active {
+          color: #143d2d;
+        }
+
+        .internal-admin-add-admin-step.is-done .internal-admin-add-admin-step-number {
+          background: #0d7d47;
+          color: #ffffff;
+        }
+
+        .internal-admin-add-admin-step-number {
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #edf2ee;
+          color: #4b5d57;
+          font-size: 12px;
+          font-weight: 700;
+          flex-shrink: 0;
+        }
+
+        .internal-admin-add-admin-step-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+        }
+
+        .internal-admin-add-admin-step-copy strong {
+          font-size: 15px;
+          font-weight: 700;
+          color: inherit;
+          line-height: 1.2;
+        }
+
+        .internal-admin-add-admin-step-copy small {
+          font-size: 11px;
+          color: inherit;
+          opacity: 0.8;
+          letter-spacing: 0.02em;
+        }
+
+        .internal-admin-add-admin-step-line {
+          position: absolute;
+          right: -10px;
+          top: 50%;
+          width: calc(100% - 10px);
+          height: 2px;
+          background: linear-gradient(90deg, #dfe5e0 0%, #dfe5e0 100%);
+          transform: translateY(-50%);
+        }
+
+        .internal-admin-add-admin-step:last-child .internal-admin-add-admin-step-line {
+          display: none;
+        }
+
+        .internal-admin-add-admin-step.is-active .internal-admin-add-admin-step-number {
+          background: #0d7d47;
+          color: #ffffff;
+          box-shadow: 0 0 0 4px rgba(13, 125, 71, 0.1);
+        }
+
+        .internal-admin-add-admin-step.is-active .internal-admin-add-admin-step-copy strong {
+          color: #123d2f;
+        }
+
+        .internal-admin-add-admin-card {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          padding: 24px 20px 18px;
+          border: 1px solid #dfe5e0;
+          border-radius: 12px;
+          background: #ffffff;
+        }
+
+        .internal-admin-add-admin-card-label {
+          color: #68766f;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-add-admin-card h2 {
+          margin: 0;
+          color: #13231d;
+          font-size: 20px;
+          font-weight: 700;
+        }
+
+        .internal-admin-add-admin-field-group {
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+          max-width: 620px;
+        }
+
+        .internal-admin-add-admin-field {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          color: #23342f;
+          font-size: 13px;
+          font-weight: 500;
+        }
+
+        .internal-admin-add-admin-input-shell {
+          position: relative;
+          display: flex;
+          align-items: center;
+          min-height: 46px;
+          padding: 0 42px 0 14px;
+          border: 1px solid #dfe5e0;
+          border-radius: 8px;
+          background: #f6f7f6;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+
+        .internal-admin-add-admin-input-shell.has-value {
+          border-color: #cfe6d8;
+          background: #f4faf7;
+        }
+
+        .internal-admin-add-admin-input-icon {
+          position: absolute;
+          left: 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #5b6663;
+        }
+
+        .internal-admin-add-admin-input-shell input {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          color: #1f2d2a;
+          font-size: 15px;
+          outline: none;
+          padding-left: 0;
+        }
+
+        .internal-admin-add-admin-input-shell .internal-admin-add-admin-input-icon + input {
+          padding-left: 22px;
+        }
+
+        .internal-admin-add-admin-valid-mark {
+          position: absolute;
+          right: 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #dff2e5;
+          color: #0a7e49;
+        }
+
+        .internal-admin-add-admin-role-summary {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-height: 78px;
+          padding: 12px 14px;
+          border: 1px solid #dfe5e0;
+          border-radius: 10px;
+          background: #f8faf8;
+          max-width: 620px;
+        }
+
+        .internal-admin-add-admin-role-avatar {
+          display: grid;
+          place-items: center;
+          width: 42px;
+          height: 42px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #dfe9e3, #c6d6cd);
+          color: #1a2a27;
+          font-size: 15px;
+          font-weight: 700;
+          flex-shrink: 0;
+        }
+
+        .internal-admin-add-admin-role-summary-copy {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .internal-admin-add-admin-role-summary-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          width: 100%;
+        }
+
+        .internal-admin-add-admin-role-summary-header strong {
+          color: #1a2a28;
+          font-size: 15px;
+          font-weight: 700;
+        }
+
+        .internal-admin-add-admin-role-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #edf5ee;
+          color: #234f3d;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+        }
+
+        .internal-admin-add-admin-role-contact {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 10px 18px;
+          color: #5c6763;
+          font-size: 12px;
+        }
+
+        .internal-admin-add-admin-role-contact span {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-width: 0;
+        }
+
+        .internal-admin-add-admin-role-contact em {
+          color: #20322d;
+          font-style: normal;
+          font-weight: 500;
+        }
+
+        .internal-admin-role-picker-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          max-width: 620px;
+          margin-top: 4px;
+          color: #182927;
+          font-size: 14px;
+          font-weight: 700;
+        }
+
+        .internal-admin-role-picker-header small {
+          color: #6d7b75;
+          font-size: 11px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-role-options {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 12px;
+          max-width: 760px;
+        }
+
+        .internal-admin-role-option {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+          min-height: 180px;
+          padding: 12px 14px 10px;
+          border: 1px solid #dfe5e0;
+          border-radius: 10px;
+          background: #f7faf8;
+          color: #1f2d2a;
+          text-align: left;
+          cursor: pointer;
+          transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .internal-admin-role-option:hover {
+          transform: translateY(-1px);
+        }
+
+        .internal-admin-role-option.is-selected {
+          border-color: #7cb79c;
+          background: #ebf8f0;
+          box-shadow: 0 0 0 3px rgba(9, 125, 71, 0.07);
+        }
+
+        .internal-admin-role-option-top-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+        }
+
+        .internal-admin-role-option-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 26px;
+          height: 26px;
+          border-radius: 8px;
+          background: #eaf1ec;
+          color: #285a43;
+        }
+
+        .internal-admin-role-option-check {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #0d7d47;
+          color: #ffffff;
+        }
+
+        .internal-admin-role-option strong {
+          color: #1b2b28;
+          font-size: 16px;
+          line-height: 1.2;
+        }
+
+        .internal-admin-role-option p {
+          margin: 0;
+          color: #4d5c57;
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .internal-admin-role-option-meta {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+          margin-top: auto;
+          gap: 8px;
+          color: #677972;
+          font-size: 10px;
+          font-weight: 600;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-role-option-tag {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 18px;
+          padding: 2px 6px;
+          border: 1px solid #dfe5e0;
+          border-radius: 999px;
+          background: #f0f3f1;
+          color: #495d56;
+        }
+
+        .internal-admin-permission-box {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          max-width: 760px;
+          padding: 0;
+        }
+
+        .internal-admin-permission-box-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 12px 18px 0;
+        }
+
+        .internal-admin-permission-box h3 {
+          margin: 0;
+          color: #1f2e2b;
+          font-size: 15px;
+          font-weight: 700;
+        }
+
+        .internal-admin-permission-reset {
+          min-height: 30px;
+          padding: 0 12px;
+          border: 1px solid #dfe5e0;
+          border-radius: 999px;
+          background: #f5f7f6;
+          color: #465956;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .internal-admin-permission-table {
+          display: flex;
+          flex-direction: column;
+          border: 1px solid #dfe5e0;
+          border-radius: 12px;
+          overflow: hidden;
+          background: #f8faf8;
+        }
+
+        .internal-admin-permission-table-head,
+        .internal-admin-permission-table-row {
+          display: grid;
+          grid-template-columns: minmax(0, 2.4fr) repeat(5, minmax(48px, 0.6fr));
+          gap: 6px;
+          align-items: center;
+          width: 100%;
+        }
+
+        .internal-admin-permission-table-head {
+          min-height: 42px;
+          padding: 0 14px;
+          background: #eff3f1;
+          color: #586a63;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-permission-table-row {
+          min-height: 62px;
+          padding: 10px 14px;
+          border-top: 1px solid #e9eeeb;
+          background: #ffffff;
+        }
+
+        .internal-admin-permission-module {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+          min-width: 0;
+          padding-right: 8px;
+        }
+
+        .internal-admin-permission-module-name {
+          color: #1b2c29;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .internal-admin-permission-module small {
+          color: #687673;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+
+        .internal-admin-permission-cell {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          margin: 0 auto;
+          border-radius: 6px;
+          color: #2d7b4d;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .internal-admin-permission-cell.is-enabled {
+          background: rgba(13, 125, 71, 0.1);
+        }
+
+        .internal-admin-permission-cell.is-disabled {
+          color: rgba(45, 57, 54, 0.4);
+        }
+
+        .internal-admin-permission-list {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 10px 18px;
+        }
+
+        .internal-admin-permission-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          color: #32413d;
+          font-size: 13px;
+          cursor: pointer;
+        }
+
+        .internal-admin-permission-item input {
+          accent-color: #0d7d47;
+          width: 15px;
+          height: 15px;
+          margin: 0;
+        }
+
+        .internal-admin-review-summary {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 16px;
+          max-width: 620px;
+        }
+
+        .internal-admin-review-item {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+          padding: 14px 16px;
+          border: 1px solid #e3e8e5;
+          border-radius: 10px;
+          background: #fafcfb;
+        }
+
+        .internal-admin-review-item span {
+          color: #697875;
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-item strong {
+          color: #1a2a26;
+          font-size: 15px;
+          line-height: 1.4;
+          word-break: break-word;
+        }
+
+        .internal-admin-add-admin-footer-actions {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          padding-top: 8px;
+        }
+
+        .internal-admin-add-admin-cancel {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0;
+          border: none;
+          background: transparent;
+          color: #1f2d2b;
+          font-size: 15px;
+          cursor: pointer;
+        }
+
+        .internal-admin-add-admin-continue {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-width: 146px;
+          min-height: 42px;
+          padding: 0 18px;
+          border: none;
+          border-radius: 8px;
+          background: #0d7d47;
+          color: #ffffff;
+          font-size: 16px;
+          font-weight: 600;
+          cursor: pointer;
+          box-shadow: 0 8px 18px rgba(13, 125, 71, 0.2);
+        }
+
+        .internal-admin-add-admin-continue:disabled {
+          opacity: 0.5;
+          cursor: not-allowed;
+          box-shadow: none;
+        }
+
+        .internal-admin-admin-management-view {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          min-width: 0;
+          max-width: 100%;
+          padding: 16px 0 0;
+          color: #1e2d2a;
+        }
+
+        .internal-admin-admin-breadcrumb {
+          color: #6f7b74;
+          font-size: 11px;
+          font-weight: 500;
+          letter-spacing: 0.02em;
+        }
+
+        .internal-admin-admin-header-row {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .internal-admin-admin-header-row h1 {
+          margin: 0;
+          color: #111917;
+          font-size: 28px;
+          line-height: 1.1;
+          letter-spacing: -0.03em;
+        }
+
+        .internal-admin-add-admin-button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 38px;
+          padding: 0 18px;
+          border: none;
+          border-radius: 10px;
+          background: #0e7d46;
+          color: #ffffff;
+          font-size: 14px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .internal-admin-admin-subtitle {
+          margin: 0;
+          color: #5a665f;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .internal-admin-admin-stat-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(180px, 1fr));
+          gap: 16px;
+          max-width: 100%;
+        }
+
+        .internal-admin-admin-stat-card {
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          min-height: 124px;
+          padding: 16px 14px 12px;
+          border: 1px solid #dfe5e0;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 1px 2px rgba(23, 30, 27, 0.04);
+        }
+
+        .internal-admin-admin-stat-card.active {
+          border-color: #b7d8c1;
+        }
+
+        .internal-admin-admin-stat-card.suspended {
+          border-color: #f0c2bf;
+        }
+
+        .internal-admin-admin-stat-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+          color: #505c57;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-admin-stat-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          border-radius: 6px;
+          background: #f1f5f2;
+          color: #214d39;
+        }
+
+        .internal-admin-admin-stat-main {
+          display: flex;
+          align-items: end;
+          justify-content: space-between;
+          gap: 10px;
+        }
+
+        .internal-admin-admin-stat-main strong {
+          color: #101915;
+          font-size: 31px;
+          line-height: 1;
+        }
+
+        .internal-admin-admin-stat-main small {
+          color: #69766f;
+          font-size: 11px;
+        }
+
+        .internal-admin-admin-progress {
+          height: 5px;
+          border-radius: 999px;
+          background: #ecf1ee;
+          overflow: hidden;
+        }
+
+        .internal-admin-admin-progress span {
+          display: block;
+          height: 100%;
+          border-radius: inherit;
+          background: linear-gradient(90deg, #1a7a47, #59b777);
+        }
+
+        .internal-admin-admin-stat-card.suspended .internal-admin-admin-progress span {
+          background: linear-gradient(90deg, #d8574f, #f09186);
+        }
+
+        .internal-admin-admin-chip-row {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .internal-admin-admin-chip {
+          min-height: 30px;
+          padding: 6px 14px;
+          border: 1px solid #dfe5e0;
+          border-radius: 999px;
+          background: #f6f7f6;
+          color: #4f5f5a;
+          font-size: 12px;
+          cursor: pointer;
+        }
+
+        .internal-admin-admin-chip.selected {
+          border-color: #dfe5e0;
+          background: #e8efe9;
+          color: #1b4034;
+        }
+
+        .internal-admin-admin-controls {
+          display: grid;
+          grid-template-columns: minmax(0, 2fr) repeat(3, minmax(120px, 0.8fr)) auto;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+        }
+
+        .internal-admin-admin-search {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 40px;
+          padding: 0 12px;
+          border: 1px solid #d8dfdb;
+          border-radius: 8px;
+          background: #ffffff;
+          color: #5e6b64;
+        }
+
+        .internal-admin-admin-search input {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          color: #27342e;
+          font-size: 13px;
+          outline: none;
+        }
+
+        .internal-admin-admin-search input::placeholder {
+          color: #7d8b87;
+        }
+
+        .internal-admin-admin-controls select,
+        .internal-admin-admin-clear {
+          min-height: 40px;
+          padding: 0 12px;
+          border: 1px solid #d8dfdb;
+          border-radius: 8px;
+          background: #ffffff;
+          color: #2c3532;
+          font-size: 12px;
+          cursor: pointer;
+        }
+
+        .internal-admin-admin-clear {
+          background: #f5f6f5;
+        }
+
+        .internal-admin-admin-table-wrap {
+          overflow: hidden;
+          border: 1px solid #dfe5e0;
+          border-radius: 12px;
+          background: #ffffff;
+        }
+
+        .internal-admin-admin-table {
+          width: 100%;
+          overflow: hidden;
+        }
+
+        .internal-admin-admin-row {
+          display: grid;
+          grid-template-columns: 34px minmax(0, 1.8fr) minmax(110px, .9fr) minmax(120px, .8fr) minmax(90px, .7fr) minmax(120px, .8fr) minmax(95px, .7fr) minmax(145px, .9fr);
+          gap: 12px;
+          align-items: center;
+          min-width: 0;
+          width: 100%;
+          padding: 14px 18px;
+          border-bottom: 1px solid #edf0ee;
+          color: #3d4f49;
+          font-size: 12px;
+        }
+
+        .internal-admin-admin-header-row-table {
+          min-height: 52px;
+          background: #f5f7f6;
+          color: #56615d;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-admin-check {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .internal-admin-admin-check input {
+          width: 14px;
+          height: 14px;
+          accent-color: #0d7d47;
+        }
+
+        .internal-admin-admin-user {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .internal-admin-admin-avatar {
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #d7e5df, #b0c9b9);
+          color: #18372b;
+          font-size: 10px;
+          font-weight: 700;
+          flex-shrink: 0;
+        }
+
+        .internal-admin-admin-user-meta {
+          min-width: 0;
+          overflow: hidden;
+        }
+
+        .internal-admin-admin-user-meta strong {
+          display: block;
+          color: #172b29;
+          font-size: 13px;
+          line-height: 1.2;
+        }
+
+        .internal-admin-admin-name-suspended {
+          text-decoration: line-through;
+          text-decoration-thickness: 2px;
+          text-decoration-color: rgba(18, 28, 27, 0.8);
+        }
+
+        .internal-admin-admin-user-meta small {
+          display: block;
+          color: #69756f;
+          font-size: 11px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .internal-admin-admin-role-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          width: fit-content;
+          min-height: 24px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #eaeef1;
+          color: #4e5960;
+          font-size: 11px;
+          font-weight: 600;
+        }
+
+        .internal-admin-admin-role-badge svg {
+          display: inline-block;
+          flex-shrink: 0;
+        }
+
+        .internal-admin-admin-status {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          min-height: 24px;
+          padding: 4px 10px 4px 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1;
+        }
+
+        .internal-admin-admin-status-dot {
+          display: inline-block;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: currentColor;
+          flex-shrink: 0;
+        }
+
+        .internal-admin-admin-status.active {
+          background: #dff3e5;
+          color: #1d8a4d;
+        }
+
+        .internal-admin-admin-status.suspended {
+          background: #ffe1df;
+          color: #d4564d;
+        }
+
+        .internal-admin-admin-status.pending {
+          background: #f1f2f0;
+          color: #6b7270;
+        }
+
+        .internal-admin-admin-status.pending .internal-admin-admin-status-dot {
+          width: 8px;
+          height: 8px;
+          background: #8a8f8d;
+          box-shadow: 0 0 0 2px rgba(138, 143, 141, 0.14);
+        }
+
+        .internal-admin-admin-status-invitation {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          min-height: 32px;
+          padding: 6px 10px 6px 8px;
+          background: #f2f3f0;
+          color: #5d6563;
+          border-radius: 999px;
+        }
+
+        .internal-admin-admin-status-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: rgba(93, 101, 99, 0.08);
+          color: #5d6563;
+          flex-shrink: 0;
+        }
+
+        .internal-admin-admin-status-copy {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-start;
+          line-height: 1.1;
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.01em;
+        }
+
+        .internal-admin-admin-status-copy span:last-child {
+          font-size: 10px;
+          font-weight: 500;
+          opacity: 0.9;
+        }
+
+        .internal-admin-admin-actions {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          flex-wrap: nowrap;
+          white-space: nowrap;
+        }
+
+        .internal-admin-admin-actions button {
+          min-height: 28px;
+          padding: 5px 8px;
+          border: 1px solid transparent;
+          border-radius: 6px;
+          background: #ffffff;
+          color: #1d6f4d;
+          font-size: 11px;
+          cursor: pointer;
+          line-height: 1.2;
+          white-space: nowrap;
+        }
+
+        .internal-admin-admin-reactivate {
+          border-color: #bfe8ca !important;
+          background: #eafaf0 !important;
+          color: #1b7b49 !important;
+          font-weight: 600;
+        }
+
+        .internal-admin-admin-more {
+          width: 30px;
+          min-width: 30px;
+          padding: 5px !important;
+          font-size: 16px !important;
+          line-height: 1;
+        }
+
+        .internal-admin-admin-empty {
+          padding: 24px 18px;
+          color: #5c6964;
+          font-size: 13px;
+          text-align: center;
+        }
+
+        .internal-admin-admin-footer {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 16px 10px 0;
+          color: #586461;
+          font-size: 12px;
+        }
+
+        .internal-admin-admin-pagination {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .internal-admin-admin-pagination button {
+          min-width: 38px;
+          min-height: 30px;
+          padding: 0 10px;
+          border: 1px solid #dfe5e0;
+          border-radius: 8px;
+          background: #ffffff;
+          color: #2a3431;
+          font-size: 12px;
+          cursor: pointer;
+        }
+
+        .internal-admin-admin-pagination button.is-active {
+          border-color: #0e7d46;
+          background: #0e7d46;
+          color: #ffffff;
+        }
+
+        .internal-admin-admin-pagination button:disabled {
+          opacity: 0.45;
+          cursor: default;
+        }
+
+        .internal-admin-admin-detail-panel {
+          position: fixed;
+          right: 28px;
+          bottom: 24px;
+          z-index: 20;
+          width: min(320px, calc(100vw - 28px));
+          padding: 16px;
+          border: 1px solid #dfe5e0;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 18px 35px rgba(11, 22, 18, 0.15);
+        }
+
+        .internal-admin-admin-detail-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          margin-bottom: 14px;
+        }
+
+        .internal-admin-admin-detail-header strong {
+          display: block;
+          color: #121d1b;
+          font-size: 16px;
+        }
+
+        .internal-admin-admin-detail-header small {
+          color: #5f6d68;
+          font-size: 11px;
+        }
+
+        .internal-admin-admin-detail-header button {
+          width: 28px;
+          height: 28px;
+          border: 1px solid #e2e6e3;
+          border-radius: 50%;
+          background: #f7f8f7;
+          color: #162522;
+          font-size: 20px;
+          cursor: pointer;
+        }
+
+        .internal-admin-admin-detail-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .internal-admin-admin-detail-grid div {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .internal-admin-admin-detail-grid span {
+          color: #69766f;
+          font-size: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+        }
+
+        .internal-admin-admin-detail-grid strong {
+          color: #20352e;
+          font-size: 12px;
         }
 
         .internal-admin-job-review {
