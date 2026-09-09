@@ -397,7 +397,7 @@ const getApplicationDisplayStatus = (application = {}) => {
   return rawStatus;
 };
 
-const teacherLevelOptions = ['Pre KG', 'KG', 'Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'];
+const teacherLevelOptions = ['Pre KG', 'KG', 'Junior (JSS1 - JSS3)', 'Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'];
 const degreeOptions = ['B.Ed', 'B.A.', 'B.Sc.', 'M.Ed', 'M.A.', 'M.Sc.', 'Ph.D.', 'ND', 'NCE', 'HND', 'PGDE', 'Diploma', 'Certificate', 'Others'];
 const degreeClassOptions = [
   'First Class Honours / Distinction',
