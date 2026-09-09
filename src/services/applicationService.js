@@ -17,6 +17,27 @@ export const applicationService = {
   getApplicantsByJob: (jobId, params = {}) => api.get(`/api/applications/job/${jobId}`, { params }),
   updateApplicationStatus: (applicationId, payload) =>
     api.patch(`/api/applications/${applicationId}/status`, payload),
+  rejectApplication: async (applicationId, message) => {
+    const payload = {
+      status: 'rejected',
+      message,
+      rejection_message: message,
+    };
+
+    try {
+      return await applicationService.updateApplicationStatus(applicationId, payload);
+    } catch (error) {
+      const status = error?.response?.status;
+      const responseMessage = error?.response?.data?.message || '';
+      const shouldFallbackToRejectRoute = status === 404 || status === 405 || /reject/i.test(responseMessage);
+
+      if (!shouldFallbackToRejectRoute) {
+        throw error;
+      }
+
+      return api.post(`/api/applications/${applicationId}/reject`, { message });
+    }
+  },
   deleteApplication: (applicationId) => api.delete(`/api/applications/${applicationId}`),
   withdrawApplication: (applicationId) => api.patch(`/api/applications/${applicationId}/withdraw`),
   scheduleInterview: (applicationId, payload) =>

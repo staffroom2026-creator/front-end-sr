@@ -1735,11 +1735,7 @@ export default function AdminDashboard() {
       setRejectSubmitting(true);
       setRejectError("");
 
-      await applicationService.updateApplicationStatus(activeTarget.applicantId, {
-        status: "rejected",
-        message: trimmedMessage,
-        rejection_message: trimmedMessage,
-      });
+      await applicationService.rejectApplication(activeTarget.applicantId, trimmedMessage);
 
       setApplicantsByJob((prev) => ({
         ...prev,
@@ -2933,6 +2929,13 @@ export default function AdminDashboard() {
       : Array.isArray(applicant.work_experience) ? applicant.work_experience : [];
     const applicantId = applicant.application_id || applicant.id;
     const jobId = job.job_id || job.id;
+    const applicantStatus = String(applicant.status || "").toLowerCase();
+    const isRejected = applicantStatus === "rejected";
+    const isHired = applicantStatus === "hired";
+    const isWithdrawn = applicantStatus === "withdrawn";
+    const isClosed = applicantStatus === "closed";
+    const isTerminalStatus = isRejected || isHired || isWithdrawn || isClosed;
+    const terminalStatusLabel = isRejected ? "Rejected" : isHired ? "Hired" : isWithdrawn ? "Withdrawn" : isClosed ? "Closed" : "";
     const summary = applicant.summary || applicant.bio || applicant.about || "No professional summary has been provided.";
     const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
     const coverLetter = String(applicant.cover_letter || "").trim();
@@ -2943,18 +2946,34 @@ export default function AdminDashboard() {
         <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
         <div className="school-summary-container"><div className="school-summary-content">
           <section className="school-summary-section school-summary-section--first">
-            <div className="school-summary-actions">
-              <button
-                type="button"
-                className="school-summary-shortlist-btn"
-                disabled={Boolean(String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/))}
-                onClick={() => handleShortlistApplicant(applicant)}
-                style={String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
-              >
-                {String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
-              </button>
-              <button type="button" className="school-summary-reject-btn" onClick={() => openRejectApplicantModal(jobId, applicantId)}>Reject Applicant</button>
-            </div>
+            {isTerminalStatus ? (
+              <div className="school-summary-actions">
+                <span className={`school-summary-status-pill ${isRejected ? 'school-summary-status-pill--rejected' : isHired ? 'school-summary-status-pill--hired' : isWithdrawn ? 'school-summary-status-pill--withdrawn' : 'school-summary-status-pill--closed'}`}>
+                  {terminalStatusLabel}
+                </span>
+              </div>
+            ) : (
+              <div className="school-summary-actions">
+                <button
+                  type="button"
+                  className="school-summary-shortlist-btn"
+                  disabled={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus}
+                  onClick={() => handleShortlistApplicant(applicant)}
+                  style={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
+                >
+                  {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
+                </button>
+                <button
+                  type="button"
+                  className="school-summary-reject-btn"
+                  disabled={isRejected || isTerminalStatus}
+                  onClick={() => openRejectApplicantModal(jobId, applicantId)}
+                  style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                >
+                  Reject Applicant
+                </button>
+              </div>
+            )}
             <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
           </section>
           <div className="school-summary-grid-2col">
@@ -2984,25 +3003,35 @@ export default function AdminDashboard() {
             <section className="school-summary-section school-summary-section--first">
 
               {/* Action Buttons - Right Side */}
-              <div className="school-summary-actions">
-                <button
-                  type="button"
-                  className="school-summary-shortlist-btn"
-                  disabled={Boolean(String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/))}
-                  onClick={() => handleShortlistApplicant(applicant)}
-                  style={String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
-                >
-                  {String(applicant.status || '').toLowerCase().match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
-                </button>
+              {isTerminalStatus ? (
+                <div className="school-summary-actions">
+                  <span className={`school-summary-status-pill ${isRejected ? 'school-summary-status-pill--rejected' : isHired ? 'school-summary-status-pill--hired' : isWithdrawn ? 'school-summary-status-pill--withdrawn' : 'school-summary-status-pill--closed'}`}>
+                    {terminalStatusLabel}
+                  </span>
+                </div>
+              ) : (
+                <div className="school-summary-actions">
+                  <button
+                    type="button"
+                    className="school-summary-shortlist-btn"
+                    disabled={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus}
+                    onClick={() => handleShortlistApplicant(applicant)}
+                    style={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
+                  >
+                    {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
+                  </button>
 
-                <button
-                  type="button"
-                  className="school-summary-reject-btn"
-                  onClick={() => openRejectApplicantModal(jobId, applicantId)}
-                >
-                  Reject Applicant
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    className="school-summary-reject-btn"
+                    disabled={isRejected || isTerminalStatus}
+                    onClick={() => openRejectApplicantModal(jobId, applicantId)}
+                    style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                  >
+                    Reject Applicant
+                  </button>
+                </div>
+              )}
 
               {/* Professional Summary Content */}
               <div className="school-summary-summary-content">
@@ -3740,23 +3769,24 @@ export default function AdminDashboard() {
                       <div className="school-job-applicant-menu">
                         <button
                           type="button"
-                          disabled={currentStatus === "shortlisted"}
+                          disabled={currentStatus === "shortlisted" || currentStatus === "rejected" || currentStatus === "hired" || currentStatus === "withdrawn" || currentStatus === "closed"}
                           onClick={() => handleShortlistApplicant(app)}
                         >
                           <span className="school-job-applicant-menu-icon">
                             <FiCheckCircle size={18} />
                           </span>
-                          <span>{currentStatus === "shortlisted" ? "Shortlisted" : "Shortlist"}</span>
+                          <span>{currentStatus === "shortlisted" ? "Shortlisted" : currentStatus === "rejected" ? "Rejected" : currentStatus === "hired" ? "Hired" : currentStatus === "withdrawn" ? "Withdrawn" : currentStatus === "closed" ? "Closed" : "Shortlist"}</span>
                         </button>
                         <button
                           type="button"
                           className="school-job-applicant-menu-delete"
+                          disabled={currentStatus === "rejected" || currentStatus === "hired" || currentStatus === "withdrawn" || currentStatus === "closed"}
                           onClick={() => openRejectApplicantModal(jobId, appId)}
                         >
                           <span className="school-job-applicant-menu-icon">
                             <FiX size={18} />
                           </span>
-                          <span>Reject</span>
+                          <span>{currentStatus === "rejected" ? "Rejected" : currentStatus === "hired" ? "Hired" : currentStatus === "withdrawn" ? "Withdrawn" : currentStatus === "closed" ? "Closed" : "Reject"}</span>
                         </button>
                       </div>
                     )}
@@ -5881,6 +5911,7 @@ export default function AdminDashboard() {
         ))}
       </nav>
       {isTeacherInviteModalOpen && renderTeacherInviteModal()}
+      {isRejectModalOpen && renderRejectModal()}
       {isShortlistModalOpen && renderShortlistModal()}
       {isShortlistSuccessOpen && renderShortlistSuccessModal()}
       {isSchool && isNotificationModalOpen && selectedNotification && (
@@ -9542,6 +9573,31 @@ export default function AdminDashboard() {
         .school-job-applicant-status--rejected {
           background: rgba(217, 48, 37, 0.12);
           color: #c7342d;
+        }
+        .school-summary-status-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 29px;
+          padding: 0 12px;
+          border-radius: 999px;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 0.04em;
+          text-transform: uppercase;
+        }
+        .school-summary-status-pill--rejected {
+          background: #ffe1e1;
+          color: #c55e5e;
+        }
+        .school-summary-status-pill--hired {
+          background: #dff3e5;
+          color: #247544;
+        }
+        .school-summary-status-pill--withdrawn,
+        .school-summary-status-pill--closed {
+          background: #e9edf1;
+          color: #5d6f7e;
         }
         .school-job-applicant-status--pending {
           background: rgba(77, 93, 101, 0.1);

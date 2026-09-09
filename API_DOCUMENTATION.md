@@ -427,7 +427,7 @@ Retrieves full details for a single job vacancy identified by `job_id`. Teachers
 ---
 
 ### `POST /jobs`
-Creates and publishes a new job vacancy.
+Creates a job vacancy. Use `status: "draft"` to save it as a draft or `status: "open"` to publish it immediately.
 - **Method:** `POST`
 - **URL:** `https://api.staffroomng.com/api/jobs`
 - **Authentication Requirement:** Yes (`Authorization: Bearer <schoolToken>`)
@@ -465,7 +465,7 @@ Creates and publishes a new job vacancy.
   "data": {
     "job_id": "JOB-2026-001",
     "title": "Math Teacher",
-    "status": "active"
+    "status": "open"
   }
 }
 ```
@@ -522,6 +522,38 @@ Updates an existing job posting. Only the school that created the job can modify
   "message": "You do not have permission to modify this job."
 }
 ```
+
+### `POST /jobs/{job_id}/publish`
+Publishes a draft job. The database status is changed from `draft` to the canonical public status `open`.
+- **Method:** `POST`
+- **URL:** `https://api.staffroomng.com/api/jobs/JOB-2026-001/publish`
+- **Authentication Requirement:** Yes (`Authorization: Bearer <schoolToken>`)
+- **Allowed Role:** `school` (Must be the job owner)
+- **Request Body:** None
+
+After a successful response, the frontend must replace its local draft record with the returned `job` object and treat `job.status` as `open`. The values `published` and `active` are also normalized to `open` when sent as an update status.
+
+### `PATCH /applications/{application_id}/status` (Canonical rejection flow)
+Updates the recruitment workflow status of an application. This is the frontend's canonical rejection path.
+- **Method:** `PATCH`
+- **URL:** `https://api.staffroomng.com/api/applications/APPLICATION_ID/status`
+- **Authentication Requirement:** Yes (`Authorization: Bearer <schoolToken>`)
+- **Allowed Role:** `school` (Must own the job associated with the application)
+- **Allowed Statuses:** `pending`, `reviewed`, `shortlisted`, `rejected`, `hired`
+
+#### Request Body (`application/json`) for rejection
+```json
+{
+  "status": "rejected",
+  "message": "Thank you for applying. We have decided to proceed with another candidate.",
+  "rejection_message": "Thank you for applying. We have decided to proceed with another candidate."
+}
+```
+
+When `status` is `rejected`, at least one of `message` or `rejection_message` is required. The API stores the rejection reason as `rejection_message`, changes the application status to `rejected`, creates a teacher notification, and sends the teacher a status update email containing the rejection message.
+
+#### Legacy Compatibility Alias
+`POST /api/applications/{application_id}/reject` may still exist as a compatibility endpoint in older server implementations. It should be treated as an alias of the status update flow and is not the canonical contract used by the current frontend.
 
 ---
 
@@ -587,7 +619,8 @@ Legacy aliases also exist without the `/api` prefix:
 - `GET /api/applications/my-applications` (teacher)
 - `GET /api/applications/{id}`
 - `GET /api/applications/job/{jobId}` (school)
-- `PATCH /api/applications/{id}/status` (school/admin)
+- `PATCH /api/applications/{id}/status` (school/admin; canonical status update, including rejection)
+- `POST /api/applications/{id}/reject` (legacy compatibility alias; do not treat as primary frontend contract)
 - `DELETE /api/applications/{id}` / `PATCH /api/applications/{id}/withdraw` (teacher)
 
 ### School and teacher directory features
@@ -739,6 +772,53 @@ Please keep the frontend experience consistent with the StaffRoom flow: premium,
 - Use the `user_id` returned from the backend as the canonical stable user identifier in client state.
 - For the school signup flow, do not treat the signup as complete until the user verifies email and finishes onboarding.
 - For teacher application submission, show validation warnings before submit if the profile CV is missing or the cover letter is too short.
+
+## 10. Form Field Type Contract
+
+The backend accepts the following form types and persists them as follows:
+
+### Job posting
+
+```json
+{
+  "title": "string",
+  "role_type": "string",
+  "teaching_level": "string",
+  "employment_type": "string",
+  "salary_range": "string",
+  "location": "string",
+  "description": "string",
+  "responsibilities": ["string"],
+  "required_experience": "string",
+  "required_qualification": ["string"],
+  "requirements": ["string"],
+  "application_deadline": "YYYY-MM-DD",
+  "is_featured": true
+}
+```
+
+`requirements` and `required_qualification` also accept legacy strings. Responses normalize both fields to arrays.
+
+### Teacher profile
+
+Use `PUT /api/profiles/teacher` with JSON. `subjects`, `teaching_levels`, and `skills` are `string[]`; `experience_years` is an integer; `available_from` is a date string; and `education_history` and `teaching_experience` are arrays of objects.
+
+Education records support `degree`, `other_degree`, `institution`, `field_of_study`, `start_year`, `end_year`, `status`, and `class_of_degree`. `status` must be `Completed`, `In Progress`, or `Pending`.
+
+Experience records support `role`, `school`, `location`, `start_date` (`YYYY-MM`), `end_date` (`YYYY-MM` or null), and `description`.
+
+### School profile
+
+Use `PUT /api/profiles/school` with `school_name`, `school_type`, `country`, `state`, `lga` (city), `address`, `website`, and optional `setup_completed`. The school email is returned in `data.user.email`; email changes must use the verified account-email flow.
+
+### Account and administrator profile
+
+Use `PUT /api/account/profile` for `first_name`, `last_name`, `phone`, and `full_name`. Upload a profile photo using `POST /api/account/profile-photo` with multipart field `profile_photo`. The response returns `user.profile_photo`.
+
+Run these migrations before using the new fields:
+
+- `database/migrations/2026_09_09_profile_field_types.sql`
+- `database/migrations/2026_09_09_teacher_form_fields.sql`
 
 - **Method:** `DELETE`
 - **URL:** `https://api.staffroomng.com/api/jobs/1`
@@ -900,6 +980,16 @@ Updates the recruitment workflow status of an application.
   "status": "shortlisted"
 }
 ```
+
+For a rejection, use:
+```json
+{
+  "status": "rejected",
+  "message": "Thank you for applying. We have decided to proceed with another candidate."
+}
+```
+
+`message` or `rejection_message` is required when `status` is `rejected`.
 
 #### Sample Success Response (`200 OK`)
 ```json
@@ -1520,7 +1610,7 @@ curl -X PUT "https://api.staffroomng.com/api/profiles/teacher" \
 - `GET /applications/{application_id}` returns an application only to its teacher, owning school, or an administrator.
 - `GET /applications/my-applications?page=1&per_page=10` returns the teacher's applications and `pagination` metadata.
 - `GET /applications/job/{job_id}?page=1&per_page=10` returns applications for a job only when the authenticated school owns that job.
-- `PATCH /applications/{application_id}/status` accepts `status`. When `status` is `rejected`, `message` (or `rejection_message`) is required and is returned to the teacher. Repeating the current status returns `409`.
+- `PATCH /applications/{application_id}/status` is the canonical route for rejection and other status updates. When `status` is `rejected`, `message` (or `rejection_message`) is required and is returned to the teacher. Repeating the current status returns `409`. `POST /applications/{application_id}/reject` remains only as a legacy compatibility alias where supported.
 
 Application list responses expose `application_id`, `job_id`, `teacher_id`, `status`, `rejection_message`, `cv_url`, `additional_info`, timestamps, and relevant job/teacher fields.
 
