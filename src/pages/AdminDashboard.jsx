@@ -131,6 +131,7 @@ export default function AdminDashboard() {
     email: "",
   });
   const [adminProfilePhoto, setAdminProfilePhoto] = useState("");
+  const [adminProfilePhotoFile, setAdminProfilePhotoFile] = useState(null);
   const [adminProfileLoading, setAdminProfileLoading] = useState(false);
   const [savingAdminProfile, setSavingAdminProfile] = useState(false);
   const [adminPhoneChangeValue, setAdminPhoneChangeValue] = useState("");
@@ -194,6 +195,7 @@ export default function AdminDashboard() {
   const [teacherInviteSubmitting, setTeacherInviteSubmitting] = useState(false);
   const [savedTeacherIds, setSavedTeacherIds] = useState([]);
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
+  const [schoolLogoFile, setSchoolLogoFile] = useState(null);
   const [schoolLocationLocked, setSchoolLocationLocked] = useState(false);
   const [isSchoolNameEditing, setIsSchoolNameEditing] = useState(false);
   const [schoolNameValue, setSchoolNameValue] = useState("");
@@ -473,6 +475,7 @@ export default function AdminDashboard() {
   const handleSchoolLogoSelect = (event) => {
     const file = event.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
+    setSchoolLogoFile(file);
 
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -515,6 +518,7 @@ export default function AdminDashboard() {
   const handleAdminProfilePhotoSelect = (event) => {
     const file = event.target.files?.[0];
     if (!file || !file.type.startsWith("image/")) return;
+    setAdminProfilePhotoFile(file);
 
     const reader = new FileReader();
     reader.onloadend = () => setAdminProfilePhoto(reader.result);
@@ -540,6 +544,13 @@ export default function AdminDashboard() {
         full_name: `${firstName} ${lastName}`.trim(),
         phone: adminProfileForm.phone.trim(),
       });
+
+      if (adminProfilePhotoFile) {
+        const formData = new FormData();
+        formData.append("profile_photo", adminProfilePhotoFile);
+        await accountService.uploadProfilePhoto(formData);
+        setAdminProfilePhotoFile(null);
+      }
 
       await loadAdminProfile();
       setAdminSuccessSnackbox({
@@ -1115,6 +1126,11 @@ export default function AdminDashboard() {
     try {
       setSavingSchoolProfile(true);
       setError("");
+      if (schoolLogoFile) {
+        const formData = new FormData();
+        formData.append("logo", schoolLogoFile);
+        await profileService.uploadLogo(formData);
+      }
       await profileService.updateSchool({
         school_name: schoolNameValue.trim(),
         school_type: schoolProfile?.school_type || "private",
@@ -1136,6 +1152,8 @@ export default function AdminDashboard() {
       setPhoneValue(mergedProfile.phone || account.phone || phoneValue);
       setWebsiteValue(mergedProfile.website || websiteValue);
       setAddressValue(mergedProfile.address || addressValue);
+      setSchoolLogoPreview(toAssetUrl(mergedProfile.logo_url || mergedProfile.school_logo || mergedProfile.logo || schoolLogoPreview));
+      setSchoolLogoFile(null);
       setIsSchoolNameEditing(false);
       setIsEmailEditing(false);
       setIsPhoneEditing(false);

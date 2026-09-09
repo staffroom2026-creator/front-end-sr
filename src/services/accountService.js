@@ -3,6 +3,12 @@ import { api } from './api';
 export const accountService = {
   getProfile: () => api.get('/api/account/profile'),
   updateProfile: (payload) => api.put('/api/account/profile', payload),
+  uploadProfilePhoto: (formData) =>
+    api.post('/api/account/profile-photo', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
   patchProfile: (payload) => api.patch('/api/account/profile', payload),
   updatePassword: (payload) => api.post('/api/account/password', payload),
   getPreferences: () => api.get('/api/account/preferences'),

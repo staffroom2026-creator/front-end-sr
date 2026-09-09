@@ -439,6 +439,7 @@ export default function TeacherDashboard() {
   // ── Personal Info Tab state ──
   const [personalFirstName, setPersonalFirstName] = useState('Teacher');
   const [personalLastName, setPersonalLastName] = useState('');
+  const [savingPersonalInfo, setSavingPersonalInfo] = useState(false);
   const [personalPhone, setPersonalPhone] = useState('');
   const [personalEmail, setPersonalEmail] = useState('');
   const [personalCity, setPersonalCity] = useState('');
@@ -1201,6 +1202,34 @@ export default function TeacherDashboard() {
       setAppError(profileApiErrorMessage(err, 'Unable to save professional information.'));
     } finally {
       setSavingProfessionalInfo(false);
+    }
+  };
+
+  const handleSavePersonalInfo = async () => {
+    const firstName = personalFirstName.trim();
+    const lastName = personalLastName.trim();
+    if (!firstName || !lastName) {
+      setAppError('First name and last name are required.');
+      return;
+    }
+
+    try {
+      setSavingPersonalInfo(true);
+      setAppError('');
+      await accountService.updateProfile({
+        first_name: firstName,
+        last_name: lastName,
+        full_name: `${firstName} ${lastName}`.trim(),
+      });
+      await saveUnifiedTeacherProfile({
+        education_history: toEducationPayload(educationList),
+        teaching_experience: toExperiencePayload(experienceList),
+      });
+      setShowProfileUpdatedModal(true);
+    } catch (err) {
+      setAppError(profileApiErrorMessage(err, 'Unable to save personal information.'));
+    } finally {
+      setSavingPersonalInfo(false);
     }
   };
 
@@ -3840,9 +3869,10 @@ export default function TeacherDashboard() {
                           <button
                             type="button"
                             className="td-pers-save-btn"
-                            onClick={() => setProfileSubTab('update-success')}
+                            onClick={handleSavePersonalInfo}
+                            disabled={savingPersonalInfo}
                           >
-                            Save Changes
+                            {savingPersonalInfo ? 'Saving...' : 'Save Changes'}
                           </button>
                         </div>
                       </div>
