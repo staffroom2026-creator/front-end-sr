@@ -480,6 +480,8 @@ export default function InternalAdminDashboard() {
   const [adminPage, setAdminPage] = useState(1);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(null);
+  const [isInviteSuccessClosing, setIsInviteSuccessClosing] = useState(false);
   const [addAdminStep, setAddAdminStep] = useState(1);
   const [addAdminForm, setAddAdminForm] = useState({
     firstName: 'David',
@@ -558,6 +560,24 @@ export default function InternalAdminDashboard() {
   const selectedRoleMatrix = addAdminForm.permissions?.matrix || buildPermissionMatrixForRole(addAdminForm.role);
   const adminTotalPages = Math.max(1, Math.ceil(filteredAdmins.length / adminPageSize));
   const visibleAdmins = filteredAdmins.slice((adminPage - 1) * adminPageSize, adminPage * adminPageSize);
+
+  useEffect(() => {
+    if (!inviteSuccess) return undefined;
+
+    const fadeOutTimer = setTimeout(() => {
+      setIsInviteSuccessClosing(true);
+    }, 2200);
+
+    const removeTimer = setTimeout(() => {
+      setInviteSuccess(null);
+      setIsInviteSuccessClosing(false);
+    }, 2800);
+
+    return () => {
+      clearTimeout(fadeOutTimer);
+      clearTimeout(removeTimer);
+    };
+  }, [inviteSuccess]);
 
   const openJobReview = (job) => {
     setSelectedJob(job);
@@ -1265,8 +1285,12 @@ export default function InternalAdminDashboard() {
                               setAdminRows((current) => [newAdmin, ...current]);
                               setSelectedAdmin(newAdmin);
                               setShowInviteModal(false);
+                              setIsInviteSuccessClosing(false);
+                              setInviteSuccess({
+                                title: 'Invitation sent successfully',
+                                message: 'Your invitation has been sent successfully.',
+                              });
                               resetAddAdminFlow();
-                              setActiveTab('admin-management');
                             }}
                           >
                             <FiMail size={15} /> Send Invitation
@@ -1276,19 +1300,38 @@ export default function InternalAdminDashboard() {
                     </div>
                   )}
 
-                  <div className="internal-admin-invite-success-snack">
-                    <div className="internal-admin-invite-success-pill">
-                      <span className="internal-admin-invite-success-check">✓</span>
+                  {inviteSuccess && (
+                    <div className={`internal-admin-invite-success-snack ${isInviteSuccessClosing ? 'is-closing' : 'is-visible'}`} role="status">
+                      <div className="internal-admin-invite-success-pill">
+                        <FiCheck size={18} />
+                      </div>
+                      <div className="internal-admin-invite-success-copy">
+                        <strong>{inviteSuccess.title}</strong>
+                        <p>{inviteSuccess.message}</p>
+                      </div>
+                      <button
+                        type="button"
+                        className="internal-admin-invite-success-close"
+                        aria-label="Dismiss notification"
+                        onClick={() => {
+                          setIsInviteSuccessClosing(true);
+                          window.setTimeout(() => {
+                            setInviteSuccess(null);
+                            setIsInviteSuccessClosing(false);
+                          }, 180);
+                        }}
+                      >
+                        <FiX size={20} />
+                      </button>
+                      <button type="button" className="internal-admin-invite-success-ok" onClick={() => {
+                        setIsInviteSuccessClosing(true);
+                        window.setTimeout(() => {
+                          setInviteSuccess(null);
+                          setIsInviteSuccessClosing(false);
+                        }, 180);
+                      }}>Okay</button>
                     </div>
-                    <div className="internal-admin-invite-success-copy">
-                      <h4>Email changed successfully</h4>
-                      <p>Your email has been changed successfully.</p>
-                    </div>
-                    <button type="button" className="internal-admin-invite-success-close" aria-label="Dismiss notification">
-                      ×
-                    </button>
-                    <button type="button" className="internal-admin-invite-success-ok">Okay</button>
-                  </div>
+                  )}
                 </div>
               </section>
             ) : activeTab === 'admin-management' ? (
@@ -2139,73 +2182,84 @@ export default function InternalAdminDashboard() {
 
         .internal-admin-invite-success-snack {
           position: fixed;
-          right: 36px;
-          bottom: 32px;
+          top: 42px;
+          left: 50%;
+          z-index: 1200;
           display: grid;
-          grid-template-columns: auto 1fr auto auto;
-          align-items: center;
-          gap: 14px;
-          width: min(420px, calc(100vw - 32px));
-          padding: 16px 18px 14px 16px;
-          border: 1px solid #e2e7e4;
-          border-radius: 12px;
-          background: #ffffff;
-          box-shadow: 0 20px 38px rgba(18, 25, 22, 0.12);
-          z-index: 40;
+          grid-template-columns: 34px minmax(0, 1fr) 24px;
+          align-items: start;
+          gap: 10px;
+          width: min(318px, calc(100vw - 32px));
+          padding: 12px 12px 10px;
+          border: 1px solid #cbd2d4;
+          border-radius: 14px;
+          background: #f8f9fa;
+          box-shadow: 0 14px 32px rgba(15, 23, 42, 0.14);
+          opacity: 0;
+          transform: translate(-50%, -12px) scale(0.98);
+          transition: opacity 220ms ease-in-out, transform 220ms ease-in-out;
+        }
+
+        .internal-admin-invite-success-snack.is-visible {
+          opacity: 1;
+          transform: translate(-50%, 0) scale(1);
+        }
+
+        .internal-admin-invite-success-snack.is-closing {
+          opacity: 0;
+          transform: translate(-50%, -12px) scale(0.98);
         }
 
         .internal-admin-invite-success-pill {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 32px;
-          height: 32px;
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
           border-radius: 50%;
-          background: #0d7d47;
+          background: #138a35;
           color: #ffffff;
-          font-size: 18px;
-          font-weight: 700;
         }
 
         .internal-admin-invite-success-copy {
-          display: flex;
-          flex-direction: column;
-          gap: 4px;
+          padding-top: 2px;
         }
 
-        .internal-admin-invite-success-copy h4 {
-          margin: 0;
-          color: #1f2c29;
-          font-size: 17px;
-          font-weight: 700;
+        .internal-admin-invite-success-copy strong {
+          display: block;
+          color: #111827;
+          font-size: 13px;
+          line-height: 1.3;
         }
 
         .internal-admin-invite-success-copy p {
-          margin: 0;
-          color: #5e6f6a;
-          font-size: 14px;
-          line-height: 1.5;
+          margin: 7px 0 0;
+          color: #111827;
+          font-size: 11px;
+          line-height: 1.4;
         }
 
         .internal-admin-invite-success-close {
-          border: none;
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 24px;
+          border: 0;
           background: transparent;
-          color: #596964;
-          font-size: 28px;
-          line-height: 1;
+          color: #111;
           cursor: pointer;
         }
 
         .internal-admin-invite-success-ok {
-          min-width: 92px;
-          min-height: 38px;
-          padding: 0 18px;
-          border: none;
+          grid-column: 2 / 4;
+          justify-self: end;
+          min-width: 90px;
+          min-height: 40px;
+          margin-top: 8px;
+          border: 0;
           border-radius: 999px;
-          background: #73d49a;
-          color: #0f4028;
-          font-size: 15px;
-          font-weight: 700;
+          background: #2ae156;
+          color: #000;
+          font-size: 12px;
           cursor: pointer;
         }
 
