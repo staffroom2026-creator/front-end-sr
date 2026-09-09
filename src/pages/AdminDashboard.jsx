@@ -1677,8 +1677,8 @@ export default function AdminDashboard() {
     setSelectedApplicant(applicant);
     setShortlistForm((prev) => ({
       ...prev,
-      recipientName: applicant.teacher_name || applicant.full_name || applicant.name || "Applicant",
-      recipientPhone: applicant.teacher_phone || applicant.phone || applicant.profile?.phone || "",
+      recipientName: user?.school_name || user?.full_name || "Your school",
+      recipientPhone: schoolProfile?.phone || user?.phone || "",
     }));
     setIsShortlistModalOpen(true);
     setOpenApplicantMenuId(null);
@@ -7912,7 +7912,7 @@ export default function AdminDashboard() {
           overflow: hidden;
           border: 1px solid #e1e6e5;
           border-radius: 18px;
-          background: #f4f6f5;
+          background: #f7f7f6;
           box-shadow: 0 24px 48px rgba(17, 24, 24, 0.15);
         }
         .school-shortlist-modal-header {
@@ -7921,7 +7921,7 @@ export default function AdminDashboard() {
           justify-content: space-between;
           gap: 12px;
           flex-shrink: 0;
-          padding: 18px 18px 10px;
+          padding: 18px 18px 12px;
           color: #121c2a;
         }
         .school-shortlist-modal-heading {
@@ -7931,9 +7931,9 @@ export default function AdminDashboard() {
         }
         .school-shortlist-modal-header h3 {
           margin: 0;
-          font-size: 20px;
+          font-size: 22px;
           font-weight: 700;
-          letter-spacing: -0.04em;
+          letter-spacing: -0.05em;
         }
         .school-shortlist-modal-subtitle {
           margin: 0;
@@ -8196,15 +8196,14 @@ export default function AdminDashboard() {
           align-items: center;
           justify-content: space-between;
           width: 100%;
-          min-height: 62px;
-          padding: 0 18px 0 20px;
-          border: 1px solid #e2e8e6;
-          border-radius: 999px;
-          background: #f8f9f8;
+          min-height: 52px;
+          padding: 0 18px 0 18px;
+          border: 1px solid #dde5df;
+          border-radius: 12px;
+          background: #f0f3f1;
           color: #9aa3a1;
-          font-size: 18px;
+          font-size: 16px;
           font-weight: 500;
-          box-shadow: inset 0 0 0 1px rgba(255,255,255,0.55);
           cursor: pointer;
         }
         .school-shortlist-template-value {
@@ -8273,15 +8272,17 @@ export default function AdminDashboard() {
           background-repeat: no-repeat;
         }
         .school-shortlist-field > select {
-          width: 50%;
-          max-width: 50%;
-          min-width: 220px;
+          width: 100%;
+          max-width: 100%;
+          min-width: 0;
         }
         .school-shortlist-field textarea {
-          min-height: 120px;
+          min-height: 110px;
           padding: 12px 14px;
           resize: vertical;
           line-height: 1.5;
+          border: 1px solid #dfe5e3;
+          background: #f3f5f4;
         }
         .school-shortlist-select-wrap {
           position: relative;
@@ -8324,7 +8325,7 @@ export default function AdminDashboard() {
           min-width: 120px;
           height: 42px;
           padding: 0 18px;
-          border-radius: 999px;
+          border-radius: 12px;
           border: 1px solid #d9e0dd;
           background: #ffffff;
           color: #1f2b2c;
@@ -8334,9 +8335,10 @@ export default function AdminDashboard() {
           cursor: pointer;
         }
         .school-shortlist-confirm-btn {
-          border-color: #148a52;
-          background: #148a52;
+          border-color: #0f7d4c;
+          background: #0f7d4c;
           color: #ffffff;
+          box-shadow: 0 10px 18px rgba(15, 125, 76, 0.18);
         }
 
         .school-shortlist-success-backdrop {

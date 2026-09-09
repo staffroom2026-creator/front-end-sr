@@ -479,6 +479,7 @@ export default function InternalAdminDashboard() {
   const [adminTimeFilter, setAdminTimeFilter] = useState('Any time');
   const [adminPage, setAdminPage] = useState(1);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const [addAdminStep, setAddAdminStep] = useState(1);
   const [addAdminForm, setAddAdminForm] = useState({
     firstName: 'David',
@@ -542,6 +543,7 @@ export default function InternalAdminDashboard() {
   const isStepOneValid = addAdminForm.firstName.trim() && addAdminForm.lastName.trim() && /\S+@\S+\.\S+/.test(addAdminForm.email);
   const resetAddAdminFlow = () => {
     setAddAdminStep(1);
+    setShowInviteModal(false);
     setAddAdminForm({
       firstName: 'David',
       lastName: 'Okafor',
@@ -553,6 +555,7 @@ export default function InternalAdminDashboard() {
       },
     });
   };
+  const selectedRoleMatrix = addAdminForm.permissions?.matrix || buildPermissionMatrixForRole(addAdminForm.role);
   const adminTotalPages = Math.max(1, Math.ceil(filteredAdmins.length / adminPageSize));
   const visibleAdmins = filteredAdmins.slice((adminPage - 1) * adminPageSize, adminPage * adminPageSize);
 
@@ -1076,27 +1079,115 @@ export default function InternalAdminDashboard() {
                       <div className="internal-admin-add-admin-card-label">STEP 03</div>
                       <h2>Review &amp; Send</h2>
 
-                      <div className="internal-admin-review-summary">
-                        <div className="internal-admin-review-item">
-                          <span>Admin</span>
-                          <strong>{`${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'New Admin'}</strong>
+                      <div className="internal-admin-review-admin-flow">
+                        <div className="internal-admin-review-header-row">
+                          <div className="internal-admin-review-header-copy">
+                            <div className="internal-admin-review-breadcrumb">USERS / INTERNAL ADMINS / ADD NEW ADMIN / REVIEW</div>
+                            <div className="internal-admin-review-security">✓ SECURITY PROVISIONING LEVEL 3</div>
+                            <h1>Review Administrator</h1>
+                            <p>Review the administrator profile, operational clearance, and role scope prior to invitation dispatch.</p>
+                          </div>
                         </div>
-                        <div className="internal-admin-review-item">
-                          <span>Email</span>
-                          <strong>{addAdminForm.email}</strong>
+
+                        <div className="internal-admin-review-profile-card">
+                          <div className="internal-admin-review-profile-header">
+                            <div className="internal-admin-review-profile-team">
+                              <div className="internal-admin-review-profile-avatar">DO</div>
+                              <div className="internal-admin-review-profile-meta">
+                                <strong>{`${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'David Okafor'}</strong>
+                                <span className="internal-admin-review-role-pill">{addAdminForm.role.toUpperCase()}</span>
+                              </div>
+                            </div>
+                            <button type="button" className="internal-admin-review-edit-button" onClick={() => setAddAdminStep(1)}>Edit Profile</button>
+                          </div>
+
+                          <div className="internal-admin-review-profile-meta-row">
+                            <span>Staff ID: {addAdminForm.firstName.slice(0, 2).toUpperCase()}-{addAdminForm.lastName.slice(0, 2).toUpperCase()}-2026-089</span>
+                          </div>
+
+                          <div className="internal-admin-review-profile-field-grid">
+                            <div className="internal-admin-review-profile-field">
+                              <span>Work Email</span>
+                              <strong>{addAdminForm.email}</strong>
+                            </div>
+                            <div className="internal-admin-review-profile-field">
+                              <span>Phone</span>
+                              <strong>+234 803 123 4567</strong>
+                            </div>
+                            <div className="internal-admin-review-profile-field">
+                              <span>Department</span>
+                              <strong>Operations &amp; Schools</strong>
+                            </div>
+                          </div>
                         </div>
-                        <div className="internal-admin-review-item">
-                          <span>Role</span>
-                          <strong>{addAdminForm.role}</strong>
+
+                        <div className="internal-admin-review-permissions-card">
+                          <div className="internal-admin-review-section-header">
+                            <div className="internal-admin-review-section-title">
+                              <span className="internal-admin-review-section-icon">◌</span>
+                              <h3>Access &amp; Scope Permissions</h3>
+                            </div>
+                            <span className="internal-admin-review-module-count">{Object.values(selectedRoleMatrix).flatMap((permissions) => Object.values(permissions)).filter(Boolean).length} modules provisioned</span>
+                          </div>
+
+                          <div className="internal-admin-review-permissions-table" role="table" aria-label="Review permissions">
+                            <div className="internal-admin-review-permissions-head" role="row">
+                              <span role="columnheader">Domain</span>
+                              <span role="columnheader">Module</span>
+                              <span role="columnheader">Permitted operations</span>
+                              <span role="columnheader">Clearance state</span>
+                            </div>
+
+                            {adminPermissionMatrix.map((row) => {
+                              const rowPermissions = selectedRoleMatrix[row.key] || row.permissions;
+                              const enabledActions = Object.entries(rowPermissions)
+                                .filter(([, value]) => value)
+                                .map(([key]) => key.charAt(0).toUpperCase() + key.slice(1));
+
+                              return (
+                                <div key={`${row.key}-review`} className="internal-admin-review-permissions-row" role="row">
+                                  <span className="internal-admin-review-domain-label" role="cell">{row.module}</span>
+                                  <span role="cell">{row.module}</span>
+                                  <span role="cell" className="internal-admin-review-operations">
+                                    {enabledActions.length > 0 ? enabledActions.map((label) => (
+                                      <span key={`${row.key}-${label}`} className="internal-admin-review-operation-pill">{label}</span>
+                                    )) : <span className="internal-admin-review-operation-pill muted">No access</span>}
+                                  </span>
+                                  <span role="cell"><span className={`internal-admin-review-clearance ${enabledActions.length > 3 ? 'full' : enabledActions.length > 1 ? 'restricted' : 'audit'}`}>{enabledActions.length > 3 ? 'FULL CLEARANCE' : enabledActions.length > 1 ? 'RESTRICTED' : 'AUDIT READ'}</span></span>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <div className="internal-admin-review-item">
-                          <span>Permissions</span>
-                          <strong>
-                            {Object.entries(addAdminForm.permissions)
-                              .filter(([, enabled]) => enabled)
-                              .map(([key]) => key === 'schoolProfile' ? 'School profiles' : key === 'manageAccess' ? 'Access management' : 'Job review')
-                              .join(', ') || 'No permission selected'}
-                          </strong>
+
+                        <div className="internal-admin-review-lifecycle-card">
+                          <div className="internal-admin-review-section-header">
+                            <div className="internal-admin-review-section-title">
+                              <span className="internal-admin-review-section-icon">✓</span>
+                              <h3>Invitation Audit &amp; Lifecycle</h3>
+                            </div>
+                          </div>
+
+                          <div className="internal-admin-review-lifecycle-grid">
+                            <div className="internal-admin-review-lifecycle-item">
+                              <div className="internal-admin-review-lifecycle-label">Inviting authority</div>
+                              <div className="internal-admin-review-lifecycle-person">
+                                <span className="internal-admin-review-lifecycle-avatar">C</span>
+                                <div>
+                                  <strong>Christopher Osazuwa</strong>
+                                  <small>Super Admin (Primary Workspace)</small>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="internal-admin-review-lifecycle-item">
+                              <div className="internal-admin-review-lifecycle-label">Dispatch date &amp; TTL</div>
+                              <div className="internal-admin-review-lifecycle-date">
+                                <strong>September 7, 2026</strong>
+                                <small>Link expires in exactly 72 hours</small>
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </>
@@ -1118,26 +1209,85 @@ export default function InternalAdminDashboard() {
                           return;
                         }
 
-                        const newAdmin = {
-                          name: `${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'New Admin',
-                          role: addAdminForm.role,
-                          email: addAdminForm.email || `new.admin${Date.now()}@staffroom.com`,
-                          access: 'Schools',
-                          lastActive: 'Just now',
-                          status: 'Active',
-                          ip: '197.211.66.18',
-                          created: 'Today',
-                          addedBy: 'Admin',
-                          permissions: 'New',
-                        };
-                        setAdminRows((current) => [newAdmin, ...current]);
-                        setSelectedAdmin(newAdmin);
-                        resetAddAdminFlow();
-                        setActiveTab('admin-management');
+                        setShowInviteModal(true);
                       }}
                     >
                       {addAdminStep === 3 ? 'Send Invite' : 'Continue'} <FiChevronRight size={18} />
                     </button>
+                  </div>
+
+                  {showInviteModal && (
+                    <div className="internal-admin-invite-confirm-backdrop" onClick={() => setShowInviteModal(false)}>
+                      <div className="internal-admin-invite-confirm-modal" onClick={(event) => event.stopPropagation()}>
+                        <div className="internal-admin-invite-confirm-header">
+                          <span className="internal-admin-invite-confirm-icon"><FiMail size={20} /></span>
+                          <h3>Send Admin Invitation?</h3>
+                        </div>
+
+                        <div className="internal-admin-invite-confirm-user">
+                          <div className="internal-admin-invite-confirm-avatar">
+                            {`${addAdminForm.firstName} ${addAdminForm.lastName}`.trim().split(' ').map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'DO'}
+                          </div>
+                          <div className="internal-admin-invite-confirm-user-copy">
+                            <strong>{`${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'David Okafor'}</strong>
+                            <span>{addAdminForm.email}</span>
+                          </div>
+                          <span className="internal-admin-invite-confirm-role-badge">{addAdminForm.role}</span>
+                        </div>
+
+                        <p className="internal-admin-invite-confirm-message">
+                          {`${`${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'David Okafor'} will receive an invitation link at ${addAdminForm.email} to set up their password and verify their identity. Once verified, their account will be placed in the Pending Approval queue.`}
+                        </p>
+
+                        <div className="internal-admin-invite-confirm-note">
+                          <span className="internal-admin-invite-confirm-note-icon">i</span>
+                          <span>Link expires automatically in 72 hours if unclaimed.</span>
+                        </div>
+
+                        <div className="internal-admin-invite-confirm-actions">
+                          <button type="button" className="internal-admin-invite-cancel" onClick={() => setShowInviteModal(false)}>Cancel</button>
+                          <button
+                            type="button"
+                            className="internal-admin-invite-submit"
+                            onClick={() => {
+                              const newAdmin = {
+                                name: `${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'New Admin',
+                                role: addAdminForm.role,
+                                email: addAdminForm.email || `new.admin${Date.now()}@staffroom.com`,
+                                access: 'Schools',
+                                lastActive: 'Just now',
+                                status: 'Active',
+                                ip: '197.211.66.18',
+                                created: 'Today',
+                                addedBy: 'Admin',
+                                permissions: 'New',
+                              };
+                              setAdminRows((current) => [newAdmin, ...current]);
+                              setSelectedAdmin(newAdmin);
+                              setShowInviteModal(false);
+                              resetAddAdminFlow();
+                              setActiveTab('admin-management');
+                            }}
+                          >
+                            <FiMail size={15} /> Send Invitation
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="internal-admin-invite-success-snack">
+                    <div className="internal-admin-invite-success-pill">
+                      <span className="internal-admin-invite-success-check">✓</span>
+                    </div>
+                    <div className="internal-admin-invite-success-copy">
+                      <h4>Email changed successfully</h4>
+                      <p>Your email has been changed successfully.</p>
+                    </div>
+                    <button type="button" className="internal-admin-invite-success-close" aria-label="Dismiss notification">
+                      ×
+                    </button>
+                    <button type="button" className="internal-admin-invite-success-ok">Okay</button>
                   </div>
                 </div>
               </section>
@@ -1820,6 +1970,616 @@ export default function InternalAdminDashboard() {
           border: 1px solid #dfe5e0;
           border-radius: 12px;
           background: #ffffff;
+        }
+
+        .internal-admin-invite-confirm-backdrop {
+          position: fixed;
+          inset: 0;
+          display: grid;
+          place-items: center;
+          background: rgba(22, 31, 28, 0.3);
+          z-index: 30;
+        }
+
+        .internal-admin-invite-confirm-modal {
+          width: min(560px, calc(100vw - 32px));
+          padding: 22px 22px 18px;
+          border: 1px solid #dfe5e0;
+          border-radius: 16px;
+          background: #ffffff;
+          box-shadow: 0 28px 50px rgba(18, 25, 22, 0.17);
+        }
+
+        .internal-admin-invite-confirm-header {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          margin-bottom: 18px;
+          color: #1e2d2a;
+        }
+
+        .internal-admin-invite-confirm-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          background: #eaf3ed;
+          color: #0d7d47;
+        }
+
+        .internal-admin-invite-confirm-header h3 {
+          margin: 0;
+          font-size: 22px;
+          line-height: 1.2;
+        }
+
+        .internal-admin-invite-confirm-user {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 10px 12px;
+          border: 1px solid #e7ece9;
+          border-radius: 12px;
+          background: #f7f9f8;
+        }
+
+        .internal-admin-invite-confirm-avatar {
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          border-radius: 10px;
+          background: #1c2b29;
+          color: #ffffff;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .internal-admin-invite-confirm-user-copy {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          min-width: 0;
+        }
+
+        .internal-admin-invite-confirm-user-copy strong {
+          color: #1a2c29;
+          font-size: 15px;
+        }
+
+        .internal-admin-invite-confirm-user-copy span {
+          color: #5c6a66;
+          font-size: 12px;
+        }
+
+        .internal-admin-invite-confirm-role-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 24px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: #f4eec3;
+          color: #735d1a;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-invite-confirm-message {
+          margin: 18px 0 0;
+          color: #2a3835;
+          font-size: 14px;
+          line-height: 1.7;
+        }
+
+        .internal-admin-invite-confirm-note {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin-top: 18px;
+          padding: 12px 14px;
+          border: 1px solid #e7ece8;
+          border-radius: 10px;
+          background: #f7f9f8;
+          color: #495d58;
+          font-size: 13px;
+        }
+
+        .internal-admin-invite-confirm-note-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: #e0e7eb;
+          color: #4d5c59;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .internal-admin-invite-confirm-actions {
+          display: flex;
+          justify-content: flex-end;
+          gap: 12px;
+          margin-top: 22px;
+        }
+
+        .internal-admin-invite-cancel,
+        .internal-admin-invite-submit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 38px;
+          padding: 0 18px;
+          border-radius: 8px;
+          font-size: 15px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .internal-admin-invite-cancel {
+          border: 1px solid #dfe5e0;
+          background: #f3f5f4;
+          color: #2a3835;
+        }
+
+        .internal-admin-invite-submit {
+          border: none;
+          background: #0d7d47;
+          color: #ffffff;
+          box-shadow: 0 8px 18px rgba(13, 125, 71, 0.2);
+        }
+
+        .internal-admin-invite-success-snack {
+          position: fixed;
+          right: 36px;
+          bottom: 32px;
+          display: grid;
+          grid-template-columns: auto 1fr auto auto;
+          align-items: center;
+          gap: 14px;
+          width: min(420px, calc(100vw - 32px));
+          padding: 16px 18px 14px 16px;
+          border: 1px solid #e2e7e4;
+          border-radius: 12px;
+          background: #ffffff;
+          box-shadow: 0 20px 38px rgba(18, 25, 22, 0.12);
+          z-index: 40;
+        }
+
+        .internal-admin-invite-success-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: #0d7d47;
+          color: #ffffff;
+          font-size: 18px;
+          font-weight: 700;
+        }
+
+        .internal-admin-invite-success-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .internal-admin-invite-success-copy h4 {
+          margin: 0;
+          color: #1f2c29;
+          font-size: 17px;
+          font-weight: 700;
+        }
+
+        .internal-admin-invite-success-copy p {
+          margin: 0;
+          color: #5e6f6a;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .internal-admin-invite-success-close {
+          border: none;
+          background: transparent;
+          color: #596964;
+          font-size: 28px;
+          line-height: 1;
+          cursor: pointer;
+        }
+
+        .internal-admin-invite-success-ok {
+          min-width: 92px;
+          min-height: 38px;
+          padding: 0 18px;
+          border: none;
+          border-radius: 999px;
+          background: #73d49a;
+          color: #0f4028;
+          font-size: 15px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .internal-admin-review-admin-flow {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          width: 100%;
+          color: #1b2d2a;
+        }
+
+        .internal-admin-review-header-row {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+        }
+
+        .internal-admin-review-header-copy {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
+        }
+
+        .internal-admin-review-breadcrumb {
+          color: #697a73;
+          font-size: 11px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-security {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          width: fit-content;
+          padding: 6px 8px;
+          border-radius: 999px;
+          background: #edf4ef;
+          color: #1a5c42;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-header-copy h1 {
+          margin: 0;
+          color: #1a2a29;
+          font-size: 32px;
+          line-height: 1.1;
+          letter-spacing: -0.04em;
+        }
+
+        .internal-admin-review-header-copy p {
+          margin: 0;
+          max-width: 720px;
+          color: #576762;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .internal-admin-review-profile-card,
+        .internal-admin-review-permissions-card,
+        .internal-admin-review-lifecycle-card {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+          padding: 18px 18px 16px;
+          border: 1px solid #dfe5e0;
+          border-radius: 12px;
+          background: #ffffff;
+        }
+
+        .internal-admin-review-profile-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+        }
+
+        .internal-admin-review-profile-team {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+        }
+
+        .internal-admin-review-profile-avatar {
+          display: grid;
+          place-items: center;
+          width: 40px;
+          height: 40px;
+          border-radius: 12px;
+          background: linear-gradient(135deg, #dfe6e1, #c7d5ce);
+          color: #1a2a28;
+          font-size: 15px;
+          font-weight: 700;
+        }
+
+        .internal-admin-review-profile-meta {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .internal-admin-review-profile-meta strong {
+          color: #1a2a29;
+          font-size: 18px;
+          line-height: 1.2;
+        }
+
+        .internal-admin-review-role-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 22px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #f4ebc6;
+          color: #6a5a18;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+        }
+
+        .internal-admin-review-edit-button {
+          min-height: 32px;
+          padding: 0 12px;
+          border: 1px solid #dfe5e0;
+          border-radius: 8px;
+          background: #f6f7f6;
+          color: #30413d;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .internal-admin-review-profile-meta-row {
+          color: #4d5d59;
+          font-size: 12px;
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-profile-field-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          padding-top: 8px;
+          border-top: 1px solid #edf1ee;
+        }
+
+        .internal-admin-review-profile-field {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .internal-admin-review-profile-field span {
+          color: #677974;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-profile-field strong {
+          color: #1c2c2a;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+
+        .internal-admin-review-section-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+        }
+
+        .internal-admin-review-section-title {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .internal-admin-review-section-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 22px;
+          height: 22px;
+          border-radius: 8px;
+          background: #edf3ef;
+          color: #1b5d46;
+          font-size: 13px;
+          font-weight: 700;
+        }
+
+        .internal-admin-review-section-title h3 {
+          margin: 0;
+          color: #1a2c2a;
+          font-size: 18px;
+        }
+
+        .internal-admin-review-module-count {
+          color: #6b7b76;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-permissions-table {
+          display: flex;
+          flex-direction: column;
+          border: 1px solid #e3e7e4;
+          border-radius: 12px;
+          overflow: hidden;
+          background: #f7f9f8;
+        }
+
+        .internal-admin-review-permissions-head,
+        .internal-admin-review-permissions-row {
+          display: grid;
+          grid-template-columns: 1.2fr 1fr 1.5fr 0.8fr;
+          gap: 12px;
+          align-items: center;
+          width: 100%;
+        }
+
+        .internal-admin-review-permissions-head {
+          min-height: 42px;
+          padding: 0 14px;
+          background: #edf1ef;
+          color: #5d6d69;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-permissions-row {
+          min-height: 58px;
+          padding: 12px 14px;
+          border-top: 1px solid #e9eeeb;
+          background: #ffffff;
+          color: #243632;
+          font-size: 12px;
+        }
+
+        .internal-admin-review-domain-label {
+          color: #1e2f2a;
+          font-weight: 700;
+        }
+
+        .internal-admin-review-operations {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+        }
+
+        .internal-admin-review-operation-pill {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 22px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #eaf7ef;
+          color: #1e6d4d;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-operation-pill.muted {
+          background: #f1f3f2;
+          color: #5e6c69;
+        }
+
+        .internal-admin-review-clearance {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 24px;
+          padding: 4px 8px;
+          border-radius: 999px;
+          font-size: 9px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-clearance.full {
+          background: #dff4e7;
+          color: #1d734e;
+        }
+
+        .internal-admin-review-clearance.restricted {
+          background: #f2f0d7;
+          color: #7a5e18;
+        }
+
+        .internal-admin-review-clearance.audit {
+          background: #e8eeef;
+          color: #49615d;
+        }
+
+        .internal-admin-review-lifecycle-grid {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 12px;
+        }
+
+        .internal-admin-review-lifecycle-item {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          padding: 14px 14px 12px;
+          border: 1px solid #e2e7e4;
+          border-radius: 10px;
+          background: #f9faf9;
+        }
+
+        .internal-admin-review-lifecycle-label {
+          color: #6a7d78;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+
+        .internal-admin-review-lifecycle-person {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .internal-admin-review-lifecycle-avatar {
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: #dfe9e4;
+          color: #1b2d2a;
+          font-size: 12px;
+          font-weight: 700;
+        }
+
+        .internal-admin-review-lifecycle-person strong,
+        .internal-admin-review-lifecycle-date strong {
+          display: block;
+          color: #1b2d2a;
+          font-size: 14px;
+          line-height: 1.3;
+        }
+
+        .internal-admin-review-lifecycle-person small,
+        .internal-admin-review-lifecycle-date small {
+          color: #5a6a64;
+          font-size: 11px;
+          line-height: 1.4;
+        }
+
+        .internal-admin-review-lifecycle-date {
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
         }
 
         .internal-admin-add-admin-card-label {
