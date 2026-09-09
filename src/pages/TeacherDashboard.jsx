@@ -732,6 +732,8 @@ export default function TeacherDashboard() {
   const [submittingApplication, setSubmittingApplication] = useState(false);
   const [applicationNote, setApplicationNote] = useState('');
   const [applicationError, setApplicationError] = useState('');
+  const [pendingCvFile, setPendingCvFile] = useState(null);
+  const [cvUploadLoading, setCvUploadLoading] = useState(false);
 
   const handleResumeAction = (mode) => {
     if (!activeResume?.url) {
@@ -764,6 +766,30 @@ export default function TeacherDashboard() {
     } catch (err) {
       setAppError(apiErrorMessage(err, 'Unable to upload CV.'));
     }
+  };
+
+  const handleCvSelection = (event) => {
+    const nextFile = event.target.files && event.target.files[0];
+    if (!nextFile) return;
+
+    setPendingCvFile(nextFile);
+    event.target.value = '';
+  };
+
+  const confirmCvUpload = async () => {
+    if (!pendingCvFile) return;
+
+    setCvUploadLoading(true);
+    try {
+      await handleCvUpload(pendingCvFile);
+      setPendingCvFile(null);
+    } finally {
+      setCvUploadLoading(false);
+    }
+  };
+
+  const cancelCvUpload = () => {
+    setPendingCvFile(null);
   };
 
   const applyLoadedTeacherProfile = (profileData = {}) => {
@@ -4898,29 +4924,52 @@ export default function TeacherDashboard() {
                               <p>Uploading a new document will immediately replace your current active resume.</p>
                             </div>
 
-                            <label className="td-cv-dropzone">
-                              <input
-                                type="file"
-                                accept=".pdf,.docx,.doc"
-                                className="hidden"
-                                onChange={async (e) => {
-                                  if (e.target.files && e.target.files[0]) {
-                                    await handleCvUpload(e.target.files[0]);
-                                  }
-                                }}
-                              />
-                              <div className="td-cv-cloud-icon-box">
-                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="16 16 12 12 8 16" />
-                                  <line x1="12" y1="12" x2="12" y2="21" />
-                                  <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
-                                  <polyline points="16 16 12 12 8 16" />
-                                </svg>
+                            {pendingCvFile ? (
+                              <div className="td-cv-confirm-box">
+                                <div className="td-cv-confirm-file">
+                                  <span className="td-cv-confirm-label">Selected file</span>
+                                  <strong>{pendingCvFile.name}</strong>
+                                </div>
+                                <div className="td-cv-confirm-actions">
+                                  <button
+                                    type="button"
+                                    className="td-cv-confirm-btn td-cv-confirm-btn--upload"
+                                    onClick={confirmCvUpload}
+                                    disabled={cvUploadLoading}
+                                  >
+                                    {cvUploadLoading ? 'Uploading...' : 'Upload'}
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="td-cv-confirm-btn td-cv-confirm-btn--cancel"
+                                    onClick={cancelCvUpload}
+                                    disabled={cvUploadLoading}
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
                               </div>
-                              <strong className="td-cv-drop-prompt">Drag and drop your new CV here</strong>
-                              <span className="td-cv-drop-sub">or click to browse from your device</span>
-                              <span className="td-cv-drop-formats">SUPPORTED FORMATS: PDF, DOCX (MAX 5MB)</span>
-                            </label>
+                            ) : (
+                              <label className="td-cv-dropzone">
+                                <input
+                                  type="file"
+                                  accept=".pdf,.docx,.doc"
+                                  className="hidden"
+                                  onChange={handleCvSelection}
+                                />
+                                <div className="td-cv-cloud-icon-box">
+                                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="16 16 12 12 8 16" />
+                                    <line x1="12" y1="12" x2="12" y2="21" />
+                                    <path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3" />
+                                    <polyline points="16 16 12 12 8 16" />
+                                  </svg>
+                                </div>
+                                <strong className="td-cv-drop-prompt">Drag and drop your new CV here</strong>
+                                <span className="td-cv-drop-sub">or click to browse from your device</span>
+                                <span className="td-cv-drop-formats">SUPPORTED FORMATS: PDF, DOCX (MAX 5MB)</span>
+                              </label>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -15016,6 +15065,80 @@ export default function TeacherDashboard() {
         .td-cv-dropzone:hover {
           border-color: #10B981;
           background: #F0FDF4;
+        }
+
+        .td-cv-confirm-box {
+          border: 1.5px solid #E2E8F0;
+          border-radius: 14px;
+          padding: 20px 18px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          background: #F8FAFC;
+        }
+
+        .td-cv-confirm-file {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          text-align: left;
+        }
+
+        .td-cv-confirm-label {
+          font-size: 11px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #64748B;
+        }
+
+        .td-cv-confirm-file strong {
+          font-size: 14px;
+          font-weight: 700;
+          color: #0F172A;
+          word-break: break-word;
+        }
+
+        .td-cv-confirm-actions {
+          display: flex;
+          gap: 10px;
+          width: 100%;
+        }
+
+        .td-cv-confirm-btn {
+          flex: 1;
+          border-radius: 10px;
+          padding: 11px 14px;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+
+        .td-cv-confirm-btn--upload {
+          background: #2563EB;
+          color: #FFFFFF;
+          border: 1px solid #2563EB;
+        }
+
+        .td-cv-confirm-btn--upload:hover {
+          background: #1D4ED8;
+          border-color: #1D4ED8;
+        }
+
+        .td-cv-confirm-btn--cancel {
+          background: #FFFFFF;
+          color: #334155;
+          border: 1px solid #CBD5E1;
+        }
+
+        .td-cv-confirm-btn--cancel:hover {
+          background: #F8FAFC;
+        }
+
+        .td-cv-confirm-btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
         }
 
         .td-cv-cloud-icon-box {
