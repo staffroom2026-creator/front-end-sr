@@ -8647,7 +8647,22 @@ export default function AdminDashboard() {
         .school-qualification-trigger svg { color: #60707d; transition: transform 0.2s ease; }
         .school-qualification-trigger.is-open svg { transform: rotate(180deg); }
         .school-qualification-trigger-text { display: inline-block; max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; font-weight: 500; }
-        .school-qualification-menu { position: absolute; z-index: 20; top: calc(100% + 8px); left: 0; right: 0; display: grid; gap: 4px; padding: 8px; border: 1px solid #dfe6eb; border-radius: 12px; background: #fff; box-shadow: 0 16px 34px rgba(15, 23, 42, .12); }
+        .school-qualification-menu {
+          position: absolute;
+          z-index: 20;
+          top: calc(100% + 8px);
+          left: 0;
+          right: 0;
+          display: grid;
+          gap: 4px;
+          max-height: 220px;
+          overflow-y: auto;
+          padding: 8px;
+          border: 1px solid #dfe6eb;
+          border-radius: 12px;
+          background: #fff;
+          box-shadow: 0 16px 34px rgba(15, 23, 42, .12);
+        }
         .school-qualification-option { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: #384056; font: inherit; font-size: 12px; text-align: left; cursor: pointer; }
         .school-qualification-option:hover { background: #f6faf7; border-color: #dfeee4; }
         .school-qualification-option.is-selected { background: #eafaf0; border-color: #cfe9d8; color: #0d5e2d; font-weight: 600; }
