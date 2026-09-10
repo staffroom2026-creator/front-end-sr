@@ -106,13 +106,13 @@ export default function ForgotPassword() {
 
         .password-reset-content { width: min(100%, 343px); margin-top: -4px; }
         .password-reset-back { display: inline-flex; align-items: center; color: #252b2a; margin-bottom: 24px; }
-        .password-reset-back:focus-visible, .password-reset-form input:focus-visible, .password-reset-form button:focus-visible { outline: 3px solid rgba(28, 203, 67, 0.35); outline-offset: 3px; }
+        .password-reset-back:focus-visible, .password-reset-form input:focus-visible, .password-reset-form button:focus-visible { outline: none; box-shadow: none; }
         .password-reset-content h1 { margin: 0; color: #1c2020; font-family: 'Sora', sans-serif; font-size: 37px; font-weight: 700; line-height: 1.08; letter-spacing: 0; }
         .password-reset-description { margin: 7px 0 18px; color: #858b8c; font-size: 12px; line-height: 18px; }
         .password-reset-form { display: flex; flex-direction: column; gap: 8px; }
         .password-reset-form label { color: #374151; font-size: 12px; font-weight: 600; }
-        .password-reset-input-wrap { display: flex; align-items: center; height: 42px; padding: 0 11px; border: 1px solid #d5ddda; border-radius: 7px; background: transparent; color: #c0cac6; }
-        .password-reset-input-wrap:focus-within { border-color: #1ccb43; box-shadow: 0 0 0 3px rgba(28, 203, 67, 0.12); }
+        .password-reset-input-wrap { display: flex; align-items: center; height: 42px; padding: 0 11px; border: 1px solid #d5ddda; border-radius: 7px; background: transparent; color: #c0cac6; transition: border-color 160ms ease, box-shadow 160ms ease; }
+        .password-reset-input-wrap:focus-within { border-color: #25d94d; box-shadow: 0 0 0 3px rgba(37, 217, 77, 0.14); }
         .password-reset-form input { min-width: 0; flex: 1; padding: 0 8px; border: 0; background: transparent; color: #26302d; font: inherit; font-size: 12px; outline: none; }
         .password-reset-form input::placeholder { color: #adb7b3; }
         .password-reset-form button { height: 48px; margin-top: 17px; border: 0; border-radius: 12px; background: #25d94d; color: #102415; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color 160ms ease; }

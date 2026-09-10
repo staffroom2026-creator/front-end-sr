@@ -54,12 +54,15 @@ export default function ResetPassword() {
     if (!showSuccess) return undefined;
     setIsSuccessClosing(false);
     const closeStartId = window.setTimeout(() => setIsSuccessClosing(true), 1200);
-    const removeId = window.setTimeout(() => setShowSuccess(false), 1500);
+    const removeId = window.setTimeout(() => {
+      setShowSuccess(false);
+      navigate('/signin', { state: { passwordReset: true } });
+    }, 1500);
     return () => {
       window.clearTimeout(closeStartId);
       window.clearTimeout(removeId);
     };
-  }, [showSuccess]);
+  }, [showSuccess, navigate]);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
