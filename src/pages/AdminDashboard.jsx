@@ -190,6 +190,8 @@ export default function AdminDashboard() {
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
+  const [selectedTeacherProfileError, setSelectedTeacherProfileError] = useState("");
+  const [teacherProfileTarget, setTeacherProfileTarget] = useState(null);
   const [teacherInviteMessage, setTeacherInviteMessage] = useState(
     "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
   );
@@ -326,7 +328,7 @@ export default function AdminDashboard() {
       && currentView.jobDetailView === jobDetailView
       && (currentView.selectedJob?.job_id || currentView.selectedJob?.id || null) === (selectedJob?.job_id || selectedJob?.id || null)
       && (currentView.selectedApplicant?.application_id || currentView.selectedApplicant?.id || null) === (selectedApplicant?.application_id || selectedApplicant?.id || null)
-      && (currentView.selectedTeacherProfile?.teacher_id || currentView.selectedTeacherProfile?.user_id || currentView.selectedTeacherProfile?.id || null) === (selectedTeacherProfile?.teacher_id || selectedTeacherProfile?.user_id || selectedTeacherProfile?.id || null);
+      && (currentView.selectedTeacherProfile?.user_id || null) === (selectedTeacherProfile?.user_id || null);
     if (sameView) return;
 
     window.history.pushState(
@@ -1292,7 +1294,7 @@ export default function AdminDashboard() {
   }, [isShortlistModalOpen, isShortlistSuccessOpen, isTeacherInviteModalOpen]);
 
   const currentUserId = useMemo(
-    () => user?.user_id || user?.id || user?.school_id || "",
+    () => user?.user_id || "",
     [user],
   );
 
@@ -1430,7 +1432,7 @@ export default function AdminDashboard() {
           if (String(job.status || "").toLowerCase() === "draft") return true;
           const candidate =
             job.school_id || job.user_id || job.created_by || "";
-          return candidate === currentUserId || candidate === user?.id;
+          return candidate === currentUserId;
         });
 
         if (ownedJobs.length) {
@@ -3365,7 +3367,7 @@ export default function AdminDashboard() {
                   className="school-summary-reject-btn"
                   onClick={() => handleToggleSavedTeacher(teacher)}
                 >
-                  {savedTeacherIds.includes(String(teacher.teacher_id || teacher.user_id || teacher.id || teacher.teacherUserId || teacher.application_id)) ? 'Saved' : 'Save Teacher'}
+                  {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save Teacher'}
                 </button>
               </div>
 
@@ -3865,10 +3867,12 @@ export default function AdminDashboard() {
   };
 
   const handleViewTeacherProfile = async (teacher) => {
-    const teacherId = teacher?.user_id || teacher?.teacher_id || teacher?.id || teacher?.teacherId;
+    setSelectedTeacherProfileError("");
+    setTeacherProfileTarget(teacher);
+    const teacherId = teacher?.user_id;
 
     if (!teacherId) {
-      setSelectedTeacherProfile(teacher);
+      setSelectedTeacherProfileError("Unable to load this teacher profile because the profile is missing a user ID.");
       return;
     }
 
@@ -3907,12 +3911,13 @@ export default function AdminDashboard() {
 
       setSelectedTeacherProfile(merged);
     } catch (_err) {
-      setSelectedTeacherProfile(teacher);
+      setSelectedTeacherProfile(null);
+      setSelectedTeacherProfileError(apiErrorMessage(_err, "Unable to load this teacher profile."));
     }
   };
 
   const handleSendTeacherInvite = async () => {
-    const teacherId = selectedTeacherProfile?.teacher_id || selectedTeacherProfile?.user_id || selectedTeacherProfile?.id;
+    const teacherId = selectedTeacherProfile?.user_id;
     const message = teacherInviteMessage.trim();
 
     if (!teacherId) {
@@ -4594,7 +4599,7 @@ export default function AdminDashboard() {
   };
 
   const handleToggleSavedTeacher = async (teacher) => {
-    const teacherUserId = teacher?.teacher_id || teacher?.user_id || teacher?.id || teacher?.teacherUserId || teacher?.application_id;
+    const teacherUserId = teacher?.user_id;
     if (!teacherUserId) return;
 
     const teacherId = String(teacherUserId);
@@ -4629,6 +4634,7 @@ export default function AdminDashboard() {
     const teacherUsers = (allUsers || [])
       .filter((userEntry) => String(userEntry?.role || "").toLowerCase() === "teacher")
       .map((userEntry, index) => ({
+        user_id: userEntry?.user_id || "",
         name: userEntry?.full_name || userEntry?.email || `Teacher ${index + 1}`,
         role: userEntry?.role_title || userEntry?.subject || "Teacher",
         location: userEntry?.location || userEntry?.state || "Nigeria",
@@ -4645,8 +4651,8 @@ export default function AdminDashboard() {
         phone: userEntry?.phone || "",
         cv_url: userEntry?.cv_url || "",
         status: userEntry?.status || "active",
-        application_id: userEntry?.user_id || userEntry?.id || `teacher-${index}`,
-        teacher_id: userEntry?.user_id || userEntry?.id || "",
+        application_id: userEntry?.user_id || `teacher-${index}`,
+        teacher_id: userEntry?.user_id || "",
       }));
 
     const seenTeachers = new Set();
@@ -4664,6 +4670,7 @@ export default function AdminDashboard() {
           );
 
           return {
+            user_id: app.teacher_id || "",
             name,
             role: matchedJob?.title || matchedJob?.role_type || "Teaching Professional",
             location: matchedJob?.location || app.location || "Nigeria",
@@ -4737,7 +4744,18 @@ export default function AdminDashboard() {
 
     return (
       <div className="school-teachers-page">
-        {selectedTeacherProfile ? (
+        {selectedTeacherProfileError ? (
+          <div className="school-teacher-profile-error" role="alert">
+            <button type="button" className="school-summary-back-btn" onClick={() => { setSelectedTeacherProfileError(""); setTeacherProfileTarget(null); }}>
+              <FiArrowLeft /> Back
+            </button>
+            <h2>Unable to load teacher profile</h2>
+            <p>{selectedTeacherProfileError}</p>
+            <button type="button" className="school-summary-shortlist-btn" onClick={() => handleViewTeacherProfile(teacherProfileTarget)} disabled={!teacherProfileTarget?.user_id}>
+              Try Again
+            </button>
+          </div>
+        ) : selectedTeacherProfile ? (
           renderTeacherProfileSummaryPage(selectedTeacherProfile)
         ) : (
           <>
@@ -4956,7 +4974,7 @@ export default function AdminDashboard() {
                       className="school-teacher-secondary-btn"
                       onClick={() => handleToggleSavedTeacher(teacher)}
                     >
-                      {savedTeacherIds.includes(String(teacher.teacher_id || teacher.user_id || teacher.id || teacher.teacherUserId || teacher.application_id)) ? 'Saved' : 'Save'}
+                      {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save'}
                     </button>
                     <button
                       type="button"

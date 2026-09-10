@@ -2,6 +2,7 @@ import { api } from './api';
 
 export const profileService = {
   getMe: () => api.get('/api/profiles/me'),
+  getProfileViews: (params = {}) => api.get('/api/profiles/teacher/profile-views', { params }),
   updateTeacher: (payload) => api.put('/api/profiles/teacher', payload),
   updateSchool: (payload) => api.put('/api/profiles/school', payload),
   createEducation: (payload) => api.post('/api/profiles/teacher/education', payload),

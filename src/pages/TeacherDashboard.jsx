@@ -436,6 +436,7 @@ export default function TeacherDashboard() {
   const [notifError, setNotifError] = useState('');
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [profileState, setProfileState] = useState({});
+  const [profileViewsCount, setProfileViewsCount] = useState(null);
 
   // ── Personal Info Tab state ──
   const [personalFirstName, setPersonalFirstName] = useState('Teacher');
@@ -509,6 +510,12 @@ export default function TeacherDashboard() {
 
   // ── Settings Subtab state ──
   const [settingsSubTab, setSettingsSubTab] = useState('overview');
+  const [loginActivityView, setLoginActivityView] = useState('recent');
+  const [loginActivity, setLoginActivity] = useState([]);
+  const [loginActivityLoading, setLoginActivityLoading] = useState(false);
+  const [loginActivityError, setLoginActivityError] = useState('');
+  const [loginActivityPage, setLoginActivityPage] = useState(1);
+  const [loginActivityTotal, setLoginActivityTotal] = useState(0);
   const [visibilitySetting, setVisibilitySetting] = useState('schools');
   const [personalInfoOrigin, setPersonalInfoOrigin] = useState('profile');
   const [passwordForm, setPasswordForm] = useState({
@@ -534,6 +541,64 @@ export default function TeacherDashboard() {
   const [savingPreferences, setSavingPreferences] = useState(false);
   const [preferencesMessage, setPreferencesMessage] = useState('');
   const [preferencesError, setPreferencesError] = useState('');
+
+  const formatLoginActivityDate = (value) => {
+    const date = new Date(String(value || '').replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) return 'Date unavailable';
+    return new Intl.DateTimeFormat('en-US', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    }).format(date);
+  };
+
+  const formatLoginDevice = (value) => {
+    const device = String(value || '').trim();
+    if (!device) return 'Web browser';
+    return device.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
+
+  const loadLoginActivity = async ({ page = 1, append = false } = {}) => {
+    try {
+      setLoginActivityLoading(true);
+      setLoginActivityError('');
+      const response = await accountService.getLoginActivity({ page, limit: 10 });
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const rawItems = Array.isArray(payload?.items)
+        ? payload.items
+        : Array.isArray(response?.data?.login_activity)
+          ? response.data.login_activity
+          : [];
+      const normalizedItems = rawItems
+        .filter(Boolean)
+        .map((entry) => ({
+          id: entry.id,
+          title: 'Successful Login',
+          device: formatLoginDevice(entry.device_name),
+          ipAddress: entry.ip_address || 'IP unavailable',
+          location: entry.location || '',
+          time: formatLoginActivityDate(entry.login_at),
+          timestamp: new Date(String(entry.login_at || '').replace(' ', 'T')).getTime() || 0,
+        }))
+        .sort((first, second) => second.timestamp - first.timestamp);
+      setLoginActivity((current) => {
+        const combined = append ? [...current, ...normalizedItems] : normalizedItems;
+        return Array.from(new Map(combined.map((entry) => [entry.id, entry])).values())
+          .sort((first, second) => second.timestamp - first.timestamp);
+      });
+      setLoginActivityPage(Number(payload?.page || page));
+      setLoginActivityTotal(Number(payload?.total || 0));
+    } catch (error) {
+      setLoginActivityError(apiErrorMessage(error, 'Unable to load login activity.'));
+    } finally {
+      setLoginActivityLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (settingsSubTab === 'security') {
+      loadLoginActivity({ page: 1 });
+    }
+  }, [settingsSubTab]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "auto" });
@@ -639,7 +704,7 @@ export default function TeacherDashboard() {
   const totalApplications = applications.length || 0;
   const pendingApplications = applications.filter(app => {
     const s = String(app?.status || '').toLowerCase();
-    return s === 'pending' || s === 'under review' || s === 'reviewed';
+    return s === 'pending' || s === 'shortlisted';
   }).length;
   const visibleApplications = applications
     .filter((application) => {
@@ -715,7 +780,7 @@ export default function TeacherDashboard() {
     return Math.min(100, Math.max(0, strength));
   };
   const getProfileViewsValue = () => {
-    const views = Number(profileState?.profile_views ?? profileState?.views ?? profileState?.view_count ?? 0);
+    const views = Number(profileViewsCount ?? 0);
     if (!Number.isFinite(views)) return 0;
     return Math.max(0, views);
   };
@@ -734,6 +799,7 @@ export default function TeacherDashboard() {
   const [applyDetailsLoading, setApplyDetailsLoading] = useState(false);
   const [alreadyAppliedState, setAlreadyAppliedState] = useState(false);
   const [existingCvUrl, setExistingCvUrl] = useState('');
+  const [applicationRequirements, setApplicationRequirements] = useState(null);
   const [submittingApplication, setSubmittingApplication] = useState(false);
   const [applicationNote, setApplicationNote] = useState('');
   const [applicationError, setApplicationError] = useState('');
@@ -850,13 +916,14 @@ export default function TeacherDashboard() {
 
   const refreshTeacherProfile = async () => {
     try {
-      const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes] = await Promise.all([
+      const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes, profileViewsRes] = await Promise.all([
         jobService.getJobs({}),
         jobService.getJobs({ recommended: 1, page: 1, per_page: 10 }),
         applicationService.getMyApplications(),
         profileService.getMe(),
         featureService.getNotifications(),
         featureService.getSavedJobs(),
+        profileService.getProfileViews({ page: 1, per_page: 10 }).catch(() => null),
       ]);
 
       const extractJobsArray = (response) => {
@@ -913,6 +980,11 @@ export default function TeacherDashboard() {
       }));
       const profileData = profileRes?.data?.data || {};
       const profile = profileData?.profile || profileData?.teacher_profile || profileData || {};
+      const profileViewsData = profileViewsRes?.data?.data || profileViewsRes?.data || {};
+      const totalViews = profileViewsData?.summary?.total_views;
+      if (totalViews !== undefined && totalViews !== null) {
+        setProfileViewsCount(Number(totalViews));
+      }
       const notificationList = notificationsRes?.data?.data?.notifications || notificationsRes?.data?.notifications || [];
       const savedJobs = (savedRes?.data?.data?.saved_jobs || savedRes?.data?.saved_jobs || [])
         .map(item => normalizeJobId(item.job_id ?? item.id))
@@ -1060,7 +1132,6 @@ export default function TeacherDashboard() {
     experience_years: Math.max(0, Number.parseInt(profYearsExp, 10) || 0),
     preferred_employment_type: profEmpPref,
     availability: ['Open', 'Available', 'Not available'].includes(profTeachMode) ? profTeachMode : 'Open',
-    teaching_mode: profTeachingMode,
     skills: Array.isArray(profSubjects) ? profSubjects.filter(Boolean) : [],
     teaching_levels: Array.isArray(profTeachingLevels) ? profTeachingLevels.filter(Boolean) : [],
     preferred_location: availLocation.trim(),
@@ -1093,7 +1164,13 @@ export default function TeacherDashboard() {
     const response = await profileService.updateTeacher(getEditableTeacherProfilePayload(overrides));
     const responseBody = response?.data || {};
     const responseData = responseBody?.data || {};
-    const updatedProfile = responseData?.profile || responseBody?.profile || responseData?.teacher_profile || responseData;
+    const responseProfile = responseData?.profile || responseBody?.profile || responseData?.teacher_profile;
+    const hasProfileFields = responseProfile && Object.keys(responseProfile).some((key) => key !== 'user_id');
+    const updatedProfile = hasProfileFields ? responseProfile : await (async () => {
+      const profileResponse = await profileService.getMe();
+      const profilePayload = profileResponse?.data?.data ?? profileResponse?.data ?? {};
+      return profilePayload?.profile || profilePayload?.teacher_profile || {};
+    })();
     applyCanonicalTeacherProfile(updatedProfile);
     return updatedProfile;
   };
@@ -1489,6 +1566,7 @@ export default function TeacherDashboard() {
     setReviewCoverLetterEditing(!(profileState?.cover_letter || profileState?.coverLetter || '').trim());
     setReviewCvEditing(false);
     setAlreadyAppliedState(false);
+    setApplicationRequirements(null);
     setApplicationError('');
     setApplyDetailsLoading(true);
     setShowApplyModal(true);
@@ -1501,8 +1579,10 @@ export default function TeacherDashboard() {
       }
       const cvUrl = payload.existing_cv_url || activeResume?.url || profileState?.cv_url || '';
       setExistingCvUrl(cvUrl);
+      setApplicationRequirements(payload.requirements || null);
     } catch (_err) {
       setExistingCvUrl(activeResume?.url || profileState?.cv_url || '');
+      setApplicationRequirements(null);
     } finally {
       setApplyDetailsLoading(false);
     }
@@ -1515,6 +1595,7 @@ export default function TeacherDashboard() {
     setReviewCoverLetterEditing(false);
     setReviewCvEditing(false);
     setAlreadyAppliedState(false);
+    setApplicationRequirements(null);
     setApplicationError('');
   };
 
@@ -2032,17 +2113,17 @@ export default function TeacherDashboard() {
                         <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
                       </motion.div>
 
-                      {/* Pending Interviews */}
+                      {/* Pending Applications */}
                       <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
                         <div className="td-mini-icon-circle td-mini-icon-circle--pending">
-                          <FiCalendar size={18} />
+                          <FiFileText size={18} />
                         </div>
-                        <p className="td-mini-label td-mini-label--pending">PENDING</p>
+                        <p className="td-mini-label td-mini-label--pending">PENDING APPLICATIONS</p>
                         <div className="td-mini-value-row">
-                          <span className="td-mini-value td-mini-value--pending">{upcomingInterviews.length}</span>
-                          <span className="td-mini-unit td-mini-unit--pending">Action Req.</span>
+                          <span className="td-mini-value td-mini-value--pending">{pendingApplications}</span>
+                          <span className="td-mini-unit td-mini-unit--pending">Applications</span>
                         </div>
-                        <span className="td-mobile-subtext td-mobile-subtext--gray">{upcomingInterviews.length > 0 ? 'Follow up required' : 'No action required'}</span>
+                        <span className="td-mobile-subtext td-mobile-subtext--gray">{pendingApplications > 0 ? 'Awaiting school response' : 'No pending applications'}</span>
                       </motion.div>
                     </div>
                   </div>
@@ -2573,7 +2654,7 @@ export default function TeacherDashboard() {
                       <div className="td-jd-req-card">
                         <h3 className="td-jd-req-essential">Essential</h3>
                         <ul>
-                          {selectedJob.requirements?.essential ? selectedJob.requirements.essential.map((r, i) => (
+                          {(applicationRequirements || selectedJob.requirements)?.essential ? (applicationRequirements || selectedJob.requirements).essential.map((r, i) => (
                             <li key={i}>• {r}</li>
                           )) : (
                             <li>• Requirements will be shared by the employer once the job is published.</li>
@@ -2583,7 +2664,7 @@ export default function TeacherDashboard() {
                       <div className="td-jd-req-card">
                         <h3 className="td-jd-req-desirable">Desirable</h3>
                         <ul>
-                          {selectedJob.requirements?.desirable ? selectedJob.requirements.desirable.map((r, i) => (
+                          {(applicationRequirements || selectedJob.requirements)?.desirable ? (applicationRequirements || selectedJob.requirements).desirable.map((r, i) => (
                             <li key={i}>• {r}</li>
                           )) : (
                             <li>• Additional preferences will appear when they are available from the employer.</li>
@@ -2995,7 +3076,7 @@ export default function TeacherDashboard() {
                     <motion.div
                       whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
                       className="td-settings-category-card"
-                      onClick={() => setSettingsSubTab('security')}
+                      onClick={() => { setLoginActivityView('recent'); setSettingsSubTab('security'); }}
                     >
                       <div className="td-settings-cat-icon-wrap td-settings-cat-icon--orange">
                         <FiShield size={22} />
@@ -3191,7 +3272,7 @@ export default function TeacherDashboard() {
               )}
 
               {/* ── Security Subtab ── */}
-              {settingsSubTab === 'security' && (
+              {settingsSubTab === 'security' && loginActivityView === 'recent' && (
                 <div className="td-sec-wrap">
 
                   {/* Breadcrumb */}
@@ -3409,27 +3490,69 @@ export default function TeacherDashboard() {
                         <FiClock size={18} className="td-sec-green-icon" />
                         <h3 className="td-sec-card-heading">Recent Login Activity</h3>
                       </div>
-                      <button type="button" className="td-sec-view-log-btn">View Full Log</button>
+                      <button type="button" className="td-sec-view-log-btn" onClick={() => setLoginActivityView('full')}>View Full Log</button>
                     </div>
 
                     <div className="td-sec-timeline">
-                      <div className="td-sec-timeline-item">
-                        <div className="td-sec-timeline-dot td-sec-dot--green" />
-                        <div className="td-sec-timeline-content">
-                          <strong className="td-sec-log-title">Successful Login</strong>
-                          <span className="td-sec-log-device">{user?.full_name || 'Teacher'} account</span>
-                          <span className="td-sec-log-location">
-                            <FiMapPin size={12} /> Live Staffroom session
-                          </span>
+                      {loginActivityLoading ? <p className="td-sec-login-state">Loading login activity...</p> : loginActivityError ? <p className="td-sec-login-state td-sec-login-state--error">{loginActivityError}</p> : loginActivity.length === 0 ? <p className="td-sec-login-state">No login activity recorded.</p> : loginActivity.slice(0, 3).map((entry) => (
+                        <div className="td-sec-timeline-item" key={entry.id}>
+                          <div className="td-sec-timeline-dot td-sec-dot--green" />
+                          <div className="td-sec-timeline-content">
+                            <strong className="td-sec-log-title">{entry.title}</strong>
+                            <span className="td-sec-log-device">{entry.device}</span>
+                            {entry.location && <span className="td-sec-log-location"><FiMapPin size={12} /> {entry.location}</span>}
+                          </div>
+                          <div className="td-sec-timeline-meta">
+                            <span className="td-sec-log-time">{entry.time}</span>
+                            <span className="td-sec-ip-pill">{entry.ipAddress}</span>
+                          </div>
                         </div>
-                        <div className="td-sec-timeline-meta">
-                          <span className="td-sec-log-time">Just now</span>
-                          <span className="td-sec-ip-pill">Protected</span>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
 
+                </div>
+              )}
+
+              {settingsSubTab === 'security' && loginActivityView === 'full' && (
+                <div className="td-sec-wrap td-sec-login-log-page">
+                  <button className="td-sec-breadcrumb" onClick={() => setLoginActivityView('recent')}>
+                    <FiArrowLeft size={16} />
+                    <span>Security &amp; Login Activity</span>
+                  </button>
+                  <div className="td-sec-top-header">
+                    <div>
+                      <h1 className="td-sec-top-title">Full Login Activity</h1>
+                      <p className="td-sec-top-subtitle">Review all recorded sign-in activity for your account.</p>
+                    </div>
+                  </div>
+                  <div className="td-sec-card td-sec-login-log-card">
+                    <div className="td-sec-card-title-row">
+                      <FiClock size={18} className="td-sec-green-icon" />
+                      <h2 className="td-sec-card-heading">Login Logs</h2>
+                    </div>
+                    <div className="td-sec-timeline">
+                      {loginActivityLoading && loginActivity.length === 0 ? <p className="td-sec-login-state">Loading login activity...</p> : loginActivityError && loginActivity.length === 0 ? <p className="td-sec-login-state td-sec-login-state--error">{loginActivityError}</p> : loginActivity.length === 0 ? <p className="td-sec-login-state">No login activity recorded.</p> : loginActivity.map((entry) => (
+                        <div className="td-sec-timeline-item" key={entry.id}>
+                          <div className="td-sec-timeline-dot td-sec-dot--green" />
+                          <div className="td-sec-timeline-content">
+                            <strong className="td-sec-log-title">{entry.title}</strong>
+                            <span className="td-sec-log-device">{entry.device}</span>
+                            {entry.location && <span className="td-sec-log-location"><FiMapPin size={12} /> {entry.location}</span>}
+                          </div>
+                          <div className="td-sec-timeline-meta">
+                            <span className="td-sec-log-time">{entry.time}</span>
+                            <span className="td-sec-ip-pill">{entry.ipAddress}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {loginActivity.length < loginActivityTotal && (
+                      <button type="button" className="td-sec-view-log-btn" onClick={() => loadLoginActivity({ page: loginActivityPage + 1, append: true })} disabled={loginActivityLoading}>
+                        {loginActivityLoading ? 'Loading...' : 'Load More'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 

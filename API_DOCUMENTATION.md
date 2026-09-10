@@ -533,27 +533,20 @@ Publishes a draft job. The database status is changed from `draft` to the canoni
 
 After a successful response, the frontend must replace its local draft record with the returned `job` object and treat `job.status` as `open`. The values `published` and `active` are also normalized to `open` when sent as an update status.
 
-### `PATCH /applications/{application_id}/status` (Canonical rejection flow)
-Updates the recruitment workflow status of an application. This is the frontend's canonical rejection path.
-- **Method:** `PATCH`
-- **URL:** `https://api.staffroomng.com/api/applications/APPLICATION_ID/status`
+### `POST /applications/{application_id}/reject`
+Rejects an application from the school admin dashboard. The school must own the job associated with the application.
+- **Method:** `POST`
+- **URL:** `https://api.staffroomng.com/api/applications/APPLICATION_ID/reject`
 - **Authentication Requirement:** Yes (`Authorization: Bearer <schoolToken>`)
-- **Allowed Role:** `school` (Must own the job associated with the application)
-- **Allowed Statuses:** `pending`, `reviewed`, `shortlisted`, `rejected`, `hired`
+- **Request Body:**
 
-#### Request Body (`application/json`) for rejection
 ```json
 {
-  "status": "rejected",
-  "message": "Thank you for applying. We have decided to proceed with another candidate.",
-  "rejection_message": "Thank you for applying. We have decided to proceed with another candidate."
+  "message": "Thank you for applying. We have decided to proceed with another candidate."
 }
 ```
 
-When `status` is `rejected`, at least one of `message` or `rejection_message` is required. The API stores the rejection reason as `rejection_message`, changes the application status to `rejected`, creates a teacher notification, and sends the teacher a status update email containing the rejection message.
-
-#### Legacy Compatibility Alias
-`POST /api/applications/{application_id}/reject` may still exist as a compatibility endpoint in older server implementations. It should be treated as an alias of the status update flow and is not the canonical contract used by the current frontend.
+The `message` field is required. The API stores it as `rejection_message`, changes the application status to `rejected`, creates a teacher notification, and sends the teacher a status update email containing the message.
 
 ---
 
@@ -619,8 +612,8 @@ Legacy aliases also exist without the `/api` prefix:
 - `GET /api/applications/my-applications` (teacher)
 - `GET /api/applications/{id}`
 - `GET /api/applications/job/{jobId}` (school)
-- `PATCH /api/applications/{id}/status` (school/admin; canonical status update, including rejection)
-- `POST /api/applications/{id}/reject` (legacy compatibility alias; do not treat as primary frontend contract)
+- `PATCH /api/applications/{id}/status` (school/admin)
+- `POST /api/applications/{id}/reject` (school; requires `message`)
 - `DELETE /api/applications/{id}` / `PATCH /api/applications/{id}/withdraw` (teacher)
 
 ### School and teacher directory features
@@ -711,6 +704,7 @@ Auth:
 
 Profile:
 - GET /api/profiles/me
+- GET /api/profiles/teacher/profile-views
 - PUT /api/profiles/teacher
 - POST /api/profiles/teacher/education
 - GET /api/profiles/teacher/education
@@ -758,6 +752,16 @@ Also ensure the frontend handles these states properly:
 - application status updates and notifications
 - CV upload and school logo upload
 - saved jobs and saved teachers features
+- teacher profile-view analytics: use GET /api/profiles/teacher/profile-views for the teacher dashboard card and full school view log
+- school teacher-directory profile flow: use GET /api/teachers/{userId} when a school opens a teacher profile; do not send a separate viewer ID because the backend reads the school from the JWT
+
+Profile-view analytics integration:
+- Display `data.summary.total_views` in the teacher dashboard profile-view count card.
+- Display `data.summary.unique_schools` and `data.summary.last_viewed_at` where the design includes supporting metrics.
+- Render `data.views` as the detailed log, showing school name, school logo, location, and `viewed_at`.
+- Use `data.pagination` for pagination or a Load More action.
+- Do not call a frontend create/log endpoint. A view is recorded automatically when a school successfully requests GET /api/teachers/{userId}.
+- Handle an empty `data.views` array with an appropriate empty state.
 
 Please keep the frontend experience consistent with the StaffRoom flow: premium, clear, and role-aware.
 ```
@@ -980,16 +984,6 @@ Updates the recruitment workflow status of an application.
   "status": "shortlisted"
 }
 ```
-
-For a rejection, use:
-```json
-{
-  "status": "rejected",
-  "message": "Thank you for applying. We have decided to proceed with another candidate."
-}
-```
-
-`message` or `rejection_message` is required when `status` is `rejected`.
 
 #### Sample Success Response (`200 OK`)
 ```json
@@ -1487,6 +1481,79 @@ Returns an active teacher profile, including qualifications, skills, experience,
 
 - **Authentication Requirement:** Yes
 - **Allowed Role:** `school`
+- **Implemented route:** `GET /api/teachers/{userId}`
+- **Authorization:** The `user_id` is taken from the URL, but the authenticated school is taken from the JWT. A school cannot access hidden, inactive, deleted, or non-existent teacher profiles.
+
+#### Sample Success Response (`200 OK`)
+
+```json
+{
+  "success": true,
+  "message": "Teacher profile fetched successfully",
+  "data": {
+    "user_id": "USR-2026-000001",
+    "full_name": "Jane Teacher",
+    "email": "jane@staffroom.ng",
+    "phone": "08000000000",
+    "profile_id": "PROF-2026-001",
+    "bio": "Experienced science teacher",
+    "skills": ["Biology", "Lesson Planning"],
+    "experience_years": 5,
+    "qualification": "B.Ed Biology",
+    "location": "Benin, Edo",
+    "cv_url": "https://api.staffroomng.com/uploads/cvs/jane_cv.pdf",
+    "trcn_status": "verified",
+    "availability": "Open",
+    "profile_visibility": "schools"
+  }
+}
+```
+
+The frontend should open this endpoint when a school selects a teacher from the directory. Use `data` as the canonical response object and do not send a separate school ID or teacher profile ID. Each successful school request records one view for the authenticated school and target teacher.
+
+### `GET /profiles/teacher/profile-views`
+Returns the authenticated teacher's profile-view card metrics and detailed school view history.
+
+- **Authentication Requirement:** Yes (`Authorization: Bearer <teacherToken>`)
+- **Allowed Role:** `teacher`
+- **Query Parameters:** `page` (default `1`) and `per_page` (default `10`, maximum `50`)
+
+#### Sample Success Response (`200 OK`)
+
+```json
+{
+  "success": true,
+  "message": "Teacher profile views fetched successfully",
+  "data": {
+    "summary": {
+      "total_views": 12,
+      "unique_schools": 5,
+      "last_viewed_at": "2026-09-10 14:30:00"
+    },
+    "views": [
+      {
+        "view_id": "...",
+        "viewed_at": "2026-09-10 14:30:00",
+        "school_user_id": "USR-2026-000002",
+        "school_name": "Bright Future Academy",
+        "school_type": "secondary",
+        "state": "Lagos",
+        "lga": "Ikeja",
+        "logo_url": "/uploads/logos/bright_future.png"
+      }
+    ],
+    "pagination": {
+      "current_page": 1,
+      "per_page": 10,
+      "total": 12,
+      "last_page": 2,
+      "has_more": true
+    }
+  }
+}
+```
+
+The teacher dashboard should use `data.summary.total_views` for the profile-view card and `data.views` for the detailed log. The endpoint is automatically scoped to the authenticated teacher; never send a teacher `user_id` from the frontend.
 
 ### `POST /teachers/{user_id}/invite`
 Sends a school invitation to a teacher. Optionally provide `job_id` to attach the invitation to one of the school’s open jobs.
@@ -1610,7 +1677,7 @@ curl -X PUT "https://api.staffroomng.com/api/profiles/teacher" \
 - `GET /applications/{application_id}` returns an application only to its teacher, owning school, or an administrator.
 - `GET /applications/my-applications?page=1&per_page=10` returns the teacher's applications and `pagination` metadata.
 - `GET /applications/job/{job_id}?page=1&per_page=10` returns applications for a job only when the authenticated school owns that job.
-- `PATCH /applications/{application_id}/status` is the canonical route for rejection and other status updates. When `status` is `rejected`, `message` (or `rejection_message`) is required and is returned to the teacher. Repeating the current status returns `409`. `POST /applications/{application_id}/reject` remains only as a legacy compatibility alias where supported.
+- `PATCH /applications/{application_id}/status` accepts `status`. When `status` is `rejected`, `message` (or `rejection_message`) is required and is returned to the teacher. Repeating the current status returns `409`.
 
 Application list responses expose `application_id`, `job_id`, `teacher_id`, `status`, `rejection_message`, `cv_url`, `additional_info`, timestamps, and relevant job/teacher fields.
 

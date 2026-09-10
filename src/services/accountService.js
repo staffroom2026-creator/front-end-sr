@@ -2,6 +2,7 @@ import { api } from './api';
 
 export const accountService = {
   getProfile: () => api.get('/api/account/profile'),
+  getLoginActivity: (params = {}) => api.get('/api/account/login-activity', { params }),
   updateProfile: (payload) => api.put('/api/account/profile', payload),
   uploadProfilePhoto: (formData) =>
     api.post('/api/account/profile-photo', formData, {
