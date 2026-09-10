@@ -437,6 +437,12 @@ export default function TeacherDashboard() {
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [profileState, setProfileState] = useState({});
   const [profileViewsCount, setProfileViewsCount] = useState(null);
+  const [profileViewLogs, setProfileViewLogs] = useState([]);
+  const [profileViewLogsLoading, setProfileViewLogsLoading] = useState(false);
+  const [profileViewLogsError, setProfileViewLogsError] = useState('');
+  const [profileViewLogsPage, setProfileViewLogsPage] = useState(1);
+  const [profileViewLogsTotal, setProfileViewLogsTotal] = useState(0);
+  const [profileViewSummary, setProfileViewSummary] = useState({ uniqueSchools: 0, lastViewedAt: '' });
 
   // ── Personal Info Tab state ──
   const [personalFirstName, setPersonalFirstName] = useState('Teacher');
@@ -555,6 +561,47 @@ export default function TeacherDashboard() {
     const device = String(value || '').trim();
     if (!device) return 'Web browser';
     return device.replace(/[_-]+/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
+
+  const formatProfileViewDate = (value) => {
+    const date = new Date(String(value || '').replace(' ', 'T'));
+    if (Number.isNaN(date.getTime())) return 'Date unavailable';
+    return new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(date);
+  };
+
+  const normalizeProfileViewLogs = (items = []) => items.filter(Boolean).map((entry) => ({
+    id: entry.view_id,
+    schoolName: entry.school_name || 'School',
+    schoolLogo: entry.logo_url || '',
+    location: [entry.lga, entry.state].filter(Boolean).join(', '),
+    viewedAt: formatProfileViewDate(entry.viewed_at),
+    timestamp: new Date(String(entry.viewed_at || '').replace(' ', 'T')).getTime() || 0,
+  })).sort((first, second) => second.timestamp - first.timestamp);
+
+  const loadProfileViewLogs = async ({ page = 1, append = false } = {}) => {
+    try {
+      setProfileViewLogsLoading(true);
+      setProfileViewLogsError('');
+      const response = await profileService.getProfileViews({ page, per_page: 10 });
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const logs = normalizeProfileViewLogs(payload.views || []);
+      setProfileViewsCount(Number(payload.summary?.total_views || 0));
+      setProfileViewSummary({
+        uniqueSchools: Number(payload.summary?.unique_schools || 0),
+        lastViewedAt: payload.summary?.last_viewed_at || '',
+      });
+      setProfileViewLogs((current) => {
+        const combined = append ? [...current, ...logs] : logs;
+        return Array.from(new Map(combined.map((entry) => [entry.id, entry])).values())
+          .sort((first, second) => second.timestamp - first.timestamp);
+      });
+      setProfileViewLogsPage(Number(payload.pagination?.current_page || page));
+      setProfileViewLogsTotal(Number(payload.pagination?.total || 0));
+    } catch (error) {
+      setProfileViewLogsError(apiErrorMessage(error, 'Unable to load profile view logs.'));
+    } finally {
+      setProfileViewLogsLoading(false);
+    }
   };
 
   const loadLoginActivity = async ({ page = 1, append = false } = {}) => {
@@ -985,6 +1032,13 @@ export default function TeacherDashboard() {
       if (totalViews !== undefined && totalViews !== null) {
         setProfileViewsCount(Number(totalViews));
       }
+      setProfileViewSummary({
+        uniqueSchools: Number(profileViewsData?.summary?.unique_schools || 0),
+        lastViewedAt: profileViewsData?.summary?.last_viewed_at || '',
+      });
+      setProfileViewLogs(normalizeProfileViewLogs(profileViewsData?.views || []));
+      setProfileViewLogsPage(Number(profileViewsData?.pagination?.current_page || 1));
+      setProfileViewLogsTotal(Number(profileViewsData?.pagination?.total || 0));
       const notificationList = notificationsRes?.data?.data?.notifications || notificationsRes?.data?.notifications || [];
       const savedJobs = (savedRes?.data?.data?.saved_jobs || savedRes?.data?.saved_jobs || [])
         .map(item => normalizeJobId(item.job_id ?? item.id))
@@ -2094,6 +2148,9 @@ export default function TeacherDashboard() {
                           <span className="td-mini-growth">{profileViewsValue > 0 ? '+0%' : '0%'}</span>
                         </div>
                         <span className="td-mobile-subtext">{profileViewsValue > 0 ? 'Based on profile analytics' : 'No profile views yet'}</span>
+                        <button type="button" className="td-profile-views-log-link" onClick={() => { setActiveTab('settings'); setSettingsSubTab('profile-view-logs'); loadProfileViewLogs({ page: 1 }); }}>
+                          View full log
+                        </button>
                       </motion.div>
 
                       {/* Jobs Applied */}
@@ -3268,6 +3325,69 @@ export default function TeacherDashboard() {
                     </div>
                   </div>
 
+                </div>
+              )}
+
+              {settingsSubTab === 'profile-view-logs' && (
+                <div className="td-sec-wrap td-profile-view-logs-page">
+                  <button className="td-sec-breadcrumb" onClick={() => { setSettingsSubTab('overview'); setActiveTab('dashboard'); }}>
+                    <FiArrowLeft size={16} />
+                    <span>Back to dashboard</span>
+                  </button>
+                  <div className="td-sec-top-header">
+                    <div>
+                      <span className="td-profile-view-logs-eyebrow">PROFILE ANALYTICS</span>
+                      <h1 className="td-sec-top-title">Profile view logs</h1>
+                      <p className="td-sec-top-subtitle">See which schools have viewed your teacher profile and when.</p>
+                    </div>
+                  </div>
+                  <div className="td-profile-view-summary-grid">
+                    <div className="td-profile-view-summary-card td-profile-view-summary-card--total">
+                      <span className="td-profile-view-summary-label">Total views</span>
+                      <strong>{profileViewsCount ?? 0}</strong>
+                      <FiEye size={18} />
+                    </div>
+                    <div className="td-profile-view-summary-card">
+                      <span className="td-profile-view-summary-label">Unique schools</span>
+                      <strong>{profileViewSummary.uniqueSchools}</strong>
+                      <FiBriefcase size={18} />
+                    </div>
+                    <div className="td-profile-view-summary-card">
+                      <span className="td-profile-view-summary-label">Last viewed</span>
+                      <strong>{profileViewSummary.lastViewedAt ? formatProfileViewDate(profileViewSummary.lastViewedAt) : 'No views yet'}</strong>
+                      <FiClock size={18} />
+                    </div>
+                  </div>
+                  <div className="td-sec-card td-profile-view-logs-card">
+                    <div className="td-profile-view-logs-card-header">
+                      <div>
+                        <h2 className="td-sec-card-heading">Schools that viewed your profile</h2>
+                        <p>Recent activity appears first.</p>
+                      </div>
+                      <span className="td-profile-view-count-chip">{profileViewLogsTotal} total</span>
+                    </div>
+                    {profileViewLogsLoading && profileViewLogs.length === 0 ? <p className="td-sec-login-state">Loading profile views...</p> : profileViewLogsError && profileViewLogs.length === 0 ? <p className="td-sec-login-state td-sec-login-state--error">{profileViewLogsError}</p> : profileViewLogs.length === 0 ? <p className="td-sec-login-state">No schools have viewed your profile yet.</p> : (
+                      <div className="td-profile-view-log-list">
+                        {profileViewLogs.map((entry) => (
+                          <div className="td-profile-view-log-item" key={entry.id}>
+                            <div className="td-profile-view-log-logo">
+                              {entry.schoolLogo ? <img src={toTeacherAssetUrl(entry.schoolLogo)} alt="" /> : <FiBriefcase size={18} />}
+                            </div>
+                            <div className="td-profile-view-log-info">
+                              <strong>{entry.schoolName}</strong>
+                              {entry.location && <span><FiMapPin size={12} /> {entry.location}</span>}
+                            </div>
+                            <time>{entry.viewedAt}</time>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {profileViewLogs.length < profileViewLogsTotal && (
+                      <button type="button" className="td-sec-view-log-btn" onClick={() => loadProfileViewLogs({ page: profileViewLogsPage + 1, append: true })} disabled={profileViewLogsLoading}>
+                        {profileViewLogsLoading ? 'Loading...' : 'Load More'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -6801,6 +6921,21 @@ export default function TeacherDashboard() {
 
         .td-mobile-stat-number { display: none; }
         .td-mobile-subtext { display: none; }
+        .td-profile-views-log-link {
+          align-self: flex-start;
+          margin-top: auto;
+          padding: 6px 0 0;
+          border: 0;
+          background: transparent;
+          color: #15803D;
+          font: inherit;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+          text-decoration: underline;
+          text-underline-offset: 3px;
+        }
+        .td-profile-views-log-link:hover { color: #166534; }
         .td-mobile-icon { display: none; }
         .td-desktop-icon { display: block; }
         .td-mobile-text { display: none; }
@@ -11492,6 +11627,143 @@ export default function TeacherDashboard() {
           padding: 24px;
           margin-bottom: 20px;
         }
+        .td-profile-view-logs-page {
+          max-width: 900px;
+        }
+        .td-profile-view-logs-eyebrow {
+          display: block;
+          margin-bottom: 8px;
+          color: #15803D;
+          font-size: 10px;
+          font-weight: 800;
+          letter-spacing: 1.2px;
+        }
+        .td-profile-view-summary-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 12px;
+          margin: 4px 0 20px;
+        }
+        .td-profile-view-summary-card {
+          position: relative;
+          min-height: 94px;
+          padding: 18px;
+          overflow: hidden;
+          border: 1px solid #E5E7EB;
+          border-radius: 14px;
+          background: #fff;
+        }
+        .td-profile-view-summary-card--total {
+          border-color: #BBE7CD;
+          background: #F0FAF4;
+        }
+        .td-profile-view-summary-label {
+          display: block;
+          margin-bottom: 10px;
+          color: #64748B;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .td-profile-view-summary-card strong {
+          display: block;
+          color: #17212B;
+          font-size: 22px;
+          line-height: 1.2;
+        }
+        .td-profile-view-summary-card > svg {
+          position: absolute;
+          right: 16px;
+          bottom: 16px;
+          color: #15803D;
+          opacity: 0.7;
+        }
+        .td-profile-view-logs-card {
+          padding: 24px;
+        }
+        .td-profile-view-logs-card-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding-bottom: 18px;
+          border-bottom: 1px solid #EEF1EF;
+        }
+        .td-profile-view-logs-card-header p {
+          margin: 6px 0 0;
+          color: #7A8791;
+          font-size: 12px;
+        }
+        .td-profile-view-count-chip {
+          flex-shrink: 0;
+          padding: 6px 10px;
+          border-radius: 999px;
+          background: #F0F6F2;
+          color: #167343;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .td-profile-view-log-list {
+          display: flex;
+          flex-direction: column;
+        }
+        .td-profile-view-log-item {
+          display: flex;
+          align-items: center;
+          gap: 14px;
+          min-width: 0;
+          padding: 17px 0;
+          border-bottom: 1px solid #F0F2F1;
+        }
+        .td-profile-view-log-item:last-child {
+          border-bottom: 0;
+        }
+        .td-profile-view-log-logo {
+          display: grid;
+          place-items: center;
+          width: 42px;
+          height: 42px;
+          flex: 0 0 42px;
+          overflow: hidden;
+          border: 1px solid #E3EAE5;
+          border-radius: 12px;
+          background: #F2F8F4;
+          color: #15803D;
+        }
+        .td-profile-view-log-logo img {
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+        }
+        .td-profile-view-log-info {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          gap: 5px;
+          min-width: 0;
+        }
+        .td-profile-view-log-info strong {
+          overflow: hidden;
+          color: #1F2937;
+          font-size: 14px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .td-profile-view-log-info span {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          color: #7A8791;
+          font-size: 11px;
+        }
+        .td-profile-view-log-item time {
+          flex-shrink: 0;
+          color: #64748B;
+          font-size: 11px;
+          text-align: right;
+        }
+        .td-profile-view-logs-card > .td-sec-view-log-btn {
+          margin-top: 18px;
+        }
         .td-sec-devices-icon {
           color: #005A36;
           display: flex;
@@ -15954,6 +16226,24 @@ export default function TeacherDashboard() {
           .td-avail-actions-row {
             flex-direction: column-reverse;
             width: 100%;
+          }
+          .td-profile-view-summary-grid {
+            grid-template-columns: 1fr;
+          }
+          .td-profile-view-logs-card {
+            padding: 20px 16px;
+          }
+          .td-profile-view-logs-card-header {
+            align-items: flex-start;
+          }
+          .td-profile-view-log-item {
+            align-items: flex-start;
+            flex-wrap: wrap;
+          }
+          .td-profile-view-log-item time {
+            width: calc(100% - 56px);
+            margin-left: 56px;
+            text-align: left;
           }
         }
       `}</style>
