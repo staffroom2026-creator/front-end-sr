@@ -404,8 +404,23 @@ const getApplicationDisplayStatus = (application = {}) => {
   return rawStatus;
 };
 
-const teacherLevelOptions = ['Pre KG', 'KG', 'Junior (JSS1 - JSS3)', 'Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'];
+const teacherLevelOptions = ['Pre KG', 'KG', 'Secondary (JSS1-SS3)', 'Primary School', 'Tertiary Institution'];
 const degreeOptions = ['B.Ed', 'B.A.', 'B.Sc.', 'M.Ed', 'M.A.', 'M.Sc.', 'Ph.D.', 'ND', 'NCE', 'HND', 'PGDE', 'Diploma', 'Certificate', 'Others'];
+
+const normalizeEducationLevel = (value = '') => {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+
+  const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+  if (normalized.includes('pre kg') || normalized.includes('prekg')) return 'Pre KG';
+  if (normalized.includes('kg')) return 'KG';
+  if (normalized.includes('jss') || normalized.includes('ss')) return 'Secondary (JSS1-SS3)';
+  if (normalized.includes('primary')) return 'Primary School';
+  if (normalized.includes('tertiary') || normalized.includes('university') || normalized.includes('college')) return 'Tertiary Institution';
+
+  return raw;
+};
 const degreeClassOptions = [
   'First Class Honours / Distinction',
   'Second Class Honours (Upper Division) / Upper Credit',
@@ -1909,7 +1924,7 @@ export default function TeacherDashboard() {
   const [selectedJobTypes, setSelectedJobTypes] = useState([]);
   const [salaryRange, setSalaryRange] = useState(50000);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [displayedJobsCount, setDisplayedJobsCount] = useState(10);
+  const [displayedJobsCount, setDisplayedJobsCount] = useState(5);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
@@ -1929,11 +1944,11 @@ export default function TeacherDashboard() {
     setSubjectSearch('');
     setLocationSearch('');
     setKeywordSearch('');
-    setDisplayedJobsCount(10);
+    setDisplayedJobsCount(5);
   };
 
   const handleLoadMore = () => {
-    setDisplayedJobsCount(prev => prev + 10);
+    setDisplayedJobsCount(prev => prev + 5);
   };
 
   const filteredJobs = sortJobsByPreference(
@@ -1950,7 +1965,8 @@ export default function TeacherDashboard() {
       if (locationSearch && !matchesLocation) return false;
       if (keywordSearch && !matchesKeyword) return false;
 
-      if (selectedEducation.length > 0 && !selectedEducation.includes(job.education)) return false;
+      const jobEducation = normalizeEducationLevel(job.education || job.education_level || job.teaching_level || '');
+      if (selectedEducation.length > 0 && !selectedEducation.some(level => normalizeEducationLevel(level) === jobEducation)) return false;
       if (selectedJobTypes.length > 0 && !selectedJobTypes.some(type => String(job.type).toLowerCase().includes(type.toLowerCase()))) return false;
       if (Number(job.salaryMonthly || 0) < Number(salaryRange || 0)) return false;
 
@@ -2426,7 +2442,7 @@ export default function TeacherDashboard() {
 
                   {!filtersCollapsed && <div className="td-filter-group">
                     <h4>EDUCATION LEVEL</h4>
-                    {['Pre KG', 'KG', 'Secondary (SS1-SS3)', 'Primary School', 'Tertiary Institution'].map(level => (
+                    {teacherLevelOptions.map(level => (
                       <label key={level} className="td-checkbox-label" onClick={() => toggleEducation(level)}>
                         <div className={`td-checkbox-custom ${selectedEducation.includes(level) ? 'td-checked' : ''}`}>
                           {selectedEducation.includes(level) && <FiCheck size={12} />}
@@ -2484,7 +2500,7 @@ export default function TeacherDashboard() {
                         className={`td-mobile-saved-btn ${showSavedOnly ? 'td-mobile-saved-btn--active' : ''}`}
                         onClick={() => {
                           setShowSavedOnly(!showSavedOnly);
-                          setDisplayedJobsCount(10);
+                          setDisplayedJobsCount(5);
                         }}
                       >
                         <FiBookmark size={14} /> Saved
@@ -2614,12 +2630,12 @@ export default function TeacherDashboard() {
                   {filteredJobs.length > 0 && displayedJobsCount < filteredJobs.length && (
                     <div className="td-load-more-container td-desktop-only">
                       <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn" onClick={handleLoadMore}>Load More Jobs</motion.button>
-                      <p>Showing {Math.min(displayedJobsCount, filteredJobs.length)} of {filteredJobs.length} results</p>
+                      <p>Showing {Math.min(displayedJobsCount, filteredJobs.length)} results</p>
                     </div>
                   )}
                   {filteredJobs.length > 0 && displayedJobsCount >= filteredJobs.length && (
                     <div className="td-load-more-container td-desktop-only">
-                      <p>Showing all {filteredJobs.length} results</p>
+                      <p>Showing all {Math.min(displayedJobsCount, filteredJobs.length)} results</p>
                     </div>
                   )}
                 </div>
