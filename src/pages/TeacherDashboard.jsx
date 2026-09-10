@@ -62,7 +62,13 @@ const formatJobAge = (value) => {
     const year = postedDate.getFullYear();
     return `${day}/${month}/${year}`;
   }
-  if (daysElapsed < 7) return `${daysElapsed} day${daysElapsed === 1 ? '' : 's'} ago`;
+
+  if (daysElapsed < 7) {
+    const day = String(postedDate.getDate()).padStart(2, '0');
+    const month = String(postedDate.getMonth() + 1).padStart(2, '0');
+    const year = postedDate.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
 
   const weeksElapsed = Math.floor(daysElapsed / 7);
   if (weeksElapsed < 4) return `${weeksElapsed} week${weeksElapsed === 1 ? '' : 's'} ago`;
@@ -2234,10 +2240,14 @@ export default function TeacherDashboard() {
                             <span><FiBook aria-hidden="true" size={12} />{job.subject || 'Teaching'}</span>
                             <span><FiClock aria-hidden="true" size={12} />{job.type || 'Full-time'}</span>
                             <span><FiMapPin aria-hidden="true" size={12} />{job.location}</span>
-                            <span><FiCreditCard aria-hidden="true" size={12} />{job.salaryStr || 'Competitive'}</span>
+                            <span><FiClock aria-hidden="true" size={12} />{job.timeLabel || 'Date unavailable'}</span>
                           </div>
 
                           <div className="td-job-footer">
+                            <div className="td-job-salary-inline">
+                              <FiCreditCard aria-hidden="true" size={14} />
+                              <span>{job.salaryStr || 'Competitive'}</span>
+                            </div>
                             <button
                               type="button"
                               className="td-quick-apply"
@@ -3224,24 +3234,6 @@ export default function TeacherDashboard() {
                           <strong>Status: Visible to Schools.</strong> Your profile is currently active in the candidate pool.
                         </span>
                       </div>
-                    </div>
-
-                    {/* Right Card: Application Data */}
-                    <div className="td-privacy-card td-privacy-card--appdata">
-                      <div className="td-privacy-card-title-row">
-                        <span className="td-privacy-card-icon td-privacy-icon--darkgreen">
-                          <FiShare2 size={18} />
-                        </span>
-                        <h2 className="td-privacy-card-heading">Application Data</h2>
-                      </div>
-
-                      <p className="td-privacy-card-desc">
-                        When you apply for a job, employers receive a snapshot of your profile as it appears at the time of application.
-                      </p>
-
-                      <button className="td-privacy-view-btn">
-                        View Shared Data
-                      </button>
                     </div>
 
                   </div>
@@ -7068,11 +7060,25 @@ export default function TeacherDashboard() {
 
         .td-job-footer {
           display: flex;
-          justify-content: flex-end;
+          justify-content: space-between;
           align-items: center;
           border-top: 1px solid #F1F5F9;
           margin-top: 14px;
           padding-top: 14px;
+          gap: 12px;
+        }
+        .td-job-salary-inline {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          color: #0F172A;
+          font-size: 12px;
+          font-weight: 700;
+          letter-spacing: 0.2px;
+          white-space: nowrap;
+        }
+        .td-job-salary-inline svg {
+          color: #10B981;
         }
         .td-quick-apply {
           background: #22C55E;
@@ -7086,6 +7092,7 @@ export default function TeacherDashboard() {
           transition: background 0.2s;
           font-family: inherit;
           white-space: nowrap;
+          margin-left: auto;
         }
         .td-quick-apply:hover {
           background: #16A34A;
@@ -11184,9 +11191,10 @@ export default function TeacherDashboard() {
         }
         .td-privacy-top-grid {
           display: grid;
-          grid-template-columns: 1.7fr 1fr;
+          grid-template-columns: 1fr;
           gap: 18px;
           margin-bottom: 24px;
+          width: 100%;
         }
         @media (max-width: 860px) {
           .td-privacy-top-grid {
@@ -11194,6 +11202,7 @@ export default function TeacherDashboard() {
           }
         }
         .td-privacy-card {
+          width: 100%;
           background: #fff;
           border: 1px solid #E9ECEF;
           border-radius: 18px;
