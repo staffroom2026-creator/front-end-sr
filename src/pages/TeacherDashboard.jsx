@@ -316,6 +316,7 @@ const normalizeEducationRecords = (value) => {
     education_id: record.education_id || record.id || null,
     id: record.education_id || record.id || `education-${index}`,
     degree: record.degree || record.qualification || '',
+    other_degree: record.other_degree || record.degreeOther || '',
     field_of_study: record.field_of_study || record.fieldOfStudy || '',
     class_of_degree: record.class_of_degree || record.degree_class || record.classOfDegree || '',
     institution: record.institution || record.school || '',
@@ -502,6 +503,8 @@ export default function TeacherDashboard() {
   const [availEmpType, setAvailEmpType] = useState('full-time');
   const [availLocation, setAvailLocation] = useState('');
   const [availStartOption, setAvailStartOption] = useState('immediately');
+  const [availSpecificDate, setAvailSpecificDate] = useState('');
+  const [savingAvailability, setSavingAvailability] = useState(false);
   const [showProfileUpdatedModal, setShowProfileUpdatedModal] = useState(false);
 
   // ── Settings Subtab state ──
@@ -561,6 +564,7 @@ export default function TeacherDashboard() {
   const [profYearsExp, setProfYearsExp] = useState('0+ years');
   const [profEmpPref, setProfEmpPref] = useState('Open');
   const [profTeachMode, setProfTeachMode] = useState('Open');
+  const [profTeachingMode, setProfTeachingMode] = useState('In Person');
   const [profSubjects, setProfSubjects] = useState([]);
   const [profTeachingLevels, setProfTeachingLevels] = useState([]);
   const [newSubjectInput, setNewSubjectInput] = useState('');
@@ -804,6 +808,9 @@ export default function TeacherDashboard() {
     setPersonalPhone(account.phone || '');
     setPersonalEmail(account.email || user?.email || '');
     setAvailLocation(profile.preferred_location || profile.location || '');
+    setAvailEmpType(profile.preferred_employment_type || 'full-time');
+    setAvailSpecificDate(profile.available_from || '');
+    setAvailStartOption(profile.available_from ? 'specific-date' : 'immediately');
     setProfTitle(profile.role_title || 'Teacher');
     setProfSummary(profile.bio || '');
     setProfYearsExp(profile.experience_years !== undefined && profile.experience_years !== null
@@ -811,6 +818,7 @@ export default function TeacherDashboard() {
       : 'Not provided');
     setProfEmpPref(profile.preferred_employment_type || 'Open');
     setProfTeachMode(profile.availability || 'Open');
+    setProfTeachingMode(profile.teaching_mode || 'In Person');
     setProfSubjects(getProfileSubjects(profile));
     setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
     setEducationList(normalizeEducationRecords(profile.education_history));
@@ -932,11 +940,15 @@ export default function TeacherDashboard() {
       setPersonalCity(locationParts[0] || '');
       setPersonalState(locationParts.slice(1).join(', ') || '');
       setAvailLocation(profile.preferred_location || profile.location || '');
+      setAvailEmpType(profile.preferred_employment_type || 'full-time');
+      setAvailSpecificDate(profile.available_from || '');
+      setAvailStartOption(profile.available_from ? 'specific-date' : 'immediately');
       setProfTitle(profile.role_title || 'Teacher');
       setProfSummary(profile.bio || '');
       setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
       setProfEmpPref(profile.preferred_employment_type || 'Open');
       setProfTeachMode(profile.availability || 'Open');
+      setProfTeachingMode(profile.teaching_mode || 'In Person');
       setProfSubjects(getProfileSubjects(profile));
       setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
       setEducationList(normalizeEducationRecords(profile.education_history));
@@ -1042,17 +1054,19 @@ export default function TeacherDashboard() {
       .catch(() => {});
   }, []);
 
-  const getEditableTeacherProfilePayload = ({ education_history, teaching_experience } = {}) => ({
+  const getEditableTeacherProfilePayload = ({ education_history, teaching_experience, ...overrides } = {}) => ({
     role_title: profTitle.trim(),
     bio: profSummary.trim(),
     experience_years: Math.max(0, Number.parseInt(profYearsExp, 10) || 0),
     preferred_employment_type: profEmpPref,
-    availability: profTeachMode,
+    availability: ['Open', 'Available', 'Not available'].includes(profTeachMode) ? profTeachMode : 'Open',
+    teaching_mode: profTeachingMode,
     skills: Array.isArray(profSubjects) ? profSubjects.filter(Boolean) : [],
     teaching_levels: Array.isArray(profTeachingLevels) ? profTeachingLevels.filter(Boolean) : [],
     preferred_location: availLocation.trim(),
     ...(education_history === undefined ? {} : { education_history }),
     ...(teaching_experience === undefined ? {} : { teaching_experience }),
+    ...overrides,
   });
 
   const applyCanonicalTeacherProfile = (profile) => {
@@ -1063,9 +1077,13 @@ export default function TeacherDashboard() {
     setProfYearsExp(nextProfile.experience_years ? `${nextProfile.experience_years}+ years` : '0+ years');
     setProfEmpPref(nextProfile.preferred_employment_type || 'Open');
     setProfTeachMode(nextProfile.availability || 'Open');
+    setProfTeachingMode(nextProfile.teaching_mode || 'In Person');
     setProfSubjects(getProfileSubjects(nextProfile));
     setProfTeachingLevels(normalizeTeachingLevels(nextProfile.teaching_levels || []));
     setAvailLocation(nextProfile.preferred_location || nextProfile.location || '');
+    setAvailEmpType(nextProfile.preferred_employment_type || 'full-time');
+    setAvailSpecificDate(nextProfile.available_from || '');
+    setAvailStartOption(nextProfile.available_from ? 'specific-date' : 'immediately');
     setEducationList(normalizeEducationRecords(nextProfile.education_history));
     setExperienceList(normalizeExperienceRecords(nextProfile.teaching_experience));
     return nextProfile;
@@ -1080,14 +1098,15 @@ export default function TeacherDashboard() {
     return updatedProfile;
   };
 
-  const toEducationPayload = (records) => records.map(({ education_id, degree, institution, field_of_study, class_of_degree, start_year, end_year, status }) => ({
+  const toEducationPayload = (records) => records.map(({ education_id, degree, other_degree, institution, field_of_study, class_of_degree, start_year, end_year, status }) => ({
     education_id: education_id || null,
-    degree: degree.trim(),
-    institution: institution.trim(),
+    degree: String(degree || '').trim(),
+    other_degree: String(other_degree || '').trim() || null,
+    institution: String(institution || '').trim(),
     field_of_study: (field_of_study || '').trim(),
     class_of_degree: (class_of_degree || '').trim(),
-    start_year: Number(start_year),
-    end_year: end_year ? Number(end_year) : null,
+    start_year: Number.parseInt(start_year, 10),
+    end_year: end_year ? Number.parseInt(end_year, 10) : null,
     status,
   }));
 
@@ -1125,6 +1144,7 @@ export default function TeacherDashboard() {
     const educationRecord = {
       education_id: editingEducationId || null,
       degree: degree.trim(),
+      other_degree: newEduForm.degree === 'Others' ? newEduForm.degreeOther.trim() : '',
       institution: newEduForm.institution.trim(),
       field_of_study: newEduForm.fieldOfStudy.trim(),
       class_of_degree: newEduForm.classOfDegree,
@@ -1205,6 +1225,37 @@ export default function TeacherDashboard() {
     }
   };
 
+  const handleSaveAvailability = async () => {
+    const availableFrom = availStartOption === 'specific-date'
+      ? availSpecificDate
+      : availStartOption === '2-weeks'
+        ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+        : new Date().toISOString().slice(0, 10);
+
+    if (availStartOption === 'specific-date' && !availSpecificDate) {
+      setAppError('Select a date when you will be available.');
+      return;
+    }
+
+    try {
+      setSavingAvailability(true);
+      setAppError('');
+      await saveUnifiedTeacherProfile({
+        preferred_employment_type: availEmpType,
+        preferred_location: availLocation.trim(),
+        available_from: availableFrom,
+        availability: 'Open',
+        education_history: toEducationPayload(educationList),
+        teaching_experience: toExperiencePayload(experienceList),
+      });
+      setShowProfileUpdatedModal(true);
+    } catch (err) {
+      setAppError(profileApiErrorMessage(err, 'Unable to save availability.'));
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
+
   const handleSavePersonalInfo = async () => {
     const firstName = personalFirstName.trim();
     const lastName = personalLastName.trim();
@@ -1249,21 +1300,26 @@ export default function TeacherDashboard() {
 
     const experienceRecord = {
       ...expForm,
+      experience_id: editingExpId || null,
       role: expForm.role.trim(),
       school: expForm.school.trim(),
       location: expForm.location.trim(),
       description: expForm.description.trim(),
       period: [formatMonthYear(expForm.start_date), formatMonthYear(expForm.end_date)].filter(Boolean).join(' - '),
     };
-    const nextExperienceList = editingExpId
-      ? experienceList.map((item) => item.experience_id === editingExpId ? { ...item, ...experienceRecord, experience_id: editingExpId } : item)
-      : [...experienceList, { ...experienceRecord, experience_id: null }];
-    const teachingExperience = toExperiencePayload(nextExperienceList);
+    const experiencePayload = toExperiencePayload([experienceRecord])[0];
 
     try {
       setSavingExperience(true);
       setExperienceError('');
-      await saveUnifiedTeacherProfile({ teaching_experience: teachingExperience });
+      if (editingExpId) {
+        await profileService.updateExperience(editingExpId, experiencePayload);
+      } else {
+        await profileService.createExperience(experiencePayload);
+      }
+      const response = await profileService.getMe();
+      const profileData = response?.data?.data ?? response?.data ?? {};
+      applyLoadedTeacherProfile(profileData);
       setShowAddExpModal(false);
     } catch (err) {
       setExperienceError(profileApiErrorMessage(err, 'Unable to save teaching experience.'));
@@ -2381,10 +2437,6 @@ export default function TeacherDashboard() {
                               <FiMapPin size={13} />
                               <span>{job.location}</span>
                             </div>
-                            <div className="td-fc-meta-item td-fc-meta-salary">
-                              <FiCreditCard size={13} />
-                              <span>{job.salaryStr || 'Salary available on request'}</span>
-                            </div>
                             {job.tags && job.tags.map(tag => (
                               <span key={tag} className="td-fc-meta-tag">{tag}</span>
                             ))}
@@ -2393,6 +2445,10 @@ export default function TeacherDashboard() {
                           {/* Actions */}
                           <div className="td-fc-footer">
                             <div className="td-fc-footer-actions">
+                              <div className="td-fc-footer-salary">
+                                <FiCreditCard size={13} />
+                                <span>{job.salaryStr || 'Salary available on request'}</span>
+                              </div>
                               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
                                 View Details
                               </motion.button>
@@ -3151,21 +3207,6 @@ export default function TeacherDashboard() {
                       <p className="td-sec-top-subtitle">Manage your fundamental account details and login credentials securely.</p>
                     </div>
                     <div className="td-sec-deco-circle" />
-                  </div>
-
-                  {/* Password Card */}
-                  <div className="td-sec-pwd-card">
-                    <div className="td-sec-pwd-left">
-                      <div className="td-sec-pwd-title-row">
-                        <FiKey size={15} className="td-sec-pwd-icon" />
-                        <span className="td-sec-pwd-title">Password</span>
-                      </div>
-                      <div className="td-sec-pwd-dots">••••••••••••</div>
-                      <span className="td-sec-pwd-last">Secure your account with a fresh password.</span>
-                    </div>
-                    <button type="button" className="td-sec-btn td-sec-btn--green" onClick={() => document.getElementById('change-password-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                      Change Password
-                    </button>
                   </div>
 
                   <div className="td-sec-info-banner">
@@ -4004,7 +4045,7 @@ export default function TeacherDashboard() {
                           <div className="td-prof-preferences">
                             <h2><FiFilter /> Preferences</h2>
                             <label>Employment Preference<select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Open">Open</option><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
-                            <label>Teaching Mode<select value={profTeachMode} onChange={(event) => setProfTeachMode(event.target.value)}><option value="Open">Open</option><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
+                            <label>Teaching Mode<select value={profTeachingMode} onChange={(event) => setProfTeachingMode(event.target.value)}><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
                           </div>
                         </section>
                         <aside className="td-prof-edit-aside">
@@ -5181,6 +5222,19 @@ export default function TeacherDashboard() {
                               <span>Specific Date</span>
                             </button>
                           </div>
+                          {availStartOption === 'specific-date' && (
+                            <div className="td-avail-loc-field" style={{ marginTop: '16px' }}>
+                              <label className="td-avail-field-label" htmlFor="teacher-available-from">Available date</label>
+                              <input
+                                id="teacher-available-from"
+                                type="date"
+                                className="td-avail-loc-input"
+                                value={availSpecificDate}
+                                min={new Date().toISOString().slice(0, 10)}
+                                onChange={(event) => setAvailSpecificDate(event.target.value)}
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Action Buttons */}
@@ -5195,9 +5249,10 @@ export default function TeacherDashboard() {
                           <button
                             type="button"
                             className="td-pers-save-btn"
-                            onClick={() => setProfileSubTab('update-success')}
+                            onClick={handleSaveAvailability}
+                            disabled={savingAvailability}
                           >
-                            Save Changes
+                            {savingAvailability ? 'Saving...' : 'Save Changes'}
                           </button>
                         </div>
                       </div>
@@ -7179,7 +7234,18 @@ export default function TeacherDashboard() {
         .td-fc-footer-actions { 
           display: flex;
           align-items: center;
+          justify-content: space-between;
           gap: 6px;
+          width: 100%;
+        }
+        .td-fc-footer-salary {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          color: #15803D;
+          font-size: 12px;
+          font-weight: 700;
+          white-space: nowrap;
         }
         .td-fc-action {
           background: #15803D;

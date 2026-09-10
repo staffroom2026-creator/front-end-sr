@@ -178,6 +178,7 @@ export default function AdminDashboard() {
   const [openJobMenuId, setOpenJobMenuId] = useState(null);
   const [openApplicantMenuId, setOpenApplicantMenuId] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [publishingDraftId, setPublishingDraftId] = useState(null);
   const isRestoringAdminHistory = useRef(false);
   const [jobDetailView, setJobDetailView] = useState("detail");
   const [applicantFilter, setApplicantFilter] = useState("All");
@@ -372,8 +373,8 @@ export default function AdminDashboard() {
       ? payload.required_qualification
       : normalizeResponsibilityList(payload.required_qualification);
     const requiredQualification = requiredQualificationList.length
-      ? requiredQualificationList.join("; ")
-      : "B.Ed or equivalent";
+      ? requiredQualificationList.map((item) => String(item).trim()).filter(Boolean)
+      : ["B.Ed or equivalent"];
     const applicationDeadline = String(payload.application_deadline ?? "").trim();
     const isFeatured = Boolean(payload.is_featured);
 
@@ -402,6 +403,7 @@ export default function AdminDashboard() {
   const openJobForm = (fromTab = activeTab) => {
     setPreviousTab(fromTab === "post-job" ? "overview" : fromTab);
     setEditingJobId(null);
+    setPublishingDraftId(null);
     setSelectedJob(null);
     setSelectedApplicant(null);
     setActiveTab("post-job");
@@ -411,6 +413,7 @@ export default function AdminDashboard() {
     if (!job) return;
     setPreviousTab("jobs");
     setEditingJobId(job.job_id || job.id);
+    setPublishingDraftId(null);
     setJobForm({
       ...emptyJobForm,
       ...job,
@@ -425,6 +428,7 @@ export default function AdminDashboard() {
     if (!job) return;
     setPreviousTab("jobs");
     setEditingJobId(null);
+    setPublishingDraftId(job.job_id || job.id);
     setJobForm({
       ...emptyJobForm,
       ...job,
@@ -590,6 +594,8 @@ export default function AdminDashboard() {
   const handleAdminEmailVerificationSuccess = () => {
     setShowAdminEmailVerificationModal(false);
     setSettingsSection("profile");
+    setPendingAdminEmail("");
+    loadAdminProfile();
     setAdminSuccessSnackbox({ title: "Email changed successfully", message: "Your email has been changed successfully." });
   };
 
@@ -605,16 +611,17 @@ export default function AdminDashboard() {
 
   const handleAdminPhoneChange = async () => {
     const phone = adminPhoneChangeValue.trim();
-    if (!phone) {
-      showSnackbar("Phone update failed", "Enter a phone number.");
+    const phoneDigits = phone.replace(/\D/g, "");
+    if (phoneDigits.length < 10) {
+      showSnackbar("Phone update failed", "Enter a valid phone number with at least 10 digits.");
       return;
     }
 
     try {
       setSavingAdminPhone(true);
-      await accountService.updateProfile({ phone });
-      setAdminProfileForm((current) => ({ ...current, phone }));
-      setPendingAdminPhone(phone);
+      await accountService.updateProfile({ phone: phoneDigits });
+      setAdminProfileForm((current) => ({ ...current, phone: phoneDigits }));
+      setPendingAdminPhone(phoneDigits);
       setAdminPhoneVerificationCode(["", "", "", "", "", ""]);
       setShowAdminPhoneVerificationModal(true);
     } catch (err) {
@@ -832,6 +839,8 @@ export default function AdminDashboard() {
   const handleAdminPhoneVerificationSuccess = () => {
     setShowAdminPhoneVerificationModal(false);
     setSettingsSection("profile");
+    setPendingAdminPhone("");
+    loadAdminProfile();
     setAdminSuccessSnackbox({ title: "Phone number changed successfully", message: "Your phone number has been changed successfully." });
   };
 
@@ -1154,6 +1163,11 @@ export default function AdminDashboard() {
       setAddressValue(mergedProfile.address || addressValue);
       setSchoolLogoPreview(toAssetUrl(mergedProfile.logo_url || mergedProfile.school_logo || mergedProfile.logo || schoolLogoPreview));
       setSchoolLogoFile(null);
+      const updatedLocation = getSchoolLocation(mergedProfile);
+      if (updatedLocation) {
+        setJobForm((current) => ({ ...current, location: updatedLocation }));
+        setSchoolLocationLocked(true);
+      }
       setIsSchoolNameEditing(false);
       setIsEmailEditing(false);
       setIsPhoneEditing(false);
@@ -1293,8 +1307,26 @@ export default function AdminDashboard() {
     }
   };
 
+  const getSchoolLocation = (profile = {}) => [
+    profile.city || profile.lga,
+    profile.state,
+    profile.country,
+  ].filter(Boolean).join(", ") || profile.location || "";
+
+  const deduplicateJobs = (jobList = []) => {
+    const seen = new Map();
+    jobList.filter(Boolean).forEach((job) => {
+      const jobId = job.job_id || job.id;
+      const fallbackKey = [job.title, job.location, job.created_at || job.updated_at].filter(Boolean).join("|");
+      const key = String(jobId || fallbackKey || JSON.stringify(job));
+      const existing = seen.get(key);
+      seen.set(key, existing ? { ...existing, ...job } : job);
+    });
+    return Array.from(seen.values());
+  };
+
   const saveSchoolJobDraft = () => {
-    const draftId = editingJobId || `draft-${Date.now()}`;
+    const draftId = publishingDraftId || editingJobId || `draft-${Date.now()}`;
     const draft = {
       ...jobForm,
       job_id: draftId,
@@ -1316,10 +1348,30 @@ export default function AdminDashboard() {
     setResponsibilityInput("");
     setOtherRequirementInput("");
     setEditingJobId(null);
+    setPublishingDraftId(null);
     setSelectedJob(null);
     setSelectedApplicant(null);
     setActiveTab(previousTab);
     showSnackbar("Draft saved successfully", "Your job draft has been saved successfully");
+  };
+
+  const discardSchoolJobDraft = (draftId = publishingDraftId) => {
+    if (!draftId) return;
+
+    const remainingDrafts = readSchoolJobDrafts().filter(
+      (draft) => String(draft.job_id || draft.id) !== String(draftId),
+    );
+    localStorage.setItem(schoolDraftStorageKey, JSON.stringify(remainingDrafts));
+    setJobs((prev) => prev.filter((job) => String(job.job_id || job.id) !== String(draftId)));
+    setJobForm(emptyJobForm);
+    setResponsibilityInput("");
+    setOtherRequirementInput("");
+    setPublishingDraftId(null);
+    setEditingJobId(null);
+    setSelectedJob(null);
+    setSelectedApplicant(null);
+    setActiveTab(previousTab);
+    showSnackbar("Draft discarded", "The job draft was removed successfully.");
   };
 
   const loadSchoolNotifications = async () => {
@@ -1371,7 +1423,7 @@ export default function AdminDashboard() {
       const response = await jobService.getJobs({});
       const jobList = extractApiList(response, ["jobs"]);
       const savedDrafts = readSchoolJobDrafts();
-      const jobsWithDrafts = [...savedDrafts, ...jobList];
+      const jobsWithDrafts = deduplicateJobs([...savedDrafts, ...jobList]);
 
       if (isSchool && currentUserId) {
         const ownedJobs = jobsWithDrafts.filter((job) => {
@@ -1405,11 +1457,7 @@ export default function AdminDashboard() {
 
       setSchoolProfile(mergedProfile);
 
-      const locationFromProfile = [
-        mergedProfile?.city,
-        mergedProfile?.state,
-        mergedProfile?.country,
-      ].filter(Boolean).join(", ") || mergedProfile?.location || "";
+      const locationFromProfile = getSchoolLocation(mergedProfile);
 
       const nextSchoolName = mergedProfile?.school_name || user?.school_name || user?.full_name || "";
       const nextEmail = mergedProfile?.email || user?.email || "";
@@ -1432,7 +1480,7 @@ export default function AdminDashboard() {
       if (locationFromProfile) {
         setJobForm((prev) => ({
           ...prev,
-          location: prev.location || locationFromProfile,
+          location: locationFromProfile,
         }));
         setSchoolLocationLocked(true);
       }
@@ -1611,6 +1659,7 @@ export default function AdminDashboard() {
       const rawResponse = response?.data?.data ?? response?.data ?? {};
       const jobPayload = rawResponse?.job ?? rawResponse ?? payload;
 
+      const returnedStatus = String(jobPayload?.status || payload.status || "open").trim().toLowerCase();
       const savedJob = {
         ...(jobPayload && typeof jobPayload === "object" ? jobPayload : {}),
         ...payload,
@@ -1623,15 +1672,29 @@ export default function AdminDashboard() {
         location: jobPayload?.location || payload.location,
         responsibilities: normalizeResponsibilityList(jobPayload?.responsibilities || payload.responsibilities),
         requirements: jobPayload?.requirements || payload.requirements,
-        status: jobPayload?.status || "active",
+        status: returnedStatus === "draft" ? "open" : returnedStatus === "published" || returnedStatus === "active" ? "open" : returnedStatus,
       };
+
+      if (publishingDraftId) {
+        const remainingDrafts = readSchoolJobDrafts().filter(
+          (draft) => String(draft.job_id || draft.id) !== String(publishingDraftId),
+        );
+        localStorage.setItem(schoolDraftStorageKey, JSON.stringify(remainingDrafts));
+        setPublishingDraftId(null);
+      }
 
       if (editingJobId) {
         setJobs((prev) => prev.map((job) =>
           (job.job_id || job.id) === editingJobId ? { ...job, ...savedJob } : job
         ));
       } else {
-        setJobs((prev) => [savedJob, ...prev.filter((job) => (job.job_id || job.id) !== savedJob.job_id)]);
+        setJobs((prev) => deduplicateJobs([
+          savedJob,
+          ...prev.filter((job) => {
+            const jobId = String(job.job_id || job.id);
+            return jobId !== String(savedJob.job_id) && jobId !== String(publishingDraftId);
+          }),
+        ]));
       }
 
       setJobForm(emptyJobForm);
@@ -1657,6 +1720,14 @@ export default function AdminDashboard() {
 
     try {
       setError("");
+      const isLocalDraft = readSchoolJobDrafts().some(
+        (draft) => String(draft.job_id || draft.id) === String(jobId),
+      );
+      if (isLocalDraft || String(jobId).startsWith("draft-")) {
+        discardSchoolJobDraft(jobId);
+        setOpenJobMenuId(null);
+        return;
+      }
       await jobService.deleteJob(jobId);
       setJobs((prev) => prev.filter((job) => (job.job_id || job.id) !== jobId));
       setApplicantsByJob((prev) => {
@@ -2429,8 +2500,6 @@ export default function AdminDashboard() {
                 placeholder="Lekki, Lagos State"
                 value={jobForm.location}
                 onChange={(e) => setJobForm({ ...jobForm, location: e.target.value })}
-                readOnly={schoolLocationLocked}
-                disabled={schoolLocationLocked}
                 required
               />
             </div>
@@ -2592,6 +2661,15 @@ export default function AdminDashboard() {
         </section>
 
         <div className="school-job-form-actions">
+          {publishingDraftId && (
+            <button
+              type="button"
+              className="school-job-discard"
+              onClick={() => discardSchoolJobDraft()}
+            >
+              Discard Draft
+            </button>
+          )}
           <button
             type="button"
             onClick={saveSchoolJobDraft}
@@ -2610,14 +2688,16 @@ export default function AdminDashboard() {
 
   const renderJobDetailPage = (job) => {
     const description = String(job.description || "").trim();
-    const requirements = normalizeResponsibilityList(job.responsibilities || job.requirements);
     const toDetailList = (value) => (Array.isArray(value) ? value : String(value || "").split(/\n|\r|;|•/))
       .map((item) => String(item).replace(/^-\s*/, "").trim())
       .filter(Boolean);
-    const qualificationList = toDetailList(job.qualifications || job.qualification);
+    const responsibilities = toDetailList(job.responsibilities);
+    const otherRequirementList = toDetailList(job.other_requirements || job.otherRequirements || job.requirements);
+    const qualificationList = toDetailList(job.required_qualification || job.qualifications || job.qualification);
+    const skillList = toDetailList(job.skills || job.skillset || job.required_skills);
     const benefitList = toDetailList(job.benefits || job.perks);
     const jobId = job.job_id || job.id;
-    const status = String(job.status || "active").toLowerCase();
+    const status = normalizeSchoolJobStatus(job.status);
     const postedAt = job.created_at || job.posted_at || job.published_at || "";
     const timeline = [
       ["Posted on", postedAt],
@@ -2648,14 +2728,29 @@ export default function AdminDashboard() {
           {timeline.length > 0 && <aside className="school-job-timeline"><h3>Job Timeline</h3>{timeline.map(([label, date], index) => <div key={label} className="school-job-timeline-item"><span className={index === 0 ? "is-current" : ""} /><div><small>{label}</small><strong>{formatDate(date)}</strong></div></div>)}</aside>}
         </section>
         <section className="school-job-detail-body">
-          {description && <div className="school-job-detail-section"><h3>About the Role</h3><p>{description}</p></div>}
-          {requirements.length > 0 && <div className="school-job-detail-section"><h3>Responsibilities</h3><ul className="school-job-detail-check-list">{requirements.map((item) => <li key={item}>{item}</li>)}</ul></div>}
-          {(job.required_experience || job.required_qualification) && <div className="school-job-detail-section"><h3>Requirements</h3><ul className="school-job-detail-bullets">{job.required_experience && <li>{job.required_experience} of teaching experience</li>}{job.required_qualification && <li>{job.required_qualification}</li>}</ul></div>}
-          {qualificationList.length > 0 && <div className="school-job-detail-section"><h3>Qualifications</h3><ul className="school-job-detail-bullets">{qualificationList.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {description && <div className="school-job-detail-section"><h3>Job Summary</h3><p>{description}</p></div>}
+          {responsibilities.length > 0 && <div className="school-job-detail-section"><h3>Responsibilities</h3><ul className="school-job-detail-check-list">{responsibilities.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {job.required_experience && <div className="school-job-detail-section"><h3>Required Experience</h3><ul className="school-job-detail-bullets"><li>{String(job.required_experience)} of teaching experience</li></ul></div>}
+          {qualificationList.length > 0 && <div className="school-job-detail-section"><h3>Required Qualification</h3><ul className="school-job-detail-bullets">{qualificationList.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {otherRequirementList.length > 0 && <div className="school-job-detail-section"><h3>Other Requirements</h3><ul className="school-job-detail-bullets">{otherRequirementList.map((item) => <li key={item}>{item}</li>)}</ul></div>}
+          {skillList.length > 0 && <div className="school-job-detail-section"><h3>Skills</h3><ul className="school-job-detail-bullets">{skillList.map((item) => <li key={item}>{item}</li>)}</ul></div>}
           {benefitList.length > 0 && <div className="school-job-detail-section"><h3>Benefits</h3><ul className="school-job-detail-bullets">{benefitList.map((item) => <li key={item}>{item}</li>)}</ul></div>}
         </section>
       </div>
     );
+  };
+
+  const normalizeSchoolJobStatus = (value) => {
+    const status = String(value || "active").trim().toLowerCase().replace(/[_-]+/g, " ");
+    if (status === "open" || status === "published" || status === "active") return "active";
+    if (status === "under review") return "under review";
+    return status;
+  };
+
+  const getFilteredSchoolJobs = () => {
+    if (jobFilter === "All Jobs") return jobs;
+    const selectedStatus = normalizeSchoolJobStatus(jobFilter);
+    return jobs.filter((job) => normalizeSchoolJobStatus(job.status) === selectedStatus);
   };
 
   const renderJobs = () => (
@@ -2697,19 +2792,14 @@ export default function AdminDashboard() {
       <div className="school-job-list-panel">
         {jobs.length === 0 ? (
           <p className="school-jobs-empty">No jobs published yet.</p>
+        ) : getFilteredSchoolJobs().length === 0 ? (
+          <p className="school-jobs-empty">No jobs match the selected filter.</p>
         ) : (
-          jobs
-            .filter((job) => {
-              if (jobFilter === "All Jobs") return true;
-              const jobStatus = String(job.status || "active").trim().toLowerCase();
-              if (jobFilter === "Active") return jobStatus === "active" || jobStatus === "open" || jobStatus === "published";
-              return jobStatus === jobFilter.toLowerCase();
-            })
+          getFilteredSchoolJobs()
             .slice(0, visibleSchoolJobCount)
             .map((job) => {
               const jobId = job.job_id || job.id;
-              const rawStatus = String(job.status || "active").trim().toLowerCase();
-              const status = rawStatus === "open" || rawStatus === "published" ? "active" : rawStatus;
+              const status = normalizeSchoolJobStatus(job.status);
               const statusKey = status.replace(/\s+/g, "-");
               const statusLabel =
                 status === "active"
@@ -2920,12 +3010,7 @@ export default function AdminDashboard() {
               );
             })
         )}
-        {jobs.filter((job) => {
-          if (jobFilter === "All Jobs") return true;
-          const jobStatus = String(job.status || "active").trim().toLowerCase();
-          if (jobFilter === "Active") return jobStatus === "active" || jobStatus === "open" || jobStatus === "published";
-          return jobStatus === jobFilter.toLowerCase();
-        }).length > visibleSchoolJobCount && (
+        {getFilteredSchoolJobs().length > visibleSchoolJobCount && (
             <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
               Load More <FiChevronDown size={13} />
             </button>
@@ -3954,7 +4039,7 @@ export default function AdminDashboard() {
   const renderRejectModal = () => (
     isRejectModalOpen && (
       <div className="school-shortlist-modal-backdrop" onClick={() => setIsRejectModalOpen(false)}>
-        <div className="school-shortlist-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
+        <div className="school-shortlist-modal school-reject-modal" onClick={(event) => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="reject-modal-title">
           <div className="school-shortlist-modal-header">
             <div className="school-shortlist-modal-heading">
               <h3 id="reject-modal-title">Reject Application</h3>
@@ -3979,7 +4064,7 @@ export default function AdminDashboard() {
             )}
           </div>
 
-          <div className="school-shortlist-modal-actions">
+          <div className="school-shortlist-modal-actions school-reject-modal-actions">
             <button type="button" className="school-shortlist-cancel-btn" onClick={() => setIsRejectModalOpen(false)}>
               Cancel
             </button>
@@ -5457,6 +5542,38 @@ export default function AdminDashboard() {
                                 </div>
                                 <span className="admin-security-method-set">Set Up</span>
                               </div>
+                            </div>
+
+                            <div className="admin-security-card">
+                              <div className="admin-security-card-header">
+                                <div className="admin-security-card-icon">
+                                  <FiMail size={18} />
+                                </div>
+                                <h2>Recovery email</h2>
+                              </div>
+                              <p className="admin-security-card-copy">
+                                Update the email address used for account access and security notifications.
+                              </p>
+                              <button type="button" className="admin-security-action-btn" onClick={() => { setAdminEmailChangeValue(adminProfileForm.email); setSettingsSection("email-change"); }}>
+                                <FiMail size={14} />
+                                Change Email
+                              </button>
+                            </div>
+
+                            <div className="admin-security-card">
+                              <div className="admin-security-card-header">
+                                <div className="admin-security-card-icon">
+                                  <FiPhone size={18} />
+                                </div>
+                                <h2>Phone number</h2>
+                              </div>
+                              <p className="admin-security-card-copy">
+                                Update the phone number used for account verification and recovery.
+                              </p>
+                              <button type="button" className="admin-security-action-btn" onClick={() => { setAdminPhoneChangeValue(adminProfileForm.phone); setSettingsSection("phone-change"); }}>
+                                <FiPhone size={14} />
+                                Change Phone Number
+                              </button>
                             </div>
                           </div>
                         </div>
@@ -8319,6 +8436,31 @@ export default function AdminDashboard() {
           justify-content: flex-end;
           gap: 12px;
           margin-top: 4px;
+        }
+        .school-reject-modal {
+          width: min(100%, 520px);
+          background: #ffffff;
+        }
+        .school-reject-modal .school-shortlist-modal-header {
+          padding: 24px 24px 16px;
+        }
+        .school-reject-modal .school-shortlist-modal-body {
+          gap: 10px;
+          padding: 0 24px 20px;
+        }
+        .school-reject-modal .school-shortlist-field {
+          gap: 8px;
+          margin: 0;
+        }
+        .school-reject-modal .school-shortlist-field textarea {
+          box-sizing: border-box;
+          min-height: 132px;
+          margin: 0;
+        }
+        .school-reject-modal-actions {
+          margin: 0;
+          padding: 16px 24px 24px;
+          border-top: 1px solid #eef1ef;
         }
         .school-shortlist-cancel-btn,
         .school-shortlist-confirm-btn {
