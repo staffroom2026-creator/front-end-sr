@@ -288,6 +288,11 @@ const getInitials = (fullName = '') => {
   return initials || 'T';
 };
 
+const isFeaturedJob = (job = {}) => {
+  const value = job.featured ?? job.is_featured ?? job.isFeatured;
+  return value === true || value === 1 || value === '1' || String(value).toLowerCase() === 'true';
+};
+
 const toTeacherAssetUrl = (assetPath) => {
   if (!assetPath) return '';
   if (/^(data:|https?:\/\/)/i.test(assetPath)) return assetPath;
@@ -805,6 +810,7 @@ export default function TeacherDashboard() {
     : null;
   const sortJobsByPreference = (jobList = []) => {
     return [...jobList].sort((a, b) => {
+      const featuredOrder = Number(isFeaturedJob(b)) - Number(isFeaturedJob(a));
       const aTime = new Date(a.timePosted || a.created_at || Date.now()).getTime();
       const bTime = new Date(b.timePosted || b.created_at || Date.now()).getTime();
       const aSalary = Number(a.salaryMonthly || 0);
@@ -824,12 +830,12 @@ export default function TeacherDashboard() {
         0
       );
 
-      if (sortBy === 'Recommended') return bRecommended - aRecommended || bTime - aTime;
-      if (sortBy === 'Newest First') return bTime - aTime;
-      if (sortBy === 'Oldest First') return aTime - bTime;
-      if (sortBy === 'Highest Salary') return bSalary - aSalary;
-      if (sortBy === 'Lowest Salary') return aSalary - bSalary;
-      return bRecommended - aRecommended || bTime - aTime;
+      if (sortBy === 'Recommended') return featuredOrder || bRecommended - aRecommended || bTime - aTime;
+      if (sortBy === 'Newest First') return featuredOrder || bTime - aTime;
+      if (sortBy === 'Oldest First') return featuredOrder || aTime - bTime;
+      if (sortBy === 'Highest Salary') return featuredOrder || bSalary - aSalary;
+      if (sortBy === 'Lowest Salary') return featuredOrder || aSalary - bSalary;
+      return featuredOrder || bRecommended - aRecommended || bTime - aTime;
     });
   };
   const dashboardJobs = sortJobsByPreference(jobs).slice(0, 2);

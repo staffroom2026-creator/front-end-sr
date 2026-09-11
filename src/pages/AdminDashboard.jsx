@@ -200,14 +200,6 @@ export default function AdminDashboard() {
   );
   const [teacherInviteSubmitting, setTeacherInviteSubmitting] = useState(false);
   const [savedTeacherIds, setSavedTeacherIds] = useState([]);
-  const [invitedTeacherIds, setInvitedTeacherIds] = useState(() => {
-    try {
-      const value = window.localStorage.getItem("school-admin-invited-teachers");
-      return value ? JSON.parse(value) : [];
-    } catch (_error) {
-      return [];
-    }
-  });
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [schoolLogoFile, setSchoolLogoFile] = useState(null);
   const [schoolLocationLocked, setSchoolLocationLocked] = useState(false);
@@ -252,7 +244,7 @@ export default function AdminDashboard() {
   const [rejectError, setRejectError] = useState("");
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
-  const [teacherTab, setTeacherTab] = useState("all");
+  const [teacherTab, setTeacherTab] = useState("invited");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherSearchSubmitted, setTeacherSearchSubmitted] = useState("");
   const [teacherLocation, setTeacherLocation] = useState("All Locations");
@@ -486,7 +478,7 @@ export default function AdminDashboard() {
     setOpenJobMenuId(null);
     setExperienceMenuOpen(false);
     setQualificationMenuOpen(false);
-    setTeacherTab("all");
+    setTeacherTab("invited");
     setTeacherSearch("");
     setTeacherSearchSubmitted("");
     setTeacherLocation("All Locations");
@@ -1384,6 +1376,16 @@ export default function AdminDashboard() {
     return Array.from(seen.values());
   };
 
+  const isFeaturedJob = (job = {}) => {
+    const value = job.is_featured ?? job.featured ?? job.isFeatured;
+    return value === true || value === 1 || value === "1" || String(value).toLowerCase() === "true";
+  };
+
+  const orderFeaturedJobsFirst = (jobList = []) => jobList
+    .map((job, index) => ({ job, index }))
+    .sort((first, second) => Number(isFeaturedJob(second.job)) - Number(isFeaturedJob(first.job)) || first.index - second.index)
+    .map(({ job }) => job);
+
   const saveSchoolJobDraft = () => {
     const draftId = publishingDraftId || editingJobId || `draft-${Date.now()}`;
     const draft = {
@@ -1578,22 +1580,42 @@ export default function AdminDashboard() {
 
       const normalizedUsers = users
         .filter(Boolean)
-        .map((entry) => ({
-          ...entry,
-          role: String(entry?.role || "teacher").toLowerCase(),
-          full_name:
-            entry?.full_name ||
-            entry?.teacher_name ||
-            [entry?.first_name, entry?.last_name].filter(Boolean).join(" ") ||
-            entry?.name ||
-            "Teacher",
-          email: entry?.email || entry?.teacher_email || "",
-          phone: entry?.phone || entry?.teacher_phone || "",
-          subject: entry?.subject || entry?.role_title || entry?.specialization || "General",
-          location: entry?.location || entry?.state || entry?.city || "Nigeria",
-          experience: entry?.experience || entry?.experience_years || "Not specified",
-          availability: entry?.availability || "Available",
-        }));
+        .map((entry) => {
+          const subjects = normalizeMultiValueList(
+            entry?.subjects ||
+            entry?.subject_areas ||
+            entry?.teaching_subjects ||
+            entry?.skills ||
+            entry?.subject ||
+            []
+          );
+          const teachingLevels = normalizeMultiValueList(
+            entry?.teaching_levels ||
+            entry?.levels ||
+            entry?.grade_levels ||
+            entry?.teaching_level ||
+            []
+          );
+
+          return {
+            ...entry,
+            role: String(entry?.role || "teacher").toLowerCase(),
+            full_name:
+              entry?.full_name ||
+              entry?.teacher_name ||
+              [entry?.first_name, entry?.last_name].filter(Boolean).join(" ") ||
+              entry?.name ||
+              "Teacher",
+            email: entry?.email || entry?.teacher_email || "",
+            phone: entry?.phone || entry?.teacher_phone || "",
+            subjects,
+            teaching_levels: teachingLevels,
+            subject: subjects.join(", ") || entry?.subject || entry?.role_title || entry?.specialization || "General",
+            location: entry?.location || entry?.state || entry?.city || "Nigeria",
+            experience: entry?.experience || entry?.experience_years || "Not specified",
+            availability: entry?.availability || "Available",
+          };
+        });
 
       setAllUsers(normalizedUsers);
     } catch (_err) {
@@ -2833,9 +2855,11 @@ export default function AdminDashboard() {
   };
 
   const getFilteredSchoolJobs = () => {
-    if (jobFilter === "All Jobs") return jobs;
-    const selectedStatus = normalizeSchoolJobStatus(jobFilter);
-    return jobs.filter((job) => normalizeSchoolJobStatus(job.status) === selectedStatus);
+    const filteredJobs = jobFilter === "All Jobs"
+      ? jobs
+      : jobs.filter((job) => normalizeSchoolJobStatus(job.status) === normalizeSchoolJobStatus(jobFilter));
+
+    return orderFeaturedJobsFirst(filteredJobs);
   };
 
   const renderJobs = () => (
@@ -3127,12 +3151,45 @@ export default function AdminDashboard() {
     const toApplicantList = (value) => Array.isArray(value)
       ? value.filter(Boolean)
       : String(value || "").split(/[,;\n|]/).map((item) => item.trim()).filter(Boolean);
-    const applicantSubjects = toApplicantList(applicant.subjects || applicant.skills);
-    const applicantSkills = toApplicantList(applicant.skills || applicant.subjects);
-    const applicantQualifications = toApplicantList(applicant.qualifications || applicant.qualification || applicant.education);
-    const applicantExperience = Array.isArray(applicant.teaching_experience)
-      ? applicant.teaching_experience
-      : Array.isArray(applicant.work_experience) ? applicant.work_experience : [];
+    const applicantSubjects = normalizeMultiValueList(
+      applicant.subjects ||
+      applicant.subject_areas ||
+      applicant.teaching_subjects ||
+      applicant.skills ||
+      applicant.subject ||
+      []
+    );
+    const applicantTeachingLevels = normalizeMultiValueList(
+      applicant.teaching_levels ||
+      applicant.levels ||
+      applicant.teachingLevels ||
+      applicant.grade_levels ||
+      applicant.teaching_level ||
+      applicant.level ||
+      []
+    );
+    const applicantQualifications = normalizeMultiValueList(
+      applicant.qualifications ||
+      applicant.qualification ||
+      applicant.education ||
+      applicant.education_history ||
+      applicant.education_items ||
+      []
+    );
+    const applicantExperience = normalizeTeacherHistory(
+      applicant.teaching_experience ||
+      applicant.experience_items ||
+      applicant.experiences ||
+      applicant.work_experience ||
+      applicant.experience_history ||
+      []
+    );
+    const applicantEducation = normalizeTeacherHistory(
+      applicant.education_history ||
+      applicant.education_items ||
+      applicant.education ||
+      []
+    );
     const applicantId = applicant.application_id || applicant.id;
     const jobId = job.job_id || job.id;
     const applicantStatus = String(applicant.status || "").toLowerCase();
@@ -3149,7 +3206,7 @@ export default function AdminDashboard() {
 
     if (applicant) {
       const profileName = applicant.name || applicant.full_name || applicant.teacher_name || "Teacher";
-      const profileRole = applicant.role || job.title || "Teacher";
+      const profileRole = applicant.role || applicant.role_title || job.title || "Teacher";
       const profileLocation = applicant.location || applicant.city || applicant.residence || "Location not provided";
       const profileExperience = applicant.experience || applicant.experience_years ? `${applicant.experience || applicant.experience_years} Years` : "Not provided";
       const initials = profileName
@@ -3224,6 +3281,13 @@ export default function AdminDashboard() {
                   <span key={`${subject}-${index}`}>{subject}</span>
                 )) : <em>Not provided</em>}
               </div>
+
+              <h2 className="school-preview-levels-heading"><FiCheckCircle /> Teaching Levels</h2>
+              <div className="school-preview-levels">
+                {applicantTeachingLevels.length ? applicantTeachingLevels.map((level, index) => (
+                  <span key={`${level}-${index}`}>{level}</span>
+                )) : <em>Not provided</em>}
+              </div>
             </section>
 
             <section className="school-preview-panel school-preview-experience">
@@ -3245,8 +3309,21 @@ export default function AdminDashboard() {
 
             <div className="school-preview-side-stack">
               <section className="school-preview-panel">
-                <h2><FiAward /> Qualifications</h2>
-                {applicantQualifications.length ? (
+                <h2><FiAward /> Education</h2>
+                {applicantEducation.length ? (
+                  <div className="school-preview-education-list">
+                    {applicantEducation.map((item, index) => (
+                      <article key={`${item.degree || 'education'}-${index}`} className="school-preview-education-item">
+                        <FiBook />
+                        <div>
+                          <strong>{item.degree || item.qualification || 'Qualification not provided'}</strong>
+                          <p>{item.institution || 'Institution not provided'}</p>
+                          <span>{item.period || 'Period not provided'}</span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : applicantQualifications.length ? (
                   <div className="school-preview-education-list">
                     {applicantQualifications.map((qualification, index) => (
                       <article key={`${qualification}-${index}`} className="school-preview-education-item">
@@ -3257,19 +3334,20 @@ export default function AdminDashboard() {
                         </div>
                       </article>
                     ))}
-                    {(applicant.trcn_verified || applicant.trcn) && (
-                      <div className="school-preview-trcn">
-                        <FiCheckCircle />
-                        <div>
-                          <strong>TRCN Verified Educator</strong>
-                          <p>{applicant.trcn_number ? `Registration No: ${applicant.trcn_number}` : 'Registration details available.'}</p>
-                        </div>
-                        <span>VERIFIED</span>
-                      </div>
-                    )}
                   </div>
                 ) : (
-                  <p className="school-preview-empty">No qualifications have been provided.</p>
+                  <p className="school-preview-empty">No education has been provided.</p>
+                )}
+
+                {(applicant.trcn_verified || applicant.trcn || applicant.trcn_number) && (
+                  <div className="school-preview-trcn" style={{ marginTop: 14 }}>
+                    <FiCheckCircle />
+                    <div>
+                      <strong>TRCN Verified Educator</strong>
+                      <p>{applicant.trcn_number ? `Registration No: ${applicant.trcn_number}` : 'Registration details available.'}</p>
+                    </div>
+                    <span>VERIFIED</span>
+                  </div>
                 )}
               </section>
 
@@ -3551,6 +3629,17 @@ export default function AdminDashboard() {
     return [];
   };
 
+  const normalizeTeacherHistory = (value) => {
+    if (Array.isArray(value)) return value;
+    if (typeof value !== "string") return [];
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (_err) {
+      return [];
+    }
+  };
+
   const renderTeacherProfileSummaryPage = (teacher = {}) => {
     const profileName = teacher.name || teacher.full_name || teacher.teacher_name || "Teacher";
     const profileRole = teacher.role || teacher.title || "Teacher";
@@ -3562,12 +3651,48 @@ export default function AdminDashboard() {
       .join("")
       .toUpperCase() || "T";
     const summary = teacher.summary || teacher.bio || teacher.about || "";
-    const subjectList = normalizeMultiValueList(teacher.subjects || teacher.subject || teacher.teaching_subjects || teacher.subjects_offered || teacher.subject_areas);
-    const teachingLevelList = normalizeMultiValueList(teacher.teaching_levels || teacher.levels || teacher.teachingLevels || teacher.level || teacher.grade_levels || teacher.teaching_level);
+    const subjectList = normalizeMultiValueList(
+      teacher.subjects ||
+      teacher.subject_areas ||
+      teacher.teaching_subjects ||
+      teacher.skills ||
+      teacher.subject ||
+      teacher.specialization ||
+      []
+    );
+    const teachingLevelList = normalizeMultiValueList(
+      teacher.teaching_levels ||
+      teacher.levels ||
+      teacher.teachingLevels ||
+      teacher.grade_levels ||
+      teacher.teaching_level ||
+      teacher.level ||
+      []
+    );
     const skillList = normalizeMultiValueList(teacher.skills || teacher.key_skills || teacher.skillset || teacher.specialties);
     const qualificationList = normalizeMultiValueList(teacher.qualifications || teacher.qualification || teacher.education || teacher.certifications);
-    const experienceList = Array.isArray(teacher.experience_items) ? teacher.experience_items : Array.isArray(teacher.experiences) ? teacher.experiences : [];
-    const educationList = Array.isArray(teacher.education_items) ? teacher.education_items : Array.isArray(teacher.education) ? teacher.education : [];
+    const experienceList = normalizeTeacherHistory(
+      teacher.experience_items ||
+      teacher.teaching_experience ||
+      teacher.experiences ||
+      teacher.work_experience ||
+      teacher.experience_history ||
+      []
+    );
+    const educationList = normalizeTeacherHistory(
+      teacher.education_items ||
+      teacher.education_history ||
+      teacher.education ||
+      []
+    );
+    const displayedEducationList = educationList.length
+      ? educationList
+      : qualificationList.map((qualification) => ({ degree: qualification, institution: teacher.institution || "" }));
+    const displayedExperienceList = experienceList.length
+      ? experienceList
+      : teacher.experience_years
+        ? [{ role: teacher.role_title || "Teaching Experience", school: "", period: `${teacher.experience_years} years` }]
+        : [];
     const profileLocation = teacher.location || teacher.city || teacher.residence || "Location not provided";
     const experienceText = teacher.experience || teacher.experience_years ? `${teacher.experience || teacher.experience_years} Years` : "Not provided";
     const trcnVerified = Boolean(teacher.trcn_verified || teacher.trcn_number || (teacher.trcn_status && teacher.trcn_status.toLowerCase() === "verified"));
@@ -3647,9 +3772,9 @@ export default function AdminDashboard() {
 
           <section className="school-preview-panel school-preview-experience">
             <h2><FiBriefcase /> Experience</h2>
-            {experienceList.length ? (
+            {displayedExperienceList.length ? (
               <div className="school-preview-list">
-                {experienceList.map((item, idx) => (
+                {displayedExperienceList.map((item, idx) => (
                   <article key={`${item.role || 'experience'}-${idx}`} className="school-preview-list-item">
                     <span>{item.period || "Period not provided"}</span>
                     <strong>{item.role || item.title || "Role not provided"}</strong>
@@ -3665,9 +3790,9 @@ export default function AdminDashboard() {
           <div className="school-preview-side-stack">
             <section className="school-preview-panel">
               <h2><FiAward /> Education</h2>
-              {educationList.length ? (
+              {displayedEducationList.length ? (
                 <div className="school-preview-education-list">
-                  {educationList.map((item, idx) => (
+                  {displayedEducationList.map((item, idx) => (
                     <article key={`${item.degree || 'education'}-${idx}`} className="school-preview-education-item">
                       <FiBook />
                       <div>
@@ -4084,32 +4209,91 @@ export default function AdminDashboard() {
       const payload = response?.data?.data ?? response?.data ?? {};
       const detail = Array.isArray(payload)
         ? payload[0] ?? teacher
-        : payload?.teacher ?? payload?.profile ?? payload?.user ?? payload ?? teacher;
+        : payload?.teacher ?? payload ?? teacher;
+      const detailProfile = detail?.profile || payload?.profile || {};
+      const detailUser = detail?.user || payload?.user || {};
+      const fullDetail = { ...detail, ...detailUser, ...detailProfile };
+      const firstNonEmptyList = (...values) => values
+        .map((value) => normalizeMultiValueList(value))
+        .find((items) => items.length) || [];
+      const subjectAreas = firstNonEmptyList(
+        fullDetail.subjects,
+        fullDetail.subject_areas,
+        fullDetail.teaching_subjects,
+        fullDetail.skills,
+        teacher?.subjects,
+        teacher?.subject_areas,
+        teacher?.teaching_subjects,
+        teacher?.subject,
+        teacher?.specialization
+      );
+      const teachingLevels = firstNonEmptyList(
+        fullDetail.teaching_levels,
+        fullDetail.levels,
+        fullDetail.teachingLevels,
+        fullDetail.grade_levels,
+        fullDetail.teaching_level,
+        teacher?.teaching_levels,
+        teacher?.levels,
+        teacher?.grade_levels,
+        teacher?.teaching_level,
+        teacher?.level
+      );
+      const educationHistory = normalizeTeacherHistory(
+        fullDetail.education_history ||
+        fullDetail.education_items ||
+        fullDetail.education ||
+        teacher?.education_history ||
+        teacher?.education_items ||
+        teacher?.education ||
+        []
+      );
+      const teachingExperience = normalizeTeacherHistory(
+        fullDetail.teaching_experience ||
+        fullDetail.experience_items ||
+        fullDetail.experiences ||
+        fullDetail.work_experience ||
+        fullDetail.experience_history ||
+        teacher?.teaching_experience ||
+        teacher?.experience_items ||
+        teacher?.experiences ||
+        teacher?.work_experience ||
+        teacher?.experience_history ||
+        []
+      );
 
       const merged = {
         ...teacher,
-        ...detail,
-        ...(detail?.user || {}),
-        ...(detail?.profile || {}),
+        ...fullDetail,
         name:
           teacher?.name ||
-          detail?.full_name ||
-          detail?.teacher_name ||
-          detail?.user?.full_name ||
+          fullDetail?.full_name ||
+          fullDetail?.teacher_name ||
           "Teacher",
         full_name:
           teacher?.full_name ||
-          detail?.full_name ||
-          detail?.teacher_name ||
-          detail?.user?.full_name ||
+          fullDetail?.full_name ||
+          fullDetail?.teacher_name ||
           teacher?.name ||
           "Teacher",
-        subject: teacher?.subject || detail?.subject || detail?.role_title || "",
-        skills: teacher?.skills || detail?.skills || detail?.profile?.skills || detail?.key_skills || detail?.skillset || [],
-        summary: teacher?.summary || detail?.bio || detail?.about || detail?.profile?.bio || "",
-        experience: teacher?.experience || detail?.experience || detail?.experience_years || "",
-        location: teacher?.location || detail?.location || detail?.state || "",
-        cv_url: teacher?.cv_url || detail?.cv_url || detail?.profile?.cv_url || detail?.cv || "",
+        subjects: subjectAreas,
+        subject: normalizeMultiValueList(subjectAreas).join(", ") || teacher?.subject || fullDetail?.subject || fullDetail?.role_title || "",
+        teaching_levels: teachingLevels,
+        skills: teacher?.skills || fullDetail?.skills || fullDetail?.key_skills || fullDetail?.skillset || [],
+        education_history: educationHistory,
+        teaching_experience: teachingExperience,
+        education_items: normalizeTeacherHistory(educationHistory).map((item) => ({
+          ...item,
+          period: item.period || [item.start_year, item.end_year].filter(Boolean).join(" - "),
+        })),
+        experience_items: normalizeTeacherHistory(teachingExperience).map((item) => ({
+          ...item,
+          period: item.period || [item.start_date, item.end_date].filter(Boolean).join(" - "),
+        })),
+        summary: teacher?.summary || fullDetail?.bio || fullDetail?.about || "",
+        experience: teacher?.experience || fullDetail?.experience || fullDetail?.experience_years || "",
+        location: teacher?.location || fullDetail?.location || fullDetail?.state || "",
+        cv_url: teacher?.cv_url || fullDetail?.cv_url || fullDetail?.cv || "",
       };
 
       setSelectedTeacherProfile(merged);
@@ -4138,8 +4322,6 @@ export default function AdminDashboard() {
       await profileService.inviteTeacher(teacherId, {
         message,
       });
-      setInvitedTeacherIds((current) => [...new Set([...current, String(teacherId)])]);
-      setTeacherTab("invited");
       setIsTeacherInviteModalOpen(false);
       setTeacherInviteMessage(
         "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
@@ -4782,14 +4964,6 @@ export default function AdminDashboard() {
     );
   };
 
-  useEffect(() => {
-    try {
-      window.localStorage.setItem("school-admin-invited-teachers", JSON.stringify(invitedTeacherIds));
-    } catch (_error) {
-      // ignore local storage write failures in restricted environments
-    }
-  }, [invitedTeacherIds]);
-
   const loadSavedTeachers = async () => {
     try {
       const response = await featureService.getSavedTeachers();
@@ -4982,9 +5156,7 @@ export default function AdminDashboard() {
 
     const selectedTeacherTabTeachers = teacherTab === "saved"
       ? sortedTeachers.filter((teacher) => savedTeacherIds.includes(String(teacher.user_id || "")))
-      : teacherTab === "invited"
-        ? sortedTeachers.filter((teacher) => invitedTeacherIds.includes(String(teacher.user_id || "")))
-        : sortedTeachers;
+      : sortedTeachers;
 
     return (
       <div className="school-teachers-page">
@@ -5039,7 +5211,137 @@ export default function AdminDashboard() {
               </div>
 
               <div className="school-teachers-compact-toolbar">
-                <div className="school-teachers-toolbar-left" />
+                <div className="school-teachers-toolbar-left">
+                  <div className="school-teachers-filter-menu-anchor" ref={teacherFilterMenuRef}>
+                    <button
+                      type="button"
+                      className="school-teachers-filter-pill"
+                      onClick={() => setTeacherFilterMenuOpen((prev) => !prev)}
+                    >
+                      <FiFilter size={14} />
+                      Filters • {Number(teacherSubject !== "Subject") + Number(teacherLocation !== "All Locations") + Number(teacherExperience !== "Experience")}
+                    </button>
+
+                    {teacherFilterMenuOpen && (
+                      <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
+                        <div className="school-teachers-menu-main-column">
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Subject" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Subject" ? null : "Subject"))}
+                          >
+                            Subject
+                          </button>
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Location" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Location" ? null : "Location"))}
+                          >
+                            Location
+                          </button>
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Experience" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Experience" ? null : "Experience"))}
+                          >
+                            Experience
+                          </button>
+                        </div>
+
+                        {teacherActiveFilterGroup && (
+                          <div className="school-teachers-menu-side-panel" role="menu">
+                            {teacherActiveFilterGroup === "Subject" && teacherOptions.subjects.map((subject) => (
+                              <button
+                                key={subject}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherSubject(subject);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {subject}
+                              </button>
+                            ))}
+
+                            {teacherActiveFilterGroup === "Location" && teacherOptions.locations.map((location) => (
+                              <button
+                                key={location}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherLocation(location);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {location}
+                              </button>
+                            ))}
+
+                            {teacherActiveFilterGroup === "Experience" && teacherOptions.experiences.map((experience) => (
+                              <button
+                                key={experience}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherExperience(experience);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {experience}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="school-teachers-active-filters">
+                    {teacherSubject !== "Subject" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        Subject:<strong>{teacherSubject}</strong>
+                      </button>
+                    )}
+                    {teacherLocation !== "All Locations" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        Location:<strong>{teacherLocation}</strong>
+                      </button>
+                    )}
+                    {teacherExperience !== "Experience" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        Experience:<strong>{teacherExperience}</strong>
+                      </button>
+                    )}
+                    {(teacherSubject !== "Subject" || teacherLocation !== "All Locations" || teacherExperience !== "Experience") && (
+                      <button type="button" className="school-teachers-reset-all" onClick={() => {
+                        setTeacherSubject("Subject");
+                        setTeacherLocation("All Locations");
+                        setTeacherExperience("Experience");
+                        setTeacherSearch("");
+                        setTeacherSearchSubmitted("");
+                        setTeacherFilterMenuOpen(false);
+                      }}>
+                        Reset all
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 <div className="school-teachers-toolbar-right">
                   <span>Showing 1–6 of {selectedTeacherTabTeachers.length} available teachers</span>
@@ -5053,7 +5355,7 @@ export default function AdminDashboard() {
                 className={`school-teachers-toggle ${teacherTab === "invited" ? "is-active" : ""}`}
                 role="tab"
                 aria-selected={teacherTab === "invited"}
-                onClick={() => setTeacherTab((current) => (current === "invited" ? "all" : "invited"))}
+                onClick={() => setTeacherTab("invited")}
               >
                 <FiUsers size={15} />
                 Invited teachers
@@ -5063,22 +5365,11 @@ export default function AdminDashboard() {
                 className={`school-teachers-toggle ${teacherTab === "saved" ? "is-active" : ""}`}
                 role="tab"
                 aria-selected={teacherTab === "saved"}
-                onClick={() => setTeacherTab((current) => (current === "saved" ? "all" : "saved"))}
+                onClick={() => setTeacherTab("saved")}
               >
                 <FiBookmark size={15} />
                 Saved teachers
               </button>
-              {teacherTab !== "all" && (
-                <button
-                  type="button"
-                  className="school-teachers-toggle-close"
-                  aria-label="Clear teacher filter"
-                  title="Clear filter"
-                  onClick={() => setTeacherTab("all")}
-                >
-                  <FiX size={14} />
-                </button>
-              )}
             </div>
 
             <div className="school-teachers-header-row">
@@ -5206,20 +5497,16 @@ export default function AdminDashboard() {
                 <h3>
                   {teacherTab === "saved"
                     ? "No saved teachers yet."
-                    : teacherTab === "invited"
-                      ? "No invited teachers yet."
-                      : allApplicants.length === 0
-                        ? "No teacher applications yet."
-                        : "No teachers match this filter."}
+                    : allApplicants.length === 0
+                      ? "No teacher applications yet."
+                      : "No teachers match this filter."}
                 </h3>
                 <p>
                   {teacherTab === "saved"
                     ? "Save a teacher to keep them here for quick access."
-                    : teacherTab === "invited"
-                      ? "Teachers you invite will appear here for quick follow-up."
-                      : allApplicants.length === 0
-                        ? "Post a job to start receiving teacher applications."
-                        : "Try changing the search or filters to find more teachers."}
+                    : allApplicants.length === 0
+                      ? "Post a job to start receiving teacher applications."
+                      : "Try changing the search or filters to find more teachers."}
                 </p>
                 <button
                   type="button"
@@ -5456,7 +5743,7 @@ export default function AdminDashboard() {
                             </p>
                           ) : (
                             <div className="space-y-4">
-                              {jobs.map((job) => {
+                              {orderFeaturedJobsFirst(jobs).map((job) => {
                                 const jobId = job.job_id || job.id;
                                 const applicants = applicantsByJob[jobId] || [];
 
@@ -9737,7 +10024,6 @@ export default function AdminDashboard() {
           align-items: center;
           justify-content: center;
           gap: 8px;
-          flex: 1 1 0;
           min-height: 36px;
           min-width: 150px;
           padding: 0 18px;
@@ -9750,13 +10036,10 @@ export default function AdminDashboard() {
           cursor: pointer;
           transition: all 0.18s ease;
         }
-        .school-teachers-toggle:hover {
-          color: #1d2d2d;
-        }
         .school-teachers-toggle.is-active {
-          background: linear-gradient(180deg, #e9f9ee 0%, #dff4e4 100%);
+          background: #dff4e4;
           color: #186d3a;
-          box-shadow: inset 0 0 0 1px rgba(20, 121, 45, 0.08), 0 2px 6px rgba(24, 109, 58, 0.08);
+          box-shadow: inset 0 0 0 1px rgba(20, 121, 45, 0.08);
         }
         .school-teachers-header-row {
           display: flex;
@@ -11160,31 +11443,7 @@ export default function AdminDashboard() {
         .admin-sidebar-help { margin-top: auto; padding: 17px 16px 15px; border-radius: 17px; background: #e4f7e9; }
         .admin-sidebar-help strong { display: block; margin-bottom: 10px; color: #14552d; font-size: 12px; font-weight: 600; }
         .admin-sidebar-help button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 11px 8px; border: 0; border-radius: 999px; background: #22dd55; color: #07331b; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .admin-sidebar-logout {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          margin: 16px 12px 0;
-          padding: 8px 12px;
-          border: 1px solid rgba(220, 38, 38, 0.18);
-          border-radius: 10px;
-          background: rgba(254, 242, 242, 0.9);
-          color: #b91c1c;
-          font: inherit;
-          font-size: 12px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .admin-sidebar-logout:hover {
-          background: #fee2e2;
-          border-color: rgba(220, 38, 38, 0.32);
-          color: #991b1b;
-          transform: translateY(-1px);
-        }
-        .admin-sidebar-logout svg {
-          stroke: currentColor;
-        }
+        .admin-sidebar-logout { display: flex; align-items: center; gap: 10px; margin: 16px 12px 0; padding: 4px 0; border: 0; background: transparent; color: #65716a; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
         .admin-topbar-spacer { flex: 1; }
         .admin-topbar-search { display: flex; align-items: center; gap: 14px; width: 282px; height: 45px; margin-left: auto; padding: 0 16px; border-radius: 16px; background: #e3e5e6; color: #526158; }
         .admin-topbar-search input { width: 100%; border: 0; outline: 0; background: transparent; color: #27312d; font: inherit; font-size: 12px; }

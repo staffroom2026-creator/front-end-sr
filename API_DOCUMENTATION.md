@@ -1477,7 +1477,7 @@ School-only teacher directory. Searches active teachers by `search`, `location`,
 - **Allowed Role:** `school`
 
 ### `GET /teachers/{user_id}`
-Returns an active teacher profile, including qualifications, skills, experience, location, CV, and contact details.
+Returns an active teacher profile, including qualifications, skills, complete `education_history`, complete `teaching_experience`, location, CV, and contact details.
 
 - **Authentication Requirement:** Yes
 - **Allowed Role:** `school`
@@ -1517,6 +1517,8 @@ Returns the authenticated teacher's profile-view card metrics and detailed schoo
 - **Authentication Requirement:** Yes (`Authorization: Bearer <teacherToken>`)
 - **Allowed Role:** `teacher`
 - **Query Parameters:** `page` (default `1`) and `per_page` (default `10`, maximum `50`)
+
+Use `GET /api/profiles/teacher/profile-views` when the API host is `https://api.staffroomng.com`. The non-prefixed `/profiles/teacher/profile-views` alias is also supported.
 
 #### Sample Success Response (`200 OK`)
 
