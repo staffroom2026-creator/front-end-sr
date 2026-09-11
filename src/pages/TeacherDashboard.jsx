@@ -2030,11 +2030,10 @@ export default function TeacherDashboard() {
         </nav>
 
         <div className="td-sidebar-footer">
-          <div className="td-logout-container">
-            <button className="td-logout-btn" onClick={() => logout()}>
-              Log out
-            </button>
-          </div>
+          <button type="button" onClick={logout} className="td-sidebar-logout">
+            <FiLogOut size={17} />
+            Log out
+          </button>
         </div>
       </aside>
 
@@ -2239,7 +2238,6 @@ export default function TeacherDashboard() {
                                 <h3>{job.title}</h3>
                                 <div className="td-job-badge-col td-desktop-badge-col">
                                   <span className="td-job-type-badge td-job-type-badge--full">{String(job.type || 'FULL-TIME').toUpperCase()}</span>
-                                  <span className="td-job-time-ago">{job.timeLabel}</span>
                                 </div>
                               </div>
                               <p className="td-job-school">{job.school}</p>
@@ -2621,8 +2619,19 @@ export default function TeacherDashboard() {
                         </motion.div>
                       );
                     }) : (
-                      <div style={{ textAlign: 'center', padding: '40px', color: '#6C757D' }}>
-                        <p>No jobs found matching your criteria.</p>
+                      <div className="td-empty-state">
+                        <div className="td-empty-state-icon">
+                          <FiSearch size={22} />
+                        </div>
+                        <h3>No jobs found matching your criteria.</h3>
+                        <p>Try adjusting your filters or search terms to see more opportunities.</p>
+                        <button
+                          type="button"
+                          className="td-empty-state-btn"
+                          onClick={clearFilters}
+                        >
+                          Clear filters
+                        </button>
                       </div>
                     )}
                   </div>
@@ -6218,32 +6227,19 @@ export default function TeacherDashboard() {
           margin-top: auto;
           padding: 0 16px 16px;
         }
-        .td-logout-container {
-          background: #FFE8E5;
-          border-radius: 20px;
-          padding: 12px;
+        .td-sidebar-logout {
           display: flex;
           align-items: center;
-          justify-content: center;
-        }
-        .td-logout-btn {
-          width: 100%;
-          background: #FF5E3A;
-          color: #ffffff;
-          border: none;
-          padding: 12px;
-          border-radius: 14px;
-          font-weight: 700;
-          font-size: 13px;
+          gap: 10px;
+          margin: 16px 12px 0;
+          padding: 4px 0;
+          border: 0;
+          background: transparent;
+          color: #65716a;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 600;
           cursor: pointer;
-          transition: background 0.2s ease, transform 0.1s ease;
-          box-shadow: 0 2px 8px rgba(255, 94, 58, 0.25);
-        }
-        .td-logout-btn:hover {
-          background: #F44E28;
-        }
-        .td-logout-btn:active {
-          transform: scale(0.98);
         }
 
         /* ═══════════════════════════════════════
@@ -7570,6 +7566,54 @@ export default function TeacherDashboard() {
         }
 
         /* Load More */
+        .td-empty-state {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          gap: 12px;
+          padding: 42px 26px;
+          border: 1px dashed #D5E5DA;
+          border-radius: 20px;
+          background: #F8FBF9;
+          color: #4B5B5A;
+          text-align: center;
+        }
+        .td-empty-state-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 52px;
+          height: 52px;
+          border-radius: 50%;
+          background: #EAF7EE;
+          color: #15803D;
+        }
+        .td-empty-state h3 {
+          margin: 0;
+          color: #172033;
+          font-size: 18px;
+          font-weight: 800;
+        }
+        .td-empty-state p {
+          margin: 0;
+          max-width: 420px;
+          color: #5D6972;
+          font-size: 14px;
+          line-height: 1.5;
+        }
+        .td-empty-state-btn {
+          appearance: none;
+          border: 0;
+          border-radius: 999px;
+          background: #15803D;
+          color: #ffffff;
+          padding: 10px 18px;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+        }
         .td-load-more-container { text-align: center; margin-top: 32px; }
         .td-load-more-btn {
           background: transparent;
