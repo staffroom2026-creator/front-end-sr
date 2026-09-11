@@ -192,6 +192,7 @@ export default function AdminDashboard() {
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [coverLetterModal, setCoverLetterModal] = useState({ open: false, text: "" });
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [selectedTeacherProfileError, setSelectedTeacherProfileError] = useState("");
   const [teacherProfileTarget, setTeacherProfileTarget] = useState(null);
@@ -1261,7 +1262,8 @@ export default function AdminDashboard() {
       );
 
       if (matchedApplicant) {
-        setSelectedApplicant(matchedApplicant);
+        const hydratedApplicant = await hydrateApplicantWithTeacherProfile(matchedApplicant);
+        setSelectedApplicant(hydratedApplicant);
       }
     }
 
@@ -2278,11 +2280,12 @@ export default function AdminDashboard() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       const job = jobs.find((item) => String(item.job_id || item.id) === String(app.jobId));
                       if (!job) return;
                       setSelectedJob(job);
-                      setSelectedApplicant(app);
+                      const hydratedApplicant = await hydrateApplicantWithTeacherProfile(app);
+                      setSelectedApplicant(hydratedApplicant);
                       setApplicantFilter("All");
                       setApplicantPage(1);
                       setJobDetailView("applicants");
@@ -3202,6 +3205,7 @@ export default function AdminDashboard() {
     const summary = applicant.summary || applicant.bio || applicant.about || "No professional summary has been provided.";
     const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
     const coverLetter = String(applicant.cover_letter || "").trim();
+    const coverLetterPreview = coverLetter.length > 120 ? `${coverLetter.slice(0, 120).trim()}…` : coverLetter;
     const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
 
     if (applicant) {
@@ -3364,13 +3368,26 @@ export default function AdminDashboard() {
                 )}
 
                 {coverLetter ? (
-                  <div className="school-preview-education-item" style={{ marginTop: 14 }}>
+                  <button
+                    type="button"
+                    className="school-preview-education-item"
+                    onClick={() => setCoverLetterModal({ open: true, text: coverLetter })}
+                    style={{
+                      marginTop: 14,
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      padding: 0,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                    }}
+                  >
                     <FiFileText />
                     <div>
                       <strong>Cover letter</strong>
-                      <p>{coverLetter}</p>
+                      <p style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{coverLetterPreview}</p>
                     </div>
-                  </div>
+                  </button>
                 ) : null}
 
                 {additionalInfo ? (
@@ -3385,6 +3402,59 @@ export default function AdminDashboard() {
               </section>
             </div>
           </div>
+
+          {coverLetterModal.open && (
+            <div
+              style={{
+                position: 'fixed',
+                inset: 0,
+                background: 'rgba(15, 23, 42, 0.55)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+                padding: '20px',
+              }}
+              onClick={() => setCoverLetterModal({ open: false, text: "" })}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Cover letter"
+                onClick={(event) => event.stopPropagation()}
+                style={{
+                  width: 'min(720px, 100%)',
+                  maxHeight: '80vh',
+                  overflow: 'auto',
+                  background: '#fff',
+                  borderRadius: '18px',
+                  boxShadow: '0 20px 60px rgba(15, 23, 42, 0.2)',
+                  padding: '28px 24px',
+                  color: '#172238',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '18px' }}>
+                  <h3 style={{ fontSize: '22px', margin: 0 }}>Cover letter</h3>
+                  <button
+                    type="button"
+                    onClick={() => setCoverLetterModal({ open: false, text: "" })}
+                    style={{
+                      border: '1px solid #dfe5e1',
+                      background: '#f5f7f6',
+                      borderRadius: '999px',
+                      width: '36px',
+                      height: '36px',
+                      cursor: 'pointer',
+                    }}
+                    aria-label="Close cover letter"
+                  >
+                    <FiX size={16} />
+                  </button>
+                </div>
+                <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#334155' }}>{coverLetterModal.text}</p>
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -4101,7 +4171,7 @@ export default function AdminDashboard() {
                   <button
                     type="button"
                     className="school-job-applicant-view-btn"
-                    onClick={() => setSelectedApplicant(app)}
+                    onClick={() => handleViewApplicant(app)}
                   >
                     View Application
                   </button>
@@ -4301,6 +4371,112 @@ export default function AdminDashboard() {
       setSelectedTeacherProfile(null);
       setSelectedTeacherProfileError(apiErrorMessage(_err, "Unable to load this teacher profile."));
     }
+  };
+
+  const hydrateApplicantWithTeacherProfile = async (applicant = {}) => {
+    const teacherId = applicant?.teacher_user_id || applicant?.teacherId || applicant?.teacher_id || applicant?.user_id || applicant?.teacher?.user_id || applicant?.teacher_userid;
+    if (!teacherId) return applicant;
+
+    try {
+      const response = await adminService.getTeacherById(teacherId);
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const detail = Array.isArray(payload)
+        ? payload[0] ?? applicant
+        : payload?.teacher ?? payload ?? applicant;
+      const detailProfile = detail?.profile || payload?.profile || {};
+      const detailUser = detail?.user || payload?.user || {};
+      const fullDetail = { ...detail, ...detailUser, ...detailProfile };
+      const firstNonEmptyList = (...values) => values
+        .map((value) => normalizeMultiValueList(value))
+        .find((items) => items.length) || [];
+      const subjectAreas = firstNonEmptyList(
+        fullDetail.subjects,
+        fullDetail.subject_areas,
+        fullDetail.teaching_subjects,
+        fullDetail.skills,
+        applicant?.subjects,
+        applicant?.subject_areas,
+        applicant?.teaching_subjects,
+        applicant?.subject,
+        applicant?.specialization,
+        applicant?.skills
+      );
+      const teachingLevels = firstNonEmptyList(
+        fullDetail.teaching_levels,
+        fullDetail.levels,
+        fullDetail.teachingLevels,
+        fullDetail.grade_levels,
+        fullDetail.teaching_level,
+        applicant?.teaching_levels,
+        applicant?.levels,
+        applicant?.grade_levels,
+        applicant?.teaching_level,
+        applicant?.level
+      );
+      const educationHistory = normalizeTeacherHistory(
+        fullDetail.education_history ||
+        fullDetail.education_items ||
+        fullDetail.education ||
+        applicant?.education_history ||
+        applicant?.education_items ||
+        applicant?.education ||
+        []
+      );
+      const teachingExperience = normalizeTeacherHistory(
+        fullDetail.teaching_experience ||
+        fullDetail.experience_items ||
+        fullDetail.experiences ||
+        fullDetail.work_experience ||
+        fullDetail.experience_history ||
+        applicant?.teaching_experience ||
+        applicant?.experience_items ||
+        applicant?.experiences ||
+        applicant?.work_experience ||
+        applicant?.experience_history ||
+        []
+      );
+
+      return {
+        ...applicant,
+        ...fullDetail,
+        name: applicant?.name || applicant?.teacher_name || fullDetail?.full_name || fullDetail?.teacher_name || "Teacher",
+        full_name: applicant?.full_name || fullDetail?.full_name || fullDetail?.teacher_name || applicant?.name || "Teacher",
+        role: applicant?.role || applicant?.role_title || fullDetail?.role_title || "Teacher",
+        role_title: applicant?.role_title || fullDetail?.role_title || applicant?.role || "Teacher",
+        subjects: subjectAreas,
+        subject: normalizeMultiValueList(subjectAreas).join(", ") || applicant?.subject || fullDetail?.subject || fullDetail?.role_title || "",
+        teaching_levels: teachingLevels,
+        skills: applicant?.skills || fullDetail?.skills || fullDetail?.key_skills || fullDetail?.skillset || [],
+        education_history: educationHistory,
+        teaching_experience: teachingExperience,
+        education_items: normalizeTeacherHistory(educationHistory).map((item) => ({
+          ...item,
+          period: item.period || [item.start_year, item.end_year].filter(Boolean).join(" - "),
+        })),
+        experience_items: normalizeTeacherHistory(teachingExperience).map((item) => ({
+          ...item,
+          period: item.period || [item.start_date, item.end_date].filter(Boolean).join(" - "),
+        })),
+        summary: applicant?.summary || fullDetail?.bio || fullDetail?.about || "",
+        experience: applicant?.experience || fullDetail?.experience || fullDetail?.experience_years || "",
+        location: applicant?.location || fullDetail?.location || fullDetail?.state || "",
+        cv_url: applicant?.cv_url || fullDetail?.cv_url || fullDetail?.cv || "",
+        qualification: applicant?.qualification || fullDetail?.qualification || fullDetail?.education || "",
+        qualifications: applicant?.qualifications || fullDetail?.qualifications || fullDetail?.qualification || fullDetail?.education || [],
+      };
+    } catch (_err) {
+      return applicant;
+    }
+  };
+
+  const handleViewApplicant = async (applicant = {}) => {
+    const hydratedApplicant = await hydrateApplicantWithTeacherProfile(applicant);
+    setSelectedApplicant(hydratedApplicant);
+  };
+
+  const handleOpenApplicantReview = async (applicant = {}) => {
+    const hydratedApplicant = await hydrateApplicantWithTeacherProfile(applicant);
+    setSelectedApplicant(hydratedApplicant);
   };
 
   const handleSendTeacherInvite = async () => {
@@ -5019,27 +5195,48 @@ export default function AdminDashboard() {
 
     const teacherUsers = (allUsers || [])
       .filter((userEntry) => String(userEntry?.role || "").toLowerCase() === "teacher")
-      .map((userEntry, index) => ({
-        user_id: userEntry?.user_id || "",
-        name: userEntry?.full_name || userEntry?.email || `Teacher ${index + 1}`,
-        role: userEntry?.role_title || userEntry?.subject || "Teacher",
-        location: userEntry?.location || userEntry?.state || "Nigeria",
-        experience: userEntry?.experience || userEntry?.experience_years || "Not specified",
-        subject: userEntry?.subject || userEntry?.role_title || "General",
-        availability: userEntry?.availability || "Available",
-        trcnStatus: userEntry?.trcn_status || (userEntry?.trcn_verified || userEntry?.verified ? "Verified" : "Not verified"),
-        summary:
-          userEntry?.bio ||
-          userEntry?.about ||
-          `${userEntry?.full_name || "Teacher"} is available for teaching opportunities.`,
-        accent: accentColors[index % accentColors.length],
-        email: userEntry?.email || "",
-        phone: userEntry?.phone || "",
-        cv_url: userEntry?.cv_url || "",
-        status: userEntry?.status || "active",
-        application_id: userEntry?.user_id || `teacher-${index}`,
-        teacher_id: userEntry?.user_id || "",
-      }));
+      .map((userEntry, index) => {
+        const canonicalSubjects = normalizeMultiValueList(
+          userEntry?.subjects ||
+          userEntry?.subject_areas ||
+          userEntry?.teaching_subjects ||
+          userEntry?.skills ||
+          userEntry?.subject ||
+          []
+        );
+        const canonicalTeachingLevels = normalizeMultiValueList(
+          userEntry?.teaching_levels ||
+          userEntry?.levels ||
+          userEntry?.grade_levels ||
+          userEntry?.teaching_level ||
+          userEntry?.level ||
+          []
+        );
+
+        return {
+          user_id: userEntry?.user_id || "",
+          name: userEntry?.full_name || userEntry?.email || `Teacher ${index + 1}`,
+          role: userEntry?.role_title || userEntry?.subject || "Teacher",
+          location: userEntry?.location || userEntry?.state || "Nigeria",
+          experience: userEntry?.experience || userEntry?.experience_years || "Not specified",
+          subject: canonicalSubjects.join(", ") || userEntry?.subject || userEntry?.role_title || "General",
+          subjects: canonicalSubjects,
+          teaching_levels: canonicalTeachingLevels,
+          availability: userEntry?.availability || "Available",
+          trcnStatus: userEntry?.trcn_status || (userEntry?.trcn_verified || userEntry?.verified ? "Verified" : "Not verified"),
+          summary:
+            userEntry?.bio ||
+            userEntry?.about ||
+            `${userEntry?.full_name || "Teacher"} is available for teaching opportunities.`,
+          accent: accentColors[index % accentColors.length],
+          email: userEntry?.email || "",
+          phone: userEntry?.phone || "",
+          cv_url: userEntry?.cv_url || "",
+          status: userEntry?.status || "active",
+          application_id: userEntry?.user_id || `teacher-${index}`,
+          teacher_id: userEntry?.user_id || "",
+        };
+      });
 
     const seenTeachers = new Set();
     const teachers = teacherUsers.length
