@@ -1992,6 +1992,26 @@ export default function TeacherDashboard() {
     })
   );
 
+  const handleNavTabChange = (nextTab) => {
+    setActiveTab(nextTab);
+    setSelectedJob(null);
+    setSelectedJobOrigin('jobs');
+    setSelectedNotification(null);
+    setIsNotificationModalOpen(false);
+    setNotificationActionLoading({});
+    setApplicationStatusFilter('all');
+    setApplicationSearch('');
+    setApplicationSort('newest');
+    setProfileSubTab('overview');
+    setSettingsSubTab('overview');
+    setLoginActivityView('recent');
+    setPersonalInfoOrigin('profile');
+    setShowApplicationSuccessModal(false);
+    setReviewCoverLetterEditing(false);
+    setReviewCvEditing(false);
+    setApplicationStep(1);
+  };
+
   return (
     <motion.div
       className="td-layout"
@@ -2006,7 +2026,7 @@ export default function TeacherDashboard() {
         </div>
 
         <nav className="td-nav">
-          <div className={`td-nav-item ${activeTab === 'dashboard' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+          <div className={`td-nav-item ${activeTab === 'dashboard' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('dashboard')}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className="td-nav-icon">
               <rect x="3" y="3" width="7" height="7" rx="1.5" />
               <rect x="14" y="3" width="7" height="7" rx="1.5" />
@@ -2016,27 +2036,27 @@ export default function TeacherDashboard() {
             <span>Dashboard</span>
           </div>
 
-          <div className={`td-nav-item ${activeTab === 'jobs' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('jobs')}>
+          <div className={`td-nav-item ${activeTab === 'jobs' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('jobs')}>
             <FiBriefcase size={18} className="td-nav-icon" />
             <span>Job Listing</span>
           </div>
 
-          <div className={`td-nav-item ${activeTab === 'applications' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('applications')}>
+          <div className={`td-nav-item ${activeTab === 'applications' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('applications')}>
             <FiFileText size={18} className="td-nav-icon" />
             <span>Applications</span>
           </div>
 
-          <div className={`td-nav-item ${activeTab === 'notifications' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('notifications')}>
+          <div className={`td-nav-item ${activeTab === 'notifications' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('notifications')}>
             <FiBell size={18} className="td-nav-icon" />
             <span>Notifications</span>
           </div>
 
-          <div className={`td-nav-item ${activeTab === 'profile' ? 'td-nav-item--active' : ''}`} onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); }}>
+          <div className={`td-nav-item ${activeTab === 'profile' ? 'td-nav-item--active' : ''}`} onClick={() => { handleNavTabChange('profile'); setProfileSubTab('overview'); }}>
             <FiUser size={18} className="td-nav-icon" />
             <span>Profile</span>
           </div>
 
-          <div className={`td-nav-item ${activeTab === 'settings' ? 'td-nav-item--active' : ''}`} onClick={() => setActiveTab('settings')}>
+          <div className={`td-nav-item ${activeTab === 'settings' ? 'td-nav-item--active' : ''}`} onClick={() => { handleNavTabChange('settings'); setSettingsSubTab('overview'); }}>
             <FiSettings size={18} className="td-nav-icon" />
             <span>Settings</span>
           </div>
@@ -2691,8 +2711,12 @@ export default function TeacherDashboard() {
                 </div>
 
                 <div className="td-jd-action-panel">
-                  {!selectedJobApplication && (
+                  {!selectedJobApplication ? (
                     <button type="button" className="school-job-detail-primary td-jd-primary-btn" onClick={() => openApplyModal(selectedJob, { review: true })}>Apply</button>
+                  ) : (
+                    <span className={`td-app-status-badge td-app-status-badge--${getApplicationDisplayStatus(selectedJobApplication).replace(/\s+/g, '-')}`}>
+                      {applicationStatusLabel(getApplicationDisplayStatus(selectedJobApplication))}
+                    </span>
                   )}
                 </div>
               </section>
@@ -3005,7 +3029,6 @@ export default function TeacherDashboard() {
                         <p className="td-app-school">{app.school}</p>
                         <div className="td-app-meta"><span><FiMapPin /> {app.location || 'Location not available'}</span>{app.employmentType && <span><FiBriefcase /> {app.employmentType}</span>}<span><FiCalendar /> Applied: {app.appliedDate}</span></div>
                         {app.interview && <div className="td-app-interview"><FiCalendar /> Interview: {app.interview.interview_date || 'Date not provided'} at {app.interview.interview_time || 'Time not provided'}{app.interview.venue ? ` - ${app.interview.venue}` : app.interview.meeting_link ? ` - ${app.interview.meeting_link}` : ''}</div>}
-                        {app.coverLetter && <div className="td-app-cover-letter"><FiFileText /> <span><strong>Cover letter:</strong> {app.coverLetter}</span></div>}
                         {app.additionalInfo && <div className="td-app-additional-info"><FiInfo /> <span><strong>Additional information:</strong> {app.additionalInfo}</span></div>}
                       </div>
                     </div>
@@ -6131,14 +6154,25 @@ export default function TeacherDashboard() {
           align-items: center;
           gap: 10px;
           margin: 16px 12px 0;
-          padding: 4px 0;
-          border: 0;
-          background: transparent;
-          color: #65716a;
+          padding: 8px 12px;
+          border: 1px solid rgba(220, 38, 38, 0.18);
+          border-radius: 10px;
+          background: rgba(254, 242, 242, 0.9);
+          color: #b91c1c;
           font: inherit;
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 700;
           cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .td-sidebar-logout:hover {
+          background: #fee2e2;
+          border-color: rgba(220, 38, 38, 0.32);
+          color: #991b1b;
+          transform: translateY(-1px);
+        }
+        .td-sidebar-logout svg {
+          stroke: currentColor;
         }
 
         /* ═══════════════════════════════════════
@@ -10562,26 +10596,26 @@ export default function TeacherDashboard() {
 
         .td-app-page { max-width: 1180px; padding: 28px 18px 48px; }
         .td-app-header { margin-bottom: 18px; }
-        .td-app-header h1 { margin-bottom: 2px; color: #202b3d; font-size: 23px; line-height: 1.25; }
-        .td-app-header p { color: #7a8493; font-size: 12px; }
+        .td-app-header h1 { margin-bottom: 2px; color: #202b3d; font-size: 28px; line-height: 1.25; }
+        .td-app-header p { color: #7a8493; font-size: 14px; }
         .td-app-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 20px; }
         .td-app-filter-tabs { display: flex; flex-wrap: wrap; gap: 7px; }
-        .td-app-filter-tabs button { min-width: 39px; padding: 6px 12px; border-radius: 999px; background: #e7eef9; color: #58677d; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .td-app-filter-tabs button { min-width: 48px; padding: 7px 14px; border-radius: 999px; background: #e7eef9; color: #58677d; font-size: 12px; font-weight: 700; cursor: pointer; }
         .td-app-filter-tabs button.is-active { background: #182338; color: #fff; }
         .td-app-toolbar-actions { display: flex; align-items: center; gap: 8px; }
-        .td-app-search { display: flex; align-items: center; gap: 7px; width: 162px; height: 29px; padding: 0 8px; border: 1px solid #e0e6ee; border-radius: 5px; background: #fff; color: #a3afbf; }
-        .td-app-search input { min-width: 0; flex: 1; color: #344054; font-size: 10px; outline: none; }
-        .td-app-toolbar select { height: 29px; padding: 0 23px 0 9px; border: 1px solid #e0e6ee; border-radius: 5px; background: #fff; color: #58677d; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .td-app-search { display: flex; align-items: center; gap: 7px; width: 180px; height: 34px; padding: 0 10px; border: 1px solid #e0e6ee; border-radius: 6px; background: #fff; color: #a3afbf; }
+        .td-app-search input { min-width: 0; flex: 1; color: #344054; font-size: 12px; outline: none; }
+        .td-app-toolbar select { height: 34px; padding: 0 28px 0 10px; border: 1px solid #e0e6ee; border-radius: 6px; background: #fff; color: #58677d; font-size: 12px; font-weight: 700; cursor: pointer; }
         .td-app-list { gap: 10px; }
         .td-app-card { min-height: 106px; padding: 15px; border: 1px solid #e7ebf0; border-radius: 8px; box-shadow: none; flex-direction: row; align-items: center; justify-content: space-between; gap: 20px; }
         .td-app-card-left { min-width: 0; gap: 11px; align-items: flex-start; }
-        .td-app-icon-wrapper { width: 28px; height: 28px; border-radius: 5px; background: #d8ecfa; color: #337696; }
+        .td-app-icon-wrapper { width: 32px; height: 32px; border-radius: 6px; background: #d8ecfa; color: #337696; }
         .td-app-title-row { margin-bottom: 1px; }
-        .td-app-title-row h3 { color: #313b4a; font-size: 13px; font-weight: 700; }
-        .td-app-school { margin-bottom: 12px; color: #77808b; font-size: 10px; }
-        .td-app-meta { display: flex; flex-wrap: wrap; gap: 9px; color: #8a95a3; font-size: 9px; }
+        .td-app-title-row h3 { color: #313b4a; font-size: 16px; font-weight: 700; }
+        .td-app-school { margin-bottom: 12px; color: #77808b; font-size: 12px; }
+        .td-app-meta { display: flex; flex-wrap: wrap; gap: 9px; color: #8a95a3; font-size: 11px; }
         .td-app-meta span { display: inline-flex; align-items: center; gap: 3px; }
-        .td-app-meta svg { width: 11px; height: 11px; }
+        .td-app-meta svg { width: 12px; height: 12px; }
         .td-app-cover-letter,
         .td-app-additional-info {
           display: flex;
@@ -10589,7 +10623,7 @@ export default function TeacherDashboard() {
           gap: 6px;
           margin-top: 8px;
           color: #64748b;
-          font-size: 10px;
+          font-size: 12px;
           line-height: 1.5;
         }
         .td-app-cover-letter svg { color: #15803d; flex-shrink: 0; margin-top: 2px; }
@@ -10602,13 +10636,13 @@ export default function TeacherDashboard() {
         .td-app-cover-letter strong,
         .td-app-additional-info strong { color: #475569; }
         .td-app-card-footer { flex: 0 0 auto; min-width: 105px; padding: 0; border: 0; flex-direction: column; align-items: flex-end; gap: 26px; }
-        .td-app-status-badge { padding: 3px 9px; border-radius: 999px; background: #fff1b8; color: #8a6910; font-size: 9px; text-transform: capitalize; }
+        .td-app-status-badge { padding: 5px 10px; border-radius: 999px; background: #fff1b8; color: #8a6910; font-size: 11px; text-transform: capitalize; }
         .td-app-status-badge--shortlisted { background: #d7f8d6; color: #238b37; }
         .td-app-status-badge--rejected { background: #ffe0da; color: #e35942; }
         .td-app-status-badge--withdrawn { background: #e7ebf0; color: #6b7280; }
-        .td-app-action-btn { min-width: 100px; min-height: 23px; padding: 0 9px; border: 1px solid #cfd6df; border-radius: 4px; color: #4b5563; font-size: 9px; font-weight: 700; }
+        .td-app-action-btn { min-width: 110px; min-height: 32px; padding: 0 12px; border: 1px solid #cfd6df; border-radius: 6px; color: #4b5563; font-size: 12px; font-weight: 700; }
         .td-app-action-btn:hover { border-color: #8896a7; background: #f8fafc; color: #273449; }
-        .td-app-empty { padding: 32px; border: 1px dashed #d8e0e9; border-radius: 8px; color: #6b7788; font-size: 13px; text-align: center; }
+        .td-app-empty { padding: 32px; border: 1px dashed #d8e0e9; border-radius: 8px; color: #6b7788; font-size: 14px; text-align: center; }
         @media (max-width: 768px) {
           .td-app-page { padding: 18px 14px 88px; }
           .td-app-header { margin-bottom: 16px; }

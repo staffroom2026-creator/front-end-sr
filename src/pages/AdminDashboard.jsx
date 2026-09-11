@@ -475,9 +475,24 @@ export default function AdminDashboard() {
     setSelectedJob(null);
     setSelectedApplicant(null);
     setSelectedTeacherProfile(null);
+    setSettingsSection("overview");
+    setJobDetailView("detail");
     setOpenJobMenuId(null);
     setExperienceMenuOpen(false);
     setQualificationMenuOpen(false);
+    setTeacherTab("invited");
+    setTeacherSearch("");
+    setTeacherSearchSubmitted("");
+    setTeacherLocation("All Locations");
+    setTeacherExperience("Experience");
+    setTeacherSubject("Subject");
+    setTeacherTrcn("TRCN");
+    setTeacherFilterMenuOpen(false);
+    setTeacherActiveFilterGroup(null);
+    setVisibleTeacherCount(10);
+    setJobFilter("All Jobs");
+    setApplicantFilter("All");
+    setApplicantPage(1);
   };
 
   const dismissSnackbar = () => {
