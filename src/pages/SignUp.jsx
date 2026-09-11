@@ -5,6 +5,14 @@ import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
 
+const passwordRules = [
+  { label: 'At least 8 characters', test: (value) => value.length >= 8 },
+  { label: 'One uppercase letter', test: (value) => /[A-Z]/.test(value) },
+  { label: 'One lowercase letter', test: (value) => /[a-z]/.test(value) },
+  { label: 'One number', test: (value) => /\d/.test(value) },
+  { label: 'One special character', test: (value) => /[^A-Za-z0-9]/.test(value) },
+];
+
 export default function SignUp() {
   const navigate = useNavigate();
   const { register } = useAuth();
@@ -32,6 +40,7 @@ export default function SignUp() {
   };
 
   const passwordsDoNotMatch = Boolean(form.confirmPassword) && form.password !== form.confirmPassword;
+  const validPassword = passwordRules.every((rule) => rule.test(form.password));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,6 +48,11 @@ export default function SignUp() {
 
     if (!agreedToTerms) {
       setError('You must agree to the terms and conditions to continue.');
+      return;
+    }
+
+    if (!validPassword) {
+      setError('Your password does not meet all requirements.');
       return;
     }
 
@@ -223,6 +237,21 @@ export default function SignUp() {
                   <EyeIcon open={showConfirm} />
                 </button>
               </div>
+              <ul className="su-password-rules" aria-label="Password requirements">
+                {passwordRules.map((rule) => {
+                  const satisfied = rule.test(form.password);
+                  return (
+                    <li key={rule.label} className={satisfied ? 'is-satisfied' : ''}>
+                      {satisfied ? (
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /></svg>
+                      )}
+                      {rule.label}
+                    </li>
+                  );
+                })}
+              </ul>
               {passwordsDoNotMatch && <p className="su-password-error" role="alert">Passwords do not match.</p>}
 
               {/* Terms Checkbox */}
@@ -367,6 +396,21 @@ export default function SignUp() {
                   <EyeIcon open={showConfirm} />
                 </button>
               </div>
+              <ul className="su-password-rules" aria-label="Password requirements">
+                {passwordRules.map((rule) => {
+                  const satisfied = rule.test(form.password);
+                  return (
+                    <li key={rule.label} className={satisfied ? 'is-satisfied' : ''}>
+                      {satisfied ? (
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6L9 17l-5-5" /></svg>
+                      ) : (
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /></svg>
+                      )}
+                      {rule.label}
+                    </li>
+                  );
+                })}
+              </ul>
               {passwordsDoNotMatch && <p className="su-password-error" role="alert">Passwords do not match.</p>}
 
               {/* Terms */}
@@ -410,6 +454,43 @@ export default function SignUp() {
         .su-spin path { opacity: 0.75; }
         *, *::before, *::after { box-sizing: border-box; }
         .su-password-error { margin: -4px 0 0; color: #b91c1c; font-size: 12px; line-height: 16px; }
+        .su-password-rules {
+          display: flex;
+          flex-direction: column;
+          gap: 7px;
+          margin: 6px 0 7px;
+          padding: 15px 12px;
+          border: 1px solid #d5ddda;
+          border-radius: 7px;
+          color: #626c6b;
+          font-size: 11px;
+          line-height: 14px;
+          list-style: none;
+        }
+        .su-password-rules li {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .su-password-rules svg {
+          width: 14px;
+          height: 14px;
+          stroke: currentColor;
+          fill: none;
+          stroke-width: 2;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          flex-shrink: 0;
+        }
+        .su-password-rules .is-satisfied {
+          color: #1c5b3a;
+          font-weight: 600;
+        }
+        .su-password-rules .is-satisfied svg {
+          color: #117a55;
+          fill: #117a55;
+          stroke: #fff;
+        }
         .su-input[aria-invalid="true"], .su-mob-input[aria-invalid="true"] { border-color: #b91c1c; }
 
         .su-layout {
