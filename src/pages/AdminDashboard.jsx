@@ -1057,13 +1057,13 @@ export default function AdminDashboard() {
             Settings
           </button>
           <span className="admin-settings-breadcrumb-separator">›</span>
-          <span>Profile</span>
+          <span>School Administrator Profile</span>
         </div>
 
         <div className="admin-settings-panel admin-profile-panel">
           <div className="admin-profile-header">
             <div>
-              <h1 className="admin-settings-subpage-title">Edit Profile</h1>
+              <h1 className="admin-settings-subpage-title">School Administrator Profile</h1>
               <p className="admin-settings-subpage-subtitle">Update your personal information and contact details.</p>
             </div>
           </div>
@@ -5963,15 +5963,6 @@ export default function AdminDashboard() {
                                 Manage the core organizational details and public-facing contact information for your school.
                               </p>
                             </div>
-                            <button
-                              type="button"
-                              className="admin-school-save-btn"
-                              onClick={handleSaveSchoolProfile}
-                              disabled={savingSchoolProfile}
-                            >
-                              <FiCheck size={14} />
-                              {savingSchoolProfile ? "Saving..." : "Save Changes"}
-                            </button>
                           </div>
 
                           <div className="admin-school-info-layout">
@@ -6228,6 +6219,18 @@ export default function AdminDashboard() {
                               </div>
                             </aside>
                           </div>
+
+                          <div className="admin-school-actions-row">
+                            <button
+                              type="button"
+                              className="admin-school-save-btn"
+                              onClick={handleSaveSchoolProfile}
+                              disabled={savingSchoolProfile}
+                            >
+                              <FiCheck size={14} />
+                              {savingSchoolProfile ? "Saving..." : "Save Changes"}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ) : (
@@ -6243,19 +6246,23 @@ export default function AdminDashboard() {
                         </p>
 
                         <section className="admin-settings-group">
-                          <div className="admin-settings-section-head">
-                            <div className="admin-settings-section-icon green">
-                              <FiUser size={18} />
+                          <button type="button" className={`admin-settings-card ${settingsSection === "school-info" ? "is-selected" : ""}`} onClick={() => setSettingsSection("school-info")}>
+                            <div className="admin-settings-card-icon gray">
+                              <FiBriefcase size={20} />
                             </div>
-                            <span>Personal Settings</span>
-                          </div>
+                            <div className="admin-settings-card-copy">
+                              <h3>School Information</h3>
+                              <p>Configure institutional details, academic calendars, grading systems, and global contact information for external communications.</p>
+                            </div>
+                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
+                          </button>
 
                           <button type="button" className={`admin-settings-card ${settingsSection === "profile" ? "is-selected" : ""}`} onClick={() => setSettingsSection("profile")}>
                             <div className="admin-settings-card-icon green">
                               <FiUser size={20} />
                             </div>
                             <div className="admin-settings-card-copy">
-                              <h3>Profile</h3>
+                              <h3>School Administrator Profile</h3>
                               <p>Update your administrator details, contact information, and professional credentials.</p>
                             </div>
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
@@ -6268,26 +6275,6 @@ export default function AdminDashboard() {
                             <div className="admin-settings-card-copy">
                               <h3>Account &amp; Security</h3>
                               <p>Manage your password, two-factor authentication, and active sessions.</p>
-                            </div>
-                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
-                          </button>
-                        </section>
-
-                        <section className="admin-settings-group">
-                          <div className="admin-settings-section-head">
-                            <div className="admin-settings-section-icon gray">
-                              <FiHome size={18} />
-                            </div>
-                            <span>Institutional Settings</span>
-                          </div>
-
-                          <button type="button" className={`admin-settings-card ${settingsSection === "school-info" ? "is-selected" : ""}`} onClick={() => setSettingsSection("school-info")}>
-                            <div className="admin-settings-card-icon gray">
-                              <FiBriefcase size={20} />
-                            </div>
-                            <div className="admin-settings-card-copy">
-                              <h3>School Information</h3>
-                              <p>Configure institutional details, academic calendars, grading systems, and global contact information for external communications.</p>
                             </div>
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
                           </button>
@@ -7666,6 +7653,11 @@ export default function AdminDashboard() {
         .admin-school-info-subtitle {
           max-width: 760px;
           margin-bottom: 0;
+        }
+        .admin-school-actions-row {
+          display: flex;
+          justify-content: flex-end;
+          margin-top: 22px;
         }
         .admin-school-save-btn {
           display: inline-flex;
