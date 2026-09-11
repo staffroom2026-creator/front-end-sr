@@ -145,6 +145,7 @@ export default function AdminDashboard() {
   const [savingAdminEmail, setSavingAdminEmail] = useState(false);
   const [showAdminEmailVerificationModal, setShowAdminEmailVerificationModal] = useState(false);
   const [adminEmailVerificationCode, setAdminEmailVerificationCode] = useState(["", "", "", "", "", ""]);
+  const [verifyingAdminEmail, setVerifyingAdminEmail] = useState(false);
   const [pendingAdminEmail, setPendingAdminEmail] = useState("");
   const [adminSuccessSnackbox, setAdminSuccessSnackbox] = useState(null);
   const [changePasswordForm, setChangePasswordForm] = useState({
@@ -212,6 +213,7 @@ export default function AdminDashboard() {
   const [websiteValue, setWebsiteValue] = useState("");
   const [isAddressEditing, setIsAddressEditing] = useState(false);
   const [addressValue, setAddressValue] = useState("");
+  const [schoolAddressInitialValue, setSchoolAddressInitialValue] = useState("");
   const [savingSchoolProfile, setSavingSchoolProfile] = useState(false);
   const schoolLogoInputRef = useRef(null);
   const schoolNameInputRef = useRef(null);
@@ -530,7 +532,7 @@ export default function AdminDashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === "settings" && settingsSection === "profile") {
+    if (activeTab === "settings" && ["profile", "email-change", "phone-change"].includes(settingsSection)) {
       loadAdminProfile();
     }
   }, [activeTab, loadAdminProfile, settingsSection]);
@@ -607,12 +609,24 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAdminEmailVerificationSuccess = () => {
-    setShowAdminEmailVerificationModal(false);
-    setSettingsSection("profile");
-    setPendingAdminEmail("");
-    loadAdminProfile();
-    setAdminSuccessSnackbox({ title: "Email changed successfully", message: "Your email has been changed successfully." });
+  const handleAdminEmailVerificationSuccess = async () => {
+    const code = adminEmailVerificationCode.join("");
+    if (code.length !== 6) return;
+
+    try {
+      setVerifyingAdminEmail(true);
+      await accountService.patchEmail({ code });
+      setShowAdminEmailVerificationModal(false);
+      setSettingsSection("profile");
+      setPendingAdminEmail("");
+      setAdminEmailVerificationCode(["", "", "", "", "", ""]);
+      await loadAdminProfile();
+      setAdminSuccessSnackbox({ title: "Email changed successfully", message: "Your email has been changed successfully." });
+    } catch (err) {
+      showSnackbar("Email verification failed", apiErrorMessage(err, "Unable to verify your email address."));
+    } finally {
+      setVerifyingAdminEmail(false);
+    }
   };
 
   useEffect(() => {
@@ -863,7 +877,7 @@ export default function AdminDashboard() {
   const renderAdminPhoneChange = () => (
     <div className="admin-settings-shell admin-settings-subpage admin-email-change-page">
       <div className="admin-settings-breadcrumb-row">
-        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("profile")}>Profile</button>
+        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("account-security")}>Account &amp; Security</button>
         <span className="admin-settings-breadcrumb-separator">›</span>
         <span>Change phone number</span>
       </div>
@@ -883,7 +897,7 @@ export default function AdminDashboard() {
           <input type="tel" autoFocus placeholder="e.g. 081 4835 5892" value={adminPhoneChangeValue} onChange={(event) => setAdminPhoneChangeValue(event.target.value)} />
         </label>
         <div className="admin-email-change-actions">
-          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("profile")}>Cancel</button>
+          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("account-security")}>Cancel</button>
           <button type="button" className="admin-email-continue-btn" onClick={handleAdminPhoneChange} disabled={savingAdminPhone || !adminPhoneChangeValue.trim() || adminPhoneChangeValue.trim() === adminProfileForm.phone.trim()}>
             {savingAdminPhone ? "Updating..." : "Continue"}
           </button>
@@ -974,8 +988,8 @@ export default function AdminDashboard() {
             />
           ))}
         </div>
-        <button type="button" className="admin-email-verify-submit" onClick={handleAdminEmailVerificationSuccess} disabled={adminEmailVerificationCode.some((digit) => !digit)}>
-          Verify email <FiArrowRight size={15} />
+        <button type="button" className="admin-email-verify-submit" onClick={handleAdminEmailVerificationSuccess} disabled={verifyingAdminEmail || adminEmailVerificationCode.some((digit) => !digit)}>
+          {verifyingAdminEmail ? "Verifying..." : "Verify email"} <FiArrowRight size={15} />
         </button>
         <div className="admin-email-verify-divider" />
         <p className="admin-email-verify-resend">Didn&apos;t receive the code? <button type="button">Resend code</button></p>
@@ -989,8 +1003,8 @@ export default function AdminDashboard() {
   const renderAdminEmailChange = () => (
     <div className="admin-settings-shell admin-settings-subpage admin-email-change-page">
       <div className="admin-settings-breadcrumb-row">
-        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("profile")}>
-          Profile
+        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("account-security")}>
+          Account &amp; Security
         </button>
         <span className="admin-settings-breadcrumb-separator">›</span>
         <span>Change email</span>
@@ -1020,7 +1034,7 @@ export default function AdminDashboard() {
           />
         </label>
         <div className="admin-email-change-actions">
-          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("profile")}>Cancel</button>
+          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("account-security")}>Cancel</button>
           <button
             type="button"
             className="admin-email-continue-btn"
@@ -1132,7 +1146,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="admin-profile-footer">
-                  <button type="button" className="admin-profile-cancel-btn" onClick={loadAdminProfile} disabled={adminProfileLoading || savingAdminProfile}>Cancel</button>
+                  <button type="button" className="admin-profile-cancel-btn" onClick={() => setSettingsSection("account-security")} disabled={adminProfileLoading || savingAdminProfile}>Cancel</button>
                   <button type="button" className="admin-profile-save-btn" onClick={handleSaveAdminProfile} disabled={adminProfileLoading || savingAdminProfile || !hasAdminProfileChanges}>
                     <FiCheck size={14} />
                     {savingAdminProfile ? "Saving..." : "Save Changes"}
@@ -1176,7 +1190,9 @@ export default function AdminDashboard() {
       setEmailValue(mergedProfile.email || account.email || emailValue);
       setPhoneValue(mergedProfile.phone || account.phone || phoneValue);
       setWebsiteValue(mergedProfile.website || websiteValue);
-      setAddressValue(mergedProfile.address || addressValue);
+      const updatedAddress = getSchoolAddress(mergedProfile) || addressValue;
+      setAddressValue(updatedAddress);
+      setSchoolAddressInitialValue(updatedAddress);
       setSchoolLogoPreview(toAssetUrl(mergedProfile.logo_url || mergedProfile.school_logo || mergedProfile.logo || schoolLogoPreview));
       setSchoolLogoFile(null);
       const updatedLocation = getSchoolLocation(mergedProfile);
@@ -1328,6 +1344,13 @@ export default function AdminDashboard() {
     profile.state,
     profile.country,
   ].filter(Boolean).join(", ") || profile.location || "";
+
+  const getSchoolAddress = (profile = {}) => [
+    profile.address,
+    profile.city || profile.lga,
+    profile.state,
+    profile.country,
+  ].filter(Boolean).join("\n") || profile.location || "";
 
   const deduplicateJobs = (jobList = []) => {
     const seen = new Map();
@@ -1505,18 +1528,14 @@ export default function AdminDashboard() {
       const nextEmail = mergedProfile?.email || user?.email || "";
       const nextPhone = mergedProfile?.phone || user?.phone || "";
       const nextWebsite = mergedProfile?.website || user?.website || "";
-      const nextAddress = [
-        mergedProfile?.address,
-        mergedProfile?.city,
-        mergedProfile?.state,
-        mergedProfile?.country,
-      ].filter(Boolean).join("\n") || mergedProfile?.location || "";
+      const nextAddress = getSchoolAddress(mergedProfile);
 
       setSchoolNameValue(nextSchoolName);
       setEmailValue(nextEmail);
       setPhoneValue(nextPhone);
       setWebsiteValue(nextWebsite);
       setAddressValue(nextAddress);
+      setSchoolAddressInitialValue(nextAddress);
       setSchoolLogoPreview(toAssetUrl(mergedProfile?.logo_url || mergedProfile?.school_logo || mergedProfile?.logo || ""));
 
       if (locationFromProfile) {
@@ -5861,7 +5880,7 @@ export default function AdminDashboard() {
                           </p>
 
                           <div className="admin-security-grid">
-                            <div className="admin-security-card">
+                            <div className="admin-security-card admin-security-card--password">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiLock size={18} />
@@ -5869,13 +5888,7 @@ export default function AdminDashboard() {
                                 <h2>Password</h2>
                               </div>
 
-                              <div className="admin-security-password-box">
-                                <div className="admin-security-password-row">
-                                  <span className="admin-security-label">Current Password</span>
-                                  <span className="admin-security-label muted">Last changed: Oct 12, 2023</span>
-                                </div>
-                                <div className="admin-security-password-mask">••••••••••••••••</div>
-                              </div>
+                              <span className="admin-security-last-updated">Last update: Managed securely</span>
 
                               <button type="button" className="admin-security-action-btn" onClick={() => setSettingsSection("password-change")}>
                                 <FiLock size={14} />
@@ -5883,7 +5896,7 @@ export default function AdminDashboard() {
                               </button>
                             </div>
 
-                            <div className="admin-security-card">
+                            <div className="admin-security-card admin-security-card--two-factor">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiShield size={18} />
@@ -5907,12 +5920,12 @@ export default function AdminDashboard() {
                               </div>
                             </div>
 
-                            <div className="admin-security-card">
+                            <div className="admin-security-card admin-security-card--email">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiMail size={18} />
                                 </div>
-                                <h2>Recovery email</h2>
+                                <h2>Email</h2>
                               </div>
                               <p className="admin-security-card-copy">
                                 Update the email address used for account access and security notifications.
@@ -5923,7 +5936,7 @@ export default function AdminDashboard() {
                               </button>
                             </div>
 
-                            <div className="admin-security-card">
+                            <div className="admin-security-card admin-security-card--phone">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiPhone size={18} />
@@ -6171,7 +6184,7 @@ export default function AdminDashboard() {
                                               className="admin-school-address-btn cancel"
                                               onClick={() => {
                                                 setIsAddressEditing(false);
-                                                setAddressValue("14 Adeola Okedun Street, Victoria Island\nLagos, Nigeria\nPostal: 101241");
+                                                setAddressValue(schoolAddressInitialValue);
                                               }}
                                             >
                                               Cancel
@@ -6348,16 +6361,6 @@ export default function AdminDashboard() {
               <time>{selectedNotification.time}</time>
             </div>
             <div className="admin-notification-modal-actions">
-              <button
-                type="button"
-                className="admin-notification-read-btn"
-                onClick={() => markSchoolNotificationAsRead(selectedNotification.key)}
-                disabled={!selectedNotification.unread || notificationActionLoading[selectedNotification.key] === "read"}
-              >
-                {notificationActionLoading[selectedNotification.key] === "read"
-                  ? "Marking as read..."
-                  : selectedNotification.unread ? "Mark as read" : "Read"}
-              </button>
               <button
                 type="button"
                 className="admin-notification-delete-btn"
@@ -7513,8 +7516,12 @@ export default function AdminDashboard() {
           padding: 18px 18px 16px;
           border: 1px solid #dfe3df;
           border-radius: 12px;
-          background: #f4f5f4;
+          background: #ffffff;
         }
+        .admin-security-card--password { order: 1; }
+        .admin-security-card--email { order: 2; }
+        .admin-security-card--phone { order: 3; }
+        .admin-security-card--two-factor { order: 4; }
         .admin-security-card-header {
           display: flex;
           align-items: center;
@@ -7584,6 +7591,19 @@ export default function AdminDashboard() {
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
+        }
+        .admin-security-action-btn:hover {
+          border-color: #1b9c63;
+          background: #eaf8ef;
+          color: #126b43;
+        }
+        .admin-security-card button:not(:disabled):hover {
+          filter: brightness(0.98);
+        }
+        .admin-security-last-updated {
+          color: #778680;
+          font-size: 13px;
+          font-weight: 500;
         }
         .admin-security-toggle {
           position: relative;

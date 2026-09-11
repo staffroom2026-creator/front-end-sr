@@ -2699,7 +2699,7 @@ export default function TeacherDashboard() {
 
               <section className="school-job-detail-body td-jd-body">
                 <div className="school-job-detail-section td-jd-section">
-                  <h3>About the Role</h3>
+                  <h3>Job Summary</h3>
                   <p>{selectedJob.about || 'No job description has been published for this role yet.'}</p>
                 </div>
 
@@ -2941,17 +2941,9 @@ export default function TeacherDashboard() {
                     <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                       <button
                         type="button"
-                        onClick={() => handleMarkNotificationAsRead(selectedNotification.id)}
-                        disabled={notificationActionLoading[selectedNotification.id] === 'read' || selectedNotification.read}
-                        style={{ flex: 1, minHeight: '42px', border: 'none', borderRadius: '12px', background: '#15803d', color: '#fff', fontWeight: 600, cursor: notificationActionLoading[selectedNotification.id] === 'read' || selectedNotification.read ? 'not-allowed' : 'pointer', opacity: selectedNotification.read ? 0.7 : 1 }}
-                      >
-                        {notificationActionLoading[selectedNotification.id] === 'read' ? 'Marking as read...' : selectedNotification.read ? 'Read' : 'Mark as read'}
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => handleDeleteNotification(selectedNotification.id)}
                         disabled={notificationActionLoading[selectedNotification.id] === 'delete'}
-                        style={{ flex: 1, minHeight: '42px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: notificationActionLoading[selectedNotification.id] === 'delete' ? 'not-allowed' : 'pointer' }}
+                        style={{ flex: '1 1 100%', width: '100%', minHeight: '42px', border: '1px solid #e2e8f0', borderRadius: '12px', background: '#fff', color: '#0f172a', fontWeight: 600, cursor: notificationActionLoading[selectedNotification.id] === 'delete' ? 'not-allowed' : 'pointer' }}
                       >
                         {notificationActionLoading[selectedNotification.id] === 'delete' ? 'Deleting...' : 'Delete'}
                       </button>
