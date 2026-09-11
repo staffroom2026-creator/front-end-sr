@@ -41,6 +41,7 @@ import {
   FiSearch,
   FiSettings,
   FiShield,
+  FiFilter,
   FiTrash2,
   FiUser,
   FiUsers,
@@ -49,6 +50,7 @@ import {
   FiAward,
   FiEye,
   FiDownload,
+  FiBookmark,
 } from "react-icons/fi";
 
 const qualificationOptions = [
@@ -218,6 +220,7 @@ export default function AdminDashboard() {
   const websiteInputRef = useRef(null);
   const addressTextareaRef = useRef(null);
   const qualificationDropdownRef = useRef(null);
+  const teacherFilterMenuRef = useRef(null);
   const [notificationItems, setNotificationItems] = useState([]);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
@@ -238,6 +241,7 @@ export default function AdminDashboard() {
   const [rejectError, setRejectError] = useState("");
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [teacherTab, setTeacherTab] = useState("invited");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherSearchSubmitted, setTeacherSearchSubmitted] = useState("");
   const [teacherLocation, setTeacherLocation] = useState("All Locations");
@@ -249,6 +253,10 @@ export default function AdminDashboard() {
   const [teacherSubjectMenuOpen, setTeacherSubjectMenuOpen] = useState(false);
   const [teacherTrcn, setTeacherTrcn] = useState("TRCN");
   const [teacherTrcnMenuOpen, setTeacherTrcnMenuOpen] = useState(false);
+  const [teacherFilterMenuOpen, setTeacherFilterMenuOpen] = useState(false);
+  const [teacherSortMenuOpen, setTeacherSortMenuOpen] = useState(false);
+  const [teacherSortMode, setTeacherSortMode] = useState("Best Match");
+  const [teacherActiveFilterGroup, setTeacherActiveFilterGroup] = useState(null);
   const [shortlistForm, setShortlistForm] = useState({
     interviewType: "",
     responseTemplate: "",
@@ -266,6 +274,11 @@ export default function AdminDashboard() {
     const handleClickOutside = (event) => {
       if (qualificationDropdownRef.current && !qualificationDropdownRef.current.contains(event.target)) {
         setQualificationOpen(false);
+      }
+
+      if (teacherFilterMenuRef.current && !teacherFilterMenuRef.current.contains(event.target)) {
+        setTeacherFilterMenuOpen(false);
+        setTeacherActiveFilterGroup(null);
       }
     };
 
@@ -4713,6 +4726,7 @@ export default function AdminDashboard() {
       locations: uniqueLocations,
       experiences: uniqueExperiences,
       subjects: uniqueSubjects,
+      trcnStatuses: trcnOptions,
     };
 
     const filteredTeachers = teachers.filter((teacher) => {
@@ -4741,6 +4755,40 @@ export default function AdminDashboard() {
 
       return matchesQuery && matchesLocation && matchesExperience && matchesSubject && matchesTrcn;
     });
+
+    const sortedTeachers = [...filteredTeachers].sort((teacherA, teacherB) => {
+      if (teacherSortMode === "Best Match") {
+        const aMatch = `${teacherA.name} ${teacherA.subject} ${teacherA.location}`
+          .toLowerCase()
+          .includes((teacherSearchSubmitted || teacherSearch).trim().toLowerCase())
+          ? 1
+          : 0;
+        const bMatch = `${teacherB.name} ${teacherB.subject} ${teacherB.location}`
+          .toLowerCase()
+          .includes((teacherSearchSubmitted || teacherSearch).trim().toLowerCase())
+          ? 1
+          : 0;
+        return bMatch - aMatch;
+      }
+
+      if (teacherSortMode === "Most experienced") {
+        const parseExperience = (value) => {
+          const number = Number(String(value).replace(/[^0-9]/g, ""));
+          return Number.isFinite(number) ? number : 0;
+        };
+        return parseExperience(teacherB.experience) - parseExperience(teacherA.experience);
+      }
+
+      if (teacherSortMode === "Newest") {
+        return String(teacherB.name).localeCompare(String(teacherA.name));
+      }
+
+      return 0;
+    });
+
+    const selectedTeacherTabTeachers = teacherTab === "saved"
+      ? sortedTeachers.filter((teacher) => savedTeacherIds.includes(String(teacher.user_id || "")))
+      : sortedTeachers;
 
     return (
       <div className="school-teachers-page">
@@ -4771,232 +4819,355 @@ export default function AdminDashboard() {
                 handleTeacherSearch();
               }}
             >
-              <div className="school-teachers-search">
-                <span className="school-teachers-search-icon">⌕</span>
-                <input
-                  type="text"
-                  placeholder="Name, Subject, or Qualification..."
-                  aria-label="Search teachers"
-                  value={teacherSearch}
-                  onChange={(event) => setTeacherSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      handleTeacherSearch();
-                    }
-                  }}
-                />
-              </div>
+              <div className="school-teachers-search-row">
+                <div className="school-teachers-search">
+                  <span className="school-teachers-search-icon"><FiSearch size={15} /></span>
+                  <input
+                    type="text"
+                    placeholder="Name, Subject, or Qualification..."
+                    aria-label="Search teachers"
+                    value={teacherSearch}
+                    onChange={(event) => setTeacherSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        handleTeacherSearch();
+                      }
+                    }}
+                  />
+                </div>
 
-              <div className="school-teachers-dropdown-wrapper">
-                <button
-                  type="button"
-                  className="school-teachers-location-button"
-                  onClick={() => {
-                    setTeacherLocationMenuOpen((prev) => !prev);
-                    setTeacherExperienceMenuOpen(false);
-                    setTeacherSubjectMenuOpen(false);
-                    setTeacherTrcnMenuOpen(false);
-                  }}
-                >
-                  <span className="school-teachers-location-dot" />
-                  {teacherLocation}
-                  <span className="school-teachers-caret">▾</span>
+                <button type="submit" className="school-teachers-search-btn">
+                  Search
                 </button>
-
-                {teacherLocationMenuOpen && (
-                  <div className="school-teachers-menu" role="menu">
-                    {teacherOptions.locations.map((location) => (
-                      <button
-                        key={location}
-                        type="button"
-                        className="school-teachers-menu-item"
-                        onClick={() => {
-                          setTeacherLocation(location);
-                          setTeacherLocationMenuOpen(false);
-                        }}
-                      >
-                        {location}
-                      </button>
-                    ))}
-                  </div>
-                )}
               </div>
 
-              <button type="submit" className="school-teachers-search-btn">
-                Search
-              </button>
+              <div className="school-teachers-compact-toolbar">
+                <div className="school-teachers-toolbar-left">
+                  <div className="school-teachers-filter-menu-anchor" ref={teacherFilterMenuRef}>
+                    <button
+                      type="button"
+                      className="school-teachers-filter-pill"
+                      onClick={() => setTeacherFilterMenuOpen((prev) => !prev)}
+                    >
+                      <FiFilter size={14} />
+                      Filters • {Number(teacherSubject !== "Subject") + Number(teacherLocation !== "All Locations") + Number(teacherExperience !== "Experience") + Number(teacherTrcn !== "TRCN")}
+                    </button>
+
+                    {teacherFilterMenuOpen && (
+                      <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
+                        <div className="school-teachers-menu-main-column">
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Subject" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Subject" ? null : "Subject"))}
+                          >
+                            Subject
+                          </button>
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Location" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Location" ? null : "Location"))}
+                          >
+                            Location
+                          </button>
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Experience" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Experience" ? null : "Experience"))}
+                          >
+                            Experience
+                          </button>
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "TRCN" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "TRCN" ? null : "TRCN"))}
+                          >
+                            TRCN
+                          </button>
+                        </div>
+
+                        {teacherActiveFilterGroup && (
+                          <div className="school-teachers-menu-side-panel" role="menu">
+                            {teacherActiveFilterGroup === "Subject" && teacherOptions.subjects.map((subject) => (
+                              <button
+                                key={subject}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherSubject(subject);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {subject}
+                              </button>
+                            ))}
+
+                            {teacherActiveFilterGroup === "Location" && teacherOptions.locations.map((location) => (
+                              <button
+                                key={location}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherLocation(location);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {location}
+                              </button>
+                            ))}
+
+                            {teacherActiveFilterGroup === "Experience" && teacherOptions.experiences.map((experience) => (
+                              <button
+                                key={experience}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherExperience(experience);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {experience}
+                              </button>
+                            ))}
+
+                            {teacherActiveFilterGroup === "TRCN" && teacherOptions.trcnStatuses.map((status) => (
+                              <button
+                                key={status}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherTrcn(status);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {status}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="school-teachers-active-filters">
+                    {teacherSubject !== "Subject" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        Subject:<strong>{teacherSubject}</strong>
+                      </button>
+                    )}
+                    {teacherLocation !== "All Locations" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        Location:<strong>{teacherLocation}</strong>
+                      </button>
+                    )}
+                    {teacherExperience !== "Experience" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        Experience:<strong>{teacherExperience}</strong>
+                      </button>
+                    )}
+                    {teacherTrcn !== "TRCN" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        TRCN:<strong>{teacherTrcn}</strong>
+                      </button>
+                    )}
+                    {(teacherSubject !== "Subject" || teacherLocation !== "All Locations" || teacherExperience !== "Experience" || teacherTrcn !== "TRCN") && (
+                      <button type="button" className="school-teachers-reset-all" onClick={() => {
+                        setTeacherSubject("Subject");
+                        setTeacherLocation("All Locations");
+                        setTeacherExperience("Experience");
+                        setTeacherTrcn("TRCN");
+                        setTeacherSearch("");
+                        setTeacherSearchSubmitted("");
+                        setTeacherFilterMenuOpen(false);
+                      }}>
+                        Reset all
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="school-teachers-toolbar-right">
+                  <span>Showing 1–6 of {selectedTeacherTabTeachers.length} available teachers</span>
+                  <span className="school-teachers-divider">|</span>
+                  <div className="school-teachers-sort-wrapper">
+                    <button
+                      type="button"
+                      className="school-teachers-sort-button"
+                      onClick={() => setTeacherSortMenuOpen((prev) => !prev)}
+                    >
+                      Sort by: <strong>{teacherSortMode}</strong> <FiChevronDown size={12} />
+                    </button>
+                    {teacherSortMenuOpen && (
+                      <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
+                        {['Best Match', 'Most experienced', 'Newest'].map((sortValue) => (
+                          <button
+                            key={sortValue}
+                            type="button"
+                            className="school-teachers-menu-item"
+                            onClick={() => {
+                              setTeacherSortMode(sortValue);
+                              setTeacherSortMenuOpen(false);
+                            }}
+                          >
+                            {sortValue}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </form>
 
-            <div className="school-teachers-filter-row">
-              <div className="school-teachers-dropdown-wrapper school-teachers-dropdown-wrapper--compact">
-                <button
-                  type="button"
-                  className="school-teachers-filter-tag"
-                  onClick={() => {
-                    setTeacherExperienceMenuOpen((prev) => !prev);
-                    setTeacherSubjectMenuOpen(false);
-                    setTeacherLocationMenuOpen(false);
-                  }}
-                >
-                  {teacherExperience} ▾
-                </button>
-
-                {teacherExperienceMenuOpen && (
-                  <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
-                    {teacherOptions.experiences.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        className="school-teachers-menu-item"
-                        onClick={() => {
-                          setTeacherExperience(option);
-                          setTeacherExperienceMenuOpen(false);
-                        }}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="school-teachers-dropdown-wrapper school-teachers-dropdown-wrapper--compact">
-                <button
-                  type="button"
-                  className="school-teachers-filter-tag"
-                  onClick={() => {
-                    setTeacherSubjectMenuOpen((prev) => !prev);
-                    setTeacherExperienceMenuOpen(false);
-                    setTeacherLocationMenuOpen(false);
-                  }}
-                >
-                  {teacherSubject} ▾
-                </button>
-
-                {teacherSubjectMenuOpen && (
-                  <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
-                    {teacherOptions.subjects.map((option) => (
-                      <button
-                        key={option}
-                        type="button"
-                        className="school-teachers-menu-item"
-                        onClick={() => {
-                          setTeacherSubject(option);
-                          setTeacherSubjectMenuOpen(false);
-                        }}
-                      >
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="school-teachers-dropdown-wrapper school-teachers-dropdown-wrapper--compact">
-                <button
-                  type="button"
-                  className="school-teachers-filter-tag"
-                  onClick={() => {
-                    setTeacherTrcnMenuOpen((prev) => !prev);
-                    setTeacherExperienceMenuOpen(false);
-                    setTeacherSubjectMenuOpen(false);
-                    setTeacherLocationMenuOpen(false);
-                  }}
-                >
-                  {teacherTrcn} ▾
-                </button>
-                {teacherTrcnMenuOpen && (
-                  <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
-                    {trcnOptions.map((option) => (
-                      <button key={option} type="button" className="school-teachers-menu-item" onClick={() => { setTeacherTrcn(option); setTeacherTrcnMenuOpen(false); }}>
-                        {option}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="school-teachers-toggle-row" role="tablist" aria-label="Teacher views">
+              <button
+                type="button"
+                className={`school-teachers-toggle ${teacherTab === "invited" ? "is-active" : ""}`}
+                role="tab"
+                aria-selected={teacherTab === "invited"}
+                onClick={() => setTeacherTab("invited")}
+              >
+                <FiUsers size={15} />
+                Invited teachers
+              </button>
+              <button
+                type="button"
+                className={`school-teachers-toggle ${teacherTab === "saved" ? "is-active" : ""}`}
+                role="tab"
+                aria-selected={teacherTab === "saved"}
+                onClick={() => setTeacherTab("saved")}
+              >
+                <FiBookmark size={15} />
+                Saved teachers
+              </button>
             </div>
 
             <div className="school-teachers-header-row">
-              <h2>{filteredTeachers.length} Teachers Found</h2>
+              <h2>{selectedTeacherTabTeachers.length} Teachers Found</h2>
               <button type="button" className="school-teachers-sort-btn">
-                Sort by: Relevance ▾
+                Sort by: Relevance <FiChevronDown size={15} />
               </button>
             </div>
 
             <div className="school-teachers-list">
-              {filteredTeachers.slice(0, visibleTeacherCount).map((teacher, index) => (
-                <div className="school-teacher-card" key={`${teacher.name}-${index}`}>
+              {selectedTeacherTabTeachers.slice(0, visibleTeacherCount).map((teacher, index) => (
+                <div
+                  className={`school-teacher-card ${index === 0 ? "school-teacher-card--first" : ""} ${index === Math.min(selectedTeacherTabTeachers.length, visibleTeacherCount) - 1 ? "school-teacher-card--last" : ""}`}
+                  key={`${teacher.name}-${index}`}
+                >
+                  <button
+                    type="button"
+                    className={`school-teacher-save-button ${savedTeacherIds.includes(String(teacher.user_id || '')) ? "is-saved" : ""}`}
+                    onClick={() => handleToggleSavedTeacher(teacher)}
+                    aria-label={savedTeacherIds.includes(String(teacher.user_id || '')) ? "Remove from saved teachers" : "Save teacher"}
+                    title={savedTeacherIds.includes(String(teacher.user_id || '')) ? "Remove from saved teachers" : "Save teacher"}
+                  >
+                    <FiBookmark size={14} />
+                  </button>
+
                   <div className="school-teacher-card-main">
                     <div className="school-teacher-badge">● {teacher.availability}</div>
 
                     <div className="school-teacher-profile-row">
-                      <div
-                        className="school-teacher-avatar"
-                        style={{ background: teacher.accent }}
-                        aria-hidden="true"
-                      >
-                        {teacher.name
-                          .split(" ")
-                          .map((part) => part[0])
-                          .join("")
-                          .slice(0, 2)
-                          .toUpperCase()}
-                      </div>
-
-                      <div className="school-teacher-info">
+                      <div className="school-teacher-name-column">
                         <div className="school-teacher-name-row">
-                          <span className="school-teacher-name">{teacher.name}</span>
-                          <span className="school-teacher-meta-pill">{teacher.location}</span>
-                          <span className="school-teacher-meta-pill">{teacher.experience}</span>
-                          <span className="school-teacher-meta-pill">{teacher.subject}</span>
+                          <div
+                            className="school-teacher-avatar"
+                            style={{ background: teacher.accent }}
+                            aria-hidden="true"
+                          >
+                            {teacher.name
+                              .split(" ")
+                              .map((part) => part[0])
+                              .join("")
+                              .slice(0, 2)
+                              .toUpperCase()}
+                          </div>
+
+                          <div className="school-teacher-name-content">
+                            <span className="school-teacher-name">{teacher.name}</span>
+                            <div className="school-teacher-meta-row">
+                              <span className="school-teacher-meta-pill">
+                                <FiMapPin size={12} />
+                                {teacher.location}
+                              </span>
+                              <span className="school-teacher-meta-pill">
+                                <FiClock size={12} />
+                                {teacher.experience}
+                              </span>
+                              <span className="school-teacher-meta-pill">
+                                <FiBookOpen size={12} />
+                                {teacher.subject}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                        <p className="school-teacher-role">{teacher.role}</p>
-                        <p className="school-teacher-summary">{teacher.summary}</p>
+
+                        <div className="school-teacher-role-wrap">
+                          <p className="school-teacher-role">{teacher.role}</p>
+                          <p className="school-teacher-summary">{teacher.summary}</p>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   <div className="school-teacher-actions">
-                    <button
-                      type="button"
-                      className="school-teacher-primary-btn"
-                      onClick={() => {
-                        setSelectedTeacherProfile(teacher);
-                        setIsTeacherInviteModalOpen(true);
-                      }}
-                    >
-                      Invite to Apply
-                    </button>
-                    <button
-                      type="button"
-                      className="school-teacher-secondary-btn"
-                      onClick={() => handleToggleSavedTeacher(teacher)}
-                    >
-                      {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save'}
-                    </button>
-                    <button
-                      type="button"
-                      className="school-teacher-secondary-btn"
-                      onClick={() => handleViewTeacherProfile(teacher)}
-                    >
-                      View Profile
-                    </button>
+                    {teacherTab === "saved" ? (
+                      <button
+                        type="button"
+                        className="school-teacher-secondary-btn school-teacher-secondary-btn--wide"
+                        onClick={() => handleViewTeacherProfile(teacher)}
+                      >
+                        View Profile
+                      </button>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="school-teacher-secondary-btn"
+                          onClick={() => handleViewTeacherProfile(teacher)}
+                        >
+                          View Profile
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
 
-            {filteredTeachers.length === 0 && (
+            {selectedTeacherTabTeachers.length === 0 && (
               <div className="school-teachers-empty-state">
-                {allApplicants.length === 0
-                  ? "No teachers have applied to your jobs yet. Post a job to start receiving applications."
-                  : "No teachers match your current search and filter selection."}
+                {teacherTab === "saved"
+                  ? "No saved teachers yet. Save a teacher to view them here."
+                  : allApplicants.length === 0
+                    ? "No teachers have applied to your jobs yet. Post a job to start receiving applications."
+                    : "No teachers match your current search and filter selection."}
               </div>
             )}
 
-            {filteredTeachers.length > visibleTeacherCount && (
+            {selectedTeacherTabTeachers.length > visibleTeacherCount && (
               <div className="school-teachers-load-more-wrap">
                 <button type="button" className="school-teachers-load-more" onClick={() => setVisibleTeacherCount((count) => count + 10)}>
                   Load More Candidates ▾
@@ -9131,13 +9302,21 @@ export default function AdminDashboard() {
         }
         .school-teachers-search-shell {
           display: flex;
+          flex-direction: column;
+          align-items: stretch;
+          gap: 16px;
+          margin-top: 22px;
+          padding: 20px;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          background: #ffffff;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        }
+        .school-teachers-search-row {
+          display: flex;
           align-items: center;
           gap: 12px;
-          margin-top: 22px;
-          padding: 14px 16px;
-          border: 1px solid #dfe4df;
-          border-radius: 18px;
-          background: #f8f8f8;
+          width: 100%;
         }
         .school-teachers-search {
           position: relative;
@@ -9145,17 +9324,19 @@ export default function AdminDashboard() {
           align-items: center;
           flex: 1;
           min-width: 0;
-          height: 52px;
-          border: 1px solid #dfe4df;
+          height: 46px;
+          border: 1px solid #e2e8f0;
           border-radius: 12px;
-          background: #fff;
-          padding: 0 18px 0 42px;
+          background: rgba(248, 250, 252, 0.7);
+          padding: 0 16px 0 42px;
         }
         .school-teachers-search-icon {
           position: absolute;
           left: 16px;
-          color: #5c6863;
-          font-size: 20px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #94a3b8;
           line-height: 1;
         }
         .school-teachers-search input {
@@ -9164,99 +9345,241 @@ export default function AdminDashboard() {
           background: transparent;
           font: inherit;
           font-size: 14px;
-          color: #1f2a33;
+          color: #0f172a;
           outline: none;
         }
         .school-teachers-search input::placeholder {
-          color: #6d7d7b;
+          color: #94a3b8;
         }
         .school-teachers-location-button,
         .school-teachers-search-btn,
         .school-teachers-filter-tag,
         .school-teachers-sort-btn,
-        .school-teachers-load-more {
+        .school-teachers-load-more,
+        .school-teachers-toggle,
+        .school-teachers-filter-pill,
+        .school-teachers-sort-button,
+        .school-teachers-reset-all {
           font: inherit;
           cursor: pointer;
         }
         .school-teachers-location-button {
           display: inline-flex;
           align-items: center;
+          justify-content: center;
           gap: 8px;
-          height: 52px;
-          padding: 0 18px;
-          border: 1px solid #dfe4df;
-          border-radius: 12px;
-          background: #fff;
-          color: #27353d;
+          height: 46px;
+          min-width: 160px;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
+          background: transparent;
+          color: #0f172a;
           font-size: 14px;
           font-weight: 500;
           white-space: nowrap;
+          box-shadow: none;
+          appearance: none;
+          -webkit-appearance: none;
         }
         .school-teachers-location-dot {
           display: inline-block;
           width: 9px;
           height: 9px;
           border-radius: 50%;
-          background: #147a49;
-          box-shadow: 0 0 0 3px rgba(20, 122, 73, 0.12);
+          background: #14792d;
+          box-shadow: 0 0 0 3px rgba(20, 121, 45, 0.12);
         }
         .school-teachers-caret {
-          color: #5c6863;
-          font-size: 18px;
-          line-height: 1;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #64748b;
         }
         .school-teachers-search-btn {
-          height: 52px;
-          padding: 0 28px;
+          height: 46px;
+          padding: 0 22px;
           border: 0;
           border-radius: 12px;
           background: #14792D;
           color: #ffffff;
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 700;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
         }
         .school-teachers-dropdown-wrapper {
           position: relative;
           display: inline-flex;
           align-items: center;
         }
-        .school-teachers-filter-row {
+        .school-teachers-compact-toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 20px;
+          padding-top: 16px;
+          border-top: 1px solid #f1f5f9;
+        }
+        .school-teachers-toolbar-left,
+        .school-teachers-toolbar-right {
           display: flex;
           align-items: center;
           gap: 12px;
-          margin-top: 18px;
-          padding: 0 4px;
+          min-width: 0;
+        }
+        .school-teachers-toolbar-left {
+          position: relative;
+        }
+        .school-teachers-filter-menu-anchor,
+        .school-teachers-sort-wrapper {
+          position: relative;
+          display: inline-flex;
+          align-items: center;
+        }
+        .school-teachers-filter-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 8px;
+          min-height: 34px;
+          padding: 0 16px;
+          border: 1px solid #2ae156;
+          border-radius: 8px;
+          background: #ecfdf5;
+          color: #14792d;
+          font-size: 12px;
+          font-weight: 700;
+        }
+        .school-teachers-active-filters {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          min-width: 0;
+        }
+        .school-teachers-filter-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 24px;
+          padding: 4px 10px;
+          border: 0;
+          border-radius: 6px;
+          background: #f1f5f9;
+          color: #878787;
+          font-size: 12px;
+          line-height: 1;
+          cursor: pointer;
+        }
+        .school-teachers-filter-chip strong {
+          color: #0f172a;
+          font-weight: 600;
+        }
+        .school-teachers-reset-all {
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #94a3b8;
+          font-size: 12px;
+          font-weight: 400;
+          text-decoration: underline;
+        }
+        .school-teachers-toolbar-right {
+          justify-content: flex-end;
+          flex-wrap: wrap;
+          color: #878787;
+          font-size: 12px;
+          line-height: 16px;
+        }
+        .school-teachers-divider {
+          color: rgba(41, 41, 65, 0.2);
+          font-weight: 400;
+        }
+        .school-teachers-sort-button {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #878787;
+          font-size: 12px;
+          font-weight: 400;
+        }
+        .school-teachers-sort-button strong {
+          color: #0f172a;
+          font-weight: 600;
         }
         .school-teachers-menu {
           position: absolute;
-          top: calc(100% + 8px);
+          top: calc(100% + 10px);
           left: 0;
-          z-index: 22;
+          z-index: 30;
           display: flex;
-          flex-direction: column;
-          min-width: 180px;
-          padding: 8px;
-          border: 1px solid #dfe4df;
-          border-radius: 12px;
+          align-items: stretch;
+          gap: 8px;
+          min-width: 190px;
+          max-height: 310px;
+          padding: 10px 8px 8px;
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
           background: #ffffff;
-          box-shadow: 0 18px 40px rgba(17, 24, 39, 0.12);
+          box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
         }
         .school-teachers-menu--compact {
-          min-width: 160px;
+          min-width: 180px;
+        }
+        .school-teachers-menu-main-column {
+          display: flex;
+          flex: 0 0 138px;
+          flex-direction: column;
+          gap: 4px;
+          min-width: 0;
+        }
+        .school-teachers-menu-group-title {
+          width: 100%;
+          border: 0;
+          background: transparent;
+          padding: 8px 10px 6px;
+          border-radius: 8px;
+          color: #475569;
+          font-size: 10px;
+          font-weight: 700;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          text-align: left;
+          cursor: pointer;
+        }
+        .school-teachers-menu-group-title.is-active {
+          background: #ecfdf5;
+          color: #14792d;
+        }
+        .school-teachers-menu-side-panel {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          min-width: 0;
+          padding: 2px 0;
+          border-left: 1px solid #edf2f7;
+          background: #fafcfb;
+          border-radius: 0 10px 10px 0;
+          overflow: hidden;
         }
         .school-teachers-menu-item {
           border: 0;
           background: transparent;
-          padding: 10px 12px;
+          padding: 9px 12px;
           border-radius: 8px;
-          color: #2c3941;
+          color: #1f2937;
           text-align: left;
           font: inherit;
-          font-size: 14px;
+          font-size: 13px;
+          font-weight: 500;
           cursor: pointer;
+          transition: background 0.16s ease, color 0.16s ease;
         }
         .school-teachers-menu-item:hover {
-          background: #f3f6f4;
+          background: #f3f7f5;
+          color: #0f172a;
         }
         .school-teachers-filter-tag {
           display: inline-flex;
@@ -9270,14 +9593,47 @@ export default function AdminDashboard() {
           color: #3d4a4d;
           font-size: 13px;
           font-weight: 600;
+        }
+        .school-teachers-toggle-row {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          margin-top: 18px;
+          padding: 5px;
+          border: 1px solid #e4e7e5;
+          border-radius: 12px;
+          background: #f3f5f3;
+          overflow: visible;
+          box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        .school-teachers-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          min-height: 36px;
+          min-width: 150px;
+          padding: 0 18px;
+          border: 0;
+          border-radius: 10px;
+          background: transparent;
+          color: #5b6871;
+          font-size: 14px;
+          font-weight: 600;
           cursor: pointer;
+          transition: all 0.18s ease;
+        }
+        .school-teachers-toggle.is-active {
+          background: #dff4e4;
+          color: #186d3a;
+          box-shadow: inset 0 0 0 1px rgba(20, 121, 45, 0.08);
         }
         .school-teachers-header-row {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          margin-top: 30px;
+          margin-top: 26px;
           padding: 0 4px;
         }
         .school-teachers-header-row h2 {
@@ -9288,6 +9644,9 @@ export default function AdminDashboard() {
           color: #171f29;
         }
         .school-teachers-sort-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
           border: 0;
           background: transparent;
           color: #46555f;
@@ -9297,7 +9656,7 @@ export default function AdminDashboard() {
         .school-teachers-list {
           display: flex;
           flex-direction: column;
-          gap: 18px;
+          gap: 0;
           margin-top: 18px;
         }
         .school-teachers-empty-state {
@@ -9311,119 +9670,185 @@ export default function AdminDashboard() {
           font-size: 15px;
         }
         .school-teacher-card {
+          position: relative;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          gap: 22px;
-          padding: 22px 18px 18px;
+          gap: 18px;
+          padding: 14px 18px 12px;
+          border: 0;
+          border-bottom: 1px solid #e8ece8;
+          border-radius: 0;
+          background: #ffffff;
+        }
+        .school-teacher-card--first {
+          border-top-left-radius: 14px;
+          border-top-right-radius: 14px;
+        }
+        .school-teacher-card--last {
+          border-bottom-left-radius: 14px;
+          border-bottom-right-radius: 14px;
+          border-bottom: 0;
+        }
+        .school-teacher-save-button {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
           border: 1px solid #dfe4df;
-          border-radius: 16px;
-          background: #fff;
+          border-radius: 8px;
+          background: #ffffff;
+          color: #5d6c68;
+          cursor: pointer;
+        }
+        .school-teacher-save-button.is-saved {
+          background: #eafaf1;
+          border-color: #cfead8;
+          color: #147b4a;
         }
         .school-teacher-card-main {
           display: flex;
           flex: 1;
           min-width: 0;
           flex-direction: column;
-          gap: 14px;
+          gap: 10px;
         }
         .school-teacher-badge {
           display: inline-flex;
           align-items: center;
           width: fit-content;
-          padding: 6px 10px;
+          padding: 5px 10px 5px 9px;
           border-radius: 999px;
-          background: #dff1e8;
-          color: #207a4a;
-          font-size: 12px;
+          background: #dff3e4;
+          color: #1b7a48;
+          font-size: 11px;
           font-weight: 700;
+          line-height: 1;
+        }
+        .school-teacher-badge::before {
+          content: "";
+          display: inline-block;
+          width: 7px;
+          height: 7px;
+          margin-right: 7px;
+          border-radius: 50%;
+          background: #1d8a5a;
+          box-shadow: 0 0 0 2px rgba(29, 138, 90, 0.12);
         }
         .school-teacher-profile-row {
           display: flex;
           align-items: flex-start;
-          gap: 16px;
+          gap: 12px;
+        }
+        .school-teacher-name-column {
+          display: flex;
+          flex-direction: column;
+          min-width: 0;
+          flex: 1;
         }
         .school-teacher-avatar {
           display: grid;
           place-items: center;
-          width: 52px;
-          height: 52px;
+          width: 38px;
+          height: 38px;
           border-radius: 50%;
           color: #1d2f2c;
-          font-size: 15px;
+          font-size: 12px;
           font-weight: 800;
           box-shadow: inset 0 0 0 1px rgba(15, 35, 50, 0.04);
-        }
-        .school-teacher-info {
-          min-width: 0;
-          flex: 1;
+          flex-shrink: 0;
         }
         .school-teacher-name-row {
           display: flex;
           align-items: center;
           flex-wrap: wrap;
           gap: 10px;
-          margin-bottom: 8px;
+          margin-bottom: 4px;
+        }
+        .school-teacher-name-content {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          min-width: 0;
         }
         .school-teacher-name {
-          font-size: clamp(1.15rem, 1.5vw, 1.7rem);
+          font-size: clamp(0.95rem, 1.25vw, 1.2rem);
           font-weight: 800;
           line-height: 1.2;
           color: #171f29;
         }
+        .school-teacher-meta-row {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
         .school-teacher-meta-pill {
           display: inline-flex;
           align-items: center;
-          min-height: 28px;
-          padding: 0 10px;
+          gap: 6px;
+          min-height: 22px;
+          padding: 0 9px;
           border-radius: 999px;
-          background: #f0f3f1;
+          background: #eff3f1;
           color: #5e6a61;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 600;
         }
         .school-teacher-role {
-          margin: 0;
+          margin: 0 0 0 48px;
           color: #2b3a3d;
-          font-size: 16px;
+          font-size: 14px;
           font-weight: 600;
+          line-height: 1.2;
         }
         .school-teacher-summary {
-          margin: 10px 0 0;
-          max-width: 760px;
+          margin: 8px 0 0;
+          max-width: 680px;
           color: #5f6e6b;
-          font-size: 14px;
-          line-height: 1.5;
+          font-size: 13px;
+          line-height: 1.45;
         }
         .school-teacher-actions {
           display: flex;
           flex-direction: column;
+          align-items: stretch;
           gap: 12px;
-          min-width: 180px;
+          width: 220px;
+          min-width: 220px;
         }
         .school-teacher-primary-btn,
         .school-teacher-secondary-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-height: 42px;
+          width: 100%;
+          min-height: 38px;
           padding: 0 18px;
-          border-radius: 28px;
+          border-radius: 999px;
           border: 1px solid transparent;
           font: inherit;
-          font-size: 15px;
-          font-weight: 700;
+          font-size: 13px;
+          font-weight: 600;
           cursor: pointer;
         }
         .school-teacher-primary-btn {
-          background: #2AE156;
-          color: #000000;
-          border-color: #2AE156;
+          background: #bfeec6;
+          color: #0f5b2e;
+          border-color: #bfeec6;
         }
         .school-teacher-secondary-btn {
           background: #ffffff;
           border-color: #dfe4df;
-          color: #206D00;
+          color: #24322f;
+        }
+        .school-teacher-secondary-btn--wide {
+          width: 100%;
         }
         .school-teachers-load-more-wrap {
           display: flex;
