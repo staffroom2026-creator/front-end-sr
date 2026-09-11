@@ -2083,7 +2083,7 @@ export default function AdminDashboard() {
 
     return (
       <div className="school-overview">
-        <section className="school-overview-hero">
+        <section className={`school-overview-hero ${schoolProfileCompletion >= 100 ? "school-overview-hero--single" : ""}`}>
           <div className="school-welcome-panel">
             <h2>
               {schoolGreeting}, {user?.full_name || "School"}
@@ -10709,6 +10709,9 @@ export default function AdminDashboard() {
           grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
           gap: 16px;
           margin-bottom: 14px;
+        }
+        .school-overview-hero--single {
+          grid-template-columns: 1fr;
         }
         .school-welcome-panel,
         .school-profile-card,
