@@ -2388,8 +2388,10 @@ export default function AdminDashboard() {
     );
   };
 
+  const unreadNotificationCount = notificationItems.filter((item) => item.unread).length;
+
   const renderDesktopNotifications = () => {
-    const unreadCount = notificationItems.filter((item) => item.unread).length;
+    const unreadCount = unreadNotificationCount;
     const filteredSchoolNotifications = notificationItems.filter((item) => {
       if (schoolNotificationFilter === "All") return true;
       if (schoolNotificationFilter === "Unread") return item.unread;
@@ -3205,7 +3207,6 @@ export default function AdminDashboard() {
     const summary = applicant.summary || applicant.bio || applicant.about || "No professional summary has been provided.";
     const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
     const coverLetter = String(applicant.cover_letter || "").trim();
-    const coverLetterPreview = coverLetter.length > 120 ? `${coverLetter.slice(0, 120).trim()}…` : coverLetter;
     const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
 
     if (applicant) {
@@ -3362,33 +3363,17 @@ export default function AdminDashboard() {
                   <div className="school-preview-doc-actions">
                     <button type="button" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload /> Download CV</button>
                     <button type="button" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye /> View CV</button>
+                    {coverLetter && (
+                      <button type="button" onClick={() => setCoverLetterModal({ open: true, text: coverLetter })}><FiFileText /> View Cover Letter</button>
+                    )}
                   </div>
                 ) : (
-                  <p className="school-preview-empty">No CV has been uploaded.</p>
+                  <div className="school-preview-doc-actions">
+                    {coverLetter && (
+                      <button type="button" onClick={() => setCoverLetterModal({ open: true, text: coverLetter })}><FiFileText /> View Cover Letter</button>
+                    )}
+                  </div>
                 )}
-
-                {coverLetter ? (
-                  <button
-                    type="button"
-                    className="school-preview-education-item"
-                    onClick={() => setCoverLetterModal({ open: true, text: coverLetter })}
-                    style={{
-                      marginTop: 14,
-                      width: '100%',
-                      background: 'transparent',
-                      border: 'none',
-                      padding: 0,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <FiFileText />
-                    <div>
-                      <strong>Cover letter</strong>
-                      <p style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{coverLetterPreview}</p>
-                    </div>
-                  </button>
-                ) : null}
 
                 {additionalInfo ? (
                   <div className="school-preview-education-item" style={{ marginTop: 14 }}>
@@ -3547,29 +3532,43 @@ export default function AdminDashboard() {
               <section className="school-summary-section">
                 <div className="school-summary-section-header">
                   <FiAward className="school-summary-icon" />
+                  <h2>Teaching Levels</h2>
+                </div>
+
+                <div className="school-summary-tags">
+                  {applicantTeachingLevels.length ? applicantTeachingLevels.map((level, idx) => (
+                    <span key={`level-${idx}`} className="school-summary-tag">
+                      {level}
+                    </span>
+                  )) : <em>Not provided</em>}
+                </div>
+
+                <div className="school-summary-section-header" style={{ marginTop: 20 }}>
+                  <FiCheckCircle className="school-summary-icon" />
                   <h2>Qualifications</h2>
                 </div>
 
                 <div className="school-summary-qualifications">
-                  <div className="school-summary-qualification">
-                    <strong>B.Sc Mathematics</strong>
-                    <span className="school-summary-qual-year">
-                      UNILAG, 2011
-                    </span>
-                  </div>
+                  {applicantQualifications.length ? applicantQualifications.map((qualification, idx) => (
+                    <div key={`qualification-${idx}`} className="school-summary-qualification">
+                      <strong>{qualification}</strong>
+                      <span className="school-summary-qual-year">
+                        {applicant.trcn_verified || applicant.trcn ? 'TRCN verified' : 'Qualification listed'}
+                      </span>
+                    </div>
+                  )) : (
+                    <div className="school-summary-qualification">
+                      <strong>Not provided</strong>
+                    </div>
+                  )}
 
-                  <div className="school-summary-qualification">
-                    <strong>M.Ed Educational Admin</strong>
-                    <span className="school-summary-qual-year">
-                      UI, 2015
-                    </span>
-                  </div>
-
-                  <div className="school-summary-badge-wrapper">
-                    <span className="school-summary-badge">
-                      TRCN VERIFIED
-                    </span>
-                  </div>
+                  {(applicant.trcn_verified || applicant.trcn || applicant.trcn_number) && (
+                    <div className="school-summary-badge-wrapper">
+                      <span className="school-summary-badge">
+                        TRCN VERIFIED
+                      </span>
+                    </div>
+                  )}
                 </div>
               </section>
 
@@ -5789,10 +5788,14 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => handleTabChange("notifications")}
                 className="admin-topbar-notifications"
-                aria-label="Notifications"
+                aria-label={`Notifications ${unreadNotificationCount} unread`}
               >
                 <FiBell size={18} />
-                {notificationItems.some((item) => item.unread) && <span />}
+                {unreadNotificationCount > 0 && (
+                  <span className="admin-topbar-notification-badge">
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </span>
+                )}
               </button>
               <div className="admin-topbar-divider" />
               <div className="admin-topbar-user">
@@ -11646,8 +11649,41 @@ export default function AdminDashboard() {
         .admin-topbar-search input { width: 100%; border: 0; outline: 0; background: transparent; color: #27312d; font: inherit; font-size: 12px; }
         .admin-topbar-search input::placeholder { color: #7c858b; opacity: 1; }
         .admin-topbar-account { display: flex; align-items: center; gap: 13px; margin-left: 25px; }
-        .admin-topbar-notifications { position: relative; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #48544c; cursor: pointer; }
-        .admin-topbar-notifications span { position: absolute; top: 0; right: -2px; width: 5px; height: 5px; border-radius: 50%; background: #c92c31; }
+        .admin-topbar-notifications {
+          position: relative;
+          display: grid;
+          place-items: center;
+          width: 34px;
+          height: 34px;
+          padding: 0;
+          border: 1px solid #e7ebea;
+          border-radius: 50%;
+          background: #f8faf9;
+          color: #53606a;
+          cursor: pointer;
+          transition: background .2s ease, border-color .2s ease, transform .2s ease;
+        }
+        .admin-topbar-notifications:hover {
+          background: #f1f7f3;
+          border-color: #dfe9e0;
+        }
+        .admin-topbar-notification-badge {
+          position: absolute;
+          top: -6px;
+          right: -6px;
+          min-width: 18px;
+          height: 18px;
+          padding: 0 4px;
+          border-radius: 999px;
+          background: #dc2626;
+          color: #fff;
+          display: grid;
+          place-items: center;
+          font-size: 10px;
+          font-weight: 700;
+          line-height: 1;
+          box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
+        }
         .admin-topbar-divider { width: 1px; height: 28px; background: #d4d9d6; }
         .admin-topbar-user { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; }
         .admin-topbar-user strong { color: #20252b; font-size: 13px; font-weight: 700; }

@@ -2702,8 +2702,14 @@ export default function TeacherDashboard() {
 
                   <div className="td-jd-meta-stack">
                     <div className="school-job-detail-meta-row td-jd-meta-row td-jd-meta-row--primary">
-                      <span className="school-job-detail-meta-item td-jd-meta-item td-jd-meta-item--money"><FiDollarSign size={13} />{selectedJob.salaryStr || '₦60,000 / month'}</span>
-                      <span className="school-job-detail-status td-jd-status">Active</span>
+                      {selectedJobApplication ? (
+                        <span className="school-job-detail-meta-item td-jd-meta-item td-jd-meta-item--money">
+                          <FiCalendar size={13} />Applied {selectedJobApplication.appliedDate || 'recently'}
+                        </span>
+                      ) : (
+                        <span className="school-job-detail-meta-item td-jd-meta-item td-jd-meta-item--money"><FiCreditCard size={13} />{selectedJob.salaryStr || '₦60,000 / month'}</span>
+                      )}
+                      <span className="school-job-detail-status td-jd-status">{selectedJobApplication ? 'Applied' : 'Active'}</span>
                     </div>
                     <div className="school-job-detail-meta-row td-jd-meta-row td-jd-meta-row--secondary">
                       <span className="school-job-detail-meta-item td-jd-meta-item"><FiBook size={13} />{selectedJob.type || 'Full-time'}</span>
