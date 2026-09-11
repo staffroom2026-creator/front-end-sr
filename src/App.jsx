@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -23,9 +23,9 @@ import AddPhoneNumber from './pages/AddPhoneNumber';
 import VerifyPhone from './pages/VerifyPhone';
 import TeacherInfo from './pages/TeacherInfo';
 import SchoolInfo from './pages/SchoolInfo';
-import TeacherDashboard from './pages/TeacherDashboard';
-import AdminDashboard from './pages/AdminDashboard';
-import InternalAdminDashboard from './pages/InternalAdminDashboard';
+const TeacherDashboard = lazy(() => import('./pages/TeacherDashboard'));
+const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
+const InternalAdminDashboard = lazy(() => import('./pages/InternalAdminDashboard'));
 import ApplicationSubmitted from './pages/ApplicationSubmitted';
 import PageExplorer from './pages/PageExplorer';
 import About from './pages/About';
@@ -52,6 +52,78 @@ function LandingPage() {
   );
 }
 
+function DashboardLoader({ label = 'Dashboard' }) {
+  return (
+    <div style={{
+      minHeight: '100vh',
+      background: '#f6f8f7',
+      display: 'grid',
+      placeItems: 'center',
+      padding: '32px 20px',
+      fontFamily: '"DM Sans", sans-serif',
+      color: '#172238',
+    }}>
+      <div style={{
+        width: '100%',
+        maxWidth: '1180px',
+        background: '#ffffff',
+        border: '1px solid #e7eceb',
+        borderRadius: '22px',
+        padding: '20px 22px',
+        boxShadow: '0 12px 30px rgba(15, 23, 42, 0.06)',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '18px' }}>
+          <div style={{
+            width: '120px',
+            height: '14px',
+            borderRadius: '999px',
+            background: 'linear-gradient(90deg, #eef1ef 25%, #f9fafb 50%, #eef1ef 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'dashboardSkeletonPulse 1.4s ease infinite',
+          }} />
+          <div style={{
+            width: '120px',
+            height: '36px',
+            borderRadius: '12px',
+            background: 'linear-gradient(90deg, #eef1ef 25%, #f9fafb 50%, #eef1ef 75%)',
+            backgroundSize: '200% 100%',
+            animation: 'dashboardSkeletonPulse 1.4s ease infinite',
+          }} />
+        </div>
+
+        <div style={{
+          width: '44%',
+          height: '34px',
+          borderRadius: '10px',
+          background: 'linear-gradient(90deg, #eef1ef 25%, #f9fafb 50%, #eef1ef 75%)',
+          backgroundSize: '200% 100%',
+          animation: 'dashboardSkeletonPulse 1.4s ease infinite',
+          marginBottom: '18px',
+        }} />
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '16px' }}>
+          {[1, 2, 3].map((item) => (
+            <div key={item} style={{
+              height: '150px',
+              borderRadius: '18px',
+              background: 'linear-gradient(90deg, #eef1ef 25%, #f9fafb 50%, #eef1ef 75%)',
+              backgroundSize: '200% 100%',
+              animation: 'dashboardSkeletonPulse 1.4s ease infinite',
+            }} />
+          ))}
+        </div>
+
+        <style>{`
+          @keyframes dashboardSkeletonPulse {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+        `}</style>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   return (
     <BrowserRouter>
@@ -73,20 +145,28 @@ function App() {
           path="/teacher-dashboard"
           element={
             <ProtectedRoute allowedRoles={['teacher']}>
-              <TeacherDashboard />
+              <Suspense fallback={<DashboardLoader label="Teacher dashboard" />}>
+                <TeacherDashboard />
+              </Suspense>
             </ProtectedRoute>
           }
         />
         <Route path="/application-submitted" element={<ApplicationSubmitted />} />
         <Route
           path="/internal-admin-dashboard"
-          element={<InternalAdminDashboard />}
+          element={
+            <Suspense fallback={<DashboardLoader label="Admin dashboard" />}>
+              <InternalAdminDashboard />
+            </Suspense>
+          }
         />
         <Route
           path="/admin-dashboard"
           element={
             <ProtectedRoute allowedRoles={['admin']}>
-              <AdminDashboard />
+              <Suspense fallback={<DashboardLoader label="Admin dashboard" />}>
+                <AdminDashboard />
+              </Suspense>
             </ProtectedRoute>
           }
         />
@@ -94,7 +174,9 @@ function App() {
           path="/school-dashboard"
           element={
             <ProtectedRoute allowedRoles={['school']} requireSchoolProfile>
-              <AdminDashboard />
+              <Suspense fallback={<DashboardLoader label="School dashboard" />}>
+                <AdminDashboard />
+              </Suspense>
             </ProtectedRoute>
           }
         />

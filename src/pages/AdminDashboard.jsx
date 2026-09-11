@@ -3094,10 +3094,10 @@ export default function AdminDashboard() {
             })
         )}
         {getFilteredSchoolJobs().length > visibleSchoolJobCount && (
-            <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
-              Load More <FiChevronDown size={13} />
-            </button>
-          )}
+          <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
+            Load More <FiChevronDown size={13} />
+          </button>
+        )}
       </div>
 
     </div>
@@ -6292,7 +6292,7 @@ export default function AdminDashboard() {
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
                           </button>
 
-                          <button type="button" className={`admin-settings-card ${settingsSection === "notifications-privacy" ? "is-selected" : ""}`} onClick={() => setSettingsSection("notifications-privacy")}>
+                          <button type="button" className={`admin-settings-card ${settingsSection === "notifications-privacy" ? "is-selected" : ""}`} onClick={() => setSettingsSection("notifications-privacy")} style={{ display: 'none' }}>
                             <div className="admin-settings-card-icon gray">
                               <FiBell size={20} />
                             </div>
@@ -6513,19 +6513,20 @@ export default function AdminDashboard() {
           padding: 10px 12px 10px 10px;
           border: 1px solid #dfe3df;
           border-radius: 12px;
-          background: #f3f5f4;
+          background: #ffffff;
           cursor: pointer;
           text-align: left;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
         }
         .admin-settings-card:hover {
-          border-color: #ccd6d2;
-          box-shadow: 0 8px 18px rgba(19, 30, 28, 0.04);
-          transform: translateY(-1px);
+          border-color: #bfdcc8;
+          background: #ffffff;
+          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+          transform: translateY(-2px);
         }
         .admin-settings-card.is-selected {
           border-color: #9cd1b7;
-          background: #edf8f2;
+          background: #f8fbf9;
           box-shadow: inset 0 0 0 1px rgba(28, 154, 99, 0.08), 0 8px 18px rgba(19, 30, 28, 0.04);
         }
         .admin-settings-card-icon {
