@@ -200,6 +200,14 @@ export default function AdminDashboard() {
   );
   const [teacherInviteSubmitting, setTeacherInviteSubmitting] = useState(false);
   const [savedTeacherIds, setSavedTeacherIds] = useState([]);
+  const [invitedTeacherIds, setInvitedTeacherIds] = useState(() => {
+    try {
+      const value = window.localStorage.getItem("school-admin-invited-teachers");
+      return value ? JSON.parse(value) : [];
+    } catch (_error) {
+      return [];
+    }
+  });
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [schoolLogoFile, setSchoolLogoFile] = useState(null);
   const [schoolLocationLocked, setSchoolLocationLocked] = useState(false);
@@ -244,7 +252,7 @@ export default function AdminDashboard() {
   const [rejectError, setRejectError] = useState("");
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
-  const [teacherTab, setTeacherTab] = useState("invited");
+  const [teacherTab, setTeacherTab] = useState("all");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherSearchSubmitted, setTeacherSearchSubmitted] = useState("");
   const [teacherLocation, setTeacherLocation] = useState("All Locations");
@@ -478,7 +486,7 @@ export default function AdminDashboard() {
     setOpenJobMenuId(null);
     setExperienceMenuOpen(false);
     setQualificationMenuOpen(false);
-    setTeacherTab("invited");
+    setTeacherTab("all");
     setTeacherSearch("");
     setTeacherSearchSubmitted("");
     setTeacherLocation("All Locations");
@@ -4130,6 +4138,8 @@ export default function AdminDashboard() {
       await profileService.inviteTeacher(teacherId, {
         message,
       });
+      setInvitedTeacherIds((current) => [...new Set([...current, String(teacherId)])]);
+      setTeacherTab("invited");
       setIsTeacherInviteModalOpen(false);
       setTeacherInviteMessage(
         "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
@@ -4772,6 +4782,14 @@ export default function AdminDashboard() {
     );
   };
 
+  useEffect(() => {
+    try {
+      window.localStorage.setItem("school-admin-invited-teachers", JSON.stringify(invitedTeacherIds));
+    } catch (_error) {
+      // ignore local storage write failures in restricted environments
+    }
+  }, [invitedTeacherIds]);
+
   const loadSavedTeachers = async () => {
     try {
       const response = await featureService.getSavedTeachers();
@@ -4964,7 +4982,9 @@ export default function AdminDashboard() {
 
     const selectedTeacherTabTeachers = teacherTab === "saved"
       ? sortedTeachers.filter((teacher) => savedTeacherIds.includes(String(teacher.user_id || "")))
-      : sortedTeachers;
+      : teacherTab === "invited"
+        ? sortedTeachers.filter((teacher) => invitedTeacherIds.includes(String(teacher.user_id || "")))
+        : sortedTeachers;
 
     return (
       <div className="school-teachers-page">
@@ -5019,137 +5039,7 @@ export default function AdminDashboard() {
               </div>
 
               <div className="school-teachers-compact-toolbar">
-                <div className="school-teachers-toolbar-left">
-                  <div className="school-teachers-filter-menu-anchor" ref={teacherFilterMenuRef}>
-                    <button
-                      type="button"
-                      className="school-teachers-filter-pill"
-                      onClick={() => setTeacherFilterMenuOpen((prev) => !prev)}
-                    >
-                      <FiFilter size={14} />
-                      Filters • {Number(teacherSubject !== "Subject") + Number(teacherLocation !== "All Locations") + Number(teacherExperience !== "Experience")}
-                    </button>
-
-                    {teacherFilterMenuOpen && (
-                      <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
-                        <div className="school-teachers-menu-main-column">
-                          <button
-                            type="button"
-                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Subject" ? "is-active" : ""}`}
-                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Subject" ? null : "Subject"))}
-                          >
-                            Subject
-                          </button>
-                          <button
-                            type="button"
-                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Location" ? "is-active" : ""}`}
-                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Location" ? null : "Location"))}
-                          >
-                            Location
-                          </button>
-                          <button
-                            type="button"
-                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "Experience" ? "is-active" : ""}`}
-                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Experience" ? null : "Experience"))}
-                          >
-                            Experience
-                          </button>
-                        </div>
-
-                        {teacherActiveFilterGroup && (
-                          <div className="school-teachers-menu-side-panel" role="menu">
-                            {teacherActiveFilterGroup === "Subject" && teacherOptions.subjects.map((subject) => (
-                              <button
-                                key={subject}
-                                type="button"
-                                className="school-teachers-menu-item"
-                                onClick={() => {
-                                  setTeacherSubject(subject);
-                                  setTeacherFilterMenuOpen(false);
-                                  setTeacherActiveFilterGroup(null);
-                                }}
-                              >
-                                {subject}
-                              </button>
-                            ))}
-
-                            {teacherActiveFilterGroup === "Location" && teacherOptions.locations.map((location) => (
-                              <button
-                                key={location}
-                                type="button"
-                                className="school-teachers-menu-item"
-                                onClick={() => {
-                                  setTeacherLocation(location);
-                                  setTeacherFilterMenuOpen(false);
-                                  setTeacherActiveFilterGroup(null);
-                                }}
-                              >
-                                {location}
-                              </button>
-                            ))}
-
-                            {teacherActiveFilterGroup === "Experience" && teacherOptions.experiences.map((experience) => (
-                              <button
-                                key={experience}
-                                type="button"
-                                className="school-teachers-menu-item"
-                                onClick={() => {
-                                  setTeacherExperience(experience);
-                                  setTeacherFilterMenuOpen(false);
-                                  setTeacherActiveFilterGroup(null);
-                                }}
-                              >
-                                {experience}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="school-teachers-active-filters">
-                    {teacherSubject !== "Subject" && (
-                      <button
-                        type="button"
-                        className="school-teachers-filter-chip"
-                        onClick={() => setTeacherFilterMenuOpen(true)}
-                      >
-                        Subject:<strong>{teacherSubject}</strong>
-                      </button>
-                    )}
-                    {teacherLocation !== "All Locations" && (
-                      <button
-                        type="button"
-                        className="school-teachers-filter-chip"
-                        onClick={() => setTeacherFilterMenuOpen(true)}
-                      >
-                        Location:<strong>{teacherLocation}</strong>
-                      </button>
-                    )}
-                    {teacherExperience !== "Experience" && (
-                      <button
-                        type="button"
-                        className="school-teachers-filter-chip"
-                        onClick={() => setTeacherFilterMenuOpen(true)}
-                      >
-                        Experience:<strong>{teacherExperience}</strong>
-                      </button>
-                    )}
-                    {(teacherSubject !== "Subject" || teacherLocation !== "All Locations" || teacherExperience !== "Experience") && (
-                      <button type="button" className="school-teachers-reset-all" onClick={() => {
-                        setTeacherSubject("Subject");
-                        setTeacherLocation("All Locations");
-                        setTeacherExperience("Experience");
-                        setTeacherSearch("");
-                        setTeacherSearchSubmitted("");
-                        setTeacherFilterMenuOpen(false);
-                      }}>
-                        Reset all
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <div className="school-teachers-toolbar-left" />
 
                 <div className="school-teachers-toolbar-right">
                   <span>Showing 1–6 of {selectedTeacherTabTeachers.length} available teachers</span>
@@ -5163,7 +5053,7 @@ export default function AdminDashboard() {
                 className={`school-teachers-toggle ${teacherTab === "invited" ? "is-active" : ""}`}
                 role="tab"
                 aria-selected={teacherTab === "invited"}
-                onClick={() => setTeacherTab("invited")}
+                onClick={() => setTeacherTab((current) => (current === "invited" ? "all" : "invited"))}
               >
                 <FiUsers size={15} />
                 Invited teachers
@@ -5173,11 +5063,22 @@ export default function AdminDashboard() {
                 className={`school-teachers-toggle ${teacherTab === "saved" ? "is-active" : ""}`}
                 role="tab"
                 aria-selected={teacherTab === "saved"}
-                onClick={() => setTeacherTab("saved")}
+                onClick={() => setTeacherTab((current) => (current === "saved" ? "all" : "saved"))}
               >
                 <FiBookmark size={15} />
                 Saved teachers
               </button>
+              {teacherTab !== "all" && (
+                <button
+                  type="button"
+                  className="school-teachers-toggle-close"
+                  aria-label="Clear teacher filter"
+                  title="Clear filter"
+                  onClick={() => setTeacherTab("all")}
+                >
+                  <FiX size={14} />
+                </button>
+              )}
             </div>
 
             <div className="school-teachers-header-row">
@@ -5305,16 +5206,20 @@ export default function AdminDashboard() {
                 <h3>
                   {teacherTab === "saved"
                     ? "No saved teachers yet."
-                    : allApplicants.length === 0
-                      ? "No teacher applications yet."
-                      : "No teachers match this filter."}
+                    : teacherTab === "invited"
+                      ? "No invited teachers yet."
+                      : allApplicants.length === 0
+                        ? "No teacher applications yet."
+                        : "No teachers match this filter."}
                 </h3>
                 <p>
                   {teacherTab === "saved"
                     ? "Save a teacher to keep them here for quick access."
-                    : allApplicants.length === 0
-                      ? "Post a job to start receiving teacher applications."
-                      : "Try changing the search or filters to find more teachers."}
+                    : teacherTab === "invited"
+                      ? "Teachers you invite will appear here for quick follow-up."
+                      : allApplicants.length === 0
+                        ? "Post a job to start receiving teacher applications."
+                        : "Try changing the search or filters to find more teachers."}
                 </p>
                 <button
                   type="button"
@@ -9832,6 +9737,7 @@ export default function AdminDashboard() {
           align-items: center;
           justify-content: center;
           gap: 8px;
+          flex: 1 1 0;
           min-height: 36px;
           min-width: 150px;
           padding: 0 18px;
@@ -9844,10 +9750,13 @@ export default function AdminDashboard() {
           cursor: pointer;
           transition: all 0.18s ease;
         }
+        .school-teachers-toggle:hover {
+          color: #1d2d2d;
+        }
         .school-teachers-toggle.is-active {
-          background: #dff4e4;
+          background: linear-gradient(180deg, #e9f9ee 0%, #dff4e4 100%);
           color: #186d3a;
-          box-shadow: inset 0 0 0 1px rgba(20, 121, 45, 0.08);
+          box-shadow: inset 0 0 0 1px rgba(20, 121, 45, 0.08), 0 2px 6px rgba(24, 109, 58, 0.08);
         }
         .school-teachers-header-row {
           display: flex;
@@ -11251,7 +11160,31 @@ export default function AdminDashboard() {
         .admin-sidebar-help { margin-top: auto; padding: 17px 16px 15px; border-radius: 17px; background: #e4f7e9; }
         .admin-sidebar-help strong { display: block; margin-bottom: 10px; color: #14552d; font-size: 12px; font-weight: 600; }
         .admin-sidebar-help button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 11px 8px; border: 0; border-radius: 999px; background: #22dd55; color: #07331b; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .admin-sidebar-logout { display: flex; align-items: center; gap: 10px; margin: 16px 12px 0; padding: 4px 0; border: 0; background: transparent; color: #65716a; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .admin-sidebar-logout {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 16px 12px 0;
+          padding: 8px 12px;
+          border: 1px solid rgba(220, 38, 38, 0.18);
+          border-radius: 10px;
+          background: rgba(254, 242, 242, 0.9);
+          color: #b91c1c;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .admin-sidebar-logout:hover {
+          background: #fee2e2;
+          border-color: rgba(220, 38, 38, 0.32);
+          color: #991b1b;
+          transform: translateY(-1px);
+        }
+        .admin-sidebar-logout svg {
+          stroke: currentColor;
+        }
         .admin-topbar-spacer { flex: 1; }
         .admin-topbar-search { display: flex; align-items: center; gap: 14px; width: 282px; height: 45px; margin-left: auto; padding: 0 16px; border-radius: 16px; background: #e3e5e6; color: #526158; }
         .admin-topbar-search input { width: 100%; border: 0; outline: 0; background: transparent; color: #27312d; font: inherit; font-size: 12px; }
