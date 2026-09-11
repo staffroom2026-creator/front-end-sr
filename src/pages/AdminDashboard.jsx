@@ -1187,6 +1187,9 @@ export default function AdminDashboard() {
         school_name: schoolNameValue.trim(),
         school_type: schoolProfile?.school_type || "private",
         address: addressValue.trim(),
+        country: schoolProfile?.country || "",
+        state: schoolProfile?.state || "",
+        lga: schoolProfile?.lga || schoolProfile?.city || "",
         website: websiteValue.trim(),
         email: emailValue.trim(),
         phone: phoneValue.trim(),
@@ -1204,8 +1207,10 @@ export default function AdminDashboard() {
       setPhoneValue(mergedProfile.phone || account.phone || phoneValue);
       setWebsiteValue(mergedProfile.website || websiteValue);
       const updatedAddress = getSchoolAddress(mergedProfile) || addressValue;
-      setAddressValue(updatedAddress);
-      setSchoolAddressInitialValue(updatedAddress);
+      if (updatedAddress) {
+        setAddressValue(updatedAddress);
+        setSchoolAddressInitialValue(updatedAddress);
+      }
       setSchoolLogoPreview(toAssetUrl(mergedProfile.logo_url || mergedProfile.school_logo || mergedProfile.logo || schoolLogoPreview));
       setSchoolLogoFile(null);
       const updatedLocation = getSchoolLocation(mergedProfile);
@@ -1354,17 +1359,31 @@ export default function AdminDashboard() {
   };
 
   const getSchoolLocation = (profile = {}) => [
-    profile.city || profile.lga,
+    profile.city || profile.lga || profile.city_name,
     profile.state,
     profile.country,
-  ].filter(Boolean).join(", ") || profile.location || "";
+  ].filter(Boolean).join(", ") || profile.location || profile.school_location || "";
 
   const getSchoolAddress = (profile = {}) => [
-    profile.address,
-    profile.city || profile.lga,
+    profile.address || profile.school_address || profile.street_address,
+    profile.city || profile.lga || profile.city_name,
     profile.state,
     profile.country,
-  ].filter(Boolean).join("\n") || profile.location || "";
+  ].filter(Boolean).reduce((lines, value) => {
+    String(value)
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .forEach((line) => {
+        const normalizedLine = line.toLowerCase();
+        const alreadyIncluded = lines.some((existingLine) => {
+          const normalizedExisting = existingLine.toLowerCase();
+          return normalizedExisting === normalizedLine || normalizedExisting.includes(normalizedLine);
+        });
+        if (!alreadyIncluded) lines.push(line);
+      });
+    return lines;
+  }, []).join("\n") || profile.location || profile.school_location || "";
 
   const deduplicateJobs = (jobList = []) => {
     const seen = new Map();
@@ -1575,6 +1594,12 @@ export default function AdminDashboard() {
     }
   };
 
+  useEffect(() => {
+    if (isSchool && activeTab === "settings" && settingsSection === "school-info") {
+      loadSchoolProfileForJobLocation();
+    }
+  }, [activeTab, isSchool, settingsSection]);
+
   const loadUsers = async () => {
     try {
       const response = await adminService.getTeachers();
@@ -1596,6 +1621,13 @@ export default function AdminDashboard() {
             entry?.levels ||
             entry?.grade_levels ||
             entry?.teaching_level ||
+            entry?.level ||
+            entry?.profile?.teaching_levels ||
+            entry?.profile?.levels ||
+            entry?.profile?.teachingLevels ||
+            entry?.profile?.grade_levels ||
+            entry?.profile?.teaching_level ||
+            entry?.profile?.level ||
             []
           );
 
@@ -3194,7 +3226,10 @@ export default function AdminDashboard() {
       applicant.education_items ||
       applicant.education ||
       []
-    );
+    ).map((item) => ({
+      ...item,
+      period: item.period || [item.start_year, item.end_year].filter(Boolean).join(" - "),
+    }));
     const applicantId = applicant.application_id || applicant.id;
     const jobId = job.job_id || job.id;
     const applicantStatus = String(applicant.status || "").toLowerCase();
@@ -4276,12 +4311,11 @@ export default function AdminDashboard() {
     try {
       const response = await adminService.getTeacherById(teacherId);
       const payload = response?.data?.data ?? response?.data ?? {};
-      const detail = Array.isArray(payload)
-        ? payload[0] ?? teacher
-        : payload?.teacher ?? payload ?? teacher;
-      const detailProfile = detail?.profile || payload?.profile || {};
-      const detailUser = detail?.user || payload?.user || {};
-      const fullDetail = { ...detail, ...detailUser, ...detailProfile };
+      const detail = Array.isArray(payload) ? payload[0] ?? teacher : payload;
+      const compatibilityDetail = payload?.teacher || payload?.teacher_profile || {};
+      const detailUser = payload?.user || detail?.user || {};
+      const detailProfile = payload?.profile || detail?.profile || {};
+      const fullDetail = { ...compatibilityDetail, ...detail, ...detailUser, ...detailProfile };
       const firstNonEmptyList = (...values) => values
         .map((value) => normalizeMultiValueList(value))
         .find((items) => items.length) || [];
@@ -4379,12 +4413,11 @@ export default function AdminDashboard() {
     try {
       const response = await adminService.getTeacherById(teacherId);
       const payload = response?.data?.data ?? response?.data ?? {};
-      const detail = Array.isArray(payload)
-        ? payload[0] ?? applicant
-        : payload?.teacher ?? payload ?? applicant;
-      const detailProfile = detail?.profile || payload?.profile || {};
-      const detailUser = detail?.user || payload?.user || {};
-      const fullDetail = { ...detail, ...detailUser, ...detailProfile };
+      const detail = Array.isArray(payload) ? payload[0] ?? applicant : payload;
+      const compatibilityDetail = payload?.teacher || payload?.teacher_profile || {};
+      const detailUser = payload?.user || detail?.user || {};
+      const detailProfile = payload?.profile || detail?.profile || {};
+      const fullDetail = { ...compatibilityDetail, ...detail, ...detailUser, ...detailProfile };
       const firstNonEmptyList = (...values) => values
         .map((value) => normalizeMultiValueList(value))
         .find((items) => items.length) || [];
@@ -5799,9 +5832,9 @@ export default function AdminDashboard() {
               </button>
               <div className="admin-topbar-divider" />
               <div className="admin-topbar-user">
-                <strong>{user?.admin_name || "Admin User"}</strong>
+                <strong>{schoolDisplayName}</strong>
                 <span>
-                  {user?.school_name || user?.full_name || "School"}
+                  {user?.full_name || user?.admin_name || "School admin"}
                 </span>
               </div>
               <div

@@ -1491,25 +1491,34 @@ Returns an active teacher profile, including qualifications, skills, complete `e
   "success": true,
   "message": "Teacher profile fetched successfully",
   "data": {
-    "user_id": "USR-2026-000001",
-    "full_name": "Jane Teacher",
-    "email": "jane@staffroom.ng",
-    "phone": "08000000000",
-    "profile_id": "PROF-2026-001",
-    "bio": "Experienced science teacher",
-    "skills": ["Biology", "Lesson Planning"],
-    "experience_years": 5,
-    "qualification": "B.Ed Biology",
-    "location": "Benin, Edo",
-    "cv_url": "https://api.staffroomng.com/uploads/cvs/jane_cv.pdf",
-    "trcn_status": "verified",
-    "availability": "Open",
-    "profile_visibility": "schools"
+    "user": {
+      "user_id": "USR-2026-000001",
+      "full_name": "Jane Teacher",
+      "email": "jane@staffroom.ng",
+      "phone": "08000000000",
+      "role": "teacher",
+      "status": "active"
+    },
+    "profile": {
+      "user_id": "USR-2026-000001",
+      "profile_id": "PROF-2026-001",
+      "bio": "Experienced science teacher",
+      "skills": ["Biology", "Lesson Planning"],
+      "experience_years": 5,
+      "qualification": "B.Ed Biology",
+      "location": "Benin, Edo",
+      "cv_url": "https://api.staffroomng.com/uploads/cvs/jane_cv.pdf",
+      "trcn_status": "verified",
+      "availability": "Open",
+      "profile_visibility": "schools",
+      "education_history": [],
+      "teaching_experience": []
+    }
   }
 }
 ```
 
-The frontend should open this endpoint when a school selects a teacher from the directory. Use `data` as the canonical response object and do not send a separate school ID or teacher profile ID. Each successful school request records one view for the authenticated school and target teacher.
+The frontend should open this endpoint when a school selects a teacher from the directory. Its `data.user` and `data.profile` objects intentionally match `GET /api/profiles/me`, including complete `education_history` and `teaching_experience`. Compatibility aliases `teacher` and `teacher_profile` are also returned at the response root. Do not send a separate school ID or teacher profile ID. Each successful school request records one view for the authenticated school and target teacher.
 
 ### `GET /profiles/teacher/profile-views`
 Returns the authenticated teacher's profile-view card metrics and detailed school view history.
