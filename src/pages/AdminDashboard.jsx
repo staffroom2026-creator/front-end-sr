@@ -3082,50 +3082,169 @@ export default function AdminDashboard() {
     const coverLetter = String(applicant.cover_letter || "").trim();
     const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
 
-    if (applicant) return (
-      <div className="school-applicant-summary-page school-applicant-summary-page--api">
-        <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
-        <div className="school-summary-container"><div className="school-summary-content">
-          <section className="school-summary-section school-summary-section--first">
-            {isTerminalStatus ? (
-              <div className="school-summary-actions">
+    if (applicant) {
+      const profileName = applicant.name || applicant.full_name || applicant.teacher_name || "Teacher";
+      const profileRole = applicant.role || job.title || "Teacher";
+      const profileLocation = applicant.location || applicant.city || applicant.residence || "Location not provided";
+      const profileExperience = applicant.experience || applicant.experience_years ? `${applicant.experience || applicant.experience_years} Years` : "Not provided";
+      const initials = profileName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0])
+        .join("")
+        .toUpperCase() || "T";
+      const statusText = terminalStatusLabel || (applicantStatus === "shortlisted" ? "Shortlisted" : applicantStatus === "under review" || applicantStatus === "reviewed" ? "Under Review" : applicantStatus === "interviewing" ? "Interviewing" : "Pending");
+
+      return (
+        <div className="school-applicant-summary-page school-applicant-summary-page--teacher-preview">
+          <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
+
+          <div className="school-preview-hero">
+            <div className="school-preview-avatar" aria-label={profileName}>{initials}</div>
+
+            <div className="school-preview-hero-copy">
+              <div className="school-preview-name-row">
+                <h1>{profileName}</h1>
+              </div>
+
+              <p>{profileRole}</p>
+
+              <div className="school-preview-meta">
+                <span><FiMapPin size={15} />{profileLocation}</span>
+                <span><FiAward size={15} />{profileExperience}</span>
+              </div>
+            </div>
+
+            <div className="school-preview-actions">
+              {isTerminalStatus ? (
                 <span className={`school-summary-status-pill ${isRejected ? 'school-summary-status-pill--rejected' : isHired ? 'school-summary-status-pill--hired' : isWithdrawn ? 'school-summary-status-pill--withdrawn' : 'school-summary-status-pill--closed'}`}>
                   {terminalStatusLabel}
                 </span>
-              </div>
-            ) : (
-              <div className="school-summary-actions">
-                <button
-                  type="button"
-                  className="school-summary-shortlist-btn"
-                  disabled={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus}
-                  onClick={() => handleShortlistApplicant(applicant)}
-                  style={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
-                >
-                  {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
-                </button>
-                <button
-                  type="button"
-                  className="school-summary-reject-btn"
-                  disabled={isRejected || isTerminalStatus}
-                  onClick={() => openRejectApplicantModal(jobId, applicantId)}
-                  style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
-                >
-                  Reject Applicant
-                </button>
-              </div>
-            )}
-            <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
-          </section>
-          <div className="school-summary-grid-2col">
-            <section className="school-summary-section"><div className="school-summary-section-header"><FiBook className="school-summary-icon" /><h2>Subject Areas</h2></div>{applicantSubjects.length ? <div className="school-summary-tags">{applicantSubjects.map((subject, index) => <span key={`${subject}-${index}`} className="school-summary-tag">{subject}</span>)}</div> : <p className="school-summary-text">No subjects provided.</p>}</section>
-            <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="school-summary-shortlist-btn"
+                    disabled={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus}
+                    onClick={() => handleShortlistApplicant(applicant)}
+                    style={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
+                  >
+                    {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
+                  </button>
+                  <button
+                    type="button"
+                    className="school-summary-reject-btn"
+                    disabled={isRejected || isTerminalStatus}
+                    onClick={() => openRejectApplicantModal(jobId, applicantId)}
+                    style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                  >
+                    Reject Applicant
+                  </button>
+                </>
+              )}
+            </div>
           </div>
-          <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
-          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <div className="school-summary-cover-letter"><FiFileText /><div><strong>Cover letter</strong><p>{coverLetter}</p></div></div> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
-        </div></div>
-      </div>
-    );
+
+          <div className="school-preview-grid">
+            <section className="school-preview-panel school-preview-summary">
+              <h2><FiFileText /> Professional Summary</h2>
+              <p>{summary}</p>
+            </section>
+
+            <section className="school-preview-panel school-preview-subjects">
+              <h2><FiBook /> Subject Areas</h2>
+              <div className="school-preview-tags">
+                {applicantSubjects.length ? applicantSubjects.map((subject, index) => (
+                  <span key={`${subject}-${index}`}>{subject}</span>
+                )) : <em>Not provided</em>}
+              </div>
+            </section>
+
+            <section className="school-preview-panel school-preview-experience">
+              <h2><FiBriefcase /> Teaching Experience</h2>
+              {applicantExperience.length ? (
+                <div className="school-preview-list">
+                  {applicantExperience.map((experience, index) => (
+                    <article key={experience.id || `${experience.role}-${index}`} className="school-preview-list-item">
+                      <span>{experience.period || 'Period not provided'}</span>
+                      <strong>{experience.role || experience.title || 'Teaching role'}</strong>
+                      <p>{experience.school || experience.institution || 'School not provided'}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="school-preview-empty">No teaching experience has been provided.</p>
+              )}
+            </section>
+
+            <div className="school-preview-side-stack">
+              <section className="school-preview-panel">
+                <h2><FiAward /> Qualifications</h2>
+                {applicantQualifications.length ? (
+                  <div className="school-preview-education-list">
+                    {applicantQualifications.map((qualification, index) => (
+                      <article key={`${qualification}-${index}`} className="school-preview-education-item">
+                        <FiBook />
+                        <div>
+                          <strong>{qualification}</strong>
+                          <p>{applicant.trcn_verified || applicant.trcn ? 'TRCN verified' : 'Qualification not provided'}</p>
+                        </div>
+                      </article>
+                    ))}
+                    {(applicant.trcn_verified || applicant.trcn) && (
+                      <div className="school-preview-trcn">
+                        <FiCheckCircle />
+                        <div>
+                          <strong>TRCN Verified Educator</strong>
+                          <p>{applicant.trcn_number ? `Registration No: ${applicant.trcn_number}` : 'Registration details available.'}</p>
+                        </div>
+                        <span>VERIFIED</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="school-preview-empty">No qualifications have been provided.</p>
+                )}
+              </section>
+
+              <section className="school-preview-panel">
+                <h2><FiFileText /> Documents</h2>
+
+                {cvUrl ? (
+                  <div className="school-preview-doc-actions">
+                    <button type="button" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload /> Download CV</button>
+                    <button type="button" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye /> View CV</button>
+                  </div>
+                ) : (
+                  <p className="school-preview-empty">No CV has been uploaded.</p>
+                )}
+
+                {coverLetter ? (
+                  <div className="school-preview-education-item" style={{ marginTop: 14 }}>
+                    <FiFileText />
+                    <div>
+                      <strong>Cover letter</strong>
+                      <p>{coverLetter}</p>
+                    </div>
+                  </div>
+                ) : null}
+
+                {additionalInfo ? (
+                  <div className="school-preview-education-item" style={{ marginTop: 14 }}>
+                    <FiInfo />
+                    <div>
+                      <strong>Additional information</strong>
+                      <p>{additionalInfo}</p>
+                    </div>
+                  </div>
+                ) : null}
+              </section>
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
       <div className="school-applicant-summary-page">
@@ -3369,16 +3488,30 @@ export default function AdminDashboard() {
 
   const renderTeacherProfileSummaryPage = (teacher = {}) => {
     const profileName = teacher.name || teacher.full_name || teacher.teacher_name || "Teacher";
+    const profileRole = teacher.role || teacher.title || "Teacher";
+    const initials = profileName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "T";
     const summary = teacher.summary || teacher.bio || teacher.about || "";
-    const subjectList = normalizeMultiValueList(teacher.subjects || teacher.subject || teacher.teaching_subjects || teacher.subjects_offered);
+    const subjectList = normalizeMultiValueList(teacher.subjects || teacher.subject || teacher.teaching_subjects || teacher.subjects_offered || teacher.subject_areas);
+    const teachingLevelList = normalizeMultiValueList(teacher.teaching_levels || teacher.levels || teacher.teachingLevels || teacher.level || teacher.grade_levels || teacher.teaching_level);
     const skillList = normalizeMultiValueList(teacher.skills || teacher.key_skills || teacher.skillset || teacher.specialties);
     const qualificationList = normalizeMultiValueList(teacher.qualifications || teacher.qualification || teacher.education || teacher.certifications);
-    const experienceText = teacher.experience || teacher.experience_years ? `${teacher.experience || teacher.experience_years} Years` : "";
+    const experienceList = Array.isArray(teacher.experience_items) ? teacher.experience_items : Array.isArray(teacher.experiences) ? teacher.experiences : [];
+    const educationList = Array.isArray(teacher.education_items) ? teacher.education_items : Array.isArray(teacher.education) ? teacher.education : [];
+    const profileLocation = teacher.location || teacher.city || teacher.residence || "Location not provided";
+    const experienceText = teacher.experience || teacher.experience_years ? `${teacher.experience || teacher.experience_years} Years` : "Not provided";
+    const trcnVerified = Boolean(teacher.trcn_verified || teacher.trcn_number || (teacher.trcn_status && teacher.trcn_status.toLowerCase() === "verified"));
+    const trcnLabel = trcnVerified ? "TRCN Verified" : "TRCN Not Verified";
     const cvUrl = toAssetUrl(teacher.cv_url || teacher.cvUrl || teacher.cv || "");
     const cvFileName = cvUrl ? cvUrl.split("/").pop() || "Teacher_CV.pdf" : "";
 
     return (
-      <div className="school-applicant-summary-page">
+      <div className="school-applicant-summary-page school-applicant-summary-page--teacher-preview">
         <button
           type="button"
           className="school-summary-back-btn"
@@ -3387,159 +3520,128 @@ export default function AdminDashboard() {
           <FiArrowLeft /> Back
         </button>
 
-        <div className="school-summary-container">
-          <div className="school-summary-content">
-            <section className="school-summary-section school-summary-section--first">
-              <div className="school-summary-actions">
-                <button
-                  type="button"
-                  className="school-summary-shortlist-btn"
-                  onClick={() => setIsTeacherInviteModalOpen(true)}
-                >
-                  Invite
-                </button>
-                <button
-                  type="button"
-                  className="school-summary-reject-btn"
-                  onClick={() => handleToggleSavedTeacher(teacher)}
-                >
-                  {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save Teacher'}
-                </button>
-              </div>
+        <div className="school-preview-hero">
+          <div className="school-preview-avatar" aria-label={profileName}>{initials}</div>
 
-              <div className="school-summary-summary-content">
-                <div className="school-summary-header-title">
-                  <FiFileText className="school-summary-icon" />
-                  <h2>Professional Summary</h2>
-                </div>
-
-                <p className="school-summary-text">
-                  {summary || `${profileName} has not added a professional summary yet.`}
-                </p>
-              </div>
-
-              <div className="school-summary-clearfix" />
-            </section>
-
-            <div className="school-summary-grid-2col">
-              <section className="school-summary-section">
-                <div className="school-summary-section-header">
-                  <FiBook className="school-summary-icon" />
-                  <h2>Subject Areas</h2>
-                </div>
-
-                {subjectList.length ? (
-                  <div className="school-summary-tags">
-                    {subjectList.filter(Boolean).map((subject, idx) => (
-                      <span key={`${subject}-${idx}`} className="school-summary-tag">
-                        {subject}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="school-summary-text">No subjects listed.</p>
-                )}
-              </section>
-
-              <section className="school-summary-section">
-                <div className="school-summary-section-header">
-                  <FiAward className="school-summary-icon" />
-                  <h2>Qualifications</h2>
-                </div>
-
-                {qualificationList.length ? (
-                  <div className="school-summary-qualifications">
-                    {qualificationList.filter(Boolean).slice(0, 3).map((qualification, idx) => (
-                      <div key={`${qualification}-${idx}`} className="school-summary-qualification">
-                        <strong>{qualification}</strong>
-                        <span className="school-summary-qual-year">{teacher.location || "Location not set"}</span>
-                      </div>
-                    ))}
-
-                    {teacher.trcn_verified || teacher.trcn ? (
-                      <div className="school-summary-badge-wrapper">
-                        <span className="school-summary-badge">{teacher.trcn_verified || teacher.trcn}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="school-summary-text">No qualifications listed.</p>
-                )}
-              </section>
+          <div className="school-preview-hero-copy">
+            <div className="school-preview-name-row">
+              <h1>{profileName}</h1>
+              <span className={`school-preview-verified ${trcnVerified ? "" : "school-preview-verified--muted"}`}>
+                <FiCheckCircle size={12} />
+                {trcnLabel}
+              </span>
             </div>
 
-            <section className="school-summary-section">
-              <div className="school-summary-section-header">
-                <FiBriefcase className="school-summary-icon" />
-                <h2>Teaching Experience</h2>
-              </div>
+            <p>{profileRole}</p>
 
-              {Array.isArray(teacher.experience_items) && teacher.experience_items.length ? (
-                <div className="school-summary-experience-timeline">
-                  {teacher.experience_items.map((item, idx) => (
-                    <div key={`${item.title || 'experience'}-${idx}`} className="school-summary-timeline-item">
-                      <div className="school-summary-timeline-bullet school-summary-timeline-bullet--active" />
-                      <div className="school-summary-job">
-                        <div className="school-summary-job-header">
-                          <div>
-                            <strong>{item.title || "Teacher"}</strong>
-                            <p className="school-summary-job-school">{item.school || "School not set"}</p>
-                          </div>
-                          <span className="school-summary-date school-summary-date--current">
-                            {item.period || experienceText || "Not provided"}
-                          </span>
-                        </div>
-                        <p className="school-summary-job-desc">{item.description || summary || "No experience details provided."}</p>
+            <div className="school-preview-meta">
+              <span><FiMapPin size={15} />{profileLocation}</span>
+              <span><FiAward size={15} />{experienceText}</span>
+            </div>
+          </div>
+
+          <div className="school-preview-actions">
+            <button
+              type="button"
+              className="school-summary-shortlist-btn"
+              onClick={() => setIsTeacherInviteModalOpen(true)}
+            >
+              Invite
+            </button>
+            <button
+              type="button"
+              className="school-summary-reject-btn"
+              onClick={() => handleToggleSavedTeacher(teacher)}
+            >
+              {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save Teacher'}
+            </button>
+          </div>
+        </div>
+
+        <div className="school-preview-grid">
+          <section className="school-preview-panel school-preview-summary">
+            <h2><FiFileText /> Professional Summary</h2>
+            <p>{summary || "No professional summary has been provided."}</p>
+          </section>
+
+          <section className="school-preview-panel school-preview-subjects">
+            <h2><FiBook /> Subject Areas</h2>
+            <div className="school-preview-tags">
+              {subjectList.length ? subjectList.filter(Boolean).map((subject, idx) => (
+                <span key={`${subject}-${idx}`}>{subject}</span>
+              )) : <em>Not provided</em>}
+            </div>
+
+            <h2 className="school-preview-levels-heading"><FiCheckCircle /> Teaching Levels</h2>
+            <div className="school-preview-levels">
+              {teachingLevelList.length ? teachingLevelList.filter(Boolean).map((level, idx) => (
+                <span key={`${level}-${idx}`}>{level}</span>
+              )) : <em>Not provided</em>}
+            </div>
+          </section>
+
+          <section className="school-preview-panel school-preview-experience">
+            <h2><FiBriefcase /> Experience</h2>
+            {experienceList.length ? (
+              <div className="school-preview-list">
+                {experienceList.map((item, idx) => (
+                  <article key={`${item.role || 'experience'}-${idx}`} className="school-preview-list-item">
+                    <span>{item.period || "Period not provided"}</span>
+                    <strong>{item.role || item.title || "Role not provided"}</strong>
+                    <p>{item.school || item.institution || "School not provided"}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="school-preview-empty">No teaching experience has been provided.</p>
+            )}
+          </section>
+
+          <div className="school-preview-side-stack">
+            <section className="school-preview-panel">
+              <h2><FiAward /> Education</h2>
+              {educationList.length ? (
+                <div className="school-preview-education-list">
+                  {educationList.map((item, idx) => (
+                    <article key={`${item.degree || 'education'}-${idx}`} className="school-preview-education-item">
+                      <FiBook />
+                      <div>
+                        <strong>{item.degree || item.qualification || "Qualification not provided"}</strong>
+                        <p>{item.institution || "Institution not provided"}</p>
+                        <span>{item.period || "Period not provided"}</span>
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
               ) : (
-                <p className="school-summary-text">
-                  {experienceText ? `Experience: ${experienceText}` : "No teaching experience added yet."}
-                </p>
+                <p className="school-preview-empty">No education has been provided.</p>
               )}
             </section>
 
-            <div className="school-summary-bottom-row">
-              <section className="school-summary-section school-summary-section--skills">
-                <div className="school-summary-section-header">
-                  <h2>Key Skills</h2>
-                </div>
+            <section className="school-preview-panel">
+              <h2><FiShield /> Certification &amp; Documents</h2>
 
-                {skillList.length ? (
-                  <div className="school-summary-skills">
-                    {skillList.filter(Boolean).map((skill, idx) => (
-                      <span key={`${skill}-${idx}`} className="school-summary-skill-tag">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="school-summary-text">No skills listed.</p>
-                )}
-              </section>
+              <div className="school-preview-trcn">
+                <FiCheckCircle />
+                <div>
+                  <strong>{teacher.trcn_number ? "TRCN Registered Educator" : "TRCN certification not provided"}</strong>
+                  <p>{teacher.trcn_number ? `Registration No: ${teacher.trcn_number}` : "No registration number available."}</p>
+                </div>
+                <span className={trcnVerified ? "" : "school-preview-status--muted"}>{trcnVerified ? "VERIFIED" : "NOT VERIFIED"}</span>
+              </div>
 
               {cvUrl ? (
-                <div className="school-summary-documents">
-                  <div className="school-summary-document">
-                    <div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf">
-                      <span>PDF</span>
-                    </div>
-                    <div className="school-summary-doc-info">
-                      <p className="school-summary-doc-name">{cvFileName}</p>
-                      <p className="school-summary-doc-size">CV uploaded</p>
-                    </div>
-                    <div className="school-summary-doc-actions">
-                      <button type="button" title="View" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiEye size={18} /></button>
-                      <button type="button" title="Download" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiDownload size={18} /></button>
-                    </div>
-                  </div>
+                <div className="school-preview-doc-actions">
+                  <button type="button" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiDownload /> Download CV</button>
+                  <button type="button" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiEye /> View CV</button>
                 </div>
-              ) : null}
-            </div>
+              ) : (
+                <p className="school-preview-empty">No CV has been uploaded.</p>
+              )}
+            </section>
           </div>
         </div>
+
       </div>
     );
   };
@@ -9607,18 +9709,19 @@ export default function AdminDashboard() {
           left: 0;
           z-index: 30;
           display: flex;
-          align-items: stretch;
-          gap: 8px;
-          min-width: 190px;
+          flex-direction: column;
+          gap: 4px;
+          min-width: 180px;
           max-height: 310px;
-          padding: 10px 8px 8px;
+          padding: 8px;
           border: 1px solid #e2e8f0;
-          border-radius: 14px;
+          border-radius: 12px;
           background: #ffffff;
           box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
         }
         .school-teachers-menu--compact {
           min-width: 180px;
+          width: 180px;
         }
         .school-teachers-menu-main-column {
           display: flex;
@@ -9657,9 +9760,10 @@ export default function AdminDashboard() {
           overflow: hidden;
         }
         .school-teachers-menu-item {
+          width: 100%;
           border: 0;
           background: transparent;
-          padding: 9px 12px;
+          padding: 10px 12px;
           border-radius: 8px;
           color: #1f2937;
           text-align: left;
@@ -9672,6 +9776,10 @@ export default function AdminDashboard() {
         .school-teachers-menu-item:hover {
           background: #f3f7f5;
           color: #0f172a;
+        }
+        .school-teachers-menu-item:focus-visible {
+          outline: 2px solid rgba(20, 121, 45, 0.2);
+          outline-offset: -2px;
         }
         .school-teachers-filter-tag {
           display: inline-flex;
@@ -11313,6 +11421,378 @@ export default function AdminDashboard() {
   box-sizing: border-box;
 }
 
+
+.school-applicant-summary-page--teacher-preview {
+  padding-top: 4px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-hero {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  min-height: 146px;
+  margin-bottom: 18px;
+  padding: 24px 30px;
+  border: 1px solid #e8edf2;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 3px 13px rgba(15, 23, 42, 0.08);
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-hero-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-avatar {
+  display: grid;
+  place-items: center;
+  width: 78px;
+  height: 78px;
+  flex: 0 0 78px;
+  overflow: hidden;
+  border: 3px solid #dfeaf6;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1e3a5f;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-hero-copy {
+  min-width: 0;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-name-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-name-row h1 {
+  margin: 0;
+  color: #172238;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-verified {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: #dff5ee;
+  color: #15836d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-verified--muted {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-hero-copy > p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 15px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 10px;
+  color: #718096;
+  font-size: 12px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(290px, 0.82fr);
+  gap: 16px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-panel {
+  padding: 17px 18px;
+  border: 1px solid #e8edf2;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 3px 13px rgba(15, 23, 42, 0.07);
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-panel h2 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #edf1f4;
+  color: #273449;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-panel h2 svg {
+  color: #08755d;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-summary,
+.school-applicant-summary-page--teacher-preview .school-preview-subjects {
+  min-height: 210px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-summary > p {
+  margin: 13px 0 0;
+  color: #596575;
+  font-size: 12px;
+  line-height: 1.68;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-tags,
+.school-applicant-summary-page--teacher-preview .school-preview-levels {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 12px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-tags span,
+.school-applicant-summary-page--teacher-preview .school-preview-levels span {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #dce7f8;
+  color: #455a78;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-levels span {
+  background: #eef2ef;
+  color: #69766e;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-tags em,
+.school-applicant-summary-page--teacher-preview .school-preview-levels em,
+.school-applicant-summary-page--teacher-preview .school-preview-empty {
+  color: #64748b;
+  font-size: 12px;
+  font-style: normal;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-levels-heading {
+  margin-top: 25px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-experience {
+  min-height: 220px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-list-item {
+  position: relative;
+  padding: 12px 42px 12px 11px;
+  border: 1px solid #e8edf2;
+  border-radius: 8px;
+  background: #fbfcfd;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-list-item::after {
+  content: '';
+  position: absolute;
+  top: 15px;
+  right: 13px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #08755d;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-list-item span,
+.school-applicant-summary-page--teacher-preview .school-preview-education-item span {
+  display: block;
+  color: #638579;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-list-item strong,
+.school-applicant-summary-page--teacher-preview .school-preview-education-item strong {
+  display: block;
+  margin-top: 3px;
+  color: #273449;
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-list-item p,
+.school-applicant-summary-page--teacher-preview .school-preview-education-item p {
+  margin-top: 2px;
+  color: #718096;
+  font-size: 11px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-side-stack {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-education-item {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-education-item > svg {
+  width: 26px;
+  height: 26px;
+  flex: 0 0 26px;
+  padding: 5px;
+  border-radius: 3px;
+  background: #dce7f8;
+  color: #4d668a;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-trcn {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 12px;
+  padding: 11px;
+  border: 1px solid #cee6dc;
+  border-radius: 8px;
+  background: #f4faf7;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-trcn > svg {
+  flex: 0 0 auto;
+  color: #08755d;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-trcn div {
+  min-width: 0;
+  flex: 1;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-trcn strong {
+  display: block;
+  color: #334155;
+  font-size: 11px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-trcn p {
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 9px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-trcn > span {
+  padding: 3px 6px;
+  border-radius: 4px;
+  background: #d9f0e6;
+  color: #08755d;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-status--muted {
+  background: #e2e8f0;
+  color: #64748b;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-doc-actions {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-doc-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  border: 1px solid #cfd6df;
+  border-radius: 6px;
+  color: #475569;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  background: #ffffff;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-doc-actions button:hover {
+  background: #f8fafc;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-left: auto;
+}
+
+.school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-shortlist-btn,
+.school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-reject-btn {
+  width: 160px;
+}
+
+@media (max-width: 900px) {
+  .school-applicant-summary-page--teacher-preview .school-preview-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-actions {
+    justify-content: stretch;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-actions > button {
+    flex: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .school-applicant-summary-page--teacher-preview .school-preview-hero {
+    align-items: flex-start;
+    padding: 20px;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-avatar {
+    width: 58px;
+    height: 58px;
+    flex-basis: 58px;
+    font-size: 18px;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-name-row h1 {
+    font-size: 18px;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-actions {
+    flex-direction: column;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-shortlist-btn,
+  .school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-reject-btn {
+    width: 100%;
+  }
+}
 
 /* ============================================================
    MAIN CONTAINER
