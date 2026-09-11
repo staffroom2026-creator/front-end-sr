@@ -2055,6 +2055,7 @@ export default function TeacherDashboard() {
           <div className={`td-nav-item ${activeTab === 'notifications' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('notifications')}>
             <FiBell size={18} className="td-nav-icon" />
             <span>Notifications</span>
+            {unreadNotificationCount > 0 && <i className="td-nav-notification-dot" aria-label="Unread notifications" />}
           </div>
 
           <div className={`td-nav-item ${activeTab === 'profile' ? 'td-nav-item--active' : ''}`} onClick={() => { handleNavTabChange('profile'); setProfileSubTab('overview'); }}>
@@ -2104,14 +2105,19 @@ export default function TeacherDashboard() {
             <div className="td-mobile-brand">
               <BrandLogo />
             </div>
-            <button className="td-mobile-bell" onClick={() => setActiveTab('notifications')} style={{ position: 'relative' }}>
-              <FiBell />
-              {unreadNotificationCount > 0 && (
-                <span className="td-bell-dot" style={{ position: 'absolute', top: '-2px', right: '-2px', minWidth: '18px', height: '18px', padding: '0 4px', borderRadius: '999px', background: '#dc2626', color: '#fff', fontSize: '10px', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
-                  {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                </span>
-              )}
-            </button>
+            <div className="td-mobile-topbar-actions">
+              <button className="td-mobile-bell" onClick={() => setActiveTab('notifications')} style={{ position: 'relative' }}>
+                <FiBell />
+                {unreadNotificationCount > 0 && (
+                  <span className="td-bell-dot" style={{ position: 'absolute', top: '-2px', right: '-2px', minWidth: '18px', height: '18px', padding: '0 4px', borderRadius: '999px', background: '#dc2626', color: '#fff', fontSize: '10px', display: 'grid', placeItems: 'center', fontWeight: 700 }}>
+                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+              <button type="button" className="td-mobile-logout-btn" onClick={logout} aria-label="Log out">
+                <FiLogOut size={18} />
+              </button>
+            </div>
           </header>
         )}
 
@@ -2703,15 +2709,20 @@ export default function TeacherDashboard() {
                   <div className="td-jd-meta-stack">
                     <div className="school-job-detail-meta-row td-jd-meta-row td-jd-meta-row--primary">
                       {selectedJobApplication ? (
-                        <span className="school-job-detail-meta-item td-jd-meta-item td-jd-meta-item--money">
-                          <FiCalendar size={13} />Applied {selectedJobApplication.appliedDate || 'recently'}
+                        <span className="school-job-detail-meta-item td-jd-meta-item td-jd-applied-pill">
+                          <FiCalendar size={13} />Applied on {selectedJobApplication.appliedDate || 'recently'}
                         </span>
                       ) : (
                         <span className="school-job-detail-meta-item td-jd-meta-item td-jd-meta-item--money"><FiCreditCard size={13} />{selectedJob.salaryStr || '₦60,000 / month'}</span>
                       )}
-                      <span className="school-job-detail-status td-jd-status">{selectedJobApplication ? 'Applied' : 'Active'}</span>
+                      {selectedJobApplication && ['shortlisted', 'interviewing'].includes(String(selectedJobApplication.status || '').trim().toLowerCase()) ? null : (
+                        <span className="school-job-detail-status td-jd-status">{selectedJobApplication ? 'Applied' : 'Active'}</span>
+                      )}
                     </div>
                     <div className="school-job-detail-meta-row td-jd-meta-row td-jd-meta-row--secondary">
+                      {selectedJobApplication && (
+                        <span className="school-job-detail-meta-item td-jd-meta-item td-jd-salary-pill"><FiCreditCard size={13} />{selectedJob.salaryStr || '₦60,000 / month'}</span>
+                      )}
                       <span className="school-job-detail-meta-item td-jd-meta-item"><FiBook size={13} />{selectedJob.type || 'Full-time'}</span>
                       <span className="school-job-detail-meta-item td-jd-meta-item"><FiMapPin size={13} />{selectedJob.location === 'Benin' ? 'Lagos, Nigeria' : (selectedJob.location || 'Lagos, Nigeria')}</span>
                       <span className="school-job-detail-meta-item td-jd-meta-item"><FiBook size={13} />{selectedJob.subject || 'Mathematics'}</span>
@@ -6063,7 +6074,7 @@ export default function TeacherDashboard() {
           <button
             key={tab.id}
             className={`td-bottomnav-tab ${activeTab === tab.id ? 'td-bottomnav-tab--active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => handleNavTabChange(tab.id)}
           >
             <span className="td-bottomnav-icon-wrapper">
               <span className="td-bottomnav-icon">{tab.icon}</span>
@@ -6151,6 +6162,14 @@ export default function TeacherDashboard() {
           color: #2E7D32;
           stroke: #2E7D32;
         }
+        .td-nav-notification-dot {
+          width: 7px;
+          height: 7px;
+          margin-left: auto;
+          border-radius: 50%;
+          background: #c92c31;
+          box-shadow: 0 0 0 2px rgba(201, 44, 49, 0.12);
+        }
         .td-nav-icon {
           color: #475569;
           stroke: #475569;
@@ -6164,7 +6183,9 @@ export default function TeacherDashboard() {
         .td-sidebar-logout {
           display: flex;
           align-items: center;
+          justify-content: center;
           gap: 10px;
+          width: calc(100% - 24px);
           margin: 16px 12px 0;
           padding: 8px 12px;
           border: 1px solid rgba(220, 38, 38, 0.18);
@@ -6264,6 +6285,11 @@ export default function TeacherDashboard() {
           top: 0;
           z-index: 100;
         }
+        .td-mobile-topbar-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
         .td-mobile-avatar .td-avatar-initials {
           width: 38px;
           height: 38px;
@@ -6288,6 +6314,24 @@ export default function TeacherDashboard() {
           position: relative;
           display: flex;
           align-items: center;
+        }
+        .td-mobile-logout-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 34px;
+          height: 34px;
+          border: 1px solid rgba(220, 38, 38, 0.16);
+          border-radius: 50%;
+          background: rgba(254, 242, 242, 0.9);
+          color: #b91c1c;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .td-mobile-logout-btn:hover {
+          background: #fee2e2;
+          border-color: rgba(220, 38, 38, 0.32);
+          color: #991b1b;
         }
         .td-bell-dot {
           position: absolute;
@@ -8501,6 +8545,32 @@ export default function TeacherDashboard() {
         }
         .td-jd-meta-item--money {
           color: #1f2a33;
+          font-weight: 700;
+        }
+        .td-jd-applied-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 26px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: #edf9f1;
+          border: 1px solid #d7eedb;
+          color: #1d6b3a;
+          font-size: 11px;
+          font-weight: 700;
+        }
+        .td-jd-salary-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 26px;
+          padding: 4px 10px;
+          border-radius: 999px;
+          background: #f4f7f5;
+          border: 1px solid #e2e8e6;
+          color: #1f2a33;
+          font-size: 11px;
           font-weight: 700;
         }
         .td-jd-status {

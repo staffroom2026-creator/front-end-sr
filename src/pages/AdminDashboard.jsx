@@ -5864,15 +5864,25 @@ export default function AdminDashboard() {
               )}
             </div>
             <BrandLogo />
-            <button
-              type="button"
-              onClick={() => handleTabChange("notifications")}
-              className="admin-mobile-bell"
-              aria-label="Notifications"
-            >
-              <FiBell size={20} />
-              {notificationItems.some((item) => item.unread) && <span />}
-            </button>
+            <div className="admin-mobile-header-actions">
+              <button
+                type="button"
+                onClick={() => handleTabChange("notifications")}
+                className="admin-mobile-bell"
+                aria-label="Notifications"
+              >
+                <FiBell size={20} />
+                {notificationItems.some((item) => item.unread) && <span />}
+              </button>
+              <button
+                type="button"
+                onClick={logout}
+                className="admin-mobile-logout"
+                aria-label="Log out"
+              >
+                <FiLogOut size={18} />
+              </button>
+            </div>
           </header>
 
           <main className="admin-dashboard-main w-full flex-1 px-4 py-6 md:px-8 md:py-8">
@@ -11676,7 +11686,30 @@ export default function AdminDashboard() {
         .admin-sidebar-help { margin-top: auto; padding: 17px 16px 15px; border-radius: 17px; background: #e4f7e9; }
         .admin-sidebar-help strong { display: block; margin-bottom: 10px; color: #14552d; font-size: 12px; font-weight: 600; }
         .admin-sidebar-help button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 11px 8px; border: 0; border-radius: 999px; background: #22dd55; color: #07331b; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .admin-sidebar-logout { display: flex; align-items: center; gap: 10px; margin: 16px 12px 0; padding: 4px 0; border: 0; background: transparent; color: #65716a; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .admin-sidebar-logout {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 10px;
+          width: calc(100% - 24px);
+          margin: 16px 12px 0;
+          padding: 8px 12px;
+          border: 1px solid rgba(220, 38, 38, 0.18);
+          border-radius: 10px;
+          background: rgba(254, 242, 242, 0.9);
+          color: #b91c1c;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .admin-sidebar-logout:hover {
+          background: #fee2e2;
+          border-color: rgba(220, 38, 38, 0.32);
+          color: #991b1b;
+          transform: translateY(-1px);
+        }
         .admin-topbar-spacer { flex: 1; }
         .admin-topbar-search { display: flex; align-items: center; gap: 14px; width: 282px; height: 45px; margin-left: auto; padding: 0 16px; border-radius: 16px; background: #e3e5e6; color: #526158; }
         .admin-topbar-search input { width: 100%; border: 0; outline: 0; background: transparent; color: #27312d; font: inherit; font-size: 12px; }
@@ -11796,6 +11829,11 @@ export default function AdminDashboard() {
             border-bottom: 1px solid #e7ebe8;
           }
           .admin-mobile-header .brand-logo-image { width: 126px; }
+          .admin-mobile-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+          }
           .admin-mobile-avatar {
             display: grid;
             place-items: center;
@@ -11826,6 +11864,23 @@ export default function AdminDashboard() {
             height: 6px;
             border-radius: 50%;
             background: #dc5b5b;
+          }
+          .admin-mobile-logout {
+            display: grid;
+            place-items: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(220, 38, 38, 0.18);
+            border-radius: 50%;
+            background: rgba(254, 242, 242, 0.9);
+            color: #b91c1c;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          .admin-mobile-logout:hover {
+            background: #fee2e2;
+            border-color: rgba(220, 38, 38, 0.32);
+            color: #991b1b;
           }
           .admin-dashboard-main { padding: 24px 18px 20px; }
           .admin-dashboard-main > div { max-width: none; }
