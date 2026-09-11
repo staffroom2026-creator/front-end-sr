@@ -6719,6 +6719,15 @@ export default function AdminDashboard() {
           color: #6d7672;
           font: inherit;
           cursor: pointer;
+          transition: color 0.15s ease, opacity 0.15s ease;
+        }
+        .admin-settings-back-link:hover {
+          color: #10b981;
+          opacity: 1;
+        }
+        .admin-settings-breadcrumb-row > span:last-of-type {
+          color: #1f2d2d;
+          font-weight: 600;
         }
         .admin-settings-breadcrumb-separator {
           color: #7d8a87;

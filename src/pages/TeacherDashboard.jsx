@@ -10735,9 +10735,26 @@ export default function TeacherDashboard() {
           cursor: pointer;
           padding: 0;
           margin-bottom: 20px;
-          transition: color 0.15s;
+          transition: color 0.15s ease, opacity 0.15s ease;
         }
-        .td-settings-breadcrumb-btn:hover { color: #10b981; }
+        .td-settings-breadcrumb-btn:hover {
+          color: #10b981;
+        }
+        .td-settings-breadcrumb-btn .td-breadcrumb-current,
+        .td-accs-breadcrumb .td-breadcrumb-current,
+        .td-privacy-breadcrumb .td-breadcrumb-current,
+        .td-sec-breadcrumb .td-breadcrumb-current,
+        .td-legal-breadcrumb .td-breadcrumb-current {
+          color: #111827;
+          font-weight: 600;
+        }
+        .td-settings-breadcrumb-btn:hover .td-breadcrumb-current,
+        .td-accs-breadcrumb:hover .td-breadcrumb-current,
+        .td-privacy-breadcrumb:hover .td-breadcrumb-current,
+        .td-sec-breadcrumb:hover .td-breadcrumb-current,
+        .td-legal-breadcrumb:hover .td-breadcrumb-current {
+          color: #111827;
+        }
 
         /* ── Account Settings Subtab ── */
         .td-accs-wrap {
@@ -10756,9 +10773,14 @@ export default function TeacherDashboard() {
           cursor: pointer;
           padding: 0;
           margin-bottom: 24px;
-          transition: color 0.15s;
+          transition: color 0.15s ease, opacity 0.15s ease;
         }
-        .td-accs-breadcrumb:hover { color: #10b981; }
+        .td-accs-breadcrumb:hover,
+        .td-privacy-breadcrumb:hover,
+        .td-sec-breadcrumb:hover,
+        .td-legal-breadcrumb:hover {
+          color: #10b981;
+        }
         .td-accs-header {
           display: flex;
           align-items: flex-start;
@@ -10887,15 +10909,14 @@ export default function TeacherDashboard() {
           gap: 6px;
           background: none;
           border: none;
-          color: #111827;
+          color: #6B7280;
           font-size: 13.5px;
           font-weight: 600;
           cursor: pointer;
           padding: 0;
           margin-bottom: 24px;
-          transition: color 0.15s;
+          transition: color 0.15s ease, opacity 0.15s ease;
         }
-        .td-privacy-breadcrumb:hover { color: #10b981; }
         .td-privacy-header {
           margin-bottom: 24px;
         }
@@ -11120,15 +11141,14 @@ export default function TeacherDashboard() {
           gap: 6px;
           background: none;
           border: none;
-          color: #111827;
+          color: #6B7280;
           font-size: 13.5px;
           font-weight: 600;
           cursor: pointer;
           padding: 0;
           margin-bottom: 24px;
-          transition: color 0.15s;
+          transition: color 0.15s ease, opacity 0.15s ease;
         }
-        .td-sec-breadcrumb:hover { color: #10b981; }
         .td-sec-top-header {
           display: flex;
           align-items: flex-start;
@@ -11691,15 +11711,14 @@ export default function TeacherDashboard() {
           gap: 6px;
           background: none;
           border: none;
-          color: #111827;
+          color: #6B7280;
           font-size: 13.5px;
           font-weight: 600;
           cursor: pointer;
           padding: 0;
           margin-bottom: 24px;
-          transition: color 0.15s;
+          transition: color 0.15s ease, opacity 0.15s ease;
         }
-        .td-legal-breadcrumb:hover { color: #10b981; }
         .td-legal-header {
           margin-bottom: 28px;
         }
