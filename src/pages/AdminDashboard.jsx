@@ -1390,6 +1390,34 @@ export default function AdminDashboard() {
     showSnackbar("Draft discarded", "The job draft was removed successfully.");
   };
 
+  const formatRelativeNotificationTime = (value) => {
+    if (!value) return "Just now";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "Just now";
+
+    const diffMs = Date.now() - date.getTime();
+    const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
+
+    if (diffMinutes < 1) return "Just now";
+    if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
+
+    const diffHours = Math.round(diffMinutes / 60);
+    if (diffHours === 1) return "1 hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+
+    const diffDays = Math.round(diffHours / 24);
+    if (diffDays === 1) return "Today";
+    if (diffDays === 2) return "2 days ago";
+    if (diffDays < 7) return `${diffDays} days ago`;
+
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
   const loadSchoolNotifications = async () => {
     try {
       const response = await featureService.getNotifications();
@@ -1414,9 +1442,7 @@ export default function AdminDashboard() {
           title: n.title || "Notification",
           unread: isNotificationUnread(n),
           description: n.message || n.description || "",
-          time: n.created_at
-            ? new Date(n.created_at).toLocaleDateString()
-            : "Recently",
+          time: formatRelativeNotificationTime(n.created_at),
         };
       });
 

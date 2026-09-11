@@ -51,30 +51,41 @@ const formatJobAge = (value) => {
   const postedDate = new Date(value);
   if (Number.isNaN(postedDate.getTime())) return 'Date unavailable';
 
-  const today = new Date();
-  const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const now = new Date();
+  const diffMs = now.getTime() - postedDate.getTime();
+
+  if (diffMs <= 0) return 'Just now';
+
+  const minutesAgo = Math.floor(diffMs / 60000);
+  if (minutesAgo < 1) return 'Just now';
+  if (minutesAgo < 60) {
+    return minutesAgo === 1 ? '1 minute ago' : `${minutesAgo} minutes ago`;
+  }
+
+  const hoursAgo = Math.floor(minutesAgo / 60);
+  if (hoursAgo === 1) return '1 hour ago';
+  if (hoursAgo < 24) return `${hoursAgo} hours ago`;
+
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const startOfPostedDay = new Date(postedDate.getFullYear(), postedDate.getMonth(), postedDate.getDate());
   const daysElapsed = Math.floor((startOfToday.getTime() - startOfPostedDay.getTime()) / 86400000);
 
-  if (daysElapsed <= 0) {
-    const day = String(postedDate.getDate()).padStart(2, '0');
-    const month = String(postedDate.getMonth() + 1).padStart(2, '0');
-    const year = postedDate.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
-
-  if (daysElapsed < 7) {
-    const day = String(postedDate.getDate()).padStart(2, '0');
-    const month = String(postedDate.getMonth() + 1).padStart(2, '0');
-    const year = postedDate.getFullYear();
-    return `${day}/${month}/${year}`;
-  }
+  if (daysElapsed <= 0) return 'Today';
+  if (daysElapsed === 1) return 'Yesterday';
+  if (daysElapsed === 2) return '2 days ago';
+  if (daysElapsed < 7) return `${daysElapsed} days ago`;
 
   const weeksElapsed = Math.floor(daysElapsed / 7);
-  if (weeksElapsed < 4) return `${weeksElapsed} week${weeksElapsed === 1 ? '' : 's'} ago`;
+  if (weeksElapsed === 1) return '1 week ago';
+  if (weeksElapsed < 5) return `${weeksElapsed} weeks ago`;
 
   const monthsElapsed = Math.floor(daysElapsed / 30);
-  return `${monthsElapsed} month${monthsElapsed === 1 ? '' : 's'} ago`;
+  if (monthsElapsed === 1) return '1 month ago';
+  if (monthsElapsed < 12) return `${monthsElapsed} months ago`;
+
+  const yearsElapsed = Math.floor(monthsElapsed / 12);
+  if (yearsElapsed === 1) return '1 year ago';
+  return `${yearsElapsed} years ago`;
 };
 
 const parseSubjectList = (value) => {
@@ -206,6 +217,9 @@ const normalizeJobData = (job = {}, index = 0) => {
     about: job.about || job.description || 'No job description available yet.',
     responsibilities: parseResponsibilityList(job.responsibilities || job.job_responsibilities || job.duties),
     requirements: job.requirements || { essential: [], desirable: [] },
+    required_experience: job.required_experience || job.requiredExperience || '',
+    required_qualification: parseResponsibilityList(job.required_qualification || job.requiredQualification || job.qualifications || job.qualification),
+    other_requirements: parseResponsibilityList(job.other_requirements || job.otherRequirements || job.requirements || []),
     employerInfo: job.employerInfo || job.employer_info || 'School information not provided.',
     employerImage: job.employerImage || job.employer_image || '',
     verifiedRecruiter: Boolean(job.verifiedRecruiter || job.verified_recruiter),
@@ -404,7 +418,7 @@ const getApplicationDisplayStatus = (application = {}) => {
   return rawStatus;
 };
 
-const teacherLevelOptions = ['Pre KG', 'KG', 'Secondary (JSS1-SS3)', 'Primary School', 'Tertiary Institution'];
+const teacherLevelOptions = ['KG', 'Secondary (JSS1-SS3)', 'Primary School', 'Tertiary Institution'];
 const degreeOptions = ['B.Ed', 'B.A.', 'B.Sc.', 'M.Ed', 'M.A.', 'M.Sc.', 'Ph.D.', 'ND', 'NCE', 'HND', 'PGDE', 'Diploma', 'Certificate', 'Others'];
 
 const normalizeEducationLevel = (value = '') => {
@@ -413,7 +427,6 @@ const normalizeEducationLevel = (value = '') => {
 
   const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
-  if (normalized.includes('pre kg') || normalized.includes('prekg')) return 'Pre KG';
   if (normalized.includes('kg')) return 'KG';
   if (normalized.includes('jss') || normalized.includes('ss')) return 'Secondary (JSS1-SS3)';
   if (normalized.includes('primary')) return 'Primary School';
@@ -2166,7 +2179,6 @@ export default function TeacherDashboard() {
                         <p className="td-mini-label">PROFILE VIEWS</p>
                         <div className="td-mini-value-row">
                           <span className="td-mini-value td-desktop-stat-val">{profileViewsValue}</span>
-                          <span className="td-mini-growth">{profileViewsValue > 0 ? '+0%' : '0%'}</span>
                         </div>
                         <span className="td-mobile-subtext">{profileViewsValue > 0 ? 'Based on profile analytics' : 'No profile views yet'}</span>
                         <button type="button" className="td-profile-views-log-link" onClick={() => { setActiveTab('settings'); setSettingsSubTab('profile-view-logs'); loadProfileViewLogs({ page: 1 }); }}>
@@ -2186,7 +2198,6 @@ export default function TeacherDashboard() {
                         </p>
                         <div className="td-mini-value-row td-desktop-val-row">
                           <span className="td-mini-value">{totalApplications}</span>
-                          <span className="td-mini-unit">Total</span>
                         </div>
                         <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
                       </motion.div>
@@ -2199,7 +2210,6 @@ export default function TeacherDashboard() {
                         <p className="td-mini-label td-mini-label--pending">PENDING APPLICATIONS</p>
                         <div className="td-mini-value-row">
                           <span className="td-mini-value td-mini-value--pending">{pendingApplications}</span>
-                          <span className="td-mini-unit td-mini-unit--pending">Applications</span>
                         </div>
                         <span className="td-mobile-subtext td-mobile-subtext--gray">{pendingApplications > 0 ? 'Awaiting school response' : 'No pending applications'}</span>
                       </motion.div>
@@ -2653,185 +2663,82 @@ export default function TeacherDashboard() {
           )}
 
           {activeTab === 'jobs' && selectedJob && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-job-details-page">
-              <div className="td-jd-back-nav" onClick={() => { setSelectedJob(null); setActiveTab(selectedJobOrigin); }}>
-                <FiArrowLeft /> Back to {selectedJobOrigin === 'applications' ? 'Applications' : 'Jobs'}
+            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="school-job-detail-page td-job-details-page">
+              <div className="school-job-detail-back td-jd-back-nav" onClick={() => { setSelectedJob(null); setActiveTab(selectedJobOrigin); }}>
+                <button type="button">{selectedJobOrigin === 'applications' ? 'Applications' : 'Jobs'}</button>
+                <span>›</span>
+                <strong>{selectedJob.title}</strong>
               </div>
-              <div className="td-jd-content-wrapper">
-                {/* Main Content */}
-                <div className="td-jd-main">
-                  <div className="td-jd-badge-row">
-                    {selectedJob.featured && <span className="td-jd-featured-tag">FEATURED ROLE</span>}
-                  </div>
 
-                  <div className="td-jd-header-block">
-                    <div className="td-jd-logo-placeholder">
-                      {selectedJob.employerImage ? (
-                        <img src={selectedJob.employerImage} alt="School Logo" className="td-jd-logo-img" />
-                      ) : (
-                        <span>{selectedJob.school.charAt(0)}</span>
+              <section className="school-job-detail-hero td-jd-hero">
+                <div className="school-job-detail-hero-main td-jd-hero-main">
+                  <h2>{selectedJob.title}</h2>
+
+                  <div className="td-jd-meta-stack">
+                    <div className="school-job-detail-meta-row td-jd-meta-row td-jd-meta-row--primary">
+                      <span className="school-job-detail-meta-item td-jd-meta-item td-jd-meta-item--money"><FiDollarSign size={13} />{selectedJob.salaryStr || '₦60,000 / month'}</span>
+                      <span className="school-job-detail-status td-jd-status">Active</span>
+                    </div>
+                    <div className="school-job-detail-meta-row td-jd-meta-row td-jd-meta-row--secondary">
+                      <span className="school-job-detail-meta-item td-jd-meta-item"><FiBook size={13} />{selectedJob.type || 'Full-time'}</span>
+                      <span className="school-job-detail-meta-item td-jd-meta-item"><FiMapPin size={13} />{selectedJob.location === 'Benin' ? 'Lagos, Nigeria' : (selectedJob.location || 'Lagos, Nigeria')}</span>
+                      <span className="school-job-detail-meta-item td-jd-meta-item"><FiBook size={13} />{selectedJob.subject || 'Mathematics'}</span>
+                      {selectedJob.education && (
+                        <span className="school-job-detail-meta-item td-jd-meta-item"><FiAward size={13} />{selectedJob.education}</span>
                       )}
-                    </div>
-                    <div className="td-jd-header-text">
-                      <h1>{selectedJob.title}</h1>
-                      <p>{selectedJob.school}</p>
-                    </div>
-                  </div>
-
-                  <div className="td-jd-info-pills">
-                    <div className="td-jd-pill">
-                      <div className="td-jd-pill-icon"><FiMapPin size={15} /></div>
-                      <div className="td-jd-pill-text">
-                        <span>LOCATION</span>
-                        <strong>{selectedJob.location === 'Benin' ? 'Benin, Edo' : selectedJob.location}</strong>
-                      </div>
-                    </div>
-                    <div className="td-jd-pill">
-                      <div className="td-jd-pill-icon"><FiDollarSign size={15} /></div>
-                      <div className="td-jd-pill-text">
-                        <span>SALARY</span>
-                        <strong>{selectedJob.salaryStr === '₦350,000 / month' ? '₦350' : selectedJob.salaryStr}</strong>
-                      </div>
-                    </div>
-                    <div className="td-jd-pill">
-                      <div className="td-jd-pill-icon"><FiClock size={15} /></div>
-                      <div className="td-jd-pill-text">
-                        <span>TYPE</span>
-                        <strong>{selectedJob.type}</strong>
-                      </div>
-                    </div>
-                    <div className="td-jd-pill">
-                      <div className="td-jd-pill-icon"><FiFileText size={15} /></div>
-                      <div className="td-jd-pill-text">
-                        <span>LEVEL</span>
-                        <strong>{selectedJob.education === 'Secondary (SS1-SS3)' ? 'Senior Sec.' : selectedJob.education}</strong>
-                      </div>
-                    </div>
-                    <div className="td-jd-pill">
-                      <div className="td-jd-pill-icon"><FiBook size={15} /></div>
-                      <div className="td-jd-pill-text">
-                        <span>SUBJECT</span>
-                        <strong>{selectedJob.subject || 'Mathematics'}</strong>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="td-jd-section">
-                    <h2 className="td-jd-section-title"><span className="td-jd-green-dash"></span> About the job</h2>
-                    <div className="td-jd-text-content">
-                      {selectedJob.about ? selectedJob.about.split('\n\n').map((p, i) => <p key={i}>{p}</p>) : <p>No job description has been published for this role yet.</p>}
-                    </div>
-                  </div>
-
-                  <div className="td-jd-card-section">
-                    <h2>Responsibilities</h2>
-                    <ul className="td-jd-check-list">
-                      {selectedJob.responsibilities?.length ? selectedJob.responsibilities.map((r, i) => (
-                        <li key={i}>
-                          <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
-                          <span>{r}</span>
-                        </li>
-                      )) : (
-                        <li>
-                          <span className="td-jd-check-circle-wrapper"><FiCheckCircle className="td-jd-check-icon" /></span>
-                          <span>No responsibilities have been provided for this role yet.</span>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-
-                  <div className="td-jd-section">
-                    <h2>Requirements / Qualifications</h2>
-                    <div className="td-jd-req-grid">
-                      <div className="td-jd-req-card">
-                        <h3 className="td-jd-req-essential">Essential</h3>
-                        <ul>
-                          {(applicationRequirements || selectedJob.requirements)?.essential ? (applicationRequirements || selectedJob.requirements).essential.map((r, i) => (
-                            <li key={i}>• {r}</li>
-                          )) : (
-                            <li>• Requirements will be shared by the employer once the job is published.</li>
-                          )}
-                        </ul>
-                      </div>
-                      <div className="td-jd-req-card">
-                        <h3 className="td-jd-req-desirable">Desirable</h3>
-                        <ul>
-                          {(applicationRequirements || selectedJob.requirements)?.desirable ? (applicationRequirements || selectedJob.requirements).desirable.map((r, i) => (
-                            <li key={i}>• {r}</li>
-                          )) : (
-                            <li>• Additional preferences will appear when they are available from the employer.</li>
-                          )}
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="td-jd-section">
-                    <h2>About the employer</h2>
-                    <div className="td-jd-employer-block">
-                      <div className="td-jd-employer-text">
-                        {selectedJob.employerInfo ? selectedJob.employerInfo.split('\n\n').map((p, i) => <p key={i}>{p}</p>) : <p>School information not provided.</p>}
-                      </div>
-                      <div className="td-jd-employer-img">
-                        <img src={selectedJob.employerImage || schoolCampus} alt="School Campus" />
-                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Right Sidebar */}
-                <div className="td-jd-sidebar">
-                  <div className="td-jd-apply-card">
-                    <div className="td-jd-deadline">
-                      <span>APPLICATION DEADLINE</span>
-                      <strong>{selectedJob.deadline || 'October 24th, 2024'}</strong>
-                    </div>
-                    {selectedJobApplication ? (
-                      <div className={`td-jd-applied-status td-jd-applied-status--${getApplicationDisplayStatus(selectedJobApplication).replace(/\s+/g, '-')}`}>
-                        {applicationStatusLabel(getApplicationDisplayStatus(selectedJobApplication))}
-                      </div>
-                    ) : (
-                      <>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="td-jd-apply-btn" onClick={() => openApplyModal(selectedJob, { review: true })}>Apply Now</motion.button>
-                        <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className={`td-jd-save-btn ${savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'td-jd-save-btn--saved' : ''}`} onClick={() => handleToggleSaveJob(selectedJob.job_id || selectedJob.id)}>
-                          <FiBookmark size={18} style={{ strokeWidth: 2.5, fill: savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'currentColor' : 'none' }} />
-                          {savedJobIds.includes(normalizeJobId(selectedJob.job_id || selectedJob.id)) ? 'Saved' : 'Save Job'}
-                        </motion.button>
-                      </>
-                    )}
-
-                    <div className="td-jd-share">
-                      <span>Share this role with your network:</span>
-                      <div className="td-jd-share-icons">
-                        <motion.button type="button" aria-label="Share this job" title="Share this job" whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn" onClick={() => handleShareSelectedJob('share')}>
-                          <FiShare2 size={18} style={{ strokeWidth: 2.2 }} />
-                        </motion.button>
-                        <motion.button type="button" aria-label="Copy job link" title="Copy job link" whileHover={{ scale: 1.08 }} whileTap={{ scale: 0.92 }} className="td-jd-share-icon-btn" onClick={() => handleShareSelectedJob('copy')}>
-                          <FiLink size={18} style={{ strokeWidth: 2.2 }} />
-                        </motion.button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {selectedJob.verifiedRecruiter && (
-                    <div className="td-jd-verified-card">
-                      <div className="td-jd-vc-header">
-                        <div className="td-jd-vc-badge-icon">
-                          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" stroke="#15803D" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                            <path d="M8.5 12L11 14.5L16 9.5" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                          </svg>
-                        </div>
-                        <div className="td-jd-vc-titles">
-                          <span>Verified</span>
-                          <span>Recruiter</span>
-                        </div>
-                      </div>
-                      <p>This school has a 94% response rate for applicants via Staffroom in the last 30 days.</p>
-                    </div>
+                <div className="td-jd-action-panel">
+                  {!selectedJobApplication && (
+                    <button type="button" className="school-job-detail-primary td-jd-primary-btn" onClick={() => openApplyModal(selectedJob, { review: true })}>Apply</button>
                   )}
                 </div>
-              </div>
+              </section>
+
+              <section className="school-job-detail-body td-jd-body">
+                <div className="school-job-detail-section td-jd-section">
+                  <h3>About the Role</h3>
+                  <p>{selectedJob.about || 'No job description has been published for this role yet.'}</p>
+                </div>
+
+                <div className="school-job-detail-section td-jd-section">
+                  <h3>Responsibilities</h3>
+                  <ul className="school-job-detail-check-list td-jd-check-list">
+                    {(selectedJob.responsibilities && selectedJob.responsibilities.length > 0 ? selectedJob.responsibilities : ['No responsibilities have been provided for this role yet.']).map((item, index) => (
+                      <li key={`${item}-${index}`}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="school-job-detail-section td-jd-section">
+                  <h3>Required Experience</h3>
+                  <ul className="school-job-detail-bullets td-jd-bullets">
+                    {selectedJob.required_experience
+                      ? <li>{String(selectedJob.required_experience)} of teaching experience</li>
+                      : <li>{selectedJob.experience || 'Relevant teaching experience preferred.'}</li>}
+                  </ul>
+                </div>
+
+                <div className="school-job-detail-section td-jd-section">
+                  <h3>Required Qualification</h3>
+                  <ul className="school-job-detail-bullets td-jd-bullets">
+                    {(selectedJob.required_qualification && selectedJob.required_qualification.length > 0)
+                      ? selectedJob.required_qualification.map((item, index) => <li key={`qualification-${index}`}>{item}</li>)
+                      : <li>{selectedJob.qualification || 'B.Ed or equivalent qualification.'}</li>}
+                  </ul>
+                </div>
+
+                <div className="school-job-detail-section td-jd-section">
+                  <h3>Other Requirement</h3>
+                  <ul className="school-job-detail-bullets td-jd-bullets">
+                    {(selectedJob.other_requirements && selectedJob.other_requirements.length > 0)
+                      ? selectedJob.other_requirements.map((item, index) => <li key={`other-requirement-${index}`}>{item}</li>)
+                      : <li>{(applicationRequirements || selectedJob.requirements)?.essential?.length ? (applicationRequirements || selectedJob.requirements).essential.join('; ') : 'No additional requirements have been provided.'}</li>}
+                  </ul>
+                </div>
+              </section>
             </motion.div>
           )}
           {activeTab === 'application-submitted' && (
@@ -8475,439 +8382,195 @@ export default function TeacherDashboard() {
            JOB DETAILS PAGE
         ═══════════════════════════════════════ */
         .td-job-details-page {
-          padding: 24px 32px 48px;
-          max-width: 1200px;
+          width: 100%;
+          max-width: 1240px;
           margin: 0 auto;
+          color: #1f2a33;
+          padding: 24px 0 48px;
         }
 
         .td-jd-back-nav {
-          display: inline-flex;
+          display: flex;
           align-items: center;
           gap: 8px;
-          color: #64748B;
-          font-weight: 600;
-          font-size: 13px;
+          margin-bottom: 18px;
+          color: #71808a;
+          font-size: 12px;
+          font-weight: 500;
           cursor: pointer;
-          margin-bottom: 20px;
-          transition: color 0.2s;
         }
-        .td-jd-back-nav:hover { color: #22C55E; }
-
-        .td-jd-content-wrapper {
-          display: grid;
-          grid-template-columns: 1fr 340px;
-          gap: 40px;
-          align-items: start;
+        .td-jd-back-nav button {
+          padding: 0;
+          border: 0;
+          background: transparent;
+          color: #617078;
+          font: inherit;
+          cursor: pointer;
+        }
+        .td-jd-back-nav strong {
+          color: #56646d;
+          font-weight: 600;
         }
 
-        .td-jd-main {
+        .td-jd-hero {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 18px 18px 14px;
+          border: 1px solid #e1e5e0;
+          border-radius: 10px;
+          background: #fff;
+        }
+        .td-jd-hero-main {
+          flex: 1;
+          min-width: 0;
+        }
+        .td-jd-hero h2 {
+          margin: 0 0 12px;
+          color: #1d2433;
+          font-size: 20px;
+          font-weight: 800;
+          letter-spacing: -0.02em;
+        }
+        .td-jd-meta-stack {
           display: flex;
           flex-direction: column;
-          gap: 28px;
+          gap: 10px;
         }
-
-        .td-jd-badge-row {
-          margin-bottom: 4px;
-        }
-        .td-jd-featured-tag {
-          display: inline-block;
-          background: #DCFCE7;
-          color: #166534;
-          font-size: 11px;
-          font-weight: 800;
-          padding: 6px 14px;
-          border-radius: 8px;
-          letter-spacing: 0.3px;
-        }
-
-        .td-jd-header-block {
-          display: flex;
-          align-items: center;
-          gap: 20px;
-        }
-        .td-jd-logo-placeholder {
-          width: 72px;
-          height: 72px;
-          border-radius: 20px;
-          background: #F8F9FA;
-          border: 1px solid #E9ECEF;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 24px;
-          font-weight: 800;
-          color: #ADB5BD;
-          overflow: hidden;
-        }
-        .td-jd-logo-img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-        .td-jd-header-text h1 {
-          font-size: 34px;
-          font-weight: 800;
-          color: #0F172A;
-          margin-bottom: 4px;
-          line-height: 1.15;
-          letter-spacing: -0.8px;
-        }
-        .td-jd-header-text p {
-          font-size: 15px;
-          color: #475569;
-          font-weight: 600;
-        }
-
-        .td-jd-info-pills {
+        .td-jd-meta-row {
           display: flex;
           flex-wrap: wrap;
-          gap: 12px;
-          margin-top: 8px;
-        }
-        .td-jd-pill {
-          background: #F1F5F9;
-          border-radius: 16px;
-          padding: 10px 18px;
-          display: flex;
           align-items: center;
           gap: 12px;
-          min-width: 120px;
+          margin: 0;
+          color: #5b6774;
+          font-size: 12px;
+          font-weight: 600;
         }
-        .td-jd-pill-icon {
-          color: #15803D;
-          font-size: 16px;
-          display: flex;
+        .td-jd-meta-item {
+          display: inline-flex;
           align-items: center;
+          gap: 6px;
+          background: transparent;
+          color: #4d5966;
+          padding: 0;
+          border: 0;
+          border-radius: 0;
         }
-        .td-jd-pill-text {
-          display: flex;
-          flex-direction: column;
+        .td-jd-meta-item svg {
+          color: #596673;
         }
-        .td-jd-pill-text span {
-          font-size: 9px;
-          color: #64748B;
-          text-transform: uppercase;
-          font-weight: 800;
-          margin-bottom: 1px;
-          letter-spacing: 0.5px;
-        }
-        .td-jd-pill-text strong {
-          font-size: 13px;
-          color: #0F172A;
-          font-weight: 800;
-        }
-
-        .td-jd-section h2 {
-          font-size: 20px;
-          font-weight: 800;
-          color: #0F172A;
-          margin-bottom: 16px;
-          display: flex;
-          align-items: center;
-          gap: 12px;
-        }
-        .td-jd-green-dash {
-          display: inline-block;
-          width: 20px;
-          height: 3px;
-          background: #22C55E;
-          border-radius: 2px;
-        }
-        .td-jd-text-content {
-          font-size: 14px;
-          color: #475569;
-          line-height: 1.7;
-          font-weight: 500;
-        }
-        .td-jd-text-content p {
-          margin-bottom: 16px;
-        }
-
-        .td-jd-card-section {
-          background: #fff;
-          border-radius: 28px;
-          padding: 32px;
-          box-shadow: 0 4px 24px rgba(0,0,0,0.015);
-          border: 1px solid #F1F5F9;
-        }
-        .td-jd-card-section h2 {
-          font-size: 20px;
-          font-weight: 800;
-          color: #0F172A;
-          margin-bottom: 24px;
-        }
-        .td-jd-check-list {
-          list-style: none;
-        }
-        .td-jd-check-list li {
-          display: flex;
-          align-items: flex-start;
-          gap: 12px;
-          font-size: 14px;
-          color: #475569;
-          line-height: 1.6;
-          margin-bottom: 16px;
-        }
-        .td-jd-check-circle-wrapper {
-          color: #22C55E;
-          font-size: 18px;
-          flex-shrink: 0;
-          margin-top: 1px;
-          display: flex;
-          align-items: center;
-        }
-        .td-jd-check-icon {
-          stroke-width: 2.5;
-        }
-
-        .td-jd-req-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 24px;
-        }
-        .td-jd-req-card {
-          background: #fff;
-          border-radius: 28px;
-          padding: 28px 24px;
-          box-shadow: 0 4px 24px rgba(0,0,0,0.015);
-          border: 1px solid #EEF2F6;
-        }
-        .td-jd-req-essential {
-          color: #15803D;
-          font-weight: 800;
-          font-size: 16px;
-          margin-bottom: 16px;
-        }
-        .td-jd-req-desirable {
-          color: #15803D;
-          font-weight: 800;
-          font-size: 16px;
-          margin-bottom: 16px;
-        }
-        .td-jd-req-card ul {
-          list-style: none;
-        }
-        .td-jd-req-card li {
-          font-size: 13px;
-          color: #495057;
-          line-height: 1.6;
-          margin-bottom: 12px;
-        }
-
-        .td-jd-employer-block {
-          display: flex;
-          gap: 32px;
-          align-items: center;
-        }
-        .td-jd-employer-text {
-          flex: 1;
-          font-size: 14px;
-          color: #495057;
-          line-height: 1.7;
-        }
-        .td-jd-employer-text p {
-          margin-bottom: 16px;
-        }
-        .td-jd-employer-text p:first-child {
-          font-style: italic;
-          color: #212529;
-          font-weight: 500;
-        }
-        .td-jd-employer-img {
-          flex-shrink: 0;
-          width: 240px;
-          height: 160px;
-          border-radius: 16px;
-          overflow: hidden;
-        }
-        .td-jd-employer-img img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        /* ── Right Sidebar ── */
-        .td-jd-sidebar {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
-          position: sticky;
-          top: 24px;
-        }
-
-        .td-jd-apply-card {
-          background: #FFFFFF;
-          border-radius: 44px;
-          padding: 44px 34px 36px;
-          box-shadow: 0 4px 32px rgba(0, 0, 0, 0.03);
-          border: 1px solid #F1F4F8;
-          display: flex;
-          flex-direction: column;
-          text-align: left;
-        }
-
-        .td-jd-deadline {
-          display: flex;
-          flex-direction: column;
-          gap: 8px;
-          margin-bottom: 26px;
-        }
-        .td-jd-deadline span {
-          font-size: 13px;
+        .td-jd-meta-item--money {
+          color: #1f2a33;
           font-weight: 700;
-          color: #8C96A6;
-          letter-spacing: 0.5px;
-          text-transform: uppercase;
         }
-        .td-jd-deadline strong {
-          font-size: 24px;
-          font-weight: 800;
-          color: #BF360C;
-          line-height: 1.2;
-          letter-spacing: -0.3px;
-        }
-
-        .td-jd-apply-btn {
-          width: 100%;
-          background: #20D051;
-          color: #FFFFFF;
-          border: none;
-          padding: 16px 24px;
-          border-radius: 9999px;
-          font-size: 16.5px;
-          font-weight: 800;
-          cursor: pointer;
-          box-shadow: 0 10px 24px rgba(32, 208, 81, 0.38);
-          margin-bottom: 14px;
-          display: flex;
+        .td-jd-status {
+          display: inline-flex;
           align-items: center;
-          justify-content: center;
-          transition: all 0.2s ease;
-        }
-        .td-jd-apply-btn:hover {
-          background: #1BBF48;
-          box-shadow: 0 12px 28px rgba(32, 208, 81, 0.45);
-        }
-
-        .td-jd-applied-status {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          width: 100%;
-          min-height: 62px;
-          margin-bottom: 14px;
+          min-height: 22px;
+          padding: 0 10px;
           border-radius: 999px;
-          background: #fff1aa;
-          color: #9a790d;
-          font-size: 17px;
-          font-weight: 800;
+          background: #dff3e5;
+          color: #247544;
+          font-size: 10px;
+          font-weight: 700;
           text-transform: capitalize;
         }
-        .td-jd-applied-status--shortlisted { background: #d9f8df; color: #19723b; }
-        .td-jd-applied-status--under-review { background: #dbeafe; color: #1d4ed8; }
-        .td-jd-applied-status--accepted { background: #d9f8df; color: #19723b; }
-        .td-jd-applied-status--rejected { background: #ffe0da; color: #c2412d; }
-        .td-jd-applied-status--withdrawn { background: #e2e8f0; color: #64748b; }
-
-        .td-jd-save-btn {
-          width: 100%;
-          background: #DFE3E8;
-          color: #1E293B;
-          border: none;
-          padding: 16px 24px;
-          border-radius: 9999px;
-          font-size: 16px;
-          font-weight: 800;
-          cursor: pointer;
+        .td-jd-action-panel {
           display: flex;
           align-items: center;
-          justify-content: center;
-          gap: 10px;
-          transition: background 0.2s ease;
+          justify-content: flex-end;
+          min-width: 120px;
         }
-        .td-jd-save-btn:hover {
-          background: #D3D8DF;
-        }
-        .td-jd-save-btn--saved {
-          background: #DCFCE7 !important;
-          color: #166534 !important;
-        }
-        .td-jd-save-btn--saved:hover {
-          background: #BBF7D0 !important;
+        .td-jd-primary-btn {
+          min-height: 36px;
+          padding: 0 18px;
+          border-radius: 999px;
+          background: #1ecb5a;
+          border: 1px solid #1ecb5a;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 800;
+          box-shadow: 0 10px 18px rgba(30, 203, 90, 0.18);
         }
 
-        .td-jd-share {
-          margin-top: 26px;
-          padding-top: 22px;
-          border-top: 1px solid #F1F4F8;
-          text-align: center;
+        .td-jd-body {
+          min-height: 420px;
+          margin-top: 18px;
+          padding: 22px 18px 4px;
+          border: 1px solid #e1e5e0;
+          border-radius: 10px;
+          background: #fff;
         }
-        .td-jd-share span {
-          display: block;
-          font-size: 13.5px;
-          color: #64748B;
+        .td-jd-section {
+          padding: 0 0 18px;
+        }
+        .td-jd-section:last-child { padding-bottom: 0; }
+        .td-jd-section h3 {
+          margin: 0 0 12px;
+          padding-left: 10px;
+          border-left: 3px solid #1c8a47;
+          color: #1f2a33;
+          font-size: 12px;
+          font-weight: 800;
+          line-height: 1.4;
+        }
+        .td-jd-section p,
+        .td-jd-section li {
+          color: #4c5865;
+          font-size: 13px;
+          line-height: 1.7;
           font-weight: 500;
-          margin-bottom: 16px;
         }
-        .td-jd-share-icons {
-          display: flex;
-          justify-content: center;
-          gap: 14px;
-        }
-        .td-jd-share-icon-btn {
-          width: 46px;
-          height: 46px;
-          border-radius: 50%;
-          background: #F1F4F8;
-          border: none;
-          color: #15803D;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .td-jd-share-icon-btn:hover {
-          background: #E2E8F0;
-          color: #166534;
-        }
-
-        .td-jd-verified-card {
-          background: #EFF5ED;
-          border-radius: 36px;
-          padding: 26px 28px 28px;
-          text-align: left;
-        }
-        .td-jd-vc-header {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          margin-bottom: 14px;
-        }
-        .td-jd-vc-badge-icon {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          flex-shrink: 0;
-        }
-        .td-jd-vc-titles {
-          display: flex;
-          flex-direction: column;
-          line-height: 1.15;
-          font-size: 16px;
-          font-weight: 800;
-          color: #166534;
-        }
-        .td-jd-verified-card p {
-          font-size: 13.5px;
-          color: #556272;
-          line-height: 1.55;
+        .td-jd-section p {
+          max-width: 760px;
           margin: 0;
-          font-weight: 400;
+        }
+        .td-jd-check-list,
+        .td-jd-bullets {
+          margin: 0;
+          padding-left: 0;
+          list-style: none;
+        }
+        .td-jd-check-list li,
+        .td-jd-bullets li {
+          position: relative;
+          margin-bottom: 8px;
+        }
+        .td-jd-check-list li {
+          padding-left: 22px;
+        }
+        .td-jd-check-list li::before {
+          content: '✓';
+          position: absolute;
+          left: 0;
+          color: #1c8a47;
+          font-weight: 700;
+        }
+        .td-jd-bullets {
+          padding-left: 18px;
+        }
+        .td-jd-bullets li::marker {
+          color: #1c8a47;
         }
 
-        .td-jd-help-card {
-          display: none;
+        @media (max-width: 680px) {
+          .td-jd-hero {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 18px 14px 12px;
+          }
+          .td-jd-action-panel {
+            width: 100%;
+            justify-content: flex-start;
+          }
+          .td-jd-primary-btn {
+            width: 100%;
+          }
+          .td-jd-body {
+            padding: 16px 14px 4px;
+          }
         }
 
         .td-modal-overlay {
