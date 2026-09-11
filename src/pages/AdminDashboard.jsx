@@ -254,8 +254,6 @@ export default function AdminDashboard() {
     useState(false);
   const [teacherSubject, setTeacherSubject] = useState("Subject");
   const [teacherSubjectMenuOpen, setTeacherSubjectMenuOpen] = useState(false);
-  const [teacherTrcn, setTeacherTrcn] = useState("TRCN");
-  const [teacherTrcnMenuOpen, setTeacherTrcnMenuOpen] = useState(false);
   const [teacherFilterMenuOpen, setTeacherFilterMenuOpen] = useState(false);
   const [teacherSortMenuOpen, setTeacherSortMenuOpen] = useState(false);
   const [teacherSortMode, setTeacherSortMode] = useState("Best Match");
@@ -486,7 +484,6 @@ export default function AdminDashboard() {
     setTeacherLocation("All Locations");
     setTeacherExperience("Experience");
     setTeacherSubject("Subject");
-    setTeacherTrcn("TRCN");
     setTeacherFilterMenuOpen(false);
     setTeacherActiveFilterGroup(null);
     setVisibleTeacherCount(10);
@@ -1161,7 +1158,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="admin-profile-footer">
-                  <button type="button" className="admin-profile-cancel-btn" onClick={() => setSettingsSection("account-security")} disabled={adminProfileLoading || savingAdminProfile}>Cancel</button>
+                  <button type="button" className="admin-profile-cancel-btn" onClick={() => setSettingsSection("overview")} disabled={adminProfileLoading || savingAdminProfile}>Cancel</button>
                   <button type="button" className="admin-profile-save-btn" onClick={handleSaveAdminProfile} disabled={adminProfileLoading || savingAdminProfile || !hasAdminProfileChanges}>
                     <FiCheck size={14} />
                     {savingAdminProfile ? "Saving..." : "Save Changes"}
@@ -4823,7 +4820,6 @@ export default function AdminDashboard() {
     setTeacherLocationMenuOpen(false);
     setTeacherExperienceMenuOpen(false);
     setTeacherSubjectMenuOpen(false);
-    setTeacherTrcnMenuOpen(false);
   };
 
   const renderApplicants = () => {
@@ -4905,13 +4901,10 @@ export default function AdminDashboard() {
       "Subject",
       ...new Set(teachers.map((t) => t.subject).filter((s) => s !== "General")),
     ];
-    const trcnOptions = ["TRCN", "Verified", "Not verified"];
-
     const teacherOptions = {
       locations: uniqueLocations,
       experiences: uniqueExperiences,
       subjects: uniqueSubjects,
-      trcnStatuses: trcnOptions,
     };
 
     const filteredTeachers = teachers.filter((teacher) => {
@@ -4936,9 +4929,7 @@ export default function AdminDashboard() {
         teacherExperience === "Experience" || teacher.experience === teacherExperience;
       const matchesSubject =
         teacherSubject === "Subject" || teacher.subject === teacherSubject;
-      const matchesTrcn = teacherTrcn === "TRCN" || teacher.trcnStatus === teacherTrcn;
-
-      return matchesQuery && matchesLocation && matchesExperience && matchesSubject && matchesTrcn;
+      return matchesQuery && matchesLocation && matchesExperience && matchesSubject;
     });
 
     const sortedTeachers = [...filteredTeachers].sort((teacherA, teacherB) => {
@@ -5036,7 +5027,7 @@ export default function AdminDashboard() {
                       onClick={() => setTeacherFilterMenuOpen((prev) => !prev)}
                     >
                       <FiFilter size={14} />
-                      Filters • {Number(teacherSubject !== "Subject") + Number(teacherLocation !== "All Locations") + Number(teacherExperience !== "Experience") + Number(teacherTrcn !== "TRCN")}
+                      Filters • {Number(teacherSubject !== "Subject") + Number(teacherLocation !== "All Locations") + Number(teacherExperience !== "Experience")}
                     </button>
 
                     {teacherFilterMenuOpen && (
@@ -5062,13 +5053,6 @@ export default function AdminDashboard() {
                             onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Experience" ? null : "Experience"))}
                           >
                             Experience
-                          </button>
-                          <button
-                            type="button"
-                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "TRCN" ? "is-active" : ""}`}
-                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "TRCN" ? null : "TRCN"))}
-                          >
-                            TRCN
                           </button>
                         </div>
 
@@ -5118,21 +5102,6 @@ export default function AdminDashboard() {
                                 {experience}
                               </button>
                             ))}
-
-                            {teacherActiveFilterGroup === "TRCN" && teacherOptions.trcnStatuses.map((status) => (
-                              <button
-                                key={status}
-                                type="button"
-                                className="school-teachers-menu-item"
-                                onClick={() => {
-                                  setTeacherTrcn(status);
-                                  setTeacherFilterMenuOpen(false);
-                                  setTeacherActiveFilterGroup(null);
-                                }}
-                              >
-                                {status}
-                              </button>
-                            ))}
                           </div>
                         )}
                       </div>
@@ -5167,21 +5136,11 @@ export default function AdminDashboard() {
                         Experience:<strong>{teacherExperience}</strong>
                       </button>
                     )}
-                    {teacherTrcn !== "TRCN" && (
-                      <button
-                        type="button"
-                        className="school-teachers-filter-chip"
-                        onClick={() => setTeacherFilterMenuOpen(true)}
-                      >
-                        TRCN:<strong>{teacherTrcn}</strong>
-                      </button>
-                    )}
-                    {(teacherSubject !== "Subject" || teacherLocation !== "All Locations" || teacherExperience !== "Experience" || teacherTrcn !== "TRCN") && (
+                    {(teacherSubject !== "Subject" || teacherLocation !== "All Locations" || teacherExperience !== "Experience") && (
                       <button type="button" className="school-teachers-reset-all" onClick={() => {
                         setTeacherSubject("Subject");
                         setTeacherLocation("All Locations");
                         setTeacherExperience("Experience");
-                        setTeacherTrcn("TRCN");
                         setTeacherSearch("");
                         setTeacherSearchSubmitted("");
                         setTeacherFilterMenuOpen(false);
@@ -5364,7 +5323,6 @@ export default function AdminDashboard() {
                     setTeacherSubject("Subject");
                     setTeacherLocation("All Locations");
                     setTeacherExperience("Experience");
-                    setTeacherTrcn("TRCN");
                     setTeacherSearch("");
                     setTeacherSearchSubmitted("");
                     setTeacherFilterMenuOpen(false);
@@ -11095,13 +11053,16 @@ export default function AdminDashboard() {
           border-bottom: 1px solid #e5e9e7;
           border-radius: 0;
           box-shadow: none;
-          transition: background 0.2s;
+          transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
           cursor: pointer;
           position: relative;
           overflow: hidden;
         }
         .school-notif-card:hover {
-          background: #fbfdfb;
+          background: #f3faf5;
+          border-color: #d9e9de;
+          box-shadow: 0 8px 18px rgba(16, 24, 40, 0.06);
+          transform: translateY(-1px);
         }
         .school-notif-card--unread {
           background: #fff;
