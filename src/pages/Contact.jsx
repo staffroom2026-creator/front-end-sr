@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import SiteFooter from '../components/SiteFooter';
+import { apiErrorMessage } from '../services/api';
+import { contactService } from '../services/contactService';
 
 const CONTACT_INFO = [
   {
@@ -41,16 +43,27 @@ export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    setError('');
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
-      setLoading(false);
+    setError('');
+
+    try {
+      await contactService.submitMessage(form);
       setSubmitted(true);
-    }, 1500);
+      setForm({ name: '', email: '', subject: '', message: '' });
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError, 'Unable to send your message. Please try again.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -159,6 +172,11 @@ export default function Contact() {
             ) : (
               <>
                 <h2 className="text-xl font-bold text-gray-900 mb-7">Send us a message</h2>
+                {error && (
+                  <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                    {error}
+                  </p>
+                )}
                 <form onSubmit={handleSubmit} className="space-y-5">
                   {/* Name & Email row */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

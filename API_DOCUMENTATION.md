@@ -97,6 +97,39 @@ The API returns exact HTTP status codes corresponding to operational outcomes:
 
 ## 5. Auth Endpoints
 
+## Public Contact Endpoint
+
+### `POST /contact`
+
+Submits a message to Staffroom support. This endpoint is public and does not require a JWT.
+
+**Request body:**
+
+```json
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "subject": "general",
+  "message": "Tell us how we can help."
+}
+```
+
+All four fields are required strings. `name` and `subject` may contain up to 255 characters, `email` must be a valid email address, and `message` may contain up to 5000 characters. Unknown fields, non-string values, malformed JSON, and oversized values return HTTP `400` with the standard validation error response.
+
+**Success response (`201 Created`):**
+
+```json
+{
+  "success": true,
+  "message": "Your message has been sent successfully.",
+  "data": {
+    "contact_id": "CNT-..."
+  }
+}
+```
+
+Submissions are stored in `contact_submissions` with status `new`. The support notification recipient defaults to `info@staffroomng.com` and can be changed with the `CONTACT_SUPPORT_EMAIL` environment variable. Apply `database/migrations/2026_09_13_contact_submissions.sql` before enabling the endpoint.
+
 ### `POST /auth/register`
 Registers a new public user with a public role of `teacher` or `school`. Admin registration is rejected.
 - **Method:** `POST`
