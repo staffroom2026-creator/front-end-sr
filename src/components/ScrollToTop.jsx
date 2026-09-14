@@ -6,11 +6,24 @@ import { useLocation } from 'react-router-dom';
  * Place this inside <BrowserRouter> so it has access to the router context.
  */
 export default function ScrollToTop() {
-  const { pathname } = useLocation();
+  const { pathname, hash } = useLocation();
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [pathname]);
+    if (!hash) {
+      window.scrollTo({ top: 0, behavior: 'instant' });
+      return undefined;
+    }
+
+    const scrollToHash = () => {
+      const target = document.getElementById(hash.slice(1));
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    };
+
+    const timeoutId = window.setTimeout(scrollToHash, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [pathname, hash]);
 
   return null;
 }

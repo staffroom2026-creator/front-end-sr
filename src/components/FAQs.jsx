@@ -90,7 +90,7 @@ export default function FAQs() {
   const currentFaqs = activeTab === 'teachers' ? teacherFaqs : schoolFaqs;
 
   return (
-    <section className="py-14 md:py-24">
+    <section id="faqs" className="py-14 md:py-24">
       <div className="max-w-3xl mx-auto px-6 md:px-8 flex flex-col items-center">
         <h2 className="text-2xl md:text-3xl font-bold mb-2 text-gray-900">FAQs</h2>
         <p className="text-gray-600 mb-8 md:mb-10 text-sm md:text-base">Everything You Need To Know</p>

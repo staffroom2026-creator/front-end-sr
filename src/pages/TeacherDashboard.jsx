@@ -2248,12 +2248,12 @@ export default function TeacherDashboard() {
                     </div>
                   </div>
 
-                  {/* ── Active / Priority Job Feeds ── */}
+                  {/* ── Active Job Feeds ── */}
                   <div className="td-jobs-section">
                     <div className="td-section-header">
                       <h2>
                         <span className="td-desktop-label">Active Job Feeds</span>
-                        <span className="td-mobile-label">Priority Job Feeds</span>
+                        <span className="td-mobile-label">Active Job Feeds</span>
                       </h2>
                       <a onClick={() => setActiveTab('jobs')} className="td-view-all-link">
                         <span className="td-desktop-text">View All Vacancies</span>
@@ -2321,15 +2321,6 @@ export default function TeacherDashboard() {
                       )}
                     </div>
                   </div>
-
-                  {/* ── Mobile CTA Card ── */}
-                  <motion.div variants={cardVariants} className="td-mobile-cta-card">
-                    <div className="td-mobile-cta-text">
-                      <h3>Enhance Your<br />Visibility</h3>
-                      <p>Schools in Victoria Island are looking for certified teachers.</p>
-                    </div>
-                    <button className="td-mobile-cta-btn">UPDATE CV</button>
-                  </motion.div>
 
                 </div>
 
@@ -3676,7 +3667,7 @@ export default function TeacherDashboard() {
                       <p className="td-legal-card-desc">
                         Read the rules, guidelines, and agreements for using the Staffroom platform. These terms
                       </p>
-                      <button className="td-legal-card-link">
+                      <button type="button" className="td-legal-card-link" onClick={() => setSettingsSubTab('legal-terms')}>
                         <span>Read Terms</span>
                         <FiArrowRight size={14} />
                       </button>
@@ -3691,7 +3682,7 @@ export default function TeacherDashboard() {
                       <p className="td-legal-card-desc">
                         Understand how we collect, use, and protect your personal and professional data. We are...
                       </p>
-                      <button className="td-legal-card-link">
+                      <button type="button" className="td-legal-card-link" onClick={() => setSettingsSubTab('legal-privacy')}>
                         <span>Read Policy</span>
                         <FiArrowRight size={14} />
                       </button>
@@ -3713,7 +3704,7 @@ export default function TeacherDashboard() {
                       <p className="td-legal-card-desc">
                         Learn about the cookies and tracking technologies we use to improve your platform...
                       </p>
-                      <button className="td-legal-card-link">
+                      <button type="button" className="td-legal-card-link" onClick={() => setSettingsSubTab('legal-cookies')}>
                         <span>Manage Cookies</span>
                         <FiArrowRight size={14} />
                       </button>
@@ -3735,12 +3726,50 @@ export default function TeacherDashboard() {
                 </div>
               )}
 
-              <div className="td-mobile-settings-logout-wrap">
-                <button type="button" className="td-mobile-settings-logout-btn" onClick={() => logout()}>
-                  <FiLogOut size={18} />
-                  Log out
-                </button>
-              </div>
+              {['legal-terms', 'legal-privacy', 'legal-cookies'].includes(settingsSubTab) && (
+                <div className="td-legal-document-wrap">
+                  <button className="td-legal-breadcrumb" onClick={() => setSettingsSubTab('legal')}>
+                    <FiArrowLeft size={16} />
+                    <span>Settings / Legal</span>
+                  </button>
+
+                  <div className="td-legal-document">
+                    <div className="td-legal-document-icon">
+                      {settingsSubTab === 'legal-terms' ? <FiFileText size={22} /> : settingsSubTab === 'legal-privacy' ? <FiShield size={22} /> : <FiGlobe size={22} />}
+                    </div>
+                    <h1 className="td-legal-title">
+                      {settingsSubTab === 'legal-terms' ? 'Terms of Service' : settingsSubTab === 'legal-privacy' ? 'Privacy Policy' : 'Cookie Policy'}
+                    </h1>
+                    {settingsSubTab === 'legal-terms' && (
+                      <>
+                        <p className="td-legal-document-lead">These terms explain the rules and responsibilities that apply when you use Staffroom.</p>
+                        <h2>Using Staffroom</h2>
+                        <p>Staffroom connects qualified teachers with schools. Please provide accurate information, keep your account secure, and use the platform only for legitimate education recruitment purposes.</p>
+                        <h2>Your account and content</h2>
+                        <p>You are responsible for activity on your account and for the accuracy of profiles, applications, documents, and other content you submit. Do not impersonate another person or upload misleading or unlawful content.</p>
+                      </>
+                    )}
+                    {settingsSubTab === 'legal-privacy' && (
+                      <>
+                        <p className="td-legal-document-lead">This policy explains how Staffroom handles the personal and professional information you provide.</p>
+                        <h2>Information we use</h2>
+                        <p>We use account, profile, application, and communication information to operate the platform, connect teachers with schools, improve our services, and protect the Staffroom community.</p>
+                        <h2>Your choices</h2>
+                        <p>You can review and update profile information through your account settings. Profile visibility controls let you manage how schools and recruiters discover your professional profile.</p>
+                      </>
+                    )}
+                    {settingsSubTab === 'legal-cookies' && (
+                      <>
+                        <p className="td-legal-document-lead">Cookies and similar technologies help Staffroom remember your preferences and keep the platform reliable.</p>
+                        <h2>How cookies help</h2>
+                        <p>We may use essential cookies for sign-in and security, along with limited analytics technologies to understand platform usage and improve the experience.</p>
+                        <h2>Managing cookies</h2>
+                        <p>You can manage cookies through your browser settings. Blocking essential cookies may affect sign-in and other dashboard features.</p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
 
             </motion.div>
           )}
@@ -7993,10 +8022,18 @@ export default function TeacherDashboard() {
           .td-mobile-text { display: inline; }
           .td-desktop-text { display: none; }
 
-          /* Profile card: show mobile variant, hide desktop variant */
-          .td-mobile-profile-strength { display: block; }
-          .td-desktop-profile-strength { display: none; }
-          .td-card-header { display: none; }
+          /* Profile card: retain the desktop presentation on mobile */
+          .td-mobile-profile-strength { display: none; }
+          .td-desktop-profile-strength {
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 18px;
+          }
+          .td-card-header {
+            display: flex;
+            margin-bottom: 18px;
+          }
 
           /* Main wrapper */
           .td-main-wrapper { overflow: visible; }
@@ -8044,11 +8081,15 @@ export default function TeacherDashboard() {
             width: 100%;
           }
           .td-profile-card {
-            border-radius: 28px;
-            padding: 24px 22px;
-            background: #fff;
-            border: 1px solid #EEF2F6;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+            border-radius: 24px;
+            padding: 22px 20px;
+            background: #ffffff;
+            border: 1px solid #edf1f3;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.03);
+          }
+          .td-profile-card .td-complete-profile-btn {
+            width: 100%;
+            min-width: 0;
           }
           .td-mobile-ps-top {
             display: flex;
@@ -8099,24 +8140,24 @@ export default function TeacherDashboard() {
 
           /* Mini cards on mobile */
           .td-mini-card {
-            border-radius: 28px;
+            border-radius: 20px;
             padding: 20px 18px;
-            background: #F8FAFC;
-            border: none;
-            box-shadow: none;
+            background: #ffffff;
+            border: 1px solid #e6ebee;
+            box-shadow: 0 6px 18px rgba(15, 23, 42, 0.04);
           }
           .td-mini-card--views::before,
           .td-mini-card--applied::before,
           .td-mini-card--pending::before {
-            display: none;
+            display: block;
           }
           .td-mini-icon-circle {
-            width: 32px;
-            height: 32px;
-            background: transparent;
-            box-shadow: none;
-            margin-bottom: 12px;
-            color: #166534;
+            width: 40px;
+            height: 40px;
+            background: #ecfdf5;
+            box-shadow: inset 0 0 0 1px rgba(34, 197, 94, 0.08);
+            margin-bottom: 20px;
+            color: #15803d;
           }
           .td-mini-card .td-mini-label {
             font-size: 10px;
@@ -11910,6 +11951,41 @@ export default function TeacherDashboard() {
         }
         .td-legal-card-link:hover {
           gap: 9px;
+        }
+        .td-legal-document-wrap {
+          width: 100%;
+          max-width: 860px;
+        }
+        .td-legal-document {
+          background: #fff;
+          border: 1px solid #E9ECEF;
+          border-radius: 18px;
+          padding: 28px 32px;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+        }
+        .td-legal-document-icon {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: #EEF7FF;
+          color: #005A36;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 16px;
+        }
+        .td-legal-document-lead,
+        .td-legal-document p {
+          color: #6B7280;
+          font-size: 14px;
+          line-height: 1.65;
+          margin: 0 0 20px;
+        }
+        .td-legal-document h2 {
+          color: #111;
+          font-size: 17px;
+          font-weight: 700;
+          margin: 24px 0 8px;
         }
         .td-legal-help-banner {
           background: #F0F4FF;
