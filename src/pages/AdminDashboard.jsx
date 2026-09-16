@@ -5442,7 +5442,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              <div className="school-teachers-compact-toolbar">
+              {/* <div className="school-teachers-compact-toolbar">
                 <div className="school-teachers-toolbar-left">
                   <div className="school-teachers-filter-menu-anchor" ref={teacherFilterMenuRef}>
                     <button
@@ -5578,7 +5578,7 @@ export default function AdminDashboard() {
                 <div className="school-teachers-toolbar-right">
                   <span>Showing 1–6 of {selectedTeacherTabTeachers.length} available teachers</span>
                 </div>
-              </div>
+              </div> */}
             </form>
 
             <div className="school-teachers-toggle-row" role="tablist" aria-label="Teacher views">
