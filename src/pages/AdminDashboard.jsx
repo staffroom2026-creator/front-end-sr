@@ -11734,6 +11734,108 @@ export default function AdminDashboard() {
         .admin-topbar-avatar { display: grid; place-items: center; width: 36px; height: 36px; overflow: hidden; padding: 0; border: 2px solid #16843d; border-radius: 50%; background: #dcefe2; color: #166534; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
         .admin-topbar-avatar img { width: 100%; height: 100%; padding: 3px; border-radius: 50%; background: #fff; object-fit: contain; }
         .admin-mobile-notification-header { display: none; }
+        @media (max-width: 768px) {
+          .school-notif-page {
+            width: 100%;
+            max-width: 100%;
+          }
+          .school-notif-header {
+            display: block;
+            margin-bottom: 18px;
+          }
+          .school-notif-header h1 {
+            margin-bottom: 6px;
+            font-size: 26px;
+            line-height: 1.2;
+          }
+          .school-notif-header p {
+            font-size: 13px;
+            line-height: 1.5;
+          }
+          .school-notif-header-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 0;
+          }
+          .school-notif-unread-summary,
+          .school-notif-mark-read {
+            font-size: 10px;
+          }
+          .school-notif-filter-tabs {
+            gap: 8px;
+            margin-bottom: 18px;
+          }
+          .school-notif-filter-btn {
+            padding: 8px 14px;
+            font-size: 12px;
+          }
+          .school-notif-section-label {
+            margin-bottom: 12px;
+            padding-left: 0;
+          }
+          .school-notif-card {
+            gap: 12px;
+            padding: 14px 12px;
+          }
+          .school-notif-card-icon {
+            margin-top: 2px;
+          }
+          .school-notif-icon-circle {
+            width: 30px;
+            height: 30px;
+          }
+          .school-notif-card-top {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+          }
+          .school-notif-card-top h3 {
+            font-size: 13px;
+          }
+          .school-notif-card-meta {
+            width: 100%;
+            justify-content: space-between;
+            gap: 8px;
+          }
+          .school-notif-time {
+            display: none;
+          }
+          .school-notif-time-mobile {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+          }
+          .school-notif-card-desc {
+            margin-bottom: 10px;
+            font-size: 12px;
+          }
+          .school-notif-card-actions {
+            justify-content: space-between;
+            gap: 8px;
+          }
+          .school-notif-link {
+            font-size: 11px;
+          }
+          .school-notif-empty {
+            padding: 40px 16px;
+          }
+          .school-notif-empty p {
+            font-size: 13px;
+          }
+          .school-notif-footer {
+            padding-top: 18px;
+          }
+          .school-notif-count {
+            font-size: 12px;
+          }
+          .school-notif-load-more {
+            width: 100%;
+            max-width: 220px;
+          }
+        }
         @media (min-width: 769px) {
           .admin-desktop-sidebar { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; overflow-y: auto; }
           .admin-dashboard-main-wrapper { margin-left: 14rem; }
