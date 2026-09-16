@@ -13,8 +13,8 @@ const CONTACT_INFO = [
       </svg>
     ),
     label: 'Email',
-    value: 'hello@staffroom.africa',
-    href: 'mailto:hello@staffroom.africa',
+    value: 'info@staffroomng.com',
+    href: 'mailto:info@staffroomng.com',
   },
   {
     icon: (
@@ -23,8 +23,8 @@ const CONTACT_INFO = [
       </svg>
     ),
     label: 'Phone',
-    value: '+234 800 000 0000',
-    href: 'tel:+2348000000000',
+    value: '0706 455 5777',
+    href: 'tel:+2347064555777',
   },
   {
     icon: (

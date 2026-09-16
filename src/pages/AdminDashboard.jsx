@@ -6159,103 +6159,6 @@ export default function AdminDashboard() {
                   {isSchool &&
                     activeTab === "notifications" &&
                     renderDesktopNotifications()}
-                  {activeTab === "notifications" && (
-                    <>
-                      <div className="admin-mobile-notification-header">
-                        <button
-                          type="button"
-                          onClick={() => handleTabChange("overview")}
-                          aria-label="Back to dashboard"
-                        >
-                          <FiArrowLeft size={22} />
-                        </button>
-                        <h2>Notifications</h2>
-                        <button
-                          type="button"
-                          className="admin-mobile-notification-mark-read"
-                          onClick={markAllNotificationsAsRead}
-                        >
-                          Mark all read
-                        </button>
-                      </div>
-                      <div className="admin-mobile-notifications-content">
-                        <div className="admin-mobile-notification-group">
-                          <h3>Today</h3>
-                          {notificationItems.slice(0, 3).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <button
-                                key={item.key}
-                                type="button"
-                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
-                                onClick={() => handleNotificationItemClick(item)}
-                              >
-                                <span className="school-notification-icon">
-                                  <Icon size={16} />
-                                </span>
-                                <div>
-                                  <b>{item.label}</b>
-                                  <strong>{item.title}</strong>
-                                  {item.description && <p>{item.description}</p>}
-                                </div>
-                                <time>{item.time}</time>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="admin-mobile-notification-group">
-                          <h3>Yesterday</h3>
-                          {notificationItems.slice(3, 5).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <button
-                                key={item.key}
-                                type="button"
-                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
-                                onClick={() => handleNotificationItemClick(item)}
-                              >
-                                <span className="school-notification-icon">
-                                  <Icon size={16} />
-                                </span>
-                                <div>
-                                  <b>{item.label}</b>
-                                  <strong>{item.title}</strong>
-                                  {item.description && <p>{item.description}</p>}
-                                </div>
-                                <time>{item.time}</time>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="admin-mobile-notification-group">
-                          <h3>Earlier</h3>
-                          {notificationItems.slice(5).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <button
-                                key={item.key}
-                                type="button"
-                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
-                                onClick={() => handleNotificationItemClick(item)}
-                              >
-                                <span className="school-notification-icon">
-                                  <Icon size={16} />
-                                </span>
-                                <div>
-                                  <b>{item.label}</b>
-                                  <strong>{item.title}</strong>
-                                  {item.description && <p>{item.description}</p>}
-                                </div>
-                                <time>{item.time}</time>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </>
-                  )}
                   {activeTab === "settings" && (
                     settingsSection === "notifications-privacy" ? (
                       renderAdminNotificationsPrivacy()
@@ -7296,6 +7199,38 @@ export default function AdminDashboard() {
           background: #f4f5f4;
           color: #a6adaa;
           cursor: default;
+        }
+        @media (max-width: 640px) {
+          .admin-profile-card {
+            padding: 20px 16px 18px;
+          }
+          .admin-profile-header {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+          .admin-profile-form-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+          }
+          .admin-profile-input-action-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+          }
+          .admin-profile-field input,
+          .admin-profile-input-action-row button {
+            width: 100%;
+          }
+          .admin-profile-input-action-row button {
+            min-width: 0;
+          }
+          .admin-profile-footer {
+            flex-direction: column-reverse;
+          }
+          .admin-profile-cancel-btn,
+          .admin-profile-save-btn {
+            width: 100%;
+          }
         }
         .admin-profile-loading {
           margin: 0;
@@ -11019,20 +10954,62 @@ export default function AdminDashboard() {
             align-items: flex-start;
             margin-top: 22px;
           }
-          .school-teacher-card {
-            padding: 16px 12px;
+          .school-teachers-list {
+            width: 100%;
           }
-          .school-teacher-profile-row {
+          .school-teacher-card {
+            width: 100%;
+            max-width: none;
+            padding: 16px 12px;
             gap: 12px;
           }
+          .school-teacher-card-main {
+            width: 100%;
+            min-width: 0;
+          }
+          .school-teacher-profile-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            width: 100%;
+          }
+          .school-teacher-name-column {
+            flex: 1;
+            min-width: 0;
+          }
           .school-teacher-name-row {
+            align-items: flex-start;
             gap: 8px;
           }
-          .school-teacher-summary {
+          .school-teacher-name-content {
+            flex: 1;
+            align-items: flex-start;
+            width: 100%;
+          }
+          .school-teacher-name {
+            font-size: 1rem;
+          }
+          .school-teacher-role-wrap {
+            width: 100%;
+          }
+          .school-teacher-role {
+            margin: 0;
             font-size: 13px;
+          }
+          .school-teacher-summary {
+            margin-top: 6px;
+            font-size: 13px;
+          }
+          .school-teacher-meta-row {
+            gap: 6px;
+          }
+          .school-teacher-meta-pill {
+            max-width: 100%;
+            white-space: normal;
           }
           .school-teacher-actions {
             flex-direction: column;
+            width: 100%;
           }
           .school-teacher-primary-btn,
           .school-teacher-secondary-btn {
@@ -12308,29 +12285,52 @@ export default function AdminDashboard() {
 }
 
 @media (max-width: 720px) {
+  .school-applicant-summary-page .school-summary-back-btn {
+    display: none;
+  }
+
   .school-applicant-summary-page--teacher-preview .school-preview-hero {
-    align-items: flex-start;
-    padding: 20px;
+    width: 100%;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    padding: 18px 16px;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-hero-copy {
+    width: 100%;
   }
 
   .school-applicant-summary-page--teacher-preview .school-preview-avatar {
-    width: 58px;
-    height: 58px;
-    flex-basis: 58px;
+    width: 62px;
+    height: 62px;
+    flex-basis: 62px;
     font-size: 18px;
+  }
+
+  .school-applicant-summary-page--teacher-preview .school-preview-name-row {
+    align-items: flex-start;
   }
 
   .school-applicant-summary-page--teacher-preview .school-preview-name-row h1 {
     font-size: 18px;
   }
 
+  .school-applicant-summary-page--teacher-preview .school-preview-meta {
+    gap: 10px;
+  }
+
   .school-applicant-summary-page--teacher-preview .school-preview-actions {
+    width: 100%;
+    margin-left: 0;
+    justify-content: stretch;
     flex-direction: column;
   }
 
   .school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-shortlist-btn,
   .school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-reject-btn {
     width: 100%;
+    max-width: none;
   }
 }
 

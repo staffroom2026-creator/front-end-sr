@@ -69,7 +69,7 @@ export default function Hero() {
           and<br className="md:hidden" /><span className="hidden md:inline"> </span>Opportunities.
         </h1>
         <p className="text-gray-600 text-sm md:text-lg mb-6 md:mb-8 max-w-md leading-relaxed animate-fade-in-up animation-delay-100">
-          Staffroom is the trusted platform where young teachers find verified jobs, and schools hire the right talent with ease.
+          Staffroom is the trusted platform where teachers find verified jobs, and schools hire the right talent with ease.
         </p>
         <Link to="/signup" className="inline-block self-start text-center bg-primary hover:bg-primary-dark text-white px-7 py-2.5 rounded-xl font-bold text-sm transition-transform hover:scale-105 active:scale-95 shadow-lg shadow-primary/30 w-full md:w-fit animate-fade-in-up animation-delay-200">
           Get Started
