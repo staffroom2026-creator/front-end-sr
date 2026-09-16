@@ -88,12 +88,12 @@ export default function Pricing() {
                   <span>Get Started for Free</span>
                   <span aria-hidden="true" className="text-lg leading-none">&rarr;</span>
                 </Link>
-                <a
-                  href="#learn-more"
+                <Link
+                  to="/about"
                   className="inline-flex items-center justify-center bg-white hover:bg-emerald-50/40 border border-[#A7F3D0] text-[#00A859] px-7 py-3.5 rounded-xl font-bold text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   Learn More
-                </a>
+                </Link>
               </div>
             </div>
 
