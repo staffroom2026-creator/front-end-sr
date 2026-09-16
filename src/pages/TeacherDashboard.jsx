@@ -16079,14 +16079,27 @@ export default function TeacherDashboard() {
         }
 
         @media (max-width: 768px) {
+          .td-pers-info-page {
+            padding: 8px 12px 88px;
+          }
           .td-pers-grid {
             grid-template-columns: 1fr;
+            gap: 16px;
           }
           .td-pers-empty-cell {
             display: none;
           }
           .td-pers-card {
-            padding: 24px 20px;
+            padding: 20px 16px;
+            width: 100%;
+          }
+          .td-pers-contact-card {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 14px;
+          }
+          .td-pers-contact-btn {
+            width: 100%;
           }
           .td-pers-actions-row {
             flex-direction: column-reverse;
@@ -16095,6 +16108,12 @@ export default function TeacherDashboard() {
           .td-pers-cancel-btn,
           .td-pers-save-btn {
             width: 100%;
+          }
+          .td-pers-page-title {
+            font-size: 24px;
+          }
+          .td-pers-breadcrumb {
+            font-size: 12px;
           }
           .td-edu-grid {
             grid-template-columns: 1fr;
