@@ -34,7 +34,7 @@ const CONTACT_INFO = [
       </svg>
     ),
     label: 'Location',
-    value: 'Lagos, Nigeria',
+    value: 'Benin City, Nigeria',
     href: '#',
   },
 ];
