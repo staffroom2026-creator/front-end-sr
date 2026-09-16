@@ -3,159 +3,158 @@ import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import SiteFooter from '../components/SiteFooter';
 
+import teacherImg from '../assets/early_adopter_teacher.webp';
+
 export default function Pricing() {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleNotify = (e) => {
-    e.preventDefault();
-    if (email.trim()) {
-      setSubmitted(true);
-      setEmail('');
-    }
-  };
-
   return (
-    <div className="brand-typography font-sans text-gray-900 bg-[#FAF9F6] min-h-screen flex flex-col">
+    <div className="brand-typography font-sans text-gray-900 bg-white min-h-screen flex flex-col">
       <Navbar sticky />
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center px-6 md:px-8 py-20 text-center">
-
-        {/* Animated construction badge */}
-        <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 text-primary font-semibold text-sm px-4 py-2 rounded-full mb-8 animate-fade-in">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
-          </span>
-          Page in progress
+      {/* Main Early Adopters Banner */}
+      <main className="relative flex-1 bg-white overflow-hidden flex items-center">
+        {/* Soft mint organic background shapes matching the design */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden">
+          {/* Subtle radial/linear mint glow on right */}
+          <div className="absolute -top-24 -right-24 w-[750px] h-[750px] rounded-full bg-[#E5F7EC]/70 blur-3xl" />
+          <div className="absolute top-1/3 right-1/4 w-[450px] h-[450px] rounded-full bg-[#EDF9F2]/90 blur-2xl" />
+          
+          {/* Fluid organic curve SVG accents */}
+          <svg
+            className="absolute right-0 top-0 h-full w-auto text-[#E7F8EE]/60 max-w-none"
+            viewBox="0 0 800 650"
+            fill="none"
+            preserveAspectRatio="none"
+          >
+            <path
+              d="M320 0C440 80 470 200 420 320C370 440 430 550 560 650H800V0H320Z"
+              fill="currentColor"
+            />
+          </svg>
+          <svg
+            className="absolute right-12 top-10 h-[85%] w-auto text-[#DCF5E6]/40 max-w-none"
+            viewBox="0 0 600 600"
+            fill="none"
+          >
+            <path
+              d="M200 80C340 30 450 120 480 260C510 400 410 520 280 550C150 580 80 460 70 340C60 220 100 120 200 80Z"
+              fill="currentColor"
+            />
+          </svg>
         </div>
 
-        {/* Illustration */}
-        <div className="mb-10 animate-fade-in-up">
-          <div className="relative mx-auto w-48 h-48 md:w-64 md:h-64">
-            {/* Outer ring */}
-            <div className="absolute inset-0 rounded-full border-4 border-dashed border-primary/20 animate-spin" style={{ animationDuration: '20s' }}></div>
-            {/* Inner ring */}
-            <div className="absolute inset-6 rounded-full border-4 border-dashed border-primary/10 animate-spin" style={{ animationDuration: '15s', animationDirection: 'reverse' }}></div>
-            {/* Center icon */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="bg-white rounded-3xl shadow-lg p-6 border border-gray-100">
-                <svg className="w-16 h-16 md:w-20 md:h-20 text-primary" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 11h.01M12 11h.01M15 11h.01M4 19.5A2.5 2.5 0 016.5 17H20" />
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 4.5A2.5 2.5 0 016.5 2h11A2.5 2.5 0 0120 4.5v15A2.5 2.5 0 0117.5 22H6.5A2.5 2.5 0 014 19.5v-15z" />
+        {/* Content Container */}
+        <div className="relative z-10 max-w-7xl mx-auto px-6 sm:px-8 lg:px-12 py-12 lg:py-16 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-8 items-center">
+            
+            {/* Left Column: Copy & Actions */}
+            <div className="lg:col-span-6 xl:col-span-6 flex flex-col items-start text-left z-20">
+              {/* Badge: Early Adopter Access */}
+              <div className="inline-flex items-center gap-2 bg-[#E9F9EE] border border-[#B8F0C8] text-[#00A859] px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold tracking-wide mb-6 shadow-sm">
+                <svg
+                  className="w-4 h-4 text-[#00A859] shrink-0"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polyline points="20 12 20 22 4 22 4 12" />
+                  <rect x="2" y="7" width="20" height="5" />
+                  <line x1="12" y1="22" x2="12" y2="7" />
+                  <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                  <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                </svg>
+                <span>Early Adopter Access</span>
+              </div>
+
+              {/* Main Heading */}
+              <h1 className="font-sora text-4xl sm:text-5xl lg:text-[58px] xl:text-[64px] font-extrabold text-[#0B132B] tracking-tight leading-[1.1] mb-5">
+                Full access for <br />
+                our <span className="text-[#00C26D]">early adopters.</span>
+              </h1>
+
+              {/* Subheading / Description */}
+              <p className="text-gray-600 text-base sm:text-lg leading-relaxed max-w-xl mb-8">
+                Onboarding, registration and all our features are free for now. Enjoy everything Staffroom has to offer as one of our early adopters. We appreciate you!
+              </p>
+
+              {/* Action Buttons */}
+              <div className="flex flex-wrap items-center gap-4">
+                <Link
+                  to="/signup"
+                  className="inline-flex items-center justify-center gap-2.5 bg-[#00C26D] hover:bg-[#00ab60] text-white px-7 py-3.5 rounded-xl font-bold text-base shadow-md shadow-[#00C26D]/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <span>Get Started for Free</span>
+                  <span aria-hidden="true" className="text-lg leading-none">&rarr;</span>
+                </Link>
+                <a
+                  href="#learn-more"
+                  className="inline-flex items-center justify-center bg-white hover:bg-emerald-50/40 border border-[#A7F3D0] text-[#00A859] px-7 py-3.5 rounded-xl font-bold text-base transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  Learn More
+                </a>
+              </div>
+            </div>
+
+            {/* Right Column: Handwritten Note + Teacher Photo + Floating Quote Card */}
+            <div className="lg:col-span-6 xl:col-span-6 relative flex items-center justify-center lg:justify-end min-h-[440px] sm:min-h-[500px] lg:min-h-[560px]">
+              
+              {/* Handwritten Note - Floating left of teacher */}
+              <div className="absolute -top-4 left-0 sm:left-4 lg:-left-10 z-20 font-handwriting text-[#127131] -rotate-6 select-none pointer-events-none">
+                <p className="text-xl sm:text-2xl lg:text-[25px] font-bold leading-tight">
+                  Supporting<br />
+                  teachers today<br />
+                  for a brighter<br />
+                  tomorrow.
+                </p>
+                <svg
+                  className="w-24 sm:w-28 h-4 text-[#127131] mt-1"
+                  viewBox="0 0 120 20"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                >
+                  <path d="M4 14 Q 60 20, 116 6" />
                 </svg>
               </div>
+
+              {/* Center Teacher Image */}
+              <div className="relative z-10 flex items-end justify-center pt-8">
+                <img
+                  src={teacherImg}
+                  alt="Staffroom educator holding laptop"
+                  className="h-[380px] sm:h-[480px] lg:h-[530px] w-auto max-w-full object-contain object-bottom drop-shadow-sm select-none"
+                />
+              </div>
+
+              {/* Testimonial Quote Card - Floating on the right side */}
+              <div className="absolute bottom-6 -right-2 sm:right-0 lg:-right-4 z-20 bg-white/95 backdrop-blur-md border border-gray-100/90 rounded-2xl p-5 sm:p-6 shadow-[0_16px_36px_rgba(0,0,0,0.07)] max-w-[260px] sm:max-w-[290px] xl:max-w-[310px] animate-fade-in-up">
+                {/* Large Green Quotation Mark */}
+                <div className="text-[#00C26D] mb-2 leading-none select-none" aria-hidden="true">
+                  <svg className="w-7 h-7 sm:w-8 sm:h-8 fill-current" viewBox="0 0 24 24">
+                    <path d="M9.983 3v7.391c0 5.704-3.731 9.57-8.983 10.609l-.995-2.151c2.432-.917 3.995-3.638 3.995-5.849h-4v-10h9.983zm14.017 0v7.391c0 5.704-3.748 9.571-9 10.609l-.996-2.151c2.433-.917 3.996-3.638 3.996-5.849h-3.983v-10h9.983z" />
+                  </svg>
+                </div>
+                {/* Quote Text */}
+                <p className="text-gray-700 text-xs sm:text-sm leading-relaxed font-normal mb-3">
+                  &ldquo;Staffroom is making it easier for me to find the right opportunities and grow in my teaching career.&rdquo;
+                </p>
+                {/* Author */}
+                <p className="text-xs text-gray-400 font-medium">
+                  &mdash; Teacher, Lagos
+                </p>
+              </div>
+
             </div>
+
           </div>
-        </div>
-
-        {/* Text */}
-        <div className="animate-fade-in-up animation-delay-100 max-w-xl">
-          <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-gray-900 mb-4 leading-tight">
-            Pricing Coming <span className="text-primary">Soon</span>
-          </h1>
-          <p className="text-gray-500 text-base md:text-lg leading-relaxed mb-8">
-            We're putting the final touches on our pricing plans. Join the waitlist and be the first to know when they go live.
-          </p>
-        </div>
-
-        {/* Notify form */}
-        <div className="animate-fade-in-up animation-delay-200 w-full max-w-md">
-          {submitted ? (
-            <div className="bg-primary/10 border border-primary/20 rounded-2xl px-6 py-5 text-primary font-semibold flex items-center justify-center gap-3">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-              </svg>
-              You're on the list! We'll notify you soon.
-            </div>
-          ) : (
-            <form onSubmit={handleNotify} className="flex flex-col sm:flex-row gap-3">
-              <input
-                id="pricing-notify-email"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                className="flex-1 px-5 py-3.5 rounded-xl border border-gray-200 bg-white text-sm text-gray-900 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
-              />
-              <button
-                type="submit"
-                className="bg-primary hover:bg-primary-dark text-white px-6 py-3.5 rounded-xl font-bold text-sm transition-transform hover:scale-105 active:scale-95 shadow-md shadow-primary/20 whitespace-nowrap"
-              >
-                Notify Me
-              </button>
-            </form>
-          )}
-        </div>
-
-        {/* Preview pricing tiers */}
-        <div className="animate-fade-in-up animation-delay-300 mt-20 w-full max-w-4xl">
-          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-8">Planned Plans</p>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            {/* Free */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-7 text-left opacity-60 blur-[1px] hover:opacity-80 hover:blur-0 transition-all duration-300 cursor-default">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">Free</p>
-              <p className="text-3xl font-extrabold text-gray-900 mb-1">$0<span className="text-base font-medium text-gray-400">/mo</span></p>
-              <p className="text-sm text-gray-400 mb-5">Perfect for getting started</p>
-              <div className="space-y-2.5">
-                {['Basic profile listing', 'Apply to 5 jobs/month', 'Email support'].map(f => (
-                  <div key={f} className="flex items-center gap-2.5 text-sm text-gray-500">
-                    <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                    {f}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Pro - highlighted */}
-            <div className="relative bg-dark-green text-white border border-dark-green rounded-2xl p-7 text-left opacity-60 blur-[1px] hover:opacity-80 hover:blur-0 transition-all duration-300 cursor-default">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-white text-xs font-bold px-4 py-1 rounded-full">Most Popular</div>
-              <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">Pro</p>
-              <p className="text-3xl font-extrabold text-white mb-1">$19<span className="text-base font-medium text-emerald-300">/mo</span></p>
-              <p className="text-sm text-emerald-200 mb-5">For serious educators</p>
-              <div className="space-y-2.5">
-                {['Unlimited applications', 'Priority profile visibility', 'Featured in search results', 'Analytics dashboard'].map(f => (
-                  <div key={f} className="flex items-center gap-2.5 text-sm text-emerald-100">
-                    <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                    {f}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* School */}
-            <div className="bg-white border border-gray-100 rounded-2xl p-7 text-left opacity-60 blur-[1px] hover:opacity-80 hover:blur-0 transition-all duration-300 cursor-default">
-              <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">School</p>
-              <p className="text-3xl font-extrabold text-gray-900 mb-1">$49<span className="text-base font-medium text-gray-400">/mo</span></p>
-              <p className="text-sm text-gray-400 mb-5">For hiring institutions</p>
-              <div className="space-y-2.5">
-                {['Post unlimited jobs', 'Access full teacher profiles', 'Shortlisting tools', 'Dedicated account manager'].map(f => (
-                  <div key={f} className="flex items-center gap-2.5 text-sm text-gray-500">
-                    <svg className="w-4 h-4 text-primary shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
-                    {f}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <p className="text-xs text-gray-400 mt-5 italic">* Plans shown are illustrative and subject to change.</p>
-        </div>
-
-        {/* Back link */}
-        <div className="mt-14 animate-fade-in-up animation-delay-400">
-          <Link to="/" className="text-sm text-gray-500 hover:text-primary transition-colors inline-flex items-center gap-2">
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-            Back to Home
-          </Link>
         </div>
       </main>
 
       {/* Bottom CTA Section */}
-      <section className="bg-[#D6FBC5] min-h-screen flex flex-col items-center justify-center text-center">
+      <section id="learn-more" className="bg-[#D6FBC5] min-h-screen flex flex-col items-center justify-center text-center scroll-mt-10">
         <div className="max-w-4xl mx-auto px-6 md:px-8">
           <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 leading-tight">
             Ready to Find Your Next Opportunity?

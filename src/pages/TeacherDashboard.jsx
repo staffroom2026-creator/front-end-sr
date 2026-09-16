@@ -6933,9 +6933,11 @@ export default function TeacherDashboard() {
           color: #22C55E;
           font-weight: 700;
           text-decoration: none;
+          cursor: pointer;
         }
         .td-view-all-link:hover {
           text-decoration: underline;
+          cursor: pointer;
         }
 
         .td-mobile-label { display: none; }
