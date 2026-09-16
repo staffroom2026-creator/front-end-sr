@@ -103,6 +103,7 @@ export function AuthProvider({ children }) {
     const resolvedUser = userData
       ? {
           ...userData,
+          role: String(userData?.role ?? userData?.user_role ?? '').trim().toLowerCase(),
           setup_completed: result?.data?.setup_completed ?? userData?.setup_completed ?? undefined,
           onboarding_required: result?.data?.onboarding_required ?? userData?.onboarding_required ?? undefined,
         }

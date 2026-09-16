@@ -130,6 +130,39 @@ All four fields are required strings. `name` and `subject` may contain up to 255
 
 Submissions are stored in `contact_submissions` with status `new`. The support notification recipient defaults to `info@staffroomng.com` and can be changed with the `CONTACT_SUPPORT_EMAIL` environment variable. Apply `database/migrations/2026_09_13_contact_submissions.sql` before enabling the endpoint.
 
+## Internal Admin Dashboard API
+
+Internal admin endpoints use the existing JWT bearer authentication and require the authenticated account role `police`. Teachers, schools, regular `admin` accounts, missing tokens, and expired tokens are rejected with `401` or `403`. The JWT contains `user_id`, `email`, `role`, and `exp`.
+
+The separate internal `admin_role` controls permissions: `Super Admin`, `Operations Admin`, `Verification Admin`, and `Support Admin`. Permissions are enforced server-side for `users`, `schools`, `jobs`, `applications`, `verification`, `reports`, `admins`, and `settings`; insufficient permissions return `403`.
+
+### Endpoints
+
+| Method | Endpoint | Permission |
+|---|---|---|
+| GET | `/internal-admin/overview` | users.view |
+| GET | `/internal-admin/jobs`, `/internal-admin/jobs/{job_id}` | jobs.view |
+| PATCH | `/internal-admin/jobs/{job_id}/status` | jobs.approve |
+| GET | `/internal-admin/schools`, `/internal-admin/schools/{school_id}` | schools.view |
+| PATCH | `/internal-admin/schools/{school_id}/status` | schools.edit |
+| GET | `/internal-admin/teachers`, `/internal-admin/teachers/{user_id}` | users.view |
+| GET | `/internal-admin/teachers/{user_id}/applications` | applications.view |
+| PATCH | `/internal-admin/teachers/{user_id}/status` | users.edit |
+| GET | `/internal-admin/admins`, `/internal-admin/admins/invitations` | admins.view |
+| POST | `/internal-admin/admins/invitations` | admins.create |
+| POST | `/internal-admin/admins/invitations/{id}/resend` or `/revoke` | admins.create/edit |
+| PATCH | `/internal-admin/admins/{id}/status` or `/role` | admins.edit |
+| GET/PATCH | `/internal-admin/reports`, `/internal-admin/reports/{id}` | reports.view/edit |
+| GET/PATCH | `/internal-admin/notifications`, `/internal-admin/notifications/{id}/read` | users.view/edit |
+| GET/PATCH | `/internal-admin/settings` | settings.view/edit |
+| GET | `/internal-admin/audit-log` | reports.view |
+
+Job moderation accepts `published`, `rejected`, or `changes_requested` and requires `internal_note`. Only `pending_review`, `changes_requested`, or legacy `draft` jobs can transition. School and teacher status actions require a `reason`; school statuses are `active` and `suspended`, and teacher statuses are `active` and `suspended`.
+
+List responses contain the resource collection and the standard pagination object: `current_page`, `per_page`, `total`, `last_page`, and `has_more`. Internal admin invitations are pending for 72 hours, store only a SHA-256 token hash, and are accepted through public `POST /internal-admin/invitations/accept`. The raw token is never returned by authenticated API responses.
+
+Sensitive moderation, status, invitation, settings, and role actions create immutable audit records. Internal review notes are not returned to school or teacher endpoints. Apply `database/migrations/2026_09_16_internal_admin_dashboard.sql` before using this API.
+
 ### `POST /auth/register`
 Registers a new public user with a public role of `teacher` or `school`. Admin registration is rejected.
 - **Method:** `POST`

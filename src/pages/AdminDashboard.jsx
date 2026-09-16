@@ -4368,6 +4368,7 @@ export default function AdminDashboard() {
       const merged = {
         ...teacher,
         ...fullDetail,
+        user_id: teacher?.user_id || fullDetail?.user_id || fullDetail?.teacher_user_id,
         name:
           teacher?.name ||
           fullDetail?.full_name ||
@@ -4512,7 +4513,9 @@ export default function AdminDashboard() {
   };
 
   const handleSendTeacherInvite = async () => {
-    const teacherId = selectedTeacherProfile?.user_id;
+    const teacherId = selectedTeacherProfile?.user_id
+      || selectedTeacherProfile?.teacher_user_id
+      || selectedTeacherProfile?.teacher_id;
     const message = teacherInviteMessage.trim();
 
     if (!teacherId) {

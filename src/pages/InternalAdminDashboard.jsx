@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import BrandLogo from '../components/BrandLogo';
+import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage } from '../services/api';
+import { internalAdminService } from '../services/internalAdminService';
 import {
   FiBell,
   FiBriefcase,
@@ -36,83 +39,15 @@ const navItems = [
   ['reports', 'Reports', FiClipboard],
   ['notifications', 'Notifications', FiBell],
   ['settings', 'Settings', FiSettings],
-];
-
-const overviewStats = [
-  { label: 'Total Teachers', value: '1,284', note: 'Total teacher accounts', tone: 'neutral', icon: FiUsers },
-  { label: 'Total Schools', value: '326', note: 'Total schools registered', tone: 'neutral', icon: FiGrid },
-  { label: 'Active Jobs', value: '184', note: 'Jobs currently visible to teachers', tone: 'neutral', icon: FiBriefcase },
-  { label: 'Pending Reviews', value: '17', note: 'Jobs waiting for review', tone: 'warning', icon: FiClock },
-];
-
-const summaryCards = [
-  { label: 'Published', value: '184', accent: 'green' },
-  { label: 'Pending', value: '17', accent: 'amber' },
-  { label: 'Changes Req.', value: '8', accent: 'gray' },
-  { label: 'Rejected', value: '12', accent: 'red' },
-];
-
-const reviewRows = [
-  {
-    school: 'Mathematics Teacher',
-    schoolSub: 'Bright Future International School',
-    hours: '2 hours ago',
-    status: 'Pending',
-    action: 'Review',
-  },
-  {
-    school: 'English Teacher',
-    schoolSub: 'Greenfield Academy',
-    hours: '5 hours ago',
-    status: 'Pending',
-    action: 'Review',
-  },
-  {
-    school: 'Primary School Teacher',
-    schoolSub: 'Royal Academy',
-    hours: '1 day ago',
-    status: 'Pending',
-    action: 'Review',
-  },
-];
-
-const recentActivity = [
-  { type: 'success', icon: FiCheckCircle, text: 'Admin Sarah approved job', subtext: 'Science Teacher', time: '10 mins ago' },
-  { type: 'notice', icon: FiClipboard, text: 'Oakwood High submitted new', subtext: 'job PE Instructor', time: '45 mins ago' },
-  { type: 'info', icon: FiCheckCircle, text: 'Admin Mike rejected job', subtext: 'Substitute Teacher', time: '2 hours ago' },
-  { type: 'muted', icon: FiUser, text: 'Jane Doe completed teacher', subtext: 'verification', time: '3 hours ago' },
-];
-
-const quickStats = [
-  { value: '24', label: 'Verification req.', icon: FiShield },
-  { value: '5', label: 'New reports', icon: FiBarChart2 },
+  ['audit-log', 'Audit Log', FiClipboard],
 ];
 
 const jobFilters = ['All', 'Pending Review', 'Changes Requested', 'Published', 'Rejected', 'Closed', 'Reported'];
 const JOBS_PER_PAGE = 5;
 const schoolFilters = ['All Schools', 'Active', 'Suspended', 'Recently Joined'];
 const SCHOOLS_PER_PAGE = 5;
-
-const schoolRows = [
-  { name: 'Greenfield Academy', type: 'Private Secondary School', location: 'Benin City, Edo State', email: 'admin@greenfieldacademy.com', joined: 'Aug 27, 2026', status: 'Active' },
-  { name: 'Crescent International', type: 'Private Primary School', location: 'Lagos, Nigeria', email: 'hello@crescent.edu.ng', joined: 'Oct 12, 2025', status: 'Active' },
-  { name: 'Sunrise College', type: 'Vocational Center', location: 'Abuja, FCT', email: 'contact@sunrisecollege.org', joined: 'Jan 05, 2026', status: 'Suspended' },
-];
-const schoolDataset = Array.from({ length: 156 }, (_, index) => {
-  const school = schoolRows[index % schoolRows.length];
-  return index < schoolRows.length ? school : { ...school, name: `${school.name} ${index + 1}`, email: `admin${index + 1}@staffroom.school` };
-});
 const teacherFilters = ['All Teachers', 'Active', 'Suspended', 'Recently Joined'];
 const TEACHERS_PER_PAGE = 3;
-const teacherRows = [
-  { name: 'John Doe', title: 'Mathematics Teacher', subject: 'Mathematics · Secondary', location: 'Benin City, Edo State', contact: 'john.doe@gmail.com', joined: 'Aug 24, 2026', status: 'Active' },
-  { name: 'Sarah Adebayo', title: 'Senior Science Tutor', subject: 'Physics · Senior Secondary', location: 'Lagos, Lagos State', contact: 's.adebayo@school.edu', joined: 'Sep 01, 2025', status: 'Suspended' },
-  { name: 'Chika Nwosu', title: 'Language Instructor', subject: 'English · Primary', location: 'Abuja, FCT', contact: 'cnwosu@edu.ng', joined: 'Jan 15, 2026', status: 'Active' },
-];
-const teacherDataset = Array.from({ length: 45 }, (_, index) => {
-  const teacher = teacherRows[index % teacherRows.length];
-  return index < teacherRows.length ? teacher : { ...teacher, name: `${teacher.name} ${index + 1}`, contact: `teacher${index + 1}@staffroom.school` };
-});
 
 const roleIcons = {
   'Super Admin': FiShield,
@@ -203,76 +138,8 @@ const adminRoleDefaults = {
   'Support Admin': { schoolProfile: true, manageAccess: true, reviewJobs: false },
 };
 
-const adminManagementRows = [
-  { name: 'Christopher Osazuwa', role: 'Super Admin', email: 'christopher@staffroom.com', access: 'Full Access', lastActive: '5 minutes ago', status: 'Active', ip: '197.210.44.12', created: 'Jan 12, 2026', addedBy: 'System', permissions: 'All' },
-  { name: 'Sarah Adeyemi', role: 'Verification Admin', email: 'sarah@staffroom.com', access: 'Schools', lastActive: '2 hours ago', status: 'Active', ip: '102.89.33.19', created: 'Aug 21, 2026', addedBy: 'System', permissions: 'Access: schools' },
-  { name: 'Michael-Eze', role: 'Support Admin', email: 'michael-e@staffroom.com', access: 'Schools', lastActive: '3 days ago', status: 'Suspended', ip: '197.210.44.12', created: 'May 06, 2026', addedBy: 'System', permissions: 'Flagged' },
-  { name: 'Amina Bello', role: 'Operations Admin', email: 'amina@staffroom.com', access: 'Operations', lastActive: '1 hour ago', status: 'Active', ip: '197.211.58.4', created: 'Feb 14, 2026', addedBy: 'System', permissions: 'Access: ops' },
-  { name: 'Emeka Okonkwo', role: 'Verification Admin', email: 'emeka@staffroom.com', access: 'Verification', lastActive: 'Never', status: 'Pending', ip: 'Never', created: 'Sep 02, 2026', addedBy: 'System', permissions: 'Invitation' },
-];
 
-const allJobs = [
-  {
-    title: 'Senior Mathematics Teacher',
-    school: "St. Jude's Academy",
-    location: 'Benin City, Edo, Nigeria',
-    status: 'Pending Review',
-    submitted: 'Oct 24, 2023',
-    updated: 'Oct 24, 2023',
-    action: 'Review',
-  },
-  {
-    title: 'Primary Years Educator',
-    school: 'Oakwood Primary',
-    location: 'Manchester, UK',
-    status: 'Published',
-    submitted: 'Oct 22, 2023',
-    updated: 'Oct 23, 2023',
-    action: 'View',
-  },
-  {
-    title: 'Primary Years Educator',
-    school: 'Oakwood Primary',
-    location: 'Manchester, UK',
-    status: 'Published',
-    submitted: 'Oct 22, 2023',
-    updated: 'Oct 23, 2023',
-    action: 'View',
-  },
-  {
-    title: 'Head of Science',
-    school: 'Riverside High',
-    location: 'Birmingham, UK',
-    status: 'Rejected',
-    submitted: 'Oct 20, 2023',
-    updated: 'Oct 21, 2023',
-    action: 'Details',
-  },
-  {
-    title: 'Head of Science',
-    school: 'Riverside High',
-    location: 'Birmingham, UK',
-    status: 'Rejected',
-    submitted: 'Oct 20, 2023',
-    updated: 'Oct 21, 2023',
-    action: 'Details',
-  },
-];
-
-const jobDataset = Array.from({ length: 243 }, (_, index) => {
-  const sourceJob = allJobs[index % allJobs.length];
-  const generatedStatus = jobFilters[1 + (index % (jobFilters.length - 1))];
-  const status = index < allJobs.length ? sourceJob.status : generatedStatus;
-
-  return {
-    ...sourceJob,
-    title: index < allJobs.length ? sourceJob.title : `${sourceJob.title} ${index + 1}`,
-    status,
-    action: status === 'Pending Review' ? 'Review' : status === 'Published' ? 'View' : 'Details',
-  };
-});
-
-function JobReviewView({ job, onBack }) {
+function JobReviewView({ job, onBack, onModerate }) {
   const [feedback, setFeedback] = useState(null);
   const [isFeedbackClosing, setIsFeedbackClosing] = useState(false);
   const canReview = job.status === 'Pending Review' || job.status === 'Changes Requested';
@@ -309,10 +176,10 @@ function JobReviewView({ job, onBack }) {
 
         {canReview && (
           <div className="internal-admin-review-actions">
-            <button type="button" className="internal-admin-reject-button" onClick={() => showFeedback('rejected')}>
+            <button type="button" className="internal-admin-reject-button" onClick={() => onModerate(job.job_id, 'rejected', showFeedback)}>
               <FiX size={14} /> Reject
             </button>
-            <button type="button" className="internal-admin-approve-button" onClick={() => showFeedback('approved')}>
+            <button type="button" className="internal-admin-approve-button" onClick={() => onModerate(job.job_id, 'published', showFeedback)}>
               <FiCheck size={14} /> Approve &amp; Publish
             </button>
           </div>
@@ -343,47 +210,33 @@ function JobReviewView({ job, onBack }) {
             <div className="internal-admin-job-summary-heading">
               <div>
                 <h2>{job.title}</h2>
-                <p><FiUserCheck size={12} /> Bright Future International School <span>•</span> <FiMapPin size={12} /> Lagos, Nigeria</p>
-                <p><FiCalendar size={12} /> Full Time</p>
+                <p><FiUserCheck size={12} /> {job.school} <span>•</span> <FiMapPin size={12} /> {job.location}</p>
+                <p><FiCalendar size={12} /> {job.employment_type || job.type || 'Not provided'}</p>
               </div>
-              <span className="internal-admin-job-reference">ID: JOB-88924</span>
+              <span className="internal-admin-job-reference">ID: {job.job_id || 'Not available'}</span>
             </div>
             <div className="internal-admin-job-summary-details">
-              <div><small>Salary Range</small><strong>₦150,000 -<br />₦200,000</strong></div>
-              <div><small>Experience</small><strong>2+ years</strong></div>
-              <div><small>Deadline</small><strong>Sep 15, 2026</strong></div>
-              <div><small>Subject Area</small><strong>Mathematics</strong></div>
+              <div><small>Salary Range</small><strong>{job.salary_range || 'Not provided'}</strong></div>
+              <div><small>Experience</small><strong>{job.required_experience || 'Not provided'}</strong></div>
+              <div><small>Deadline</small><strong>{job.deadline || job.application_deadline || 'Not provided'}</strong></div>
+              <div><small>Subject Area</small><strong>{job.subject || job.subject_area || 'Not provided'}</strong></div>
             </div>
           </section>
 
           <section className="internal-admin-review-card">
             <h3>Job Description</h3>
-            <p>Bright Future International School is seeking a dedicated and passionate Mathematics Teacher to join our junior secondary school faculty. The ideal candidate will have a strong grasp of the Nigerian national curriculum as well as IGCSE mathematics standards.</p>
-            <p>You will be responsible for creating a stimulating learning environment, developing engaging lesson plans, and preparing students for local and international examinations.</p>
+            <p>{job.description || job.about || 'No job description provided.'}</p>
           </section>
 
           <div className="internal-admin-review-two-column">
             <section className="internal-admin-review-card">
               <h3>Responsibilities</h3>
-              <ul>
-                <li>Plan, prepare and deliver instructional activities that facilitate active learning experiences.</li>
-                <li>Develop schemes of work and lesson plans in line with curriculum objectives.</li>
-                <li>Establish and communicate clear objectives for all learning activities.</li>
-                <li>Prepare classroom materials and provide a variety of learning materials.</li>
-                <li>Observe and evaluate student&apos;s performance and development.</li>
-                <li>Assign and grade class work, homework, tests and assignments.</li>
-              </ul>
+              <ul>{(Array.isArray(job.responsibilities) ? job.responsibilities : []).map((item) => <li key={item}>{item}</li>)}</ul>
             </section>
 
             <section className="internal-admin-review-card">
               <h3>Requirements</h3>
-              <ul className="internal-admin-requirement-list">
-                <li>Education: Minimum of B.Ed or B.Sc in Mathematics with PGDE.</li>
-                <li>Experience: 2+ years teaching Senior Secondary Mathematics.</li>
-                <li>Subject Expertise in Further Mathematics is an added advantage.</li>
-                <li>Skills: Proficiency in educational technology.</li>
-                <li>Certifications: TRCN registration required.</li>
-              </ul>
+              <ul className="internal-admin-requirement-list">{(Array.isArray(job.requirements) ? job.requirements : []).map((item) => <li key={item}>{item}</li>)}</ul>
             </section>
           </div>
 
@@ -399,11 +252,11 @@ function JobReviewView({ job, onBack }) {
         <aside className="internal-admin-review-side-column">
           <section className="internal-admin-review-card internal-admin-school-profile-card">
             <div className="internal-admin-school-cover" />
-            <div className="internal-admin-school-profile-content">
-              <div className="internal-admin-school-avatar">B</div>
-              <div className="internal-admin-school-profile-title"><h3>Bright Future Intl</h3><span>Verified</span></div>
-              <p><FiMapPin size={12} /> Ikeja, Lagos</p>
-              <div className="internal-admin-school-tags"><span>Private School</span><span>Secondary</span></div>
+              <div className="internal-admin-school-profile-content">
+              <div className="internal-admin-school-avatar">{String(job.school || 'S').charAt(0)}</div>
+              <div className="internal-admin-school-profile-title"><h3>{job.school}</h3><span>{job.school_verification_status || 'Unknown'}</span></div>
+              <p><FiMapPin size={12} /> {job.location}</p>
+              <div className="internal-admin-school-tags"><span>{job.school_type || 'School'}</span><span>{job.education || 'Not specified'}</span></div>
               <button type="button" className="internal-admin-profile-button">View Full Profile</button>
             </div>
           </section>
@@ -425,42 +278,67 @@ function JobReviewView({ job, onBack }) {
   );
 }
 
-function SchoolProfileView({ school, onBack }) {
-  const [isSuspended, setIsSuspended] = useState(school.status === 'Suspended');
+function SchoolProfileView({ school, onBack, onStatusChange }) {
+  const isSuspended = school.status === 'Suspended';
 
   return (
     <section className="internal-admin-school-profile-view">
       <div className="internal-admin-school-profile-breadcrumb">Schools <span>›</span> {school.name}</div>
       <section className="internal-admin-school-profile-header">
         <div className="internal-admin-school-profile-brand"><span className="internal-admin-school-profile-logo">{school.name.charAt(0)}</span><div><h2>{school.name}</h2><p>{school.type} • {school.location}</p><small>Joined {school.joined}</small></div></div>
-        <div className="internal-admin-school-profile-header-actions"><span className={`internal-admin-school-status ${isSuspended ? 'suspended' : 'active'}`}>{isSuspended ? 'Suspended' : 'Active'}</span><button type="button" className="internal-admin-school-suspend-button" onClick={() => setIsSuspended((value) => !value)}>{isSuspended ? 'Activate School' : 'Suspend School'}</button></div>
+        <div className="internal-admin-school-profile-header-actions"><span className={`internal-admin-school-status ${isSuspended ? 'suspended' : 'active'}`}>{isSuspended ? 'Suspended' : 'Active'}</span><button type="button" className="internal-admin-school-suspend-button" onClick={() => onStatusChange(school.school_id, isSuspended ? 'active' : 'suspended')}>{isSuspended ? 'Activate School' : 'Suspend School'}</button></div>
       </section>
 
       <div className="internal-admin-school-stat-grid">
-        {[['Total Teachers', '64'], ['Active Jobs', '8'], ['Closed Jobs', '14'], ['Applications', '187']].map(([label, value]) => <div key={label} className="internal-admin-school-stat"><small>{label}</small><strong>{value}</strong></div>)}
+        {[
+          ['Total Teachers', school.total_teachers ?? 0],
+          ['Active Jobs', school.active_jobs ?? 0],
+          ['Closed Jobs', school.closed_jobs ?? 0],
+          ['Applications', school.applications_count ?? 0],
+        ].map(([label, value]) => <div key={label} className="internal-admin-school-stat"><small>{label}</small><strong>{value}</strong></div>)}
       </div>
 
-      <section className="internal-admin-school-profile-panel internal-admin-school-timeline"><h3>Activity Timeline</h3><div className="internal-admin-timeline-item"><span>✓</span><div><strong>Updated school profile</strong><small>Yesterday</small></div></div><div className="internal-admin-timeline-item"><span>□</span><div><strong>Posted Mathematics Teacher</strong><small>Aug 25, 2026</small></div></div><div className="internal-admin-timeline-item"><span>▱</span><div><strong>School joined Staffroom</strong><small>{school.joined}</small></div></div></section>
+      <section className="internal-admin-school-profile-panel internal-admin-school-timeline"><h3>Activity Timeline</h3>{(school.activity_timeline || school.activity || []).map((item) => <div className="internal-admin-timeline-item" key={item.activity_id || item.id || item.created_at}><span>✓</span><div><strong>{item.description || item.action || 'School activity'}</strong><small>{item.created_at || ''}</small></div></div>)}</section>
 
       <section className="internal-admin-school-profile-panel internal-admin-school-information"><h3>School Information</h3><div className="internal-admin-school-info-grid"><div><small>School Name</small><strong>{school.name}</strong><small>School Type</small><strong>{school.type}</strong><small>Location</small><strong>Nigeria, {school.location.replace('Nigeria', '').trim()}</strong></div><div><small>Contact Information</small><strong>{school.email}</strong><strong>+234 801 234 5678</strong></div></div></section>
 
-      <section className="internal-admin-school-profile-panel internal-admin-school-recent-jobs"><div className="internal-admin-school-panel-heading"><h3>Recent Jobs</h3><button type="button" onClick={onBack}>View All</button></div><div className="internal-admin-school-jobs-heading"><span>Role</span><span>Type</span><span>Apps</span><span>Posted</span><span>Status</span></div>{[['Mathematics Teacher', 'Full-time', '24', 'Aug 25, 2026'], ['English HOD', 'Full-time', '12', 'Sep 01, 2026']].map(([role, type, apps, posted]) => <div className="internal-admin-school-job-row" key={role}><strong>{role}</strong><span>{type}</span><span>{apps}</span><span>{posted}</span><span className="internal-admin-school-status active">Active</span></div>)}</section>
+      <section className="internal-admin-school-profile-panel internal-admin-school-recent-jobs"><div className="internal-admin-school-panel-heading"><h3>Recent Jobs</h3><button type="button" onClick={onBack}>View All</button></div><div className="internal-admin-school-jobs-heading"><span>Role</span><span>Type</span><span>Apps</span><span>Posted</span><span>Status</span></div>{(school.recent_jobs || school.jobs || []).map((job) => <div className="internal-admin-school-job-row" key={job.job_id || job.id}><strong>{job.title || job.role}</strong><span>{job.employment_type || job.type || 'Not provided'}</span><span>{job.applications_count ?? 0}</span><span>{job.posted_at || job.created_at || ''}</span><span className="internal-admin-school-status active">{String(job.status || '').replace(/_/g, ' ')}</span></div>)}</section>
     </section>
   );
 }
 
-function TeacherProfileView({ teacher, onBack }) {
+function TeacherProfileView({ teacher, applications = [], onBack, onStatusChange }) {
   return (
     <section className="internal-admin-teacher-profile-view">
       <div className="internal-admin-teacher-breadcrumb">Teachers <span>›</span> {teacher.name}</div>
-      <section className="internal-admin-teacher-profile-header"><div className="internal-admin-teacher-avatar">{teacher.name.charAt(0)}</div><div><h2>{teacher.name}</h2><p>{teacher.title} • {teacher.subject}</p><small>{teacher.location}</small></div><span className={`internal-admin-school-status ${teacher.status.toLowerCase()}`}>{teacher.status}</span><button type="button" className="internal-admin-teacher-back" onClick={onBack}>Back to Teachers</button></section>
-      <div className="internal-admin-teacher-profile-grid"><section className="internal-admin-school-profile-panel"><h3>Professional Information</h3><p><strong>Primary Subject</strong>{teacher.subject}</p><p><strong>Professional Title</strong>{teacher.title}</p><p><strong>Date Joined</strong>{teacher.joined}</p></section><section className="internal-admin-school-profile-panel"><h3>Contact Information</h3><p><strong>Email</strong>{teacher.contact}</p><p><strong>Location</strong>{teacher.location}</p><p><strong>Profile Status</strong>{teacher.status}</p></section></div>
-      <section className="internal-admin-school-profile-panel"><div className="internal-admin-school-panel-heading"><h3>Recent Applications</h3><button type="button" onClick={onBack}>Back to Teachers</button></div><div className="internal-admin-teacher-application-row"><strong>Mathematics Teacher</strong><span>Bright Future International School</span><span>Active</span></div><div className="internal-admin-teacher-application-row"><strong>English HOD</strong><span>Oakwood Primary</span><span>Closed</span></div></section>
+      <section className="internal-admin-teacher-profile-header"><div className="internal-admin-teacher-avatar">{teacher.name.charAt(0)}</div><div><h2>{teacher.name}</h2><p>{teacher.title} • {teacher.subject}</p><small>{teacher.location}</small></div><span className={`internal-admin-school-status ${teacher.status.toLowerCase()}`}>{teacher.status}</span><button type="button" className="internal-admin-school-action" onClick={() => onStatusChange(teacher.user_id, teacher.status === 'Suspended' ? 'active' : 'suspended')}>{teacher.status === 'Suspended' ? 'Activate' : 'Suspend'}</button><button type="button" className="internal-admin-teacher-back" onClick={onBack}>Back to Teachers</button></section>
+      <div className="internal-admin-teacher-profile-grid">
+        <section className="internal-admin-school-profile-panel">
+          <h3>Professional Information</h3>
+          <p><strong>Primary Subject</strong>: {teacher.subject}</p>
+          <p><strong>Professional Title</strong>: {teacher.title}</p>
+          <p><strong>Date Joined</strong>: {teacher.joined}</p>
+        </section>
+        <section className="internal-admin-school-profile-panel">
+          <h3>Contact Information</h3>
+          <p><strong>Email</strong>: {teacher.contact}</p>
+          <p><strong>Location</strong>: {teacher.location}</p>
+          <p><strong>Profile Status</strong>: {teacher.status}</p>
+        </section>
+      </div>
+      <section className="internal-admin-school-profile-panel">
+        <div className="internal-admin-school-panel-heading">
+          <h3>Recent Applications</h3>
+          <button type="button" onClick={onBack}>Back to Teachers</button>
+        </div>
+        {applications.map((application) => <div className="internal-admin-teacher-application-row" key={application.application_id || application.id}><strong>{application.job_title || application.title || 'Application'}</strong><span>{application.school_name || application.school || 'Unknown school'}</span><span>{application.status || 'Unknown'}</span></div>)}
+      </section>
     </section>
   );
 }
 
 export default function InternalAdminDashboard() {
+  const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [activeJobFilter, setActiveJobFilter] = useState('All');
   const [activeJobPage, setActiveJobPage] = useState(1);
@@ -472,7 +350,8 @@ export default function InternalAdminDashboard() {
   const [activeTeacherPage, setActiveTeacherPage] = useState(1);
   const [teacherSearch, setTeacherSearch] = useState('');
   const [selectedTeacher, setSelectedTeacher] = useState(null);
-  const [adminRows, setAdminRows] = useState(adminManagementRows);
+  const [adminRows, setAdminRows] = useState([]);
+  const [invitationRows, setInvitationRows] = useState([]);
   const [adminSearch, setAdminSearch] = useState('');
   const [adminRoleFilter, setAdminRoleFilter] = useState('All Roles');
   const [adminStatusFilter, setAdminStatusFilter] = useState('All Statuses');
@@ -484,25 +363,199 @@ export default function InternalAdminDashboard() {
   const [isInviteSuccessClosing, setIsInviteSuccessClosing] = useState(false);
   const [addAdminStep, setAddAdminStep] = useState(1);
   const [addAdminForm, setAddAdminForm] = useState({
-    firstName: 'David',
-    lastName: 'Okafor',
-    email: 'david@staffroom.com',
+    firstName: '',
+    lastName: '',
+    email: '',
     role: 'Operations Admin',
     permissions: {
       ...adminRoleDefaults['Operations Admin'],
       matrix: buildPermissionMatrixForRole('Operations Admin'),
     },
   });
+  const [overview, setOverview] = useState({ stats: {}, job_summary: {}, quick_stats: {}, pending_jobs: [], recent_activity: [] });
+  const [jobs, setJobs] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [notifications, setNotifications] = useState([]);
+  const [settings, setSettings] = useState([]);
+  const [auditLog, setAuditLog] = useState([]);
+  const [pagination, setPagination] = useState({ jobs: {}, schools: {}, teachers: {}, admins: {} });
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [actionError, setActionError] = useState('');
+
+  const unwrap = (response) => response?.data?.data ?? response?.data ?? {};
+  const collection = (payload, keys) => {
+    if (Array.isArray(payload)) return payload;
+    for (const key of keys) if (Array.isArray(payload?.[key])) return payload[key];
+    return [];
+  };
+  const pageData = (payload) => payload?.pagination || {};
+  const displayStatus = (value = '') => String(value).replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+  const normalizeJob = (job = {}) => ({
+    ...job,
+    job_id: job.job_id || job.id,
+    title: job.title || job.role || 'Untitled job',
+    school: job.school_name || job.school || 'Unknown school',
+    location: job.location || [job.city, job.state].filter(Boolean).join(', ') || 'Not provided',
+    status: displayStatus(job.status),
+    submitted: job.submitted_at || job.created_at || 'Not available',
+    updated: job.updated_at || 'Not available',
+    action: displayStatus(job.status) === 'Pending Review' || displayStatus(job.status) === 'Changes Requested' ? 'Review' : 'View',
+  });
+  const normalizeSchool = (school = {}) => ({
+    ...school,
+    school_id: school.school_id || school.id,
+    name: school.school_name || school.name || 'Unnamed school',
+    type: school.school_type || school.type || 'Not provided',
+    location: school.location || [school.city, school.state].filter(Boolean).join(', ') || 'Not provided',
+    email: school.email || school.contact_email || 'Not provided',
+    joined: school.joined_at || school.created_at || 'Not available',
+    status: displayStatus(school.status || school.verification_status),
+  });
+  const normalizeTeacher = (teacher = {}) => ({
+    ...teacher,
+    user_id: teacher.user_id || teacher.id,
+    name: teacher.full_name || teacher.name || 'Unnamed teacher',
+    title: teacher.professional_title || teacher.role_title || teacher.title || 'Teacher',
+    subject: teacher.primary_subject || teacher.subject || teacher.subject_area || 'Not provided',
+    location: teacher.location || [teacher.city, teacher.state].filter(Boolean).join(', ') || 'Not provided',
+    contact: teacher.email || teacher.contact || 'Not provided',
+    joined: teacher.joined_at || teacher.created_at || 'Not available',
+    status: displayStatus(teacher.status),
+  });
+  const normalizeAdmin = (admin = {}) => ({
+    ...admin,
+    admin_id: admin.admin_id || admin.user_id || admin.id,
+    name: admin.full_name || admin.name || 'Unnamed admin',
+    role: admin.admin_role || admin.role || 'Support Admin',
+    email: admin.email || 'Not provided',
+    access: admin.access_scope || admin.access || 'Not specified',
+    lastActive: admin.last_active_at || admin.lastActive || 'Never',
+    status: displayStatus(admin.status),
+    created: admin.created_at || admin.created || 'Not available',
+  });
+  const normalizeInvitation = (invitation = {}) => ({
+    ...invitation,
+    admin_id: invitation.invitation_id || invitation.id,
+    name: invitation.full_name || [invitation.first_name, invitation.last_name].filter(Boolean).join(' ') || invitation.email || 'Pending administrator',
+    role: invitation.admin_role || invitation.role || 'Pending role',
+    email: invitation.email || 'Not provided',
+    access: invitation.access_scope || 'Pending invitation',
+    lastActive: 'Never',
+    status: 'Pending',
+    created: invitation.created_at || 'Not available',
+    invitation_id: invitation.invitation_id || invitation.id,
+  });
+
+  const loadDashboardData = async () => {
+    setIsLoading(true);
+    setLoadError('');
+    try {
+      const [overviewResponse, jobsResponse, schoolsResponse, teachersResponse, adminsResponse, invitationsResponse] = await Promise.all([
+        internalAdminService.getOverview(),
+        internalAdminService.getJobs({ status: activeJobFilter === 'All' ? undefined : activeJobFilter.toLowerCase().replace(/ /g, '_'), page: activeJobPage, per_page: JOBS_PER_PAGE }),
+        internalAdminService.getSchools({ status: activeSchoolFilter === 'All Schools' ? undefined : activeSchoolFilter.toLowerCase().replace(/ /g, '_'), page: activeSchoolPage, per_page: SCHOOLS_PER_PAGE }),
+        internalAdminService.getTeachers({ status: activeTeacherFilter === 'All Teachers' ? undefined : activeTeacherFilter.toLowerCase().replace(/ /g, '_'), search: teacherSearch || undefined, page: activeTeacherPage, per_page: TEACHERS_PER_PAGE }),
+        internalAdminService.getAdmins({ search: adminSearch || undefined, role: adminRoleFilter === 'All Roles' ? undefined : adminRoleFilter, status: adminStatusFilter === 'All Statuses' ? undefined : adminStatusFilter, page: adminPage, per_page: 10 }),
+        internalAdminService.getInvitations({ page: adminPage, per_page: 10 }),
+      ]);
+      const overviewPayload = unwrap(overviewResponse);
+      const jobsPayload = unwrap(jobsResponse);
+      const schoolsPayload = unwrap(schoolsResponse);
+      const teachersPayload = unwrap(teachersResponse);
+      const adminsPayload = unwrap(adminsResponse);
+      const invitationsPayload = unwrap(invitationsResponse);
+      setOverview(overviewPayload);
+      setJobs(collection(jobsPayload, ['jobs', 'items']).map(normalizeJob));
+      setSchools(collection(schoolsPayload, ['schools', 'items']).map(normalizeSchool));
+      setTeachers(collection(teachersPayload, ['teachers', 'items']).map(normalizeTeacher));
+      const nextAdmins = collection(adminsPayload, ['admins', 'items']).map(normalizeAdmin);
+      const nextInvitations = collection(invitationsPayload, ['invitations', 'items']).map(normalizeInvitation);
+      setInvitationRows(nextInvitations);
+      setAdminRows([...nextInvitations, ...nextAdmins]);
+      setPagination({ jobs: pageData(jobsPayload), schools: pageData(schoolsPayload), teachers: pageData(teachersPayload), admins: pageData(adminsPayload) });
+    } catch (error) {
+      setLoadError(apiErrorMessage(error, 'Unable to load internal admin data.'));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDashboardData();
+  }, [activeJobFilter, activeJobPage, activeSchoolFilter, activeSchoolPage, activeTeacherFilter, activeTeacherPage, teacherSearch, adminSearch, adminRoleFilter, adminStatusFilter, adminPage]);
+
+  useEffect(() => {
+    const loadSecondaryData = async () => {
+      try {
+        const [reportsResponse, notificationsResponse, settingsResponse, auditResponse] = await Promise.all([
+          internalAdminService.getReports({ page: 1, per_page: 20 }),
+          internalAdminService.getNotifications({ page: 1, per_page: 20 }),
+          internalAdminService.getSettings(),
+          internalAdminService.getAuditLog({ page: 1, per_page: 20 }),
+        ]);
+        setReports(collection(unwrap(reportsResponse), ['reports', 'items']));
+        setNotifications(collection(unwrap(notificationsResponse), ['notifications', 'items']));
+        setSettings(collection(unwrap(settingsResponse), ['settings', 'items']));
+        setAuditLog(collection(unwrap(auditResponse), ['audit_log', 'audit', 'items']));
+      } catch (error) {
+        setActionError(apiErrorMessage(error, 'Some internal admin modules could not be loaded.'));
+      }
+    };
+    loadSecondaryData();
+  }, []);
+
+  const runAction = async (action, successMessage) => {
+    setActionError('');
+    try {
+      await action();
+      setInviteSuccess({ title: 'Action completed', message: successMessage });
+      await loadDashboardData();
+    } catch (error) {
+      setActionError(apiErrorMessage(error, 'The action could not be completed.'));
+    }
+  };
+
+  const moderateJob = (jobId, status, showFeedback) => runAction(
+    () => internalAdminService.updateJobStatus(jobId, { status, internal_note: `Job ${status} by internal admin.` }),
+    `Job ${displayStatus(status).toLowerCase()} successfully.`,
+  ).then(() => showFeedback(status === 'published' ? 'approved' : status));
+
+  const updateSchoolStatus = (schoolId, status) => runAction(
+    () => internalAdminService.updateSchoolStatus(schoolId, { status, reason: `Status changed to ${status} by internal admin.` }),
+    `School ${status === 'active' ? 'activated' : 'suspended'} successfully.`,
+  );
+
+  const updateTeacherStatus = (userId, status) => runAction(
+    () => internalAdminService.updateTeacherStatus(userId, { status, reason: `Status changed to ${status} by internal admin.` }),
+    `Teacher ${status === 'active' ? 'reactivated' : 'suspended'} successfully.`,
+  );
+
+  const sendAdminInvitation = () => runAction(
+    () => internalAdminService.createInvitation({
+      first_name: addAdminForm.firstName.trim(),
+      last_name: addAdminForm.lastName.trim(),
+      email: addAdminForm.email.trim(),
+      admin_role: addAdminForm.role,
+      permissions: addAdminForm.permissions?.matrix || {},
+    }),
+    'The administrator invitation was sent successfully.',
+  ).then(() => {
+    setShowInviteModal(false);
+    resetAddAdminFlow();
+  });
+
   const activeTabLabel = navItems.find(([key]) => key === activeTab)?.[1] || 'Dashboard';
-  const filteredJobs = jobDataset.filter((job) => activeJobFilter === 'All' || job.status === activeJobFilter);
-  const totalJobPages = Math.max(1, Math.ceil(filteredJobs.length / JOBS_PER_PAGE));
-  const pageStartIndex = (activeJobPage - 1) * JOBS_PER_PAGE;
-  const visibleJobs = filteredJobs.slice(pageStartIndex, pageStartIndex + JOBS_PER_PAGE);
-  const resultStart = filteredJobs.length === 0 ? 0 : pageStartIndex + 1;
-  const resultEnd = Math.min(pageStartIndex + JOBS_PER_PAGE, filteredJobs.length);
-  const filteredSchools = schoolDataset.filter((school) => activeSchoolFilter === 'All Schools' || school.status === activeSchoolFilter);
-  const schoolTotalPages = Math.max(1, Math.ceil(filteredSchools.length / SCHOOLS_PER_PAGE));
-  const visibleSchools = filteredSchools.slice((activeSchoolPage - 1) * SCHOOLS_PER_PAGE, activeSchoolPage * SCHOOLS_PER_PAGE);
+  const visibleJobs = jobs;
+  const filteredJobs = jobs;
+  const totalJobPages = Number(pagination.jobs.last_page || 1);
+  const resultStart = filteredJobs.length ? ((Number(pagination.jobs.current_page || activeJobPage) - 1) * JOBS_PER_PAGE) + 1 : 0;
+  const resultEnd = resultStart ? resultStart + filteredJobs.length - 1 : 0;
+  const filteredSchools = schools;
+  const schoolTotalPages = Number(pagination.schools.last_page || 1);
+  const visibleSchools = schools;
   const schoolPaginationPages = activeSchoolPage <= 3
     ? [1, 2, 3].filter((page) => page <= schoolTotalPages)
     : [...new Set([1, activeSchoolPage - 1, activeSchoolPage, Math.min(activeSchoolPage + 1, schoolTotalPages)])].sort((a, b) => a - b);
@@ -512,9 +565,9 @@ export default function InternalAdminDashboard() {
     return items;
   }, []);
   if (schoolPaginationPages[schoolPaginationPages.length - 1] < schoolTotalPages) schoolPaginationItems.push('ellipsis-end');
-  const filteredTeachers = teacherDataset.filter((teacher) => (activeTeacherFilter === 'All Teachers' || teacher.status === activeTeacherFilter) && `${teacher.name} ${teacher.contact} ${teacher.subject} ${teacher.location}`.toLowerCase().includes(teacherSearch.toLowerCase()));
-  const teacherTotalPages = Math.max(1, Math.ceil(filteredTeachers.length / TEACHERS_PER_PAGE));
-  const visibleTeachers = filteredTeachers.slice((activeTeacherPage - 1) * TEACHERS_PER_PAGE, activeTeacherPage * TEACHERS_PER_PAGE);
+  const filteredTeachers = teachers;
+  const teacherTotalPages = Number(pagination.teachers.last_page || 1);
+  const visibleTeachers = teachers;
   const teacherPaginationPages = activeTeacherPage <= 3
     ? [1, 2, 3].filter((page) => page <= teacherTotalPages)
     : [...new Set([1, activeTeacherPage - 1, activeTeacherPage, Math.min(activeTeacherPage + 1, teacherTotalPages)])].sort((a, b) => a - b);
@@ -535,21 +588,16 @@ export default function InternalAdminDashboard() {
   if (paginationPages[paginationPages.length - 1] < totalJobPages) paginationItems.push('ellipsis-end');
 
   const adminPageSize = 10;
-  const filteredAdmins = adminRows.filter((admin) => {
-    const matchesSearch = `${admin.name} ${admin.email} ${admin.role}`.toLowerCase().includes(adminSearch.toLowerCase());
-    const matchesRole = adminRoleFilter === 'All Roles' || admin.role === adminRoleFilter;
-    const matchesStatus = adminStatusFilter === 'All Statuses' || admin.status === adminStatusFilter;
-    const matchesTime = adminTimeFilter === 'Any time' || adminTimeFilter === 'All time' || (adminTimeFilter === 'Recent' && (admin.lastActive.includes('minute') || admin.lastActive.includes('hour')));
-    return matchesSearch && matchesRole && matchesStatus && matchesTime;
-  });
+  const filteredAdmins = adminRows;
+  const pendingInvitationCount = invitationRows.length;
   const isStepOneValid = addAdminForm.firstName.trim() && addAdminForm.lastName.trim() && /\S+@\S+\.\S+/.test(addAdminForm.email);
   const resetAddAdminFlow = () => {
     setAddAdminStep(1);
     setShowInviteModal(false);
     setAddAdminForm({
-      firstName: 'David',
-      lastName: 'Okafor',
-      email: 'david@staffroom.com',
+      firstName: '',
+      lastName: '',
+      email: '',
       role: 'Operations Admin',
       permissions: {
         ...adminRoleDefaults['Operations Admin'],
@@ -558,8 +606,40 @@ export default function InternalAdminDashboard() {
     });
   };
   const selectedRoleMatrix = addAdminForm.permissions?.matrix || buildPermissionMatrixForRole(addAdminForm.role);
-  const adminTotalPages = Math.max(1, Math.ceil(filteredAdmins.length / adminPageSize));
-  const visibleAdmins = filteredAdmins.slice((adminPage - 1) * adminPageSize, adminPage * adminPageSize);
+  const adminTotalPages = Number(pagination.admins.last_page || 1);
+  const visibleAdmins = adminRows;
+  const overviewStats = [
+    { label: 'Total Teachers', value: overview.stats?.total_teachers ?? 0, note: 'Total teacher accounts', tone: 'neutral', icon: FiUsers },
+    { label: 'Total Schools', value: overview.stats?.total_schools ?? 0, note: 'Total schools registered', tone: 'neutral', icon: FiGrid },
+    { label: 'Active Jobs', value: overview.stats?.active_jobs ?? 0, note: 'Jobs currently visible to teachers', tone: 'neutral', icon: FiBriefcase },
+    { label: 'Pending Reviews', value: overview.stats?.pending_reviews ?? 0, note: 'Jobs waiting for review', tone: 'warning', icon: FiClock },
+  ];
+  const summaryCards = [
+    { label: 'Published', value: overview.job_summary?.published ?? 0, accent: 'green' },
+    { label: 'Pending', value: overview.job_summary?.pending ?? 0, accent: 'amber' },
+    { label: 'Changes Req.', value: overview.job_summary?.changes_requested ?? 0, accent: 'gray' },
+    { label: 'Rejected', value: overview.job_summary?.rejected ?? 0, accent: 'red' },
+  ];
+  const quickStats = [
+    { value: overview.quick_stats?.verification_requests ?? 0, label: 'Verification req.', icon: FiShield },
+    { value: overview.quick_stats?.new_reports ?? 0, label: 'New reports', icon: FiBarChart2 },
+  ];
+  const reviewRows = (overview.pending_jobs || []).map((job) => ({
+    jobId: job.job_id,
+    school: job.title || job.job_title || 'Untitled job',
+    schoolSub: job.school_name || 'Unknown school',
+    hours: job.submitted_at || job.created_at || 'Not available',
+    status: displayStatus(job.status || 'pending_review'),
+    action: 'Review',
+  }));
+  const recentActivity = (overview.recent_activity || []).map((activity) => ({
+    type: 'info',
+    icon: FiClipboard,
+    text: activity.description || activity.action || 'Platform activity',
+    subtext: activity.actor_name || activity.entity_type || '',
+    time: activity.created_at || '',
+  }));
+  const pageStartIndex = ((Number(pagination.jobs.current_page || activeJobPage) - 1) * JOBS_PER_PAGE);
 
   useEffect(() => {
     if (!inviteSuccess) return undefined;
@@ -579,18 +659,41 @@ export default function InternalAdminDashboard() {
     };
   }, [inviteSuccess]);
 
-  const openJobReview = (job) => {
-    setSelectedJob(job);
+  const openJobReview = async (job) => {
+    try {
+      const response = await internalAdminService.getJob(job.job_id);
+      setSelectedJob({ ...job, ...unwrap(response) });
+    } catch (error) {
+      setActionError(apiErrorMessage(error, 'Unable to load job details.'));
+      setSelectedJob(job);
+    }
     setActiveTab('job-review');
   };
 
-  const openSchoolProfile = (school) => {
-    setSelectedSchool(school);
+  const openSchoolProfile = async (school) => {
+    try {
+      const response = await internalAdminService.getSchool(school.school_id);
+      setSelectedSchool({ ...school, ...unwrap(response) });
+    } catch (error) {
+      setActionError(apiErrorMessage(error, 'Unable to load school details.'));
+      setSelectedSchool(school);
+    }
     setActiveTab('school-profile');
   };
 
-  const openTeacherProfile = (teacher) => {
-    setSelectedTeacher(teacher);
+  const openTeacherProfile = async (teacher) => {
+    try {
+      const [teacherResponse, applicationsResponse] = await Promise.all([
+        internalAdminService.getTeacher(teacher.user_id),
+        internalAdminService.getTeacherApplications(teacher.user_id, { page: 1, per_page: 10 }),
+      ]);
+      const detail = unwrap(teacherResponse);
+      const applicationsPayload = unwrap(applicationsResponse);
+      setSelectedTeacher({ ...teacher, ...normalizeTeacher(detail), applications: collection(applicationsPayload, ['applications', 'items']) });
+    } catch (error) {
+      setActionError(apiErrorMessage(error, 'Unable to load teacher details.'));
+      setSelectedTeacher(teacher);
+    }
     setActiveTab('teacher-profile');
   };
 
@@ -619,7 +722,7 @@ export default function InternalAdminDashboard() {
               ))}
             </nav>
 
-            <button type="button" className="internal-admin-logout">
+            <button type="button" className="internal-admin-logout" onClick={logout}>
               <FiLogOut size={17} />
               Log out
             </button>
@@ -635,8 +738,8 @@ export default function InternalAdminDashboard() {
 
               <div className="internal-admin-user-divider" />
               <div className="internal-admin-user-meta">
-                <strong>Admin User</strong>
-                <span>BrightMinds Academy</span>
+                <strong>{user?.full_name || user?.email || 'Internal Admin'}</strong>
+                <span>{user?.admin_role || 'Internal Administration'}</span>
               </div>
               <div className="internal-admin-user-avatar" aria-label="Admin User" title="Admin User">
                 A
@@ -645,6 +748,8 @@ export default function InternalAdminDashboard() {
           </header>
 
           <main className="internal-admin-content">
+            {isLoading && <div className="internal-admin-loading" role="status">Loading dashboard data...</div>}
+            {(loadError || actionError) && <div className="internal-admin-error" role="alert">{loadError || actionError}</div>}
             {activeTab !== 'job-review' && activeTab !== 'school-profile' && activeTab !== 'teacher-profile' && activeTab !== 'admin-management' && activeTab !== 'add-admin' && <div className="internal-admin-overview-header">
               <div>
                 <div className="internal-admin-breadcrumb">Dashboard / {activeTabLabel}</div>
@@ -660,11 +765,11 @@ export default function InternalAdminDashboard() {
             </div>}
 
             {activeTab === 'job-review' && selectedJob ? (
-              <JobReviewView job={selectedJob} onBack={() => { setSelectedJob(null); setActiveTab('jobs'); }} />
+              <JobReviewView job={selectedJob} onBack={() => { setSelectedJob(null); setActiveTab('jobs'); }} onModerate={moderateJob} />
             ) : activeTab === 'school-profile' && selectedSchool ? (
-              <SchoolProfileView school={selectedSchool} onBack={() => { setSelectedSchool(null); setActiveTab('verification'); }} />
+              <SchoolProfileView school={selectedSchool} onBack={() => { setSelectedSchool(null); setActiveTab('verification'); }} onStatusChange={updateSchoolStatus} />
             ) : activeTab === 'teacher-profile' && selectedTeacher ? (
-              <TeacherProfileView teacher={selectedTeacher} onBack={() => { setSelectedTeacher(null); setActiveTab('teachers'); }} />
+              <TeacherProfileView teacher={selectedTeacher} applications={selectedTeacher.applications} onBack={() => { setSelectedTeacher(null); setActiveTab('teachers'); }} onStatusChange={updateTeacherStatus} />
             ) : activeTab === 'overview' ? <>
             <section className="internal-admin-stat-grid">
               {overviewStats.map((item) => (
@@ -1269,29 +1374,7 @@ export default function InternalAdminDashboard() {
                           <button
                             type="button"
                             className="internal-admin-invite-submit"
-                            onClick={() => {
-                              const newAdmin = {
-                                name: `${addAdminForm.firstName} ${addAdminForm.lastName}`.trim() || 'New Admin',
-                                role: addAdminForm.role,
-                                email: addAdminForm.email || `new.admin${Date.now()}@staffroom.com`,
-                                access: 'Schools',
-                                lastActive: 'Just now',
-                                status: 'Active',
-                                ip: '197.211.66.18',
-                                created: 'Today',
-                                addedBy: 'Admin',
-                                permissions: 'New',
-                              };
-                              setAdminRows((current) => [newAdmin, ...current]);
-                              setSelectedAdmin(newAdmin);
-                              setShowInviteModal(false);
-                              setIsInviteSuccessClosing(false);
-                              setInviteSuccess({
-                                title: 'Invitation sent successfully',
-                                message: 'Your invitation has been sent successfully.',
-                              });
-                              resetAddAdminFlow();
-                            }}
+                            onClick={sendAdminInvitation}
                           >
                             <FiMail size={15} /> Send Invitation
                           </button>
@@ -1408,7 +1491,7 @@ export default function InternalAdminDashboard() {
                         }
                       }}
                     >
-                      {chip}
+                      {chip}{chip === 'Pending Invitations' && ` (${pendingInvitationCount})`}
                     </button>
                   ))}
                 </div>
@@ -1517,12 +1600,14 @@ export default function InternalAdminDashboard() {
                         <span role="cell">{admin.lastActive}</span>
                         <span role="cell">{admin.created}</span>
                         <div className="internal-admin-admin-actions" role="cell">
-                          {admin.status === 'Suspended' ? (
+                          {admin.status === 'Pending' ? (
                             <>
-                              <button type="button" className="internal-admin-admin-reactivate" onClick={() => {
-                                setAdminRows((current) => current.map((row) => row.email === admin.email ? { ...row, status: 'Active', lastActive: 'Just now' } : row));
-                                setSelectedAdmin(null);
-                              }}>Reactivate</button>
+                              <button type="button" onClick={() => runAction(() => internalAdminService.resendInvitation(admin.invitation_id), 'Invitation resent successfully.')}>Resend</button>
+                              <button type="button" onClick={() => runAction(() => internalAdminService.revokeInvitation(admin.invitation_id), 'Invitation revoked successfully.')}>Revoke</button>
+                            </>
+                          ) : admin.status === 'Suspended' ? (
+                            <>
+                              <button type="button" className="internal-admin-admin-reactivate" onClick={() => runAction(() => internalAdminService.updateAdminStatus(admin.admin_id, { status: 'active', reason: 'Reactivated by internal admin.' }), 'Administrator reactivated successfully.')}>Reactivate</button>
                               <button type="button" className="internal-admin-admin-more" aria-label={`More actions for ${admin.name}`}>⋮</button>
                             </>
                           ) : (
@@ -1567,13 +1652,28 @@ export default function InternalAdminDashboard() {
                   </div>
                 )}
               </section>
+            ) : activeTab === 'reports' ? (
+              <section className="internal-admin-panel" style={{ padding: '24px' }}>
+                <div className="internal-admin-panel-header"><h3>Reports &amp; Moderation</h3></div>
+                {reports.length ? reports.map((report) => <div className="internal-admin-table-row" key={report.report_id || report.id}><strong>{report.reason || report.type || 'Report'}</strong><span>{report.reporter_name || report.reporter || 'Unknown reporter'}</span><span>{displayStatus(report.status)}</span><span>{report.created_at || 'Not available'}</span></div>) : <p>No reports found.</p>}
+              </section>
+            ) : activeTab === 'notifications' ? (
+              <section className="internal-admin-panel" style={{ padding: '24px' }}>
+                <div className="internal-admin-panel-header"><h3>Notifications</h3><button type="button" className="internal-admin-link-button" onClick={() => runAction(() => internalAdminService.markAllNotificationsRead(), 'All notifications marked as read.')}>Mark all read</button></div>
+                {notifications.length ? notifications.map((notification) => <div className="internal-admin-table-row" key={notification.notification_id || notification.id}><strong>{notification.title || notification.message || 'Notification'}</strong><span>{notification.created_at || 'Not available'}</span><button type="button" className="internal-admin-review-btn" onClick={() => runAction(() => internalAdminService.markNotificationRead(notification.notification_id || notification.id), 'Notification marked as read.')}>Mark read</button></div>) : <p>No notifications found.</p>}
+              </section>
+            ) : activeTab === 'settings' ? (
+              <section className="internal-admin-panel" style={{ padding: '24px' }}>
+                <div className="internal-admin-panel-header"><h3>Platform Settings</h3></div>
+                {settings.length ? settings.map((setting) => <div className="internal-admin-table-row" key={setting.key || setting.setting_key}><strong>{setting.key || setting.setting_key}</strong><span>{String(setting.value ?? '')}</span><small>{setting.description || ''}</small></div>) : <p>No settings available.</p>}
+              </section>
             ) : (
               <section className="internal-admin-tab-placeholder">
                 <div className="internal-admin-placeholder-icon">
                   {React.createElement(navItems.find(([key]) => key === activeTab)?.[2] || FiGrid, { size: 22 })}
                 </div>
-                <h2>{activeTabLabel}</h2>
-                <p>This {activeTabLabel.toLowerCase()} tab is ready for its workflow and data.</p>
+                <h2>{activeTab === 'audit-log' ? 'Audit Log' : activeTabLabel}</h2>
+                {activeTab === 'audit-log' && auditLog.length ? auditLog.map((entry) => <p key={entry.audit_id || entry.id}>{entry.action} · {entry.entity_type} · {entry.created_at}</p>) : <p>No {activeTabLabel.toLowerCase()} data found.</p>}
               </section>
             )}
           </main>

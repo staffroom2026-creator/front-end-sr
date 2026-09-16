@@ -130,7 +130,12 @@ export default function SignIn() {
       }
 
       const user = apiUser || result?.data?.user;
-      const role = user?.role || 'teacher';
+      const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
+
+      if (!role) {
+        setError('Login succeeded but no account role was returned. Please contact support.');
+        return;
+      }
 
       if (role === 'teacher') {
         try {
@@ -160,6 +165,8 @@ export default function SignIn() {
         navigate('/school-dashboard', { state: { email: form.email, role, profile: user } });
       } else if (role === 'admin') {
         navigate('/admin-dashboard');
+      } else if (role === 'police') {
+        navigate('/internal-admin-dashboard');
       } else {
         navigate('/');
       }

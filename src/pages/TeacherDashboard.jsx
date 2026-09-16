@@ -168,18 +168,31 @@ const getJobRelevanceScore = (job = {}) => {
   return Number.isFinite(value) ? value : 0;
 };
 
+const parseMonthlySalary = (value) => {
+  if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+  if (value === null || value === undefined || value === '') return 0;
+
+  const salaryText = String(value).replace(/,/g, '').trim().toLowerCase();
+  const match = salaryText.match(/(\d+(?:\.\d+)?)\s*(k|m)?/);
+  if (!match) return 0;
+
+  const amount = Number(match[1]);
+  if (!Number.isFinite(amount)) return 0;
+  if (match[2] === 'm') return amount * 1000000;
+  if (match[2] === 'k') return amount * 1000;
+  return amount;
+};
+
 const normalizeJobData = (job = {}, index = 0) => {
-  // Extract numeric salary value
-  let salaryValue = Number(job.salary || job.salary_monthly || job.salaryMonthly || 0);
-  
-  // If no direct salary value, try to extract from salary_range (e.g., "250k-360k")
-  if (salaryValue === 0 && job.salary_range) {
-    const salaryRangeStr = String(job.salary_range);
-    const match = salaryRangeStr.match(/(\d+)/);
-    if (match) {
-      salaryValue = parseInt(match[1]) * 1000; // Convert "250k" to 250000
-    }
-  }
+  const salaryValue = parseMonthlySalary(
+    job.salary_monthly ??
+    job.salaryMonthly ??
+    job.monthly_salary ??
+    job.salary_min ??
+    job.min_salary ??
+    job.salary ??
+    job.salary_range
+  );
   
   const salaryStr = salaryValue > 0
     ? `₦${salaryValue.toLocaleString()} / month`

@@ -3,15 +3,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
+import { useAuth } from '../context/AuthContext';
+import { apiErrorMessage } from '../services/api';
 
 export default function AdminSignIn() {
   const navigate = useNavigate();
+  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setLoading(true);
@@ -22,7 +25,25 @@ export default function AdminSignIn() {
       return;
     }
 
-    navigate('/internal-admin-dashboard');
+    try {
+      const result = await login({
+        email: form.email.trim(),
+        password: form.password,
+      });
+      const account = result?.data?.user;
+      const role = account?.role || account?.user_role;
+
+      if (role !== 'police') {
+        setError('This account is not authorized for the internal admin dashboard.');
+        return;
+      }
+
+      navigate('/internal-admin-dashboard');
+    } catch (requestError) {
+      setError(apiErrorMessage(requestError, 'Unable to sign in. Please check your credentials and try again.'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

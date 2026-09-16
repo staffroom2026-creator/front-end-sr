@@ -15,7 +15,24 @@ export const profileService = {
   updateExperience: (experienceId, payload) => api.put(`/api/profiles/teacher/experience/${experienceId}`, payload),
   patchExperience: (experienceId, payload) => api.patch(`/api/profiles/teacher/experience/${experienceId}`, payload),
   deleteExperience: (experienceId) => api.delete(`/api/profiles/teacher/experience/${experienceId}`),
-  inviteTeacher: (teacherUserId, payload = {}) => api.post(`/api/teachers/${teacherUserId}/invite`, payload),
+  inviteTeacher: (teacherUserId, { message, job_id: jobId } = {}) => {
+    const payload = { message };
+    const encodedTeacherUserId = encodeURIComponent(teacherUserId);
+
+    if (jobId) {
+      payload.job_id = jobId;
+    }
+
+    return api.post(`/api/teachers/${encodedTeacherUserId}/invite`, payload).catch((error) => {
+      const status = error?.response?.status;
+
+      if (status !== 404 && status !== 405) {
+        throw error;
+      }
+
+      return api.post(`/teachers/${encodedTeacherUserId}/invite`, payload);
+    });
+  },
   uploadCv: (formData) =>
     api.post('/api/profiles/upload-cv', formData, {
       headers: {

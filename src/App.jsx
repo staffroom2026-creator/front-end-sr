@@ -155,9 +155,11 @@ function App() {
         <Route
           path="/internal-admin-dashboard"
           element={
-            <Suspense fallback={<DashboardLoader label="Admin dashboard" />}>
-              <InternalAdminDashboard />
-            </Suspense>
+            <ProtectedRoute allowedRoles={['police']}>
+              <Suspense fallback={<DashboardLoader label="Internal admin dashboard" />}>
+                <InternalAdminDashboard />
+              </Suspense>
+            </ProtectedRoute>
           }
         />
         <Route

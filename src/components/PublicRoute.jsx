@@ -66,7 +66,7 @@ export default function PublicRoute({ children }) {
   const [profileCheck, setProfileCheck] = useState({ loading: false, complete: true });
 
   useEffect(() => {
-    const role = user?.role || user?.user_role;
+    const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
     if (!token || !user || role !== 'school') {
       setProfileCheck({ loading: false, complete: true });
       return undefined;
@@ -115,7 +115,7 @@ export default function PublicRoute({ children }) {
       return children;
     }
 
-    const role = user?.role || user?.user_role;
+    const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
     const userSetupFlag =
       user?.setup_completed ??
       user?.setupComplete ??
@@ -145,11 +145,12 @@ export default function PublicRoute({ children }) {
       }
     }
 
-    if (role && ['teacher', 'school', 'admin'].includes(role)) {
+    if (role && ['teacher', 'school', 'admin', 'police'].includes(role)) {
       const dashboardMap = {
         teacher: '/teacher-dashboard',
         school: '/school-dashboard',
         admin: '/admin-dashboard',
+        police: '/internal-admin-dashboard',
       };
 
       const redirectTo = dashboardMap[role] || '/';
