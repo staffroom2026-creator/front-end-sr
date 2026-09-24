@@ -8,10 +8,8 @@ import { authService } from '../services/authService';
 
 const passwordRules = [
   { label: 'At least 8 characters', test: (value) => value.length >= 8 },
-  { label: 'One uppercase letter', test: (value) => /[A-Z]/.test(value) },
-  { label: 'One lowercase letter', test: (value) => /[a-z]/.test(value) },
+  { label: 'One letter', test: (value) => /[A-Za-z]/.test(value) },
   { label: 'One number', test: (value) => /\d/.test(value) },
-  { label: 'One special character', test: (value) => /[^A-Za-z0-9]/.test(value) },
 ];
 
 function PasswordField({ id, label, value, onChange, visible, onToggle, placeholder }) {
@@ -39,7 +37,8 @@ function PasswordField({ id, label, value, onChange, visible, onToggle, placehol
 export default function ResetPassword() {
   const location = useLocation();
   const navigate = useNavigate();
-  const refreshToken = location.state?.refreshToken || '';
+  const refreshToken = location.state?.refreshToken || sessionStorage.getItem('staffroom_password_reset_token') || '';
+  const email = location.state?.email || sessionStorage.getItem('staffroom_password_reset_email') || '';
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -90,6 +89,8 @@ export default function ResetPassword() {
         new_password: newPassword,
         confirm_password: confirmPassword,
       });
+      sessionStorage.removeItem('staffroom_password_reset_email');
+      sessionStorage.removeItem('staffroom_password_reset_token');
       setShowSuccess(true);
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to reset your password. Please try again.'));
@@ -114,7 +115,7 @@ export default function ResetPassword() {
 
       <section className="new-password-panel" aria-labelledby="new-password-title">
         <div className="new-password-content">
-          <Link className="new-password-back" to="/check-email" state={{ email: location.state?.email }} aria-label="Back to check email">
+          <Link className="new-password-back" to="/check-email" state={{ email }} aria-label="Back to check email">
             <ChevronLeft size={20} strokeWidth={2.5} aria-hidden="true" />
           </Link>
           <h1 id="new-password-title">Create new<br />password</h1>

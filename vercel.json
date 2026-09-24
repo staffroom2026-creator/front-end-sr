@@ -1,6 +1,14 @@
 {
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://api.staffroomng.com/api/:path*"
+    },
+    {
+      "source": "/teachers/:path*",
+      "destination": "https://api.staffroomng.com/teachers/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

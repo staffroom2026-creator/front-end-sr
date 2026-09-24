@@ -19,7 +19,10 @@ export default function ForgotPassword() {
     try {
       setSubmitting(true);
       setError('');
+      sessionStorage.removeItem('staffroom_password_reset_email');
+      sessionStorage.removeItem('staffroom_password_reset_token');
       await authService.forgotPassword({ email: normalizedEmail });
+      sessionStorage.setItem('staffroom_password_reset_email', normalizedEmail);
       navigate('/check-email', { state: { email: normalizedEmail } });
     } catch (err) {
       setError(apiErrorMessage(err, 'Unable to send the password reset code.'));

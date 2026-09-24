@@ -66,7 +66,7 @@ export default function PublicRoute({ children }) {
   const [profileCheck, setProfileCheck] = useState({ loading: false, complete: true });
 
   useEffect(() => {
-    const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
+    const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
     if (!token || !user || role !== 'school') {
       setProfileCheck({ loading: false, complete: true });
       return undefined;
@@ -115,7 +115,7 @@ export default function PublicRoute({ children }) {
       return children;
     }
 
-    const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
+    const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
     const userSetupFlag =
       user?.setup_completed ??
       user?.setupComplete ??

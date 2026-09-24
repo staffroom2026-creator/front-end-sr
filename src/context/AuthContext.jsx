@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { authService } from '../services/authService';
-import { apiErrorMessage } from '../services/api';
+import { api, apiErrorMessage } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -34,6 +34,39 @@ const safeParseUser = () => {
   } catch {
     return null;
   }
+};
+
+const decodeJwtPayload = (token) => {
+  try {
+    const payload = token?.split('.')[1];
+    if (!payload) return {};
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(window.atob(normalizedPayload.padEnd(Math.ceil(normalizedPayload.length / 4) * 4, '=')));
+  } catch {
+    return {};
+  }
+};
+
+const findRole = (value, depth = 0) => {
+  if (!value || depth > 5 || typeof value !== 'object') return '';
+
+  const directRole = value.role ?? value.user_role ?? value.account_type ?? value.role_name ?? value.accountRole ?? value.userRole ?? value.roleType;
+  if (typeof directRole === 'string' && directRole.trim()) return directRole.trim().toLowerCase();
+
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const nestedRole = findRole(item, depth + 1);
+      if (nestedRole) return nestedRole;
+    }
+    return '';
+  }
+
+  for (const nestedValue of Object.values(value)) {
+    const nestedRole = findRole(nestedValue, depth + 1);
+    if (nestedRole) return nestedRole;
+  }
+
+  return '';
 };
 
 export function AuthProvider({ children }) {
@@ -98,14 +131,42 @@ export function AuthProvider({ children }) {
   const login = async (payload) => {
     const response = await authService.login(payload);
     const result = response?.data ?? {};
-    const userData = result?.data?.user ?? null;
-    const newToken = result?.data?.token ?? '';
-    const resolvedUser = userData
+    const responseData = result?.data ?? {};
+    const newToken = responseData?.token ?? responseData?.access_token ?? result?.token ?? result?.access_token ?? '';
+    const tokenPayload = decodeJwtPayload(newToken);
+    const nestedUser = responseData?.user || responseData?.account || result?.user || result?.account;
+    const directResponseUser = nestedUser || Object.fromEntries(
+      Object.entries(responseData || {}).filter(([key]) => !['token', 'access_token', 'email_verified', 'setup_completed', 'onboarding_required'].includes(key)),
+    );
+    const userData = directResponseUser && Object.keys(directResponseUser).length ? directResponseUser : {};
+    let resolvedRole = findRole(userData) || findRole(responseData) || findRole(result) || findRole(tokenPayload);
+    let resolvedAccount = userData;
+
+    if (newToken && (!resolvedRole || !nestedUser || !resolvedAccount?.user_id || !resolvedAccount?.full_name)) {
+      try {
+        const profileResponse = await api.get('/api/profiles/me', {
+          headers: { Authorization: `Bearer ${newToken}` },
+        });
+        const profilePayload = profileResponse?.data?.data ?? profileResponse?.data ?? {};
+        const profileAccount = profilePayload?.user || profilePayload?.account || profilePayload?.profile || profilePayload;
+        resolvedRole = findRole(userData) || findRole(profileAccount) || findRole(profilePayload) || resolvedRole;
+        resolvedAccount = profileAccount && typeof profileAccount === 'object'
+          ? { ...resolvedAccount, ...profileAccount }
+          : resolvedAccount;
+      } catch {
+        // Keep the original login response so the caller can show its auth error.
+      }
+    }
+
+    const normalizedRole = String(resolvedRole ?? tokenPayload?.role ?? userData?.role ?? userData?.user_role ?? userData?.account_type ?? '').trim().toLowerCase();
+    const resolvedUser = resolvedAccount
       ? {
-          ...userData,
-          role: String(userData?.role ?? userData?.user_role ?? '').trim().toLowerCase(),
-          setup_completed: result?.data?.setup_completed ?? userData?.setup_completed ?? undefined,
-          onboarding_required: result?.data?.onboarding_required ?? userData?.onboarding_required ?? undefined,
+          ...resolvedAccount,
+          user_id: resolvedAccount?.user_id ?? tokenPayload?.user_id ?? tokenPayload?.sub,
+          email: resolvedAccount?.email ?? tokenPayload?.email ?? payload?.email,
+          role: normalizedRole,
+          setup_completed: responseData?.setup_completed ?? resolvedAccount?.setup_completed ?? undefined,
+          onboarding_required: responseData?.onboarding_required ?? resolvedAccount?.onboarding_required ?? undefined,
         }
       : null;
 
@@ -115,7 +176,14 @@ export function AuthProvider({ children }) {
       persistSession(resolvedUser, newToken);
     }
 
-    return result;
+    return {
+      ...result,
+      data: {
+        ...responseData,
+        user: resolvedUser,
+        token: newToken,
+      },
+    };
   };
 
   const refreshUser = async () => {
@@ -129,13 +197,16 @@ export function AuthProvider({ children }) {
     try {
       const response = await authService.getCurrentProfile();
       const payload = response?.data?.data ?? response?.data ?? {};
-      const profileUser = payload?.user || payload?.profile || user;
+      const profileUser = payload?.user || payload?.account || payload?.profile;
+      const mergedUser = profileUser && typeof profileUser === 'object'
+        ? { ...(user || {}), ...profileUser, role: findRole(profileUser) || findRole(user) || user?.role }
+        : user;
 
-      if (profileUser) {
-        persistSession(profileUser, savedToken);
+      if (mergedUser) {
+        persistSession(mergedUser, savedToken);
       }
 
-      return profileUser;
+      return mergedUser;
     } catch (error) {
       logout();
       throw error;

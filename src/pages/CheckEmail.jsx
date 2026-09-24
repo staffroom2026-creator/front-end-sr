@@ -9,7 +9,7 @@ import { authService } from '../services/authService';
 export default function CheckEmail() {
   const location = useLocation();
   const navigate = useNavigate();
-  const email = location.state?.email || 'your email address';
+  const email = location.state?.email || sessionStorage.getItem('staffroom_password_reset_email') || 'your email address';
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -75,6 +75,8 @@ export default function CheckEmail() {
         throw new Error('The reset token was not returned. Please request a new code.');
       }
 
+      sessionStorage.setItem('staffroom_password_reset_email', email);
+      sessionStorage.setItem('staffroom_password_reset_token', refreshToken);
       navigate('/reset-password', { state: { email, refreshToken } });
     } catch (err) {
       setError(apiErrorMessage(err, 'The code could not be verified. Please try again.'));

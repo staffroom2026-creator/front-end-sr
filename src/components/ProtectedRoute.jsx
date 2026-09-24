@@ -72,7 +72,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
   const [profileCheck, setProfileCheck] = useState({ loading: requireTeacherProfile || requireSchoolProfile, complete: true });
 
   useEffect(() => {
-    const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
+    const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
     const needsProfileCheck = requireSchoolProfile && role === 'school';
 
     if (!needsProfileCheck || !token) {
@@ -120,7 +120,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
     return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
   }
 
-  const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
+  const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
 
   if (allowedRoles.length && !allowedRoles.includes(role)) {
     return <Navigate to="/signin" replace state={{ from: location.pathname }} />;

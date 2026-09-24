@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const DEFAULT_API_BASE_URL = 'https://api.staffroomng.com';
+const HTML_MARKER = '<!doctype html>';
 const resolvedBaseUrl = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
 export const API_ORIGIN = resolvedBaseUrl.replace(/\/$/, '');
 export const API_BASE_URL = import.meta.env.DEV ? '' : resolvedBaseUrl.replace(/\/$/, '');
@@ -92,7 +93,18 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    const contentType = String(response?.headers?.['content-type'] || '').toLowerCase();
+    const responseText = typeof response?.data === 'string' ? response.data.trim().slice(0,  HTML_MARKER.length) : '';
+
+    if (contentType.includes('text/html') || responseText === HTML_MARKER) {
+      const htmlError = new Error('The API returned an HTML page instead of JSON.');
+      htmlError.response = response;
+      return Promise.reject(htmlError);
+    }
+
+    return response;
+  },
   (error) => {
     const status = error?.response?.status;
 

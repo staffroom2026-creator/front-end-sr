@@ -1,7 +1,16 @@
 import { api } from './api';
 
 export const jobService = {
-  getJobs: (params = {}) => api.get('/api/jobs', { params }),
+  getJobs: (params = {}) => api.get('/api/jobs', {
+    params: {
+      ...params,
+      _t: Date.now(),
+    },
+    headers: {
+      'Cache-Control': 'no-cache, no-store, must-revalidate',
+      Pragma: 'no-cache',
+    },
+  }),
   getJobById: (jobId) => api.get(`/api/jobs/${jobId}`),
   createJob: (payload) => api.post('/api/jobs', payload),
   updateJob: (jobId, payload) => api.put(`/api/jobs/${jobId}`, payload),

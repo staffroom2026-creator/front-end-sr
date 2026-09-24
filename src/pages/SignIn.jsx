@@ -114,7 +114,7 @@ export default function SignIn() {
 
       const apiSuccess = result?.success;
       const apiData = result?.data || {};
-      const apiUser = apiData?.user || null;
+      const apiUser = apiData?.user || apiData?.account || result?.user || result?.account || null;
       const apiMessage = String(result?.message || '');
 
       const emailNotVerified =
@@ -130,7 +130,19 @@ export default function SignIn() {
       }
 
       const user = apiUser || result?.data?.user;
-      const role = String(user?.role || user?.user_role || '').trim().toLowerCase();
+      const roleFromUser = String(user?.role || user?.user_role || user?.account_type || user?.role_name || user?.accountRole || user?.userRole || '').trim().toLowerCase();
+      let role = roleFromUser;
+
+      if (!role) {
+        try {
+          const profileResponse = await profileService.getMe();
+          const profilePayload = profileResponse?.data?.data ?? profileResponse?.data ?? {};
+          const profileUser = profilePayload?.user || profilePayload?.account || profilePayload?.profile || profilePayload || user;
+          role = String(profileUser?.role || profileUser?.user_role || profileUser?.account_type || profileUser?.role_name || '').trim().toLowerCase();
+        } catch {
+          // If the backend omits role metadata during login, we keep the normal login error path below.
+        }
+      }
 
       if (!role) {
         setError('Login succeeded but no account role was returned. Please contact support.');

@@ -565,6 +565,7 @@ export default function TeacherDashboard() {
   const [availSpecificDate, setAvailSpecificDate] = useState('');
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [showProfileUpdatedModal, setShowProfileUpdatedModal] = useState(false);
+  const [profileCompletionNotice, setProfileCompletionNotice] = useState('');
 
   // ── Settings Subtab state ──
   const [settingsSubTab, setSettingsSubTab] = useState('overview');
@@ -721,6 +722,13 @@ export default function TeacherDashboard() {
     const timeoutId = window.setTimeout(() => setShowEmailSuccessSnackbar(false), 3000);
     return () => window.clearTimeout(timeoutId);
   }, [showEmailSuccessSnackbar]);
+
+  useEffect(() => {
+    if (!profileCompletionNotice) return undefined;
+
+    const timeoutId = window.setTimeout(() => setProfileCompletionNotice(''), 6000);
+    return () => window.clearTimeout(timeoutId);
+  }, [profileCompletionNotice]);
 
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Teacher');
@@ -886,6 +894,25 @@ export default function TeacherDashboard() {
   };
   const profileStrengthValue = getProfileStrengthValue();
   const profileViewsValue = getProfileViewsValue();
+  const hasRequiredTeacherApplicationData = () => {
+    const educationEntries = normalizeEducationRecords(profileState?.education_history || []);
+    const experienceEntries = normalizeExperienceRecords(
+      profileState?.teaching_experience ?? profileState?.work_experience ?? profileState?.experience_history ?? []
+    );
+
+    return Boolean(
+      educationEntries.length > 0 &&
+      experienceEntries.length > 0 &&
+      (
+        profileState?.setup_completed === true ||
+        profileState?.setup_completed === 'true' ||
+        profileState?.setup_completed === 1 ||
+        profileState?.setup_completed === '1' ||
+        profileStrengthValue >= 100
+      )
+    );
+  };
+  const isTeacherProfileComplete = hasRequiredTeacherApplicationData();
   const [applicationForm, setApplicationForm] = useState({
     name: '',
     email: '',
@@ -1018,11 +1045,11 @@ export default function TeacherDashboard() {
     try {
       const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes, profileViewsRes] = await Promise.all([
         jobService.getJobs({}),
-        jobService.getJobs({ recommended: 1, page: 1, per_page: 10 }),
-        applicationService.getMyApplications(),
+        jobService.getJobs({ recommended: 1, page: 1, per_page: 10 }).catch(() => null),
+        applicationService.getMyApplications().catch(() => null),
         profileService.getMe(),
-        featureService.getNotifications(),
-        featureService.getSavedJobs(),
+        featureService.getNotifications().catch(() => null),
+        featureService.getSavedJobs().catch(() => null),
         profileService.getProfileViews({ page: 1, per_page: 10 }).catch(() => null),
       ]);
 
@@ -1225,12 +1252,18 @@ export default function TeacherDashboard() {
     refreshTeacherProfile();
     loadAccountPreferences();
 
+    const jobRefreshInterval = window.setInterval(() => {
+      refreshTeacherProfile();
+    }, 30000);
+
     profileService.getMe()
       .then((response) => {
         const profileData = response?.data?.data || response?.data || {};
         applyLoadedTeacherProfile(profileData);
       })
       .catch(() => {});
+
+    return () => window.clearInterval(jobRefreshInterval);
   }, []);
 
   const getEditableTeacherProfilePayload = ({ education_history, teaching_experience, ...overrides } = {}) => ({
@@ -1653,6 +1686,15 @@ export default function TeacherDashboard() {
     const jobToApply = targetJob || selectedJob;
     if (!jobToApply) return;
 
+    if (!hasRequiredTeacherApplicationData()) {
+      setSelectedJob(null);
+      setApplicationError('');
+      setProfileSubTab('overview');
+      setActiveTab('profile');
+      setProfileCompletionNotice('Please complete your profile setup before applying for a job.');
+      return;
+    }
+
     setSelectedJob(jobToApply);
     const jobId = normalizeJobId(jobToApply.job_id || jobToApply.id);
 
@@ -1739,6 +1781,13 @@ export default function TeacherDashboard() {
 
   const goToNextStep = () => {
     setApplicationError('');
+    if (!hasRequiredTeacherApplicationData()) {
+      setProfileSubTab('overview');
+      setActiveTab('profile');
+      setShowApplyModal(false);
+      setProfileCompletionNotice('Please complete your profile setup before applying for a job.');
+      return;
+    }
     if (applicationStep === 1) {
       if (!applicationForm.name.trim() || !applicationForm.email.trim() || !applicationForm.phone.trim()) {
         setApplicationError('Please complete your name, email address, and phone number before continuing.');
@@ -1760,6 +1809,14 @@ export default function TeacherDashboard() {
   };
 
   const submitJobApplication = async () => {
+    if (!hasRequiredTeacherApplicationData()) {
+      setShowApplyModal(false);
+      setProfileSubTab('overview');
+      setActiveTab('profile');
+      setProfileCompletionNotice('Please complete your profile setup before applying for a job.');
+      return;
+    }
+
     if (!selectedJob) {
       setApplicationError('Please select a job before applying.');
       return;
@@ -3861,6 +3918,26 @@ export default function TeacherDashboard() {
                 </motion.div>
               ) : profileSubTab === 'overview' ? (
                 <>
+                  {profileCompletionNotice && (
+                    <div
+                      role="status"
+                      style={{
+                        width: '100%',
+                        margin: '0 0 14px',
+                        padding: '12px 16px',
+                        border: '1px solid #86efac',
+                        borderRadius: 12,
+                        background: '#f0fdf4',
+                        color: '#166534',
+                        boxShadow: '0 8px 24px rgba(22, 101, 52, 0.14)',
+                        fontSize: 14,
+                        fontWeight: 600,
+                        textAlign: 'center',
+                      }}
+                    >
+                      {profileCompletionNotice}
+                    </div>
+                  )}
                   <h1 className="td-profile-main-title">Profile</h1>
 
                   {/* Top Profile Summary Card */}
@@ -9651,7 +9728,7 @@ export default function TeacherDashboard() {
 
         .td-phone-success-snackbar {
           position: fixed;
-          top: 56px;
+          top: 84px;
           left: 50%;
           z-index: 1200;
           display: grid;
