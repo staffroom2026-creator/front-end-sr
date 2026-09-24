@@ -6,10 +6,6 @@ export const jobService = {
       ...params,
       _t: Date.now(),
     },
-    headers: {
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      Pragma: 'no-cache',
-    },
   }),
   getJobById: (jobId) => api.get(`/api/jobs/${jobId}`),
   createJob: (payload) => api.post('/api/jobs', payload),
