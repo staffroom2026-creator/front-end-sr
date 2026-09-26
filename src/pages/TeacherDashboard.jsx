@@ -99,8 +99,6 @@ const parseSubjectList = (value) => {
 
 const getProfileSubjects = (profile = {}) => parseSubjectList(profile.skills || profile.subjects || []);
 
-const normalizeTeachingLevels = (value) => parseSubjectList(value);
-
 const parseResponsibilityList = (value) => {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value !== 'string') return [];
@@ -437,7 +435,12 @@ const getApplicationDisplayStatus = (application = {}) => {
   return rawStatus;
 };
 
-const teacherLevelOptions = ['KG', 'Secondary (JSS1-SS3)', 'Primary School'];
+const teacherLevelOptions = [
+  'KG',
+  'PRIMARY',
+  'JUNIOR SECONDARY (JSS1 - JSS3)',
+  'SENIOR SECONDARY (SS1 - SS2)',
+];
 const degreeOptions = ['B.Ed', 'B.A.', 'B.Sc.', 'M.Ed', 'M.A.', 'M.Sc.', 'Ph.D.', 'ND', 'NCE', 'HND', 'PGDE', 'Diploma', 'Certificate', 'Others'];
 
 const normalizeEducationLevel = (value = '') => {
@@ -447,12 +450,17 @@ const normalizeEducationLevel = (value = '') => {
   const normalized = raw.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 
   if (normalized.includes('kg')) return 'KG';
-  if (normalized.includes('jss') || normalized.includes('ss')) return 'Secondary (JSS1-SS3)';
-  if (normalized.includes('primary')) return 'Primary School';
+  if (normalized.includes('jss') || normalized.includes('junior secondary')) return 'JUNIOR SECONDARY (JSS1 - JSS3)';
+  if (normalized.includes('ss') || normalized.includes('senior secondary')) return 'SENIOR SECONDARY (SS1 - SS2)';
+  if (normalized.includes('primary')) return 'PRIMARY';
   if (normalized.includes('tertiary') || normalized.includes('university') || normalized.includes('college')) return 'Tertiary Institution';
 
   return raw;
 };
+
+const normalizeTeachingLevels = (value) => [...new Set(
+  parseSubjectList(value).map(normalizeEducationLevel),
+)];
 const degreeClassOptions = [
   'First Class Honours / Distinction',
   'Second Class Honours (Upper Division) / Upper Credit',
@@ -5735,7 +5743,7 @@ export default function TeacherDashboard() {
                             className="td-success-view-profile-btn"
                             onClick={() => {
                               setShowProfileUpdatedModal(false);
-                              setProfileSubTab('professional-info');
+                              setProfileSubTab('profile-preview');
                             }}
                           >
                             View My Profile
