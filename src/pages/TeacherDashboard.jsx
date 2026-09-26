@@ -194,7 +194,7 @@ const normalizeJobData = (job = {}, index = 0) => {
     job.salary ??
     job.salary_range
   );
-  
+
   const salaryStr = salaryValue > 0
     ? `₦${salaryValue.toLocaleString()} / month`
     : (job.salaryStr || job.salary_range || 'Competitive');
@@ -266,9 +266,9 @@ const normalizeApplicationData = (application = {}, index = 0) => {
     icon: application.icon || '📄',
     tags: Array.isArray(application.tags) ? application.tags : [{ type: 'neutral', label: status }],
     actionText: application.actionText || 'View',
-      coverLetter: application.cover_letter || application.coverLetter || '',
-      additionalInfo: application.additional_info || application.additionalInfo || '',
-      cvUrl: application.cv_url || application.cvUrl || application.cv || '',
+    coverLetter: application.cover_letter || application.coverLetter || '',
+    additionalInfo: application.additional_info || application.additionalInfo || '',
+    cvUrl: application.cv_url || application.cvUrl || application.cv || '',
     interview: application.interview || null,
   };
 };
@@ -739,6 +739,7 @@ export default function TeacherDashboard() {
   // ── Professional Info Tab state ──
   const [profTitle, setProfTitle] = useState('Teacher');
   const [profSummary, setProfSummary] = useState('');
+  const profSummaryEditedRef = useRef(false);
   const [profYearsExp, setProfYearsExp] = useState('0+ years');
   const [profEmpPref, setProfEmpPref] = useState('Open');
   const [profTeachMode, setProfTeachMode] = useState('Open');
@@ -1013,7 +1014,7 @@ export default function TeacherDashboard() {
     setAvailSpecificDate(profile.available_from || '');
     setAvailStartOption(profile.available_from ? 'specific-date' : 'immediately');
     setProfTitle(profile.role_title || 'Teacher');
-    setProfSummary(profile.bio || '');
+    if (!profSummaryEditedRef.current) setProfSummary(profile.bio || '');
     setProfYearsExp(profile.experience_years !== undefined && profile.experience_years !== null
       ? `${profile.experience_years}+ years`
       : 'Not provided');
@@ -1207,7 +1208,7 @@ export default function TeacherDashboard() {
       setAvailSpecificDate(profile.available_from || '');
       setAvailStartOption(profile.available_from ? 'specific-date' : 'immediately');
       setProfTitle(profile.role_title || 'Teacher');
-      setProfSummary(profile.bio || '');
+      if (!profSummaryEditedRef.current) setProfSummary(profile.bio || '');
       setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
       setProfEmpPref(profile.preferred_employment_type || 'Open');
       setProfTeachMode(profile.availability || 'Open');
@@ -1318,7 +1319,7 @@ export default function TeacherDashboard() {
         const profileData = response?.data?.data || response?.data || {};
         applyLoadedTeacherProfile(profileData);
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => window.clearInterval(jobRefreshInterval);
   }, []);
@@ -1342,6 +1343,7 @@ export default function TeacherDashboard() {
     setProfileState(nextProfile);
     setProfTitle(nextProfile.role_title || 'Teacher');
     setProfSummary(nextProfile.bio || '');
+    profSummaryEditedRef.current = false;
     setProfYearsExp(nextProfile.experience_years ? `${nextProfile.experience_years}+ years` : '0+ years');
     setProfEmpPref(nextProfile.preferred_employment_type || 'Open');
     setProfTeachMode(nextProfile.availability || 'Open');
@@ -1483,10 +1485,6 @@ export default function TeacherDashboard() {
     try {
       setSavingProfessionalInfo(true);
       setAppError('');
-      if (profSummary.length > 5000) {
-        setAppError('Bio must not exceed 5000 characters.');
-        return;
-      }
       await saveUnifiedTeacherProfile({
         education_history: toEducationPayload(educationList),
         teaching_experience: toExperiencePayload(experienceList),
@@ -2501,17 +2499,17 @@ export default function TeacherDashboard() {
                         const hasInterviewDate = !Number.isNaN(interviewDate.getTime());
                         const interviewLocation = interview.venue || interview.meeting_link || interview.location || 'Location not provided';
                         return (
-                        <div key={app.id} className="td-interview-item">
-                          <div className="td-date-box">
-                            <span className="td-day">{hasInterviewDate ? interviewDate.getDate() : '--'}</span>
-                            <span className="td-month">{hasInterviewDate ? interviewDate.toLocaleString('en-US', { month: 'short' }).toUpperCase() : 'DATE'}</span>
+                          <div key={app.id} className="td-interview-item">
+                            <div className="td-date-box">
+                              <span className="td-day">{hasInterviewDate ? interviewDate.getDate() : '--'}</span>
+                              <span className="td-month">{hasInterviewDate ? interviewDate.toLocaleString('en-US', { month: 'short' }).toUpperCase() : 'DATE'}</span>
+                            </div>
+                            <div className="td-int-info">
+                              <h4>{app.school}</h4>
+                              <p>{app.title}</p>
+                              <p>{interview.interview_time || interview.time || 'Time not provided'} • {interviewLocation}</p>
+                            </div>
                           </div>
-                          <div className="td-int-info">
-                            <h4>{app.school}</h4>
-                            <p>{app.title}</p>
-                            <p>{interview.interview_time || interview.time || 'Time not provided'} • {interviewLocation}</p>
-                          </div>
-                        </div>
                         );
                       })
                     ) : (
@@ -2559,7 +2557,7 @@ export default function TeacherDashboard() {
                     <h1>Find your next <span className="td-highlight">teaching milestone.</span></h1>
                     <p>Connecting Nigeria's finest educators with prestigious academic institutions.</p>
                   </div>
-                  <button 
+                  <button
                     className={`td-saved-jobs-btn ${showSavedOnly ? 'td-saved-jobs-btn--active' : ''}`}
                     onClick={() => {
                       setShowSavedOnly(!showSavedOnly);
@@ -2693,7 +2691,7 @@ export default function TeacherDashboard() {
                         <h3>Recommended for you</h3>
                         <span>{filteredJobs.length} JOBS FOUND</span>
                       </div>
-                      <button 
+                      <button
                         className={`td-mobile-saved-btn ${showSavedOnly ? 'td-mobile-saved-btn--active' : ''}`}
                         onClick={() => {
                           setShowSavedOnly(!showSavedOnly);
@@ -3163,7 +3161,7 @@ export default function TeacherDashboard() {
                 </div>
               )}
 
-                  {filteredNotifications.length > visibleNotifCount && (
+              {filteredNotifications.length > visibleNotifCount && (
                 <div className="td-notif-footer td-desktop-only">
                   <p className="td-notif-count">Showing {Math.min(visibleNotifCount, filteredNotifications.length)} of {totalNotifications} notifications</p>
                   <motion.button
@@ -4460,11 +4458,11 @@ export default function TeacherDashboard() {
                         <section className="td-prof-edit-card td-prof-edit-card--primary">
                           <h2><FiBriefcase /> Identity &amp; Experience</h2>
                           <label>Professional Title<input type="text" value={profTitle} onChange={(event) => setProfTitle(event.target.value)} /></label>
-                          <label>Professional Summary<textarea value={profSummary} onChange={(event) => setProfSummary(event.target.value)} /></label>
+                          <label>Professional Summary<textarea value={profSummary} onChange={(event) => { profSummaryEditedRef.current = true; setProfSummary(event.target.value); }} /></label>
                           <label>Years of Experience<select value={profYearsExp} onChange={(event) => setProfYearsExp(event.target.value)}><option value="Not provided">Not provided</option><option value="0+ years">0+ years</option><option value="1+ years">1+ years</option><option value="2+ years">2+ years</option><option value="3+ years">3+ years</option><option value="5+ years">5+ years</option><option value="8+ years">8+ years</option><option value="10+ years">10+ years</option></select></label>
                           <div className="td-prof-preferences">
                             <h2><FiFilter /> Preferences</h2>
-                            <label>Employment Preference<select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Open">Open</option><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
+                            <label>Preferred Employment Type<select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
                             <label>Teaching Mode<select value={profTeachingMode} onChange={(event) => setProfTeachingMode(event.target.value)}><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
                           </div>
                         </section>
@@ -8832,6 +8830,7 @@ export default function TeacherDashboard() {
           font-size: 12px;
           font-weight: 800;
           box-shadow: 0 10px 18px rgba(30, 203, 90, 0.18);
+          cursor: pointer;
         }
 
         .td-jd-body {

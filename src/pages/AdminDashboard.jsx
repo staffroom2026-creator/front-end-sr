@@ -1457,6 +1457,21 @@ export default function AdminDashboard() {
     showSnackbar("Draft discarded", "The job draft was removed successfully.");
   };
 
+  const discardSchoolJobForm = () => {
+    if (publishingDraftId) {
+      discardSchoolJobDraft();
+      return;
+    }
+
+    setJobForm(emptyJobForm);
+    setResponsibilityInput("");
+    setOtherRequirementInput("");
+    setEditingJobId(null);
+    setSelectedJob(null);
+    setSelectedApplicant(null);
+    setActiveTab(previousTab);
+  };
+
   const formatRelativeNotificationTime = (value) => {
     if (!value) return "Just now";
 
@@ -2602,8 +2617,8 @@ export default function AdminDashboard() {
               <option>SS1 – SS3 (Senior Secondary)</option>
               <option>JSS1 – JSS3 (Junior Secondary)</option>
               <option>Primary School</option>
-              <option>Early Years</option>
-              <option>College / Tertiary</option>
+              {/* <option>Early Years</option>
+              <option>College / Tertiary</option> */}
             </select>
           </label>
 
@@ -2806,15 +2821,13 @@ export default function AdminDashboard() {
         </section>
 
         <div className="school-job-form-actions">
-          {publishingDraftId && (
-            <button
-              type="button"
-              className="school-job-discard"
-              onClick={() => discardSchoolJobDraft()}
-            >
-              Discard Draft
-            </button>
-          )}
+          <button
+            type="button"
+            className="school-job-discard"
+            onClick={discardSchoolJobForm}
+          >
+            Discard Draft
+          </button>
           <button
             type="button"
             onClick={saveSchoolJobDraft}
@@ -2823,8 +2836,8 @@ export default function AdminDashboard() {
           </button>
           <button type="submit" disabled={submitting}>
             {submitting
-              ? (editingJobId ? "Updating..." : "Publishing...")
-              : (editingJobId ? "Update Job" : "Publish Job")}
+              ? "Publishing..."
+              : "Publish Job"}
           </button>
         </div>
       </form>

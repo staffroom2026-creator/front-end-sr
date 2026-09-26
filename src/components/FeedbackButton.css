@@ -6,9 +6,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: 0;
+  width: 48px;
+  height: 48px;
   min-height: 48px;
-  padding: 0 18px;
+  padding: 0;
   border: 0;
   border-radius: 999px;
   background: #176b45;
@@ -18,7 +20,28 @@
   font-size: 14px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+  transition: width 160ms ease, gap 160ms ease, padding 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.dashboard-feedback-trigger span {
+  max-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  white-space: nowrap;
+  transition: max-width 160ms ease, opacity 160ms ease;
+}
+
+.dashboard-feedback-trigger:hover,
+.dashboard-feedback-trigger:focus-visible {
+  width: 130px;
+  gap: 9px;
+  padding: 0 18px;
+}
+
+.dashboard-feedback-trigger:hover span,
+.dashboard-feedback-trigger:focus-visible span {
+  max-width: 90px;
+  opacity: 1;
 }
 
 .dashboard-feedback-trigger:hover {
@@ -209,7 +232,14 @@
   .dashboard-feedback-trigger {
     right: 16px;
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    width: 46px;
+    height: 46px;
     min-height: 46px;
+  }
+
+  .dashboard-feedback-trigger:hover,
+  .dashboard-feedback-trigger:focus-visible {
+    width: 122px;
     padding: 0 16px;
   }
 }
@@ -217,9 +247,16 @@
 @media (max-width: 380px) {
   .dashboard-feedback-trigger {
     right: 12px;
+    width: 44px;
+    height: 44px;
     min-height: 44px;
-    padding: 0 13px;
     font-size: 13px;
+  }
+
+  .dashboard-feedback-trigger:hover,
+  .dashboard-feedback-trigger:focus-visible {
+    width: 116px;
+    padding: 0 13px;
   }
 
   .dashboard-feedback-backdrop {
