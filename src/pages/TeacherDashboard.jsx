@@ -464,6 +464,7 @@ const degreeClassOptions = [
 ];
 
 export default function TeacherDashboard() {
+  const jobsPerPage = 20;
   const contentRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -474,6 +475,10 @@ export default function TeacherDashboard() {
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedJobOrigin, setSelectedJobOrigin] = useState('jobs');
   const [jobs, setJobs] = useState([]);
+  const [jobsCurrentPage, setJobsCurrentPage] = useState(1);
+  const [jobsTotalPages, setJobsTotalPages] = useState(1);
+  const [isLoadingMoreJobs, setIsLoadingMoreJobs] = useState(false);
+  const isLoadingMoreJobsRef = useRef(false);
   const [applications, setApplications] = useState([]);
   const [, setCurrentTime] = useState(() => Date.now());
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
@@ -750,7 +755,7 @@ export default function TeacherDashboard() {
   const [reviewCoverLetterEditing, setReviewCoverLetterEditing] = useState(false);
   const [reviewCvEditing, setReviewCvEditing] = useState(false);
   const [applicationStep, setApplicationStep] = useState(1);
-  const [sortBy, setSortBy] = useState('Recommended');
+  const [sortBy, setSortBy] = useState('Newest First');
 
   useEffect(() => {
     const historyKey = 'teacher-dashboard-view';
@@ -830,11 +835,13 @@ export default function TeacherDashboard() {
   const selectedJobApplication = selectedJob
     ? applications.find((application) => String(application.jobId) === String(selectedJob.job_id || selectedJob.id))
     : null;
-  const sortJobsByPreference = (jobList = []) => {
+  const sortJobsByPreference = (jobList = [], sortMode = sortBy) => {
     return [...jobList].sort((a, b) => {
       const featuredOrder = Number(isFeaturedJob(b)) - Number(isFeaturedJob(a));
-      const aTime = new Date(a.timePosted || a.created_at || Date.now()).getTime();
-      const bTime = new Date(b.timePosted || b.created_at || Date.now()).getTime();
+      const aTimeValue = new Date(a.timePosted || a.created_at || 0).getTime();
+      const bTimeValue = new Date(b.timePosted || b.created_at || 0).getTime();
+      const aTime = Number.isFinite(aTimeValue) ? aTimeValue : 0;
+      const bTime = Number.isFinite(bTimeValue) ? bTimeValue : 0;
       const aSalary = Number(a.salaryMonthly || 0);
       const bSalary = Number(b.salaryMonthly || 0);
       const aRecommended = Number(
@@ -852,15 +859,15 @@ export default function TeacherDashboard() {
         0
       );
 
-      if (sortBy === 'Recommended') return featuredOrder || bRecommended - aRecommended || bTime - aTime;
-      if (sortBy === 'Newest First') return featuredOrder || bTime - aTime;
-      if (sortBy === 'Oldest First') return featuredOrder || aTime - bTime;
-      if (sortBy === 'Highest Salary') return featuredOrder || bSalary - aSalary;
-      if (sortBy === 'Lowest Salary') return featuredOrder || aSalary - bSalary;
+      if (sortMode === 'Recommended') return featuredOrder || bRecommended - aRecommended || bTime - aTime;
+      if (sortMode === 'Newest First') return featuredOrder || bTime - aTime;
+      if (sortMode === 'Oldest First') return featuredOrder || aTime - bTime;
+      if (sortMode === 'Highest Salary') return featuredOrder || bSalary - aSalary;
+      if (sortMode === 'Lowest Salary') return featuredOrder || aSalary - bSalary;
       return featuredOrder || bRecommended - aRecommended || bTime - aTime;
     });
   };
-  const dashboardJobs = sortJobsByPreference(jobs).slice(0, 2);
+  const dashboardJobs = sortJobsByPreference(jobs, 'Newest First').slice(0, 2);
   const upcomingInterviews = applications
     .map((application) => {
       const normalizedInterview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || null;
@@ -1042,38 +1049,52 @@ export default function TeacherDashboard() {
     }
   };
 
+  const extractJobsResponse = (response) => {
+    const payload = response?.data?.data ?? response?.data ?? response ?? {};
+    const fallbackPayload = response?.data ?? response ?? {};
+    return {
+      jobs: [payload?.jobs, fallbackPayload?.jobs, payload, fallbackPayload].find(Array.isArray) || [],
+      pagination: payload?.pagination || fallbackPayload?.pagination || response?.pagination || {},
+    };
+  };
+
+  const getJobsPageCount = (pagination, resultCount = 0) => {
+    const pageSize = Number(pagination?.per_page ?? pagination?.perPage ?? jobsPerPage);
+    const reportedPages = Number(pagination?.total_pages ?? pagination?.totalPages ?? 0);
+    const totalItems = Number(pagination?.total_items ?? pagination?.totalItems ?? 0);
+    const pagesFromTotal = totalItems > 0 && pageSize > 0 ? Math.ceil(totalItems / pageSize) : 0;
+    const probeNextPage = !reportedPages && !pagesFromTotal && resultCount >= pageSize ? 2 : 0;
+    return Math.max(1, reportedPages, pagesFromTotal, probeNextPage);
+  };
+
   const refreshJobListing = async () => {
     try {
-      const response = await jobService.getJobs({});
-      const jobsArray = Array.isArray(response?.data?.data?.jobs)
-        ? response.data.data.jobs
-        : Array.isArray(response?.data?.jobs)
-          ? response.data.jobs
-          : Array.isArray(response?.data)
-            ? response.data
-            : Array.isArray(response)
-              ? response
-              : [];
+      const response = await jobService.getJobs({ page: 1, per_page: jobsPerPage });
+      const { jobs: jobsArray, pagination } = extractJobsResponse(response);
 
       setJobs((currentJobs) => {
         const currentJobsById = new Map(currentJobs.map((job) => [normalizeJobId(job.job_id || job.id), job]));
-        return jobsArray.map((job, index) => {
+        jobsArray.forEach((job, index) => {
           const jobId = normalizeJobId(job.job_id || job.id || job?.job?.job_id || job?.job?.id);
           const existingJob = currentJobsById.get(jobId);
-          return normalizeJobData({
+          currentJobsById.set(jobId, normalizeJobData({
             ...job,
             recommended: Boolean(job.recommended || existingJob?.recommended),
             relevance_score: getJobRelevanceScore(job) || existingJob?.relevanceScore || 0,
-          }, index);
-        }).sort((a, b) => (Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0)) || (new Date(b.timePosted || Date.now()).getTime() - new Date(a.timePosted || Date.now()).getTime()));
+          }, index));
+        });
+        return Array.from(currentJobsById.values());
       });
-    } catch {}
+      setJobsTotalPages(getJobsPageCount(pagination, jobsArray.length));
+    } catch {
+      return;
+    }
   };
 
   const refreshTeacherProfile = async () => {
     try {
       const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes, profileViewsRes] = await Promise.all([
-        jobService.getJobs({}),
+        jobService.getJobs({ page: 1, per_page: jobsPerPage }),
         jobService.getJobs({ recommended: 1, page: 1, per_page: 10 }).catch(() => null),
         applicationService.getMyApplications().catch(() => null),
         profileService.getMe(),
@@ -1082,16 +1103,9 @@ export default function TeacherDashboard() {
         profileService.getProfileViews({ page: 1, per_page: 10 }).catch(() => null),
       ]);
 
-      const extractJobsArray = (response) => {
-        if (Array.isArray(response?.data?.data?.jobs)) return response.data.data.jobs;
-        if (Array.isArray(response?.data?.jobs)) return response.data.jobs;
-        if (Array.isArray(response?.data)) return response.data;
-        if (Array.isArray(response)) return response;
-        return [];
-      };
-
-      const jobsArray = extractJobsArray(jobsRes);
-      const recommendedJobsArray = extractJobsArray(recommendedJobsRes);
+      const { jobs: jobsArray, pagination: jobsPagination } = extractJobsResponse(jobsRes);
+      const { jobs: recommendedJobsArray } = extractJobsResponse(recommendedJobsRes);
+      setJobsTotalPages(getJobsPageCount(jobsPagination, jobsArray.length));
       const recommendedLookup = new Map(
         recommendedJobsArray.map((job) => {
           const jobId = normalizeJobId(job.job_id || job.id || job?.job?.job_id || job?.job?.id);
@@ -1164,7 +1178,21 @@ export default function TeacherDashboard() {
         category: notification.type === 'application_status' ? 'Job Alerts' : 'Account',
       }));
 
-      setJobs(jobList);
+      setJobs((currentJobs) => {
+        if (Number(jobsPagination.current_page) <= 1 && jobsCurrentPage <= 1) return jobList;
+        const jobsById = new Map(currentJobs.map((job) => [normalizeJobId(job.job_id || job.id), job]));
+        jobList.forEach((job) => {
+          const jobId = normalizeJobId(job.job_id || job.id);
+          const existingJob = jobsById.get(jobId);
+          jobsById.set(jobId, {
+            ...existingJob,
+            ...job,
+            recommended: Boolean(job.recommended || existingJob?.recommended),
+            relevanceScore: job.relevanceScore || existingJob?.relevanceScore || 0,
+          });
+        });
+        return Array.from(jobsById.values());
+      });
       setApplications(applicationsWithInterviews);
       setProfileState(profile);
       setPersonalFirstName(firstName);
@@ -2042,7 +2070,7 @@ export default function TeacherDashboard() {
   const [selectedJobTypes, setSelectedJobTypes] = useState([]);
   const [salaryRange, setSalaryRange] = useState(50000);
   const [showSortDropdown, setShowSortDropdown] = useState(false);
-  const [displayedJobsCount, setDisplayedJobsCount] = useState(5);
+  const [displayedJobsCount, setDisplayedJobsCount] = useState(20);
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [filtersCollapsed, setFiltersCollapsed] = useState(false);
 
@@ -2062,11 +2090,49 @@ export default function TeacherDashboard() {
     setSubjectSearch('');
     setLocationSearch('');
     setKeywordSearch('');
-    setDisplayedJobsCount(5);
+    setDisplayedJobsCount(20);
   };
 
-  const handleLoadMore = () => {
-    setDisplayedJobsCount(prev => prev + 5);
+  const handleLoadMore = async () => {
+    if (displayedJobsCount < filteredJobs.length) {
+      setDisplayedJobsCount((previousCount) => previousCount + 20);
+      return;
+    }
+
+    if (jobsCurrentPage >= jobsTotalPages || isLoadingMoreJobsRef.current) return;
+
+    const nextPage = jobsCurrentPage + 1;
+    isLoadingMoreJobsRef.current = true;
+    setIsLoadingMoreJobs(true);
+
+    try {
+      const response = await jobService.getJobs({ page: nextPage, per_page: jobsPerPage });
+      const { jobs: nextJobs, pagination } = extractJobsResponse(response);
+      const normalizedJobs = nextJobs.map((job, index) => normalizeJobData(job, index));
+
+      setJobs((currentJobs) => {
+        const jobsById = new Map(currentJobs.map((job) => [normalizeJobId(job.job_id || job.id), job]));
+        normalizedJobs.forEach((job) => {
+          const jobId = normalizeJobId(job.job_id || job.id);
+          const existingJob = jobsById.get(jobId);
+          jobsById.set(jobId, {
+            ...existingJob,
+            ...job,
+            recommended: Boolean(job.recommended || existingJob?.recommended),
+            relevanceScore: job.relevanceScore || existingJob?.relevanceScore || 0,
+          });
+        });
+        return Array.from(jobsById.values());
+      });
+      setJobsCurrentPage(Number(pagination.current_page) || nextPage);
+      setJobsTotalPages(getJobsPageCount(pagination, nextJobs.length));
+      setDisplayedJobsCount((previousCount) => previousCount + 20);
+    } catch {
+      return;
+    } finally {
+      isLoadingMoreJobsRef.current = false;
+      setIsLoadingMoreJobs(false);
+    }
   };
 
   const filteredJobs = sortJobsByPreference(
@@ -2096,6 +2162,7 @@ export default function TeacherDashboard() {
       return true;
     })
   );
+  const hasMoreJobResults = displayedJobsCount < filteredJobs.length || jobsCurrentPage < jobsTotalPages;
 
   const handleNavTabChange = (nextTab) => {
     setActiveTab(nextTab);
@@ -2496,7 +2563,7 @@ export default function TeacherDashboard() {
                     className={`td-saved-jobs-btn ${showSavedOnly ? 'td-saved-jobs-btn--active' : ''}`}
                     onClick={() => {
                       setShowSavedOnly(!showSavedOnly);
-                      setDisplayedJobsCount(10);
+                      setDisplayedJobsCount(20);
                     }}
                   >
                     <FiBookmark size={14} /> Saved Jobs
@@ -2630,7 +2697,7 @@ export default function TeacherDashboard() {
                         className={`td-mobile-saved-btn ${showSavedOnly ? 'td-mobile-saved-btn--active' : ''}`}
                         onClick={() => {
                           setShowSavedOnly(!showSavedOnly);
-                          setDisplayedJobsCount(5);
+                          setDisplayedJobsCount(20);
                         }}
                       >
                         <FiBookmark size={14} /> Saved
@@ -2768,14 +2835,14 @@ export default function TeacherDashboard() {
                     )}
                   </div>
 
-                  {filteredJobs.length > 0 && displayedJobsCount < filteredJobs.length && (
-                    <div className="td-load-more-container td-desktop-only">
-                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn" onClick={handleLoadMore}>Load More Jobs</motion.button>
-                      <p>Showing {Math.min(displayedJobsCount, filteredJobs.length)} results</p>
+                  {hasMoreJobResults && (
+                    <div className="td-load-more-container">
+                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn" onClick={handleLoadMore} disabled={isLoadingMoreJobs}>{isLoadingMoreJobs ? 'Loading Jobs...' : 'Load More Jobs'}</motion.button>
+                      <p>Showing {Math.min(displayedJobsCount, filteredJobs.length)} of {filteredJobs.length} loaded results</p>
                     </div>
                   )}
-                  {filteredJobs.length > 0 && displayedJobsCount >= filteredJobs.length && (
-                    <div className="td-load-more-container td-desktop-only">
+                  {filteredJobs.length > 0 && displayedJobsCount >= filteredJobs.length && jobsCurrentPage >= jobsTotalPages && (
+                    <div className="td-load-more-container">
                       <p>Showing all {Math.min(displayedJobsCount, filteredJobs.length)} results</p>
                     </div>
                   )}

@@ -67,7 +67,7 @@ export default function PublicRoute({ children }) {
 
   useEffect(() => {
     const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
-    if (!token || !user || role !== 'school') {
+    if (!token || !user || !['school', 'school_admin'].includes(role)) {
       setProfileCheck({ loading: false, complete: true });
       return undefined;
     }
@@ -110,7 +110,7 @@ export default function PublicRoute({ children }) {
   }
 
   if (token && user) {
-    const authPages = ['/signin', '/signup', '/verify-email', '/forgot-password', '/check-email', '/reset-password'];
+    const authPages = ['/signup', '/verify-email', '/forgot-password', '/check-email', '/reset-password'];
     if (authPages.includes(location.pathname)) {
       return children;
     }
@@ -125,7 +125,7 @@ export default function PublicRoute({ children }) {
     const hasKnownSetupState = userSetupFlag !== undefined;
     const isSetupComplete = hasKnownSetupState && (userSetupFlag === true || userSetupFlag === 'true' || userSetupFlag === 1 || userSetupFlag === '1');
 
-    if (role === 'school') {
+    if (role === 'school' || role === 'school_admin') {
       if (hasKnownSetupState && !isSetupComplete) {
         if (location.pathname !== '/sch-info') {
           return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
@@ -149,6 +149,7 @@ export default function PublicRoute({ children }) {
       const dashboardMap = {
         teacher: '/teacher-dashboard',
         school: '/school-dashboard',
+        school_admin: '/school-dashboard',
         admin: '/admin-dashboard',
         police: '/internal-admin-dashboard',
       };
@@ -158,7 +159,7 @@ export default function PublicRoute({ children }) {
         ? location.state.from
         : redirectTo;
 
-      if (location.pathname !== from && !(role === 'school' && !hasKnownSetupState && location.pathname === '/sch-info')) {
+      if (location.pathname !== from && !(['school', 'school_admin'].includes(role) && !hasKnownSetupState && location.pathname === '/sch-info')) {
         return <Navigate to={from} replace state={{ from: location.pathname }} />;
       }
     }
