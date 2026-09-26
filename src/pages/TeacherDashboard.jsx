@@ -4467,7 +4467,21 @@ export default function TeacherDashboard() {
                         <section className="td-prof-edit-card td-prof-edit-card--primary">
                           <h2><FiBriefcase /> Identity &amp; Experience</h2>
                           <label>Professional Title<input type="text" value={profTitle} onChange={(event) => setProfTitle(event.target.value)} /></label>
-                          <label>Professional Summary<textarea value={profSummary} onChange={(event) => { profSummaryEditedRef.current = true; setProfSummary(event.target.value); }} /></label>
+                          <label>
+                            Professional Summary
+                            <textarea
+                              value={profSummary}
+                              maxLength={1000}
+                              aria-describedby="td-prof-summary-count"
+                              onChange={(event) => {
+                                profSummaryEditedRef.current = true;
+                                setProfSummary(event.target.value.slice(0, 1000));
+                              }}
+                            />
+                            <span id="td-prof-summary-count" className="td-prof-summary-count" aria-live="polite">
+                              {profSummary.length}/1000 characters
+                            </span>
+                          </label>
                           <label>Years of Experience<select value={profYearsExp} onChange={(event) => setProfYearsExp(event.target.value)}><option value="Not provided">Not provided</option><option value="0+ years">0+ years</option><option value="1+ years">1+ years</option><option value="2+ years">2+ years</option><option value="3+ years">3+ years</option><option value="5+ years">5+ years</option><option value="8+ years">8+ years</option><option value="10+ years">10+ years</option></select></label>
                           <div className="td-prof-preferences">
                             <h2><FiFilter /> Preferences</h2>
