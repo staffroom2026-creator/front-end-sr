@@ -1042,6 +1042,34 @@ export default function TeacherDashboard() {
     }
   };
 
+  const refreshJobListing = async () => {
+    try {
+      const response = await jobService.getJobs({});
+      const jobsArray = Array.isArray(response?.data?.data?.jobs)
+        ? response.data.data.jobs
+        : Array.isArray(response?.data?.jobs)
+          ? response.data.jobs
+          : Array.isArray(response?.data)
+            ? response.data
+            : Array.isArray(response)
+              ? response
+              : [];
+
+      setJobs((currentJobs) => {
+        const currentJobsById = new Map(currentJobs.map((job) => [normalizeJobId(job.job_id || job.id), job]));
+        return jobsArray.map((job, index) => {
+          const jobId = normalizeJobId(job.job_id || job.id || job?.job?.job_id || job?.job?.id);
+          const existingJob = currentJobsById.get(jobId);
+          return normalizeJobData({
+            ...job,
+            recommended: Boolean(job.recommended || existingJob?.recommended),
+            relevance_score: getJobRelevanceScore(job) || existingJob?.relevanceScore || 0,
+          }, index);
+        }).sort((a, b) => (Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0)) || (new Date(b.timePosted || Date.now()).getTime() - new Date(a.timePosted || Date.now()).getTime()));
+      });
+    } catch {}
+  };
+
   const refreshTeacherProfile = async () => {
     try {
       const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes, profileViewsRes] = await Promise.all([
@@ -1254,7 +1282,7 @@ export default function TeacherDashboard() {
     loadAccountPreferences();
 
     const jobRefreshInterval = window.setInterval(() => {
-      refreshTeacherProfile();
+      refreshJobListing();
     }, 30000);
 
     profileService.getMe()
