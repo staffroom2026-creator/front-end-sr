@@ -1,152 +1,234 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+
+const tabs = [
+  {
+    key: 'teachers',
+    label: 'FOR TEACHERS',
+    heading: 'Build your teaching career',
+    steps: [
+      {
+        icon: (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+        ),
+        title: '1. Create your profile',
+        desc: 'Showcase your experience, subjects, skills and preferences',
+      },
+      {
+        icon: (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        ),
+        title: '2. Discover relevant opportunities',
+        desc: 'Find verified schools and teaching roles that match your profile',
+      },
+      {
+        icon: (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
+        ),
+        title: '3. Apply and move forward',
+        desc: 'Apply, manage interviews and track your progress in one place.',
+      },
+    ],
+  },
+  {
+    key: 'schools',
+    label: 'FOR SCHOOLS',
+    heading: 'Find the right teacher for your school',
+    steps: [
+      {
+        icon: (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <rect x="3" y="10" width="18" height="11" rx="1.5" />
+            <path d="M9 21V15H15V21" />
+            <path d="M3 10L12 3L21 10" />
+          </svg>
+        ),
+        title: '1. Create your school profile',
+        desc: 'Highlight your school, values, open roles and teaching needs',
+      },
+      {
+        icon: (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+        ),
+        title: '2. Browse qualified teachers',
+        desc: 'Discover verified teacher profiles matched to your requirements',
+      },
+      {
+        icon: (
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+          </svg>
+        ),
+        title: '3. Connect and hire',
+        desc: 'Manage applications, schedule interviews and make your hire — all in one place.',
+      },
+    ],
+  },
+];
 
 export default function HowItWorks() {
+  const [activeTab, setActiveTab] = useState('teachers');
+  const [scrollProgress, setScrollProgress] = useState(0);
+  // wrapperRef is the tall outer div that provides the scroll budget
+  const wrapperRef = useRef(null);
+  const tab = tabs.find((t) => t.key === activeTab);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!wrapperRef.current) return;
+      const rect = wrapperRef.current.getBoundingClientRect();
+      // scrolled = how many px of the wrapper have passed the top of the viewport
+      const scrolled = -rect.top;
+      // total scrollable distance = wrapper height - viewport height
+      const total = rect.height - window.innerHeight;
+      const progress = Math.max(0, Math.min(1, scrolled / total));
+      setScrollProgress(progress);
+      setActiveTab(progress >= 0.5 ? 'schools' : 'teachers');
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll();
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // Per-tab line progress: resets 0 to 1 for each half
+  const halfProgress = scrollProgress < 0.5
+    ? scrollProgress * 2
+    : (scrollProgress - 0.5) * 2;
+
   return (
-    <section className="bg-gray-50/50 py-14 md:py-24">
-      <div className="max-w-4xl mx-auto px-6 md:px-8 flex flex-col items-center">
-        <h2 className="text-2xl md:text-3xl font-bold mb-8 md:mb-12 text-gray-900">How it works</h2>
+    // Outer wrapper — 200vh gives a full viewport of scroll budget beyond the panel itself
+    <div ref={wrapperRef} style={{ height: '200vh' }}>
+      {/* Sticky inner panel — stays pinned until the wrapper scrolls past */}
+      <div
+        style={{
+          position: 'sticky',
+          top: 0,
+          height: '100vh',
+          background: '#f0faf2',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        }}
+      >
+        <div className="max-w-5xl mx-auto px-6 md:px-8 w-full">
 
-        <div className="bg-white rounded-2xl md:rounded-3xl w-full p-6 md:p-12 shadow-sm border border-gray-100 relative">
-          
-          {/* Header Row - Desktop */}
-          <div className="hidden md:flex justify-between font-bold text-lg mb-12 relative z-10 w-full pl-20 pr-10">
-            <div className="flex-1 text-gray-900">For Teachers</div>
-            <div className="flex-1 text-gray-900">For Schools</div>
+          {/* Header */}
+          <div className="text-center mb-8 md:mb-12">
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
+              How Staffroom Works
+            </h2>
+            <p className="text-gray-500 text-sm md:text-base max-w-xl mx-auto">
+              From finding the right opportunity to making the right hire, staffroom keeps the process simple for everyone
+            </p>
           </div>
 
-          {/* Mobile: For Teachers heading */}
-          <h3 className="md:hidden text-lg font-bold text-gray-900 mb-6">For Teachers</h3>
-
-          <div className="relative">
-            {/* Center Timeline Line - Desktop only */}
-            <div className="hidden md:block absolute left-1/2 top-0 bottom-0 w-px bg-gray-200 -translate-x-1/2"></div>
-            
-            {/* Mobile Timeline Line */}
-            <div className="md:hidden absolute left-[15px] top-0 bottom-0 w-px bg-gray-200"></div>
-            
-            {/* Step 1 */}
-            <div className="flex flex-col md:flex-row mb-10 md:mb-16 relative">
-              <div className="flex-1 md:text-left pr-4 md:pr-16 pl-12 md:pl-0">
-                <p className="text-gray-600 text-sm md:text-base">
-                  <span className="font-semibold text-gray-900 mr-1 block md:inline">Create your profile.</span>
-                  Showcase your skills, experience, and passions.
-                </p>
-              </div>
-              
-              {/* Icon */}
-              <div className="absolute left-[4px] md:left-1/2 md:-translate-x-1/2 top-0 md:top-1/2 md:-translate-y-1/2 w-[22px] h-[22px] md:w-10 md:h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm z-10">
-                <svg className="w-3 h-3 md:w-4 md:h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-
-              {/* Desktop: School column */}
-              <div className="hidden md:block flex-1 md:text-left pl-16">
-                <p className="text-gray-600 text-sm md:text-base">
-                  <span className="font-semibold text-gray-900 mr-1 block md:inline">Create your school profile.</span>
-                  Highlight your teaching needs.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="flex flex-col md:flex-row mb-10 md:mb-16 relative">
-              <div className="flex-1 md:text-left pr-4 md:pr-16 pl-12 md:pl-0">
-                <p className="text-gray-600 text-sm md:text-base">
-                  <span className="font-semibold text-gray-900 mr-1 block md:inline">Explore.</span>
-                  Search the Staffroom platform for the right fit for you.
-                </p>
-              </div>
-              
-              {/* Icon */}
-              <div className="absolute left-[4px] md:left-1/2 md:-translate-x-1/2 top-0 md:top-1/2 md:-translate-y-1/2 w-[22px] h-[22px] md:w-10 md:h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm z-10">
-                <svg className="w-3 h-3 md:w-4 md:h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-
-              {/* Desktop: School column */}
-              <div className="hidden md:block flex-1 md:text-left pl-16">
-                <p className="text-gray-600 text-sm md:text-base">
-                  <span className="font-semibold text-gray-900 mr-1 block md:inline">List opportunities.</span>
-                  Get seen by top teaching talent in your area.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="flex flex-col md:flex-row mb-10 md:mb-0 relative">
-              <div className="flex-1 md:text-left pr-4 md:pr-16 pl-12 md:pl-0">
-                <p className="text-gray-600 text-sm md:text-base">
-                  <span className="font-semibold text-gray-900 mr-1 block md:inline">Apply seamlessly.</span>
-                  Get connected with schools directly on our platform.
-                </p>
-              </div>
-              
-              {/* Icon */}
-              <div className="absolute left-[4px] md:left-1/2 md:-translate-x-1/2 top-0 md:top-1/2 md:-translate-y-1/2 w-[22px] h-[22px] md:w-10 md:h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm z-10">
-                <svg className="w-3 h-3 md:w-4 md:h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-
-              {/* Desktop: School column */}
-              <div className="hidden md:block flex-1 md:text-left pl-16">
-                <p className="text-gray-600 text-sm md:text-base">
-                  <span className="font-semibold text-gray-900 mr-1 block md:inline">Connect with teachers.</span>
-                  Hire your next top performer seamlessly.
-                </p>
-              </div>
+          {/* Tab toggle */}
+          <div className="flex justify-center mb-8 md:mb-12">
+            <div className="flex bg-white border border-gray-200 rounded-full p-1 shadow-sm relative w-64 h-[46px]">
+              {tabs.map((t) => (
+                <button
+                  key={t.key}
+                  id={`hiw-tab-${t.key}`}
+                  onClick={() => setActiveTab(t.key)}
+                  className={`flex-1 rounded-full text-sm font-semibold transition-colors z-10 ${
+                    activeTab === t.key ? 'text-white' : 'text-gray-700'
+                  }`}
+                >
+                  {t.key === 'teachers' ? 'Teachers' : 'Schools'}
+                </button>
+              ))}
+              {/* Sliding pill */}
+              <div
+                className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#1CCB43] rounded-full transition-all duration-300 ${
+                  activeTab === 'teachers' ? 'left-1' : 'left-[calc(50%+2px)]'
+                }`}
+              />
             </div>
           </div>
 
-          {/* Mobile: For Schools section */}
-          <div className="md:hidden mt-10">
-            <h3 className="text-lg font-bold text-gray-900 mb-6">For Schools</h3>
-            
-            <div className="relative">
-              <div className="absolute left-[15px] top-0 bottom-0 w-px bg-gray-200"></div>
-              
-              <div className="mb-10 relative pl-12">
-                <div className="absolute left-[4px] top-0 w-[22px] h-[22px] bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm z-10">
-                  <svg className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <p className="text-gray-600 text-sm">
-                  <span className="font-semibold text-gray-900 block">Create your school profile.</span>
-                  Highlight your teaching needs.
-                </p>
-              </div>
+          {/* Content: two-column split */}
+          <div className="flex flex-col md:flex-row gap-8 md:gap-0 items-start md:items-center">
 
-              <div className="mb-10 relative pl-12">
-                <div className="absolute left-[4px] top-0 w-[22px] h-[22px] bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm z-10">
-                  <svg className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                </div>
-                <p className="text-gray-600 text-sm">
-                  <span className="font-semibold text-gray-900 block">List opportunities.</span>
-                  Get seen by top teaching talent in your area.
-                </p>
-              </div>
+            {/* Left: Label + Heading */}
+            <div className="md:w-[38%] md:pr-12">
+              <p className="text-xs font-bold tracking-widest text-gray-500 uppercase mb-2">
+                {tab.label}
+              </p>
+              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 leading-snug">
+                {tab.heading}
+              </h3>
+            </div>
 
-              <div className="relative pl-12">
-                <div className="absolute left-[4px] top-0 w-[22px] h-[22px] bg-white border border-gray-200 rounded-full flex items-center justify-center shadow-sm z-10">
-                  <svg className="w-3 h-3 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </div>
-                <p className="text-gray-600 text-sm">
-                  <span className="font-semibold text-gray-900 block">Connect with teachers.</span>
-                  Hire your next top performer seamlessly.
-                </p>
+            {/* Center divider — scroll-driven progress line (desktop only) */}
+            <div
+              className="hidden md:flex flex-col items-center mx-6"
+              style={{ alignSelf: 'stretch', minHeight: '260px' }}
+            >
+              <div
+                className="relative flex-1 w-[2px] overflow-hidden rounded-full"
+                style={{ background: '#e5e7eb' }}
+              >
+                <div
+                  className="absolute top-0 left-0 w-full rounded-full"
+                  style={{
+                    height: `${halfProgress * 100}%`,
+                    background: '#1a1a2e',
+                    transition: 'height 0.05s linear',
+                  }}
+                />
               </div>
             </div>
-          </div>
 
+            {/* Right: Step cards */}
+            <div className="flex-1 flex flex-col gap-4 md:pl-8">
+              {tab.steps.map((step, i) => (
+                <div
+                  key={`${activeTab}-${i}`}
+                  className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex flex-col gap-2"
+                  style={{
+                    animation: 'fadeInUp 0.35s ease both',
+                    animationDelay: `${i * 60}ms`,
+                  }}
+                >
+                  {/* Icon in green tinted circle */}
+                  <div
+                    className="w-10 h-10 rounded-full flex items-center justify-center mb-1"
+                    style={{ background: '#e8f9eb' }}
+                  >
+                    {step.icon}
+                  </div>
+                  <p className="font-bold text-gray-900 text-sm md:text-[15px]">{step.title}</p>
+                  <p className="text-gray-500 text-sm leading-relaxed">{step.desc}</p>
+                </div>
+              ))}
+            </div>
+
+          </div>
         </div>
+
+        {/* Card entrance animation */}
+        <style>{`
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
+        `}</style>
       </div>
-    </section>
+    </div>
   );
 }
