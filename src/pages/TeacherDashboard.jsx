@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import schoolCampus from '../assets/school campus.webp';
 import BrandLogo from '../components/BrandLogo';
+import FeedbackButton from '../components/FeedbackButton';
 import { useAuth } from '../context/AuthContext';
 import { jobService } from '../services/jobService';
 import { applicationService } from '../services/applicationService';
@@ -436,7 +437,7 @@ const getApplicationDisplayStatus = (application = {}) => {
   return rawStatus;
 };
 
-const teacherLevelOptions = ['KG', 'Secondary (JSS1-SS3)', 'Primary School', 'Tertiary Institution'];
+const teacherLevelOptions = ['KG', 'Secondary (JSS1-SS3)', 'Primary School'];
 const degreeOptions = ['B.Ed', 'B.A.', 'B.Sc.', 'M.Ed', 'M.A.', 'M.Sc.', 'Ph.D.', 'ND', 'NCE', 'HND', 'PGDE', 'Diploma', 'Certificate', 'Others'];
 
 const normalizeEducationLevel = (value = '') => {
@@ -6202,6 +6203,8 @@ export default function TeacherDashboard() {
           </button>
         ))}
       </nav>
+
+      <FeedbackButton user={user} audience="Teacher" />
 
       <style>{`
         * { box-sizing: border-box; margin: 0; padding: 0; }
