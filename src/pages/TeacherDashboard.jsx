@@ -1225,8 +1225,9 @@ export default function TeacherDashboard() {
         phone: profileData?.user?.phone || user?.phone || '',
       });
       const cvUrl = toTeacherAssetUrl(profile.cv_url || '');
+      const resumeDisplayName = (profileData?.user?.full_name || user?.full_name || [firstName, lastName].filter(Boolean).join(' ') || 'Current User').trim();
       setActiveResume({
-        name: cvUrl ? cvUrl.split('/').pop() || 'CV.pdf' : 'No resume uploaded',
+        name: cvUrl ? resumeDisplayName : 'No resume uploaded',
         uploadDate: profile.updated_at ? new Date(profile.updated_at).toLocaleDateString() : 'Not provided',
         size: cvUrl ? 'Uploaded' : 'Not provided',
         url: cvUrl,
