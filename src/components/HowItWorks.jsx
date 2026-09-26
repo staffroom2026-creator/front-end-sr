@@ -44,37 +44,44 @@ const tabs = [
   {
     key: 'schools',
     label: 'FOR SCHOOLS',
-    heading: 'Find the right teacher for your school',
+    heading: 'Find the right educators',
     steps: [
       {
         icon: (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <rect x="3" y="10" width="18" height="11" rx="1.5" />
-            <path d="M9 21V15H15V21" />
-            <path d="M3 10L12 3L21 10" />
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <line x1="10" y1="9" x2="8" y2="9" />
           </svg>
         ),
-        title: '1. Create your school profile',
-        desc: 'Highlight your school, values, open roles and teaching needs',
+        title: '1. Set up your school profile',
+        desc: 'Present your school, culture and the educators you need.',
       },
       {
         icon: (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
           </svg>
         ),
-        title: '2. Browse qualified teachers',
-        desc: 'Discover verified teacher profiles matched to your requirements',
+        title: '2. Find the right teachers',
+        desc: 'Post vacancies or discover verified educators on your area.',
       },
       {
         icon: (
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1CCB43" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.77 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
         ),
-        title: '3. Connect and hire',
-        desc: 'Manage applications, schedule interviews and make your hire — all in one place.',
+        title: '3. Interview and hire',
+        desc: 'Shortlist candidates, manage interviews and complete your hiring process.',
       },
     ],
   },
@@ -137,8 +144,8 @@ export default function HowItWorks() {
             </p>
           </div>
 
-          {/* Tab toggle */}
-          <div className="flex justify-center mb-8 md:mb-12">
+          {/* Tab toggle — hidden, scroll drives the active tab */}
+          <div className="hidden">
             <div className="flex bg-white border border-gray-200 rounded-full p-1 shadow-sm relative w-64 h-[46px]">
               {tabs.map((t) => (
                 <button

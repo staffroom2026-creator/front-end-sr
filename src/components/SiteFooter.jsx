@@ -27,7 +27,7 @@ const policyLinks = [
 
 export default function SiteFooter() {
   return (
-    <footer className="bg-[#F5FFF1] border-t border-emerald-500/10">
+    <footer className="bg-[#F7FFF4] border-t border-emerald-500/10">
       <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12 md:pt-16 pb-8">
         <div className="grid grid-cols-1 gap-10 text-center md:grid-cols-4 md:gap-8 md:text-left">
           <div className="md:pr-8">

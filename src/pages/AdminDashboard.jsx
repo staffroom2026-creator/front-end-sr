@@ -8,7 +8,6 @@ import { featureService } from "../services/featureService";
 import { profileService } from "../services/profileService";
 import { accountService } from "../services/accountService";
 import BrandLogo from "../components/BrandLogo";
-import FeedbackButton from "../components/FeedbackButton";
 import {
   FiAlertCircle,
   FiAlertTriangle,
@@ -146,7 +145,6 @@ export default function AdminDashboard() {
   const [savingAdminEmail, setSavingAdminEmail] = useState(false);
   const [showAdminEmailVerificationModal, setShowAdminEmailVerificationModal] = useState(false);
   const [adminEmailVerificationCode, setAdminEmailVerificationCode] = useState(["", "", "", "", "", ""]);
-  const [verifyingAdminEmail, setVerifyingAdminEmail] = useState(false);
   const [pendingAdminEmail, setPendingAdminEmail] = useState("");
   const [adminSuccessSnackbox, setAdminSuccessSnackbox] = useState(null);
   const [changePasswordForm, setChangePasswordForm] = useState({
@@ -193,7 +191,6 @@ export default function AdminDashboard() {
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
-  const [coverLetterModal, setCoverLetterModal] = useState({ open: false, text: "" });
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [selectedTeacherProfileError, setSelectedTeacherProfileError] = useState("");
   const [teacherProfileTarget, setTeacherProfileTarget] = useState(null);
@@ -215,7 +212,6 @@ export default function AdminDashboard() {
   const [websiteValue, setWebsiteValue] = useState("");
   const [isAddressEditing, setIsAddressEditing] = useState(false);
   const [addressValue, setAddressValue] = useState("");
-  const [schoolAddressInitialValue, setSchoolAddressInitialValue] = useState("");
   const [savingSchoolProfile, setSavingSchoolProfile] = useState(false);
   const schoolLogoInputRef = useRef(null);
   const schoolNameInputRef = useRef(null);
@@ -226,7 +222,6 @@ export default function AdminDashboard() {
   const qualificationDropdownRef = useRef(null);
   const teacherFilterMenuRef = useRef(null);
   const [notificationItems, setNotificationItems] = useState([]);
-  const [schoolNotificationFilter, setSchoolNotificationFilter] = useState("All");
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [notificationActionLoading, setNotificationActionLoading] = useState({});
@@ -256,6 +251,8 @@ export default function AdminDashboard() {
     useState(false);
   const [teacherSubject, setTeacherSubject] = useState("Subject");
   const [teacherSubjectMenuOpen, setTeacherSubjectMenuOpen] = useState(false);
+  const [teacherTrcn, setTeacherTrcn] = useState("TRCN");
+  const [teacherTrcnMenuOpen, setTeacherTrcnMenuOpen] = useState(false);
   const [teacherFilterMenuOpen, setTeacherFilterMenuOpen] = useState(false);
   const [teacherSortMenuOpen, setTeacherSortMenuOpen] = useState(false);
   const [teacherSortMode, setTeacherSortMode] = useState("Best Match");
@@ -475,23 +472,9 @@ export default function AdminDashboard() {
     setSelectedJob(null);
     setSelectedApplicant(null);
     setSelectedTeacherProfile(null);
-    setSettingsSection("overview");
-    setJobDetailView("detail");
     setOpenJobMenuId(null);
     setExperienceMenuOpen(false);
     setQualificationMenuOpen(false);
-    setTeacherTab("invited");
-    setTeacherSearch("");
-    setTeacherSearchSubmitted("");
-    setTeacherLocation("All Locations");
-    setTeacherExperience("Experience");
-    setTeacherSubject("Subject");
-    setTeacherFilterMenuOpen(false);
-    setTeacherActiveFilterGroup(null);
-    setVisibleTeacherCount(10);
-    setJobFilter("All Jobs");
-    setApplicantFilter("All");
-    setApplicantPage(1);
   };
 
   const dismissSnackbar = () => {
@@ -546,7 +529,7 @@ export default function AdminDashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === "settings" && ["profile", "email-change", "phone-change"].includes(settingsSection)) {
+    if (activeTab === "settings" && settingsSection === "profile") {
       loadAdminProfile();
     }
   }, [activeTab, loadAdminProfile, settingsSection]);
@@ -623,24 +606,12 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleAdminEmailVerificationSuccess = async () => {
-    const code = adminEmailVerificationCode.join("");
-    if (code.length !== 6) return;
-
-    try {
-      setVerifyingAdminEmail(true);
-      await accountService.patchEmail({ code });
-      setShowAdminEmailVerificationModal(false);
-      setSettingsSection("profile");
-      setPendingAdminEmail("");
-      setAdminEmailVerificationCode(["", "", "", "", "", ""]);
-      await loadAdminProfile();
-      setAdminSuccessSnackbox({ title: "Email changed successfully", message: "Your email has been changed successfully." });
-    } catch (err) {
-      showSnackbar("Email verification failed", apiErrorMessage(err, "Unable to verify your email address."));
-    } finally {
-      setVerifyingAdminEmail(false);
-    }
+  const handleAdminEmailVerificationSuccess = () => {
+    setShowAdminEmailVerificationModal(false);
+    setSettingsSection("profile");
+    setPendingAdminEmail("");
+    loadAdminProfile();
+    setAdminSuccessSnackbox({ title: "Email changed successfully", message: "Your email has been changed successfully." });
   };
 
   useEffect(() => {
@@ -891,7 +862,7 @@ export default function AdminDashboard() {
   const renderAdminPhoneChange = () => (
     <div className="admin-settings-shell admin-settings-subpage admin-email-change-page">
       <div className="admin-settings-breadcrumb-row">
-        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("account-security")}>Account &amp; Security</button>
+        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("profile")}>Profile</button>
         <span className="admin-settings-breadcrumb-separator">›</span>
         <span>Change phone number</span>
       </div>
@@ -911,7 +882,7 @@ export default function AdminDashboard() {
           <input type="tel" autoFocus placeholder="e.g. 081 4835 5892" value={adminPhoneChangeValue} onChange={(event) => setAdminPhoneChangeValue(event.target.value)} />
         </label>
         <div className="admin-email-change-actions">
-          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("account-security")}>Cancel</button>
+          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("profile")}>Cancel</button>
           <button type="button" className="admin-email-continue-btn" onClick={handleAdminPhoneChange} disabled={savingAdminPhone || !adminPhoneChangeValue.trim() || adminPhoneChangeValue.trim() === adminProfileForm.phone.trim()}>
             {savingAdminPhone ? "Updating..." : "Continue"}
           </button>
@@ -1002,8 +973,8 @@ export default function AdminDashboard() {
             />
           ))}
         </div>
-        <button type="button" className="admin-email-verify-submit" onClick={handleAdminEmailVerificationSuccess} disabled={verifyingAdminEmail || adminEmailVerificationCode.some((digit) => !digit)}>
-          {verifyingAdminEmail ? "Verifying..." : "Verify email"} <FiArrowRight size={15} />
+        <button type="button" className="admin-email-verify-submit" onClick={handleAdminEmailVerificationSuccess} disabled={adminEmailVerificationCode.some((digit) => !digit)}>
+          Verify email <FiArrowRight size={15} />
         </button>
         <div className="admin-email-verify-divider" />
         <p className="admin-email-verify-resend">Didn&apos;t receive the code? <button type="button">Resend code</button></p>
@@ -1017,8 +988,8 @@ export default function AdminDashboard() {
   const renderAdminEmailChange = () => (
     <div className="admin-settings-shell admin-settings-subpage admin-email-change-page">
       <div className="admin-settings-breadcrumb-row">
-        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("account-security")}>
-          Account &amp; Security
+        <button type="button" className="admin-settings-back-link" onClick={() => setSettingsSection("profile")}>
+          Profile
         </button>
         <span className="admin-settings-breadcrumb-separator">›</span>
         <span>Change email</span>
@@ -1048,7 +1019,7 @@ export default function AdminDashboard() {
           />
         </label>
         <div className="admin-email-change-actions">
-          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("account-security")}>Cancel</button>
+          <button type="button" className="admin-email-cancel-btn" onClick={() => setSettingsSection("profile")}>Cancel</button>
           <button
             type="button"
             className="admin-email-continue-btn"
@@ -1085,13 +1056,13 @@ export default function AdminDashboard() {
             Settings
           </button>
           <span className="admin-settings-breadcrumb-separator">›</span>
-          <span>School Administrator Profile</span>
+          <span>Profile</span>
         </div>
 
         <div className="admin-settings-panel admin-profile-panel">
           <div className="admin-profile-header">
             <div>
-              <h1 className="admin-settings-subpage-title">School Administrator Profile</h1>
+              <h1 className="admin-settings-subpage-title">Edit Profile</h1>
               <p className="admin-settings-subpage-subtitle">Update your personal information and contact details.</p>
             </div>
           </div>
@@ -1160,7 +1131,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="admin-profile-footer">
-                  <button type="button" className="admin-profile-cancel-btn" onClick={() => setSettingsSection("overview")} disabled={adminProfileLoading || savingAdminProfile}>Cancel</button>
+                  <button type="button" className="admin-profile-cancel-btn" onClick={loadAdminProfile} disabled={adminProfileLoading || savingAdminProfile}>Cancel</button>
                   <button type="button" className="admin-profile-save-btn" onClick={handleSaveAdminProfile} disabled={adminProfileLoading || savingAdminProfile || !hasAdminProfileChanges}>
                     <FiCheck size={14} />
                     {savingAdminProfile ? "Saving..." : "Save Changes"}
@@ -1188,9 +1159,6 @@ export default function AdminDashboard() {
         school_name: schoolNameValue.trim(),
         school_type: schoolProfile?.school_type || "private",
         address: addressValue.trim(),
-        country: schoolProfile?.country || "",
-        state: schoolProfile?.state || "",
-        lga: schoolProfile?.lga || schoolProfile?.city || "",
         website: websiteValue.trim(),
         email: emailValue.trim(),
         phone: phoneValue.trim(),
@@ -1207,11 +1175,7 @@ export default function AdminDashboard() {
       setEmailValue(mergedProfile.email || account.email || emailValue);
       setPhoneValue(mergedProfile.phone || account.phone || phoneValue);
       setWebsiteValue(mergedProfile.website || websiteValue);
-      const updatedAddress = getSchoolAddress(mergedProfile) || addressValue;
-      if (updatedAddress) {
-        setAddressValue(updatedAddress);
-        setSchoolAddressInitialValue(updatedAddress);
-      }
+      setAddressValue(mergedProfile.address || addressValue);
       setSchoolLogoPreview(toAssetUrl(mergedProfile.logo_url || mergedProfile.school_logo || mergedProfile.logo || schoolLogoPreview));
       setSchoolLogoFile(null);
       const updatedLocation = getSchoolLocation(mergedProfile);
@@ -1268,8 +1232,7 @@ export default function AdminDashboard() {
       );
 
       if (matchedApplicant) {
-        const hydratedApplicant = await hydrateApplicantWithTeacherProfile(matchedApplicant);
-        setSelectedApplicant(hydratedApplicant);
+        setSelectedApplicant(matchedApplicant);
       }
     }
 
@@ -1360,31 +1323,10 @@ export default function AdminDashboard() {
   };
 
   const getSchoolLocation = (profile = {}) => [
-    profile.city || profile.lga || profile.city_name,
+    profile.city || profile.lga,
     profile.state,
     profile.country,
-  ].filter(Boolean).join(", ") || profile.location || profile.school_location || "";
-
-  const getSchoolAddress = (profile = {}) => [
-    profile.address || profile.school_address || profile.street_address,
-    profile.city || profile.lga || profile.city_name,
-    profile.state,
-    profile.country,
-  ].filter(Boolean).reduce((lines, value) => {
-    String(value)
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .forEach((line) => {
-        const normalizedLine = line.toLowerCase();
-        const alreadyIncluded = lines.some((existingLine) => {
-          const normalizedExisting = existingLine.toLowerCase();
-          return normalizedExisting === normalizedLine || normalizedExisting.includes(normalizedLine);
-        });
-        if (!alreadyIncluded) lines.push(line);
-      });
-    return lines;
-  }, []).join("\n") || profile.location || profile.school_location || "";
+  ].filter(Boolean).join(", ") || profile.location || "";
 
   const deduplicateJobs = (jobList = []) => {
     const seen = new Map();
@@ -1397,16 +1339,6 @@ export default function AdminDashboard() {
     });
     return Array.from(seen.values());
   };
-
-  const isFeaturedJob = (job = {}) => {
-    const value = job.is_featured ?? job.featured ?? job.isFeatured;
-    return value === true || value === 1 || value === "1" || String(value).toLowerCase() === "true";
-  };
-
-  const orderFeaturedJobsFirst = (jobList = []) => jobList
-    .map((job, index) => ({ job, index }))
-    .sort((first, second) => Number(isFeaturedJob(second.job)) - Number(isFeaturedJob(first.job)) || first.index - second.index)
-    .map(({ job }) => job);
 
   const saveSchoolJobDraft = () => {
     const draftId = publishingDraftId || editingJobId || `draft-${Date.now()}`;
@@ -1457,49 +1389,6 @@ export default function AdminDashboard() {
     showSnackbar("Draft discarded", "The job draft was removed successfully.");
   };
 
-  const discardSchoolJobForm = () => {
-    if (publishingDraftId) {
-      discardSchoolJobDraft();
-      return;
-    }
-
-    setJobForm(emptyJobForm);
-    setResponsibilityInput("");
-    setOtherRequirementInput("");
-    setEditingJobId(null);
-    setSelectedJob(null);
-    setSelectedApplicant(null);
-    setActiveTab(previousTab);
-  };
-
-  const formatRelativeNotificationTime = (value) => {
-    if (!value) return "Just now";
-
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "Just now";
-
-    const diffMs = Date.now() - date.getTime();
-    const diffMinutes = Math.max(0, Math.round(diffMs / 60000));
-
-    if (diffMinutes < 1) return "Just now";
-    if (diffMinutes < 60) return `${diffMinutes} minute${diffMinutes === 1 ? "" : "s"} ago`;
-
-    const diffHours = Math.round(diffMinutes / 60);
-    if (diffHours === 1) return "1 hour ago";
-    if (diffHours < 24) return `${diffHours} hours ago`;
-
-    const diffDays = Math.round(diffHours / 24);
-    if (diffDays === 1) return "Today";
-    if (diffDays === 2) return "2 days ago";
-    if (diffDays < 7) return `${diffDays} days ago`;
-
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
-
   const loadSchoolNotifications = async () => {
     try {
       const response = await featureService.getNotifications();
@@ -1524,7 +1413,9 @@ export default function AdminDashboard() {
           title: n.title || "Notification",
           unread: isNotificationUnread(n),
           description: n.message || n.description || "",
-          time: formatRelativeNotificationTime(n.created_at),
+          time: n.created_at
+            ? new Date(n.created_at).toLocaleDateString()
+            : "Recently",
         };
       });
 
@@ -1587,14 +1478,18 @@ export default function AdminDashboard() {
       const nextEmail = mergedProfile?.email || user?.email || "";
       const nextPhone = mergedProfile?.phone || user?.phone || "";
       const nextWebsite = mergedProfile?.website || user?.website || "";
-      const nextAddress = getSchoolAddress(mergedProfile);
+      const nextAddress = [
+        mergedProfile?.address,
+        mergedProfile?.city,
+        mergedProfile?.state,
+        mergedProfile?.country,
+      ].filter(Boolean).join("\n") || mergedProfile?.location || "";
 
       setSchoolNameValue(nextSchoolName);
       setEmailValue(nextEmail);
       setPhoneValue(nextPhone);
       setWebsiteValue(nextWebsite);
       setAddressValue(nextAddress);
-      setSchoolAddressInitialValue(nextAddress);
       setSchoolLogoPreview(toAssetUrl(mergedProfile?.logo_url || mergedProfile?.school_logo || mergedProfile?.logo || ""));
 
       if (locationFromProfile) {
@@ -1610,12 +1505,6 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => {
-    if (isSchool && activeTab === "settings" && settingsSection === "school-info") {
-      loadSchoolProfileForJobLocation();
-    }
-  }, [activeTab, isSchool, settingsSection]);
-
   const loadUsers = async () => {
     try {
       const response = await adminService.getTeachers();
@@ -1623,49 +1512,22 @@ export default function AdminDashboard() {
 
       const normalizedUsers = users
         .filter(Boolean)
-        .map((entry) => {
-          const subjects = normalizeMultiValueList(
-            entry?.subjects ||
-            entry?.subject_areas ||
-            entry?.teaching_subjects ||
-            entry?.skills ||
-            entry?.subject ||
-            []
-          );
-          const teachingLevels = normalizeMultiValueList(
-            entry?.teaching_levels ||
-            entry?.levels ||
-            entry?.grade_levels ||
-            entry?.teaching_level ||
-            entry?.level ||
-            entry?.profile?.teaching_levels ||
-            entry?.profile?.levels ||
-            entry?.profile?.teachingLevels ||
-            entry?.profile?.grade_levels ||
-            entry?.profile?.teaching_level ||
-            entry?.profile?.level ||
-            []
-          );
-
-          return {
-            ...entry,
-            role: String(entry?.role || "teacher").toLowerCase(),
-            full_name:
-              entry?.full_name ||
-              entry?.teacher_name ||
-              [entry?.first_name, entry?.last_name].filter(Boolean).join(" ") ||
-              entry?.name ||
-              "Teacher",
-            email: entry?.email || entry?.teacher_email || "",
-            phone: entry?.phone || entry?.teacher_phone || "",
-            subjects,
-            teaching_levels: teachingLevels,
-            subject: subjects.join(", ") || entry?.subject || entry?.role_title || entry?.specialization || "General",
-            location: entry?.location || entry?.state || entry?.city || "Nigeria",
-            experience: entry?.experience || entry?.experience_years || "Not specified",
-            availability: entry?.availability || "Available",
-          };
-        });
+        .map((entry) => ({
+          ...entry,
+          role: String(entry?.role || "teacher").toLowerCase(),
+          full_name:
+            entry?.full_name ||
+            entry?.teacher_name ||
+            [entry?.first_name, entry?.last_name].filter(Boolean).join(" ") ||
+            entry?.name ||
+            "Teacher",
+          email: entry?.email || entry?.teacher_email || "",
+          phone: entry?.phone || entry?.teacher_phone || "",
+          subject: entry?.subject || entry?.role_title || entry?.specialization || "General",
+          location: entry?.location || entry?.state || entry?.city || "Nigeria",
+          experience: entry?.experience || entry?.experience_years || "Not specified",
+          availability: entry?.availability || "Available",
+        }));
 
       setAllUsers(normalizedUsers);
     } catch (_err) {
@@ -2220,7 +2082,7 @@ export default function AdminDashboard() {
 
     return (
       <div className="school-overview">
-        <section className={`school-overview-hero ${schoolProfileCompletion >= 100 ? "school-overview-hero--single" : ""}`}>
+        <section className="school-overview-hero">
           <div className="school-welcome-panel">
             <h2>
               {schoolGreeting}, {user?.full_name || "School"}
@@ -2328,12 +2190,11 @@ export default function AdminDashboard() {
                   </span>
                   <button
                     type="button"
-                    onClick={async () => {
+                    onClick={() => {
                       const job = jobs.find((item) => String(item.job_id || item.id) === String(app.jobId));
                       if (!job) return;
                       setSelectedJob(job);
-                      const hydratedApplicant = await hydrateApplicantWithTeacherProfile(app);
-                      setSelectedApplicant(hydratedApplicant);
+                      setSelectedApplicant(app);
                       setApplicantFilter("All");
                       setApplicantPage(1);
                       setJobDetailView("applicants");
@@ -2436,103 +2297,97 @@ export default function AdminDashboard() {
     );
   };
 
-  const unreadNotificationCount = notificationItems.filter((item) => item.unread).length;
-
   const renderDesktopNotifications = () => {
-    const unreadCount = unreadNotificationCount;
-    const filteredSchoolNotifications = notificationItems.filter((item) => {
-      if (schoolNotificationFilter === "All") return true;
-      if (schoolNotificationFilter === "Unread") return item.unread;
-      if (schoolNotificationFilter === "Applicants") return item.tab === "applicants" || /applicant|application/i.test(item.label || item.title || "");
-      if (schoolNotificationFilter === "Jobs") return item.tab === "notifications" || /job|vacancy|application/i.test(item.label || item.title || "");
-      return true;
-    });
+    const unreadCount = notificationItems.filter((item) => item.unread).length;
 
     return (
-      <div className="school-notif-page">
-        <div className="school-notif-header">
+      <div className="school-desktop-notifications">
+        <div className="school-notifications-heading">
           <div>
-            <h1>Notifications</h1>
-            <p>Stay up to date with your applications, job opportunities, and account updates.</p>
+            <h2>Notifications</h2>
+            <p>
+              <strong>{unreadCount} UNREAD</strong>
+              <span>You have new updates.</span>
+            </p>
           </div>
-          <div className="school-notif-header-actions">
-            <span className="school-notif-unread-summary"><span /> {unreadCount} unread</span>
-            <button type="button" className="school-notif-mark-read" onClick={markAllNotificationsAsRead}>Mark all as read</button>
-          </div>
+          <button type="button" onClick={markAllNotificationsAsRead}>
+            <FiCheckCircle size={14} /> Mark all as read
+          </button>
         </div>
-
-        <div className="school-notif-filter-tabs">
-          {['All', 'Unread', 'Jobs', 'Applicants'].map((filter) => (
-            <button
-              key={filter}
-              type="button"
-              className={`school-notif-filter-btn ${schoolNotificationFilter === filter ? 'school-notif-filter-btn--active' : ''}`}
-              onClick={() => setSchoolNotificationFilter(filter)}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
-
-        <div className="school-notif-section-label">RECENT ACTIVITIES</div>
-
-        <div className="school-notif-list">
-          {filteredSchoolNotifications.length === 0 ? (
-            <div className="school-notif-empty">
-              <FiBell size={38} />
-              <p>No notifications in this category.</p>
-            </div>
-          ) : (
-            filteredSchoolNotifications.slice(0, visibleSchoolNotificationCount).map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.key}
-                  className={`school-notif-card ${item.unread ? 'school-notif-card--unread' : ''}`}
-                  onClick={() => handleNotificationItemClick(item)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      handleNotificationItemClick(item);
-                    }
-                  }}
-                >
-                  <div className="school-notif-card-icon">
-                    <div className="school-notif-icon-circle">
-                      <Icon size={18} />
-                    </div>
-                  </div>
-
-                  <div className="school-notif-card-body">
-                    <div className="school-notif-card-top">
-                      <h3>{item.title}</h3>
-                      <div className="school-notif-card-meta">
-                        <span className="school-notif-time">{item.time}</span>
-                        {item.unread && <span className="school-notif-new-badge">NEW</span>}
-                      </div>
-                    </div>
-                    <p className="school-notif-card-desc">{item.description || item.message || 'New update available.'}</p>
-                    <div className="school-notif-card-actions">
-                      <span className="school-notif-time-mobile"><FiClock size={12} /> {item.time}</span>
-                      <span className="school-notif-link">View details</span>
-                    </div>
-                  </div>
+        <div className="school-notifications-panel">
+          <h3>Today</h3>
+          {notificationItems.slice(0, Math.min(3, visibleSchoolNotificationCount)).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`school-notification-${item.type} ${item.accent ? `school-notification-${item.type}--${item.accent}` : ""
+                  } ${item.unread ? "is-unread" : ""}`}
+                onClick={() => handleNotificationItemClick(item)}
+              >
+                <span className="school-notification-icon">
+                  <Icon size={17} />
+                </span>
+                <div>
+                  <b>{item.label}</b>
+                  <strong>{item.title}</strong>
+                  {item.description && <p>{item.description}</p>}
                 </div>
-              );
-            })
+                <time>{item.time}</time>
+              </button>
+            );
+          })}
+          <h3>Yesterday</h3>
+          {notificationItems.slice(3, Math.min(5, visibleSchoolNotificationCount)).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`school-notification-${item.type} ${item.unread ? "is-unread" : ""}`}
+                onClick={() => handleNotificationItemClick(item)}
+              >
+                <span className="school-notification-icon">
+                  <Icon size={17} />
+                </span>
+                <div>
+                  <b>{item.label}</b>
+                  <strong>{item.title}</strong>
+                  {item.description && <p>{item.description}</p>}
+                </div>
+                <time>{item.time}</time>
+              </button>
+            );
+          })}
+          <h3>Earlier</h3>
+          {notificationItems.slice(5, visibleSchoolNotificationCount).map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                className={`school-notification-simple ${item.unread ? "is-unread" : ""}`}
+                onClick={() => handleNotificationItemClick(item)}
+              >
+                <span className="school-notification-icon">
+                  <Icon size={17} />
+                </span>
+                <div>
+                  <b>{item.label}</b>
+                  <strong>{item.title}</strong>
+                  {item.description && <p>{item.description}</p>}
+                </div>
+                <time>{item.time}</time>
+              </button>
+            );
+          })}
+          {notificationItems.length > visibleSchoolNotificationCount && (
+            <button type="button" className="school-load-more" onClick={() => setVisibleSchoolNotificationCount((count) => count + 10)}>
+              Load More <FiChevronDown size={13} />
+            </button>
           )}
         </div>
-
-        {filteredSchoolNotifications.length > visibleSchoolNotificationCount && (
-          <div className="school-notif-footer">
-            <p className="school-notif-count">Showing {Math.min(visibleSchoolNotificationCount, filteredSchoolNotifications.length)} of {filteredSchoolNotifications.length} notifications</p>
-            <button type="button" className="school-notif-load-more" onClick={() => setVisibleSchoolNotificationCount((count) => count + 10)}>
-              Load More
-            </button>
-          </div>
-        )}
       </div>
     );
   };
@@ -2617,8 +2472,8 @@ export default function AdminDashboard() {
               <option>SS1 – SS3 (Senior Secondary)</option>
               <option>JSS1 – JSS3 (Junior Secondary)</option>
               <option>Primary School</option>
-              {/* <option>Early Years</option>
-              <option>College / Tertiary</option> */}
+              <option>Early Years</option>
+              <option>College / Tertiary</option>
             </select>
           </label>
 
@@ -2821,13 +2676,15 @@ export default function AdminDashboard() {
         </section>
 
         <div className="school-job-form-actions">
-          <button
-            type="button"
-            className="school-job-discard"
-            onClick={discardSchoolJobForm}
-          >
-            Discard Draft
-          </button>
+          {publishingDraftId && (
+            <button
+              type="button"
+              className="school-job-discard"
+              onClick={() => discardSchoolJobDraft()}
+            >
+              Discard Draft
+            </button>
+          )}
           <button
             type="button"
             onClick={saveSchoolJobDraft}
@@ -2836,8 +2693,8 @@ export default function AdminDashboard() {
           </button>
           <button type="submit" disabled={submitting}>
             {submitting
-              ? "Publishing..."
-              : "Publish Job"}
+              ? (editingJobId ? "Updating..." : "Publishing...")
+              : (editingJobId ? "Update Job" : "Publish Job")}
           </button>
         </div>
       </form>
@@ -2906,11 +2763,9 @@ export default function AdminDashboard() {
   };
 
   const getFilteredSchoolJobs = () => {
-    const filteredJobs = jobFilter === "All Jobs"
-      ? jobs
-      : jobs.filter((job) => normalizeSchoolJobStatus(job.status) === normalizeSchoolJobStatus(jobFilter));
-
-    return orderFeaturedJobsFirst(filteredJobs);
+    if (jobFilter === "All Jobs") return jobs;
+    const selectedStatus = normalizeSchoolJobStatus(jobFilter);
+    return jobs.filter((job) => normalizeSchoolJobStatus(job.status) === selectedStatus);
   };
 
   const renderJobs = () => (
@@ -2951,27 +2806,9 @@ export default function AdminDashboard() {
       </div>
       <div className="school-job-list-panel">
         {jobs.length === 0 ? (
-          <div className="school-jobs-empty-state">
-            <div className="school-jobs-empty-state-icon">
-              <FiSearch size={18} />
-            </div>
-            <h3>No jobs published yet.</h3>
-            <p>Post a new role to start receiving applications.</p>
-            <button type="button" className="school-jobs-empty-state-btn" onClick={() => openJobForm("overview")}>
-              Post a Job
-            </button>
-          </div>
+          <p className="school-jobs-empty">No jobs published yet.</p>
         ) : getFilteredSchoolJobs().length === 0 ? (
-          <div className="school-jobs-empty-state">
-            <div className="school-jobs-empty-state-icon">
-              <FiSearch size={18} />
-            </div>
-            <h3>No jobs match this filter.</h3>
-            <p>Try changing the status filter to see more job listings.</p>
-            <button type="button" className="school-jobs-empty-state-btn" onClick={() => setJobFilter("All Jobs")}>
-              Reset filter
-            </button>
-          </div>
+          <p className="school-jobs-empty">No jobs match the selected filter.</p>
         ) : (
           getFilteredSchoolJobs()
             .slice(0, visibleSchoolJobCount)
@@ -3189,10 +3026,10 @@ export default function AdminDashboard() {
             })
         )}
         {getFilteredSchoolJobs().length > visibleSchoolJobCount && (
-          <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
-            Load More <FiChevronDown size={13} />
-          </button>
-        )}
+            <button type="button" className="school-load-more" onClick={() => setVisibleSchoolJobCount((count) => count + 10)}>
+              Load More <FiChevronDown size={13} />
+            </button>
+          )}
       </div>
 
     </div>
@@ -3202,48 +3039,12 @@ export default function AdminDashboard() {
     const toApplicantList = (value) => Array.isArray(value)
       ? value.filter(Boolean)
       : String(value || "").split(/[,;\n|]/).map((item) => item.trim()).filter(Boolean);
-    const applicantSubjects = normalizeMultiValueList(
-      applicant.subjects ||
-      applicant.subject_areas ||
-      applicant.teaching_subjects ||
-      applicant.skills ||
-      applicant.subject ||
-      []
-    );
-    const applicantTeachingLevels = normalizeMultiValueList(
-      applicant.teaching_levels ||
-      applicant.levels ||
-      applicant.teachingLevels ||
-      applicant.grade_levels ||
-      applicant.teaching_level ||
-      applicant.level ||
-      []
-    );
-    const applicantQualifications = normalizeMultiValueList(
-      applicant.qualifications ||
-      applicant.qualification ||
-      applicant.education ||
-      applicant.education_history ||
-      applicant.education_items ||
-      []
-    );
-    const applicantExperience = normalizeTeacherHistory(
-      applicant.teaching_experience ||
-      applicant.experience_items ||
-      applicant.experiences ||
-      applicant.work_experience ||
-      applicant.experience_history ||
-      []
-    );
-    const applicantEducation = normalizeTeacherHistory(
-      applicant.education_history ||
-      applicant.education_items ||
-      applicant.education ||
-      []
-    ).map((item) => ({
-      ...item,
-      period: item.period || [item.start_year, item.end_year].filter(Boolean).join(" - "),
-    }));
+    const applicantSubjects = toApplicantList(applicant.subjects || applicant.skills);
+    const applicantSkills = toApplicantList(applicant.skills || applicant.subjects);
+    const applicantQualifications = toApplicantList(applicant.qualifications || applicant.qualification || applicant.education);
+    const applicantExperience = Array.isArray(applicant.teaching_experience)
+      ? applicant.teaching_experience
+      : Array.isArray(applicant.work_experience) ? applicant.work_experience : [];
     const applicantId = applicant.application_id || applicant.id;
     const jobId = job.job_id || job.id;
     const applicantStatus = String(applicant.status || "").toLowerCase();
@@ -3258,240 +3059,50 @@ export default function AdminDashboard() {
     const coverLetter = String(applicant.cover_letter || "").trim();
     const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
 
-    if (applicant) {
-      const profileName = applicant.name || applicant.full_name || applicant.teacher_name || "Teacher";
-      const profileRole = applicant.role || applicant.role_title || job.title || "Teacher";
-      const profileLocation = applicant.location || applicant.city || applicant.residence || "Location not provided";
-      const profileExperience = applicant.experience || applicant.experience_years ? `${applicant.experience || applicant.experience_years} Years` : "Not provided";
-      const initials = profileName
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0])
-        .join("")
-        .toUpperCase() || "T";
-      const statusText = terminalStatusLabel || (applicantStatus === "shortlisted" ? "Shortlisted" : applicantStatus === "under review" || applicantStatus === "reviewed" ? "Under Review" : applicantStatus === "interviewing" ? "Interviewing" : "Pending");
-
-      return (
-        <div className="school-applicant-summary-page school-applicant-summary-page--teacher-preview">
-          <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
-
-          <div className="school-preview-hero">
-            <div className="school-preview-avatar" aria-label={profileName}>{initials}</div>
-
-            <div className="school-preview-hero-copy">
-              <div className="school-preview-name-row">
-                <h1>{profileName}</h1>
-              </div>
-
-              <p>{profileRole}</p>
-
-              <div className="school-preview-meta">
-                <span><FiMapPin size={15} />{profileLocation}</span>
-                <span><FiAward size={15} />{profileExperience}</span>
-              </div>
-            </div>
-
-            <div className="school-preview-actions">
-              {isTerminalStatus ? (
+    if (applicant) return (
+      <div className="school-applicant-summary-page school-applicant-summary-page--api">
+        <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
+        <div className="school-summary-container"><div className="school-summary-content">
+          <section className="school-summary-section school-summary-section--first">
+            {isTerminalStatus ? (
+              <div className="school-summary-actions">
                 <span className={`school-summary-status-pill ${isRejected ? 'school-summary-status-pill--rejected' : isHired ? 'school-summary-status-pill--hired' : isWithdrawn ? 'school-summary-status-pill--withdrawn' : 'school-summary-status-pill--closed'}`}>
                   {terminalStatusLabel}
                 </span>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="school-summary-shortlist-btn"
-                    disabled={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus}
-                    onClick={() => handleShortlistApplicant(applicant)}
-                    style={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
-                  >
-                    {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
-                  </button>
-                  <button
-                    type="button"
-                    className="school-summary-reject-btn"
-                    disabled={isRejected || isTerminalStatus}
-                    onClick={() => openRejectApplicantModal(jobId, applicantId)}
-                    style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
-                  >
-                    Reject Applicant
-                  </button>
-                </>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="school-summary-actions">
+                <button
+                  type="button"
+                  className="school-summary-shortlist-btn"
+                  disabled={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus}
+                  onClick={() => handleShortlistApplicant(applicant)}
+                  style={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
+                >
+                  {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
+                </button>
+                <button
+                  type="button"
+                  className="school-summary-reject-btn"
+                  disabled={isRejected || isTerminalStatus}
+                  onClick={() => openRejectApplicantModal(jobId, applicantId)}
+                  style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                >
+                  Reject Applicant
+                </button>
+              </div>
+            )}
+            <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
+          </section>
+          <div className="school-summary-grid-2col">
+            <section className="school-summary-section"><div className="school-summary-section-header"><FiBook className="school-summary-icon" /><h2>Teaching Subjects</h2></div>{applicantSubjects.length ? <div className="school-summary-tags">{applicantSubjects.map((subject, index) => <span key={`${subject}-${index}`} className="school-summary-tag">{subject}</span>)}</div> : <p className="school-summary-text">No subjects provided.</p>}</section>
+            <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
           </div>
-
-          <div className="school-preview-grid">
-            <section className="school-preview-panel school-preview-summary">
-              <h2><FiFileText /> Professional Summary</h2>
-              <p>{summary}</p>
-            </section>
-
-            <section className="school-preview-panel school-preview-subjects">
-              <h2><FiBook /> Subject Areas</h2>
-              <div className="school-preview-tags">
-                {applicantSubjects.length ? applicantSubjects.map((subject, index) => (
-                  <span key={`${subject}-${index}`}>{subject}</span>
-                )) : <em>Not provided</em>}
-              </div>
-
-              <h2 className="school-preview-levels-heading"><FiCheckCircle /> Teaching Levels</h2>
-              <div className="school-preview-levels">
-                {applicantTeachingLevels.length ? applicantTeachingLevels.map((level, index) => (
-                  <span key={`${level}-${index}`}>{level}</span>
-                )) : <em>Not provided</em>}
-              </div>
-            </section>
-
-            <section className="school-preview-panel school-preview-experience">
-              <h2><FiBriefcase /> Teaching Experience</h2>
-              {applicantExperience.length ? (
-                <div className="school-preview-list">
-                  {applicantExperience.map((experience, index) => (
-                    <article key={experience.id || `${experience.role}-${index}`} className="school-preview-list-item">
-                      <span>{experience.period || 'Period not provided'}</span>
-                      <strong>{experience.role || experience.title || 'Teaching role'}</strong>
-                      <p>{experience.school || experience.institution || 'School not provided'}</p>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p className="school-preview-empty">No teaching experience has been provided.</p>
-              )}
-            </section>
-
-            <div className="school-preview-side-stack">
-              <section className="school-preview-panel">
-                <h2><FiAward /> Education</h2>
-                {applicantEducation.length ? (
-                  <div className="school-preview-education-list">
-                    {applicantEducation.map((item, index) => (
-                      <article key={`${item.degree || 'education'}-${index}`} className="school-preview-education-item">
-                        <FiBook />
-                        <div>
-                          <strong>{item.degree || item.qualification || 'Qualification not provided'}</strong>
-                          <p>{item.institution || 'Institution not provided'}</p>
-                          <span>{item.period || 'Period not provided'}</span>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : applicantQualifications.length ? (
-                  <div className="school-preview-education-list">
-                    {applicantQualifications.map((qualification, index) => (
-                      <article key={`${qualification}-${index}`} className="school-preview-education-item">
-                        <FiBook />
-                        <div>
-                          <strong>{qualification}</strong>
-                          <p>{applicant.trcn_verified || applicant.trcn ? 'TRCN verified' : 'Qualification not provided'}</p>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="school-preview-empty">No education has been provided.</p>
-                )}
-
-                {(applicant.trcn_verified || applicant.trcn || applicant.trcn_number) && (
-                  <div className="school-preview-trcn" style={{ marginTop: 14 }}>
-                    <FiCheckCircle />
-                    <div>
-                      <strong>TRCN Verified Educator</strong>
-                      <p>{applicant.trcn_number ? `Registration No: ${applicant.trcn_number}` : 'Registration details available.'}</p>
-                    </div>
-                    <span>VERIFIED</span>
-                  </div>
-                )}
-              </section>
-
-              <section className="school-preview-panel">
-                <h2><FiFileText /> Documents</h2>
-
-                {cvUrl ? (
-                  <div className="school-preview-doc-actions">
-                    <button type="button" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload /> Download CV</button>
-                    <button type="button" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye /> View CV</button>
-                    {coverLetter && (
-                      <button type="button" onClick={() => setCoverLetterModal({ open: true, text: coverLetter })}><FiFileText /> View Cover Letter</button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="school-preview-doc-actions">
-                    {coverLetter && (
-                      <button type="button" onClick={() => setCoverLetterModal({ open: true, text: coverLetter })}><FiFileText /> View Cover Letter</button>
-                    )}
-                  </div>
-                )}
-
-                {additionalInfo ? (
-                  <div className="school-preview-education-item" style={{ marginTop: 14 }}>
-                    <FiInfo />
-                    <div>
-                      <strong>Additional information</strong>
-                      <p>{additionalInfo}</p>
-                    </div>
-                  </div>
-                ) : null}
-              </section>
-            </div>
-          </div>
-
-          {coverLetterModal.open && (
-            <div
-              style={{
-                position: 'fixed',
-                inset: 0,
-                background: 'rgba(15, 23, 42, 0.55)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 1000,
-                padding: '20px',
-              }}
-              onClick={() => setCoverLetterModal({ open: false, text: "" })}
-            >
-              <div
-                role="dialog"
-                aria-modal="true"
-                aria-label="Cover letter"
-                onClick={(event) => event.stopPropagation()}
-                style={{
-                  width: 'min(720px, 100%)',
-                  maxHeight: '80vh',
-                  overflow: 'auto',
-                  background: '#fff',
-                  borderRadius: '18px',
-                  boxShadow: '0 20px 60px rgba(15, 23, 42, 0.2)',
-                  padding: '28px 24px',
-                  color: '#172238',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '18px' }}>
-                  <h3 style={{ fontSize: '22px', margin: 0 }}>Cover letter</h3>
-                  <button
-                    type="button"
-                    onClick={() => setCoverLetterModal({ open: false, text: "" })}
-                    style={{
-                      border: '1px solid #dfe5e1',
-                      background: '#f5f7f6',
-                      borderRadius: '999px',
-                      width: '36px',
-                      height: '36px',
-                      cursor: 'pointer',
-                    }}
-                    aria-label="Close cover letter"
-                  >
-                    <FiX size={16} />
-                  </button>
-                </div>
-                <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.7, color: '#334155' }}>{coverLetterModal.text}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
+          <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
+          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <div className="school-summary-cover-letter"><FiFileText /><div><strong>Cover letter</strong><p>{coverLetter}</p></div></div> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
+        </div></div>
+      </div>
+    );
 
     return (
       <div className="school-applicant-summary-page">
@@ -3563,7 +3174,7 @@ export default function AdminDashboard() {
               <section className="school-summary-section">
                 <div className="school-summary-section-header">
                   <FiBook className="school-summary-icon" />
-                  <h2>Subject Areas</h2>
+                  <h2>Teaching Subjects</h2>
                 </div>
 
                 <div className="school-summary-tags">
@@ -3581,43 +3192,29 @@ export default function AdminDashboard() {
               <section className="school-summary-section">
                 <div className="school-summary-section-header">
                   <FiAward className="school-summary-icon" />
-                  <h2>Teaching Levels</h2>
-                </div>
-
-                <div className="school-summary-tags">
-                  {applicantTeachingLevels.length ? applicantTeachingLevels.map((level, idx) => (
-                    <span key={`level-${idx}`} className="school-summary-tag">
-                      {level}
-                    </span>
-                  )) : <em>Not provided</em>}
-                </div>
-
-                <div className="school-summary-section-header" style={{ marginTop: 20 }}>
-                  <FiCheckCircle className="school-summary-icon" />
                   <h2>Qualifications</h2>
                 </div>
 
                 <div className="school-summary-qualifications">
-                  {applicantQualifications.length ? applicantQualifications.map((qualification, idx) => (
-                    <div key={`qualification-${idx}`} className="school-summary-qualification">
-                      <strong>{qualification}</strong>
-                      <span className="school-summary-qual-year">
-                        {applicant.trcn_verified || applicant.trcn ? 'TRCN verified' : 'Qualification listed'}
-                      </span>
-                    </div>
-                  )) : (
-                    <div className="school-summary-qualification">
-                      <strong>Not provided</strong>
-                    </div>
-                  )}
+                  <div className="school-summary-qualification">
+                    <strong>B.Sc Mathematics</strong>
+                    <span className="school-summary-qual-year">
+                      UNILAG, 2011
+                    </span>
+                  </div>
 
-                  {(applicant.trcn_verified || applicant.trcn || applicant.trcn_number) && (
-                    <div className="school-summary-badge-wrapper">
-                      <span className="school-summary-badge">
-                        TRCN VERIFIED
-                      </span>
-                    </div>
-                  )}
+                  <div className="school-summary-qualification">
+                    <strong>M.Ed Educational Admin</strong>
+                    <span className="school-summary-qual-year">
+                      UI, 2015
+                    </span>
+                  </div>
+
+                  <div className="school-summary-badge-wrapper">
+                    <span className="school-summary-badge">
+                      TRCN VERIFIED
+                    </span>
+                  </div>
                 </div>
               </section>
 
@@ -3747,79 +3344,18 @@ export default function AdminDashboard() {
     return [];
   };
 
-  const normalizeTeacherHistory = (value) => {
-    if (Array.isArray(value)) return value;
-    if (typeof value !== "string") return [];
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (_err) {
-      return [];
-    }
-  };
-
   const renderTeacherProfileSummaryPage = (teacher = {}) => {
     const profileName = teacher.name || teacher.full_name || teacher.teacher_name || "Teacher";
-    const profileRole = teacher.role || teacher.title || "Teacher";
-    const initials = profileName
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase() || "T";
     const summary = teacher.summary || teacher.bio || teacher.about || "";
-    const subjectList = normalizeMultiValueList(
-      teacher.subjects ||
-      teacher.subject_areas ||
-      teacher.teaching_subjects ||
-      teacher.skills ||
-      teacher.subject ||
-      teacher.specialization ||
-      []
-    );
-    const teachingLevelList = normalizeMultiValueList(
-      teacher.teaching_levels ||
-      teacher.levels ||
-      teacher.teachingLevels ||
-      teacher.grade_levels ||
-      teacher.teaching_level ||
-      teacher.level ||
-      []
-    );
+    const subjectList = normalizeMultiValueList(teacher.subjects || teacher.subject || teacher.teaching_subjects || teacher.subjects_offered);
     const skillList = normalizeMultiValueList(teacher.skills || teacher.key_skills || teacher.skillset || teacher.specialties);
     const qualificationList = normalizeMultiValueList(teacher.qualifications || teacher.qualification || teacher.education || teacher.certifications);
-    const experienceList = normalizeTeacherHistory(
-      teacher.experience_items ||
-      teacher.teaching_experience ||
-      teacher.experiences ||
-      teacher.work_experience ||
-      teacher.experience_history ||
-      []
-    );
-    const educationList = normalizeTeacherHistory(
-      teacher.education_items ||
-      teacher.education_history ||
-      teacher.education ||
-      []
-    );
-    const displayedEducationList = educationList.length
-      ? educationList
-      : qualificationList.map((qualification) => ({ degree: qualification, institution: teacher.institution || "" }));
-    const displayedExperienceList = experienceList.length
-      ? experienceList
-      : teacher.experience_years
-        ? [{ role: teacher.role_title || "Teaching Experience", school: "", period: `${teacher.experience_years} years` }]
-        : [];
-    const profileLocation = teacher.location || teacher.city || teacher.residence || "Location not provided";
-    const experienceText = teacher.experience || teacher.experience_years ? `${teacher.experience || teacher.experience_years} Years` : "Not provided";
-    const trcnVerified = Boolean(teacher.trcn_verified || teacher.trcn_number || (teacher.trcn_status && teacher.trcn_status.toLowerCase() === "verified"));
-    const trcnLabel = trcnVerified ? "TRCN Verified" : "TRCN Not Verified";
+    const experienceText = teacher.experience || teacher.experience_years ? `${teacher.experience || teacher.experience_years} Years` : "";
     const cvUrl = toAssetUrl(teacher.cv_url || teacher.cvUrl || teacher.cv || "");
     const cvFileName = cvUrl ? cvUrl.split("/").pop() || "Teacher_CV.pdf" : "";
 
     return (
-      <div className="school-applicant-summary-page school-applicant-summary-page--teacher-preview">
+      <div className="school-applicant-summary-page">
         <button
           type="button"
           className="school-summary-back-btn"
@@ -3828,128 +3364,159 @@ export default function AdminDashboard() {
           <FiArrowLeft /> Back
         </button>
 
-        <div className="school-preview-hero">
-          <div className="school-preview-avatar" aria-label={profileName}>{initials}</div>
-
-          <div className="school-preview-hero-copy">
-            <div className="school-preview-name-row">
-              <h1>{profileName}</h1>
-              <span className={`school-preview-verified ${trcnVerified ? "" : "school-preview-verified--muted"}`}>
-                <FiCheckCircle size={12} />
-                {trcnLabel}
-              </span>
-            </div>
-
-            <p>{profileRole}</p>
-
-            <div className="school-preview-meta">
-              <span><FiMapPin size={15} />{profileLocation}</span>
-              <span><FiAward size={15} />{experienceText}</span>
-            </div>
-          </div>
-
-          <div className="school-preview-actions">
-            <button
-              type="button"
-              className="school-summary-shortlist-btn"
-              onClick={() => setIsTeacherInviteModalOpen(true)}
-            >
-              Invite
-            </button>
-            <button
-              type="button"
-              className="school-summary-reject-btn"
-              onClick={() => handleToggleSavedTeacher(teacher)}
-            >
-              {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save Teacher'}
-            </button>
-          </div>
-        </div>
-
-        <div className="school-preview-grid">
-          <section className="school-preview-panel school-preview-summary">
-            <h2><FiFileText /> Professional Summary</h2>
-            <p>{summary || "No professional summary has been provided."}</p>
-          </section>
-
-          <section className="school-preview-panel school-preview-subjects">
-            <h2><FiBook /> Subject Areas</h2>
-            <div className="school-preview-tags">
-              {subjectList.length ? subjectList.filter(Boolean).map((subject, idx) => (
-                <span key={`${subject}-${idx}`}>{subject}</span>
-              )) : <em>Not provided</em>}
-            </div>
-
-            <h2 className="school-preview-levels-heading"><FiCheckCircle /> Teaching Levels</h2>
-            <div className="school-preview-levels">
-              {teachingLevelList.length ? teachingLevelList.filter(Boolean).map((level, idx) => (
-                <span key={`${level}-${idx}`}>{level}</span>
-              )) : <em>Not provided</em>}
-            </div>
-          </section>
-
-          <section className="school-preview-panel school-preview-experience">
-            <h2><FiBriefcase /> Experience</h2>
-            {displayedExperienceList.length ? (
-              <div className="school-preview-list">
-                {displayedExperienceList.map((item, idx) => (
-                  <article key={`${item.role || 'experience'}-${idx}`} className="school-preview-list-item">
-                    <span>{item.period || "Period not provided"}</span>
-                    <strong>{item.role || item.title || "Role not provided"}</strong>
-                    <p>{item.school || item.institution || "School not provided"}</p>
-                  </article>
-                ))}
+        <div className="school-summary-container">
+          <div className="school-summary-content">
+            <section className="school-summary-section school-summary-section--first">
+              <div className="school-summary-actions">
+                <button
+                  type="button"
+                  className="school-summary-shortlist-btn"
+                  onClick={() => setIsTeacherInviteModalOpen(true)}
+                >
+                  Invite
+                </button>
+                <button
+                  type="button"
+                  className="school-summary-reject-btn"
+                  onClick={() => handleToggleSavedTeacher(teacher)}
+                >
+                  {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save Teacher'}
+                </button>
               </div>
-            ) : (
-              <p className="school-preview-empty">No teaching experience has been provided.</p>
-            )}
-          </section>
 
-          <div className="school-preview-side-stack">
-            <section className="school-preview-panel">
-              <h2><FiAward /> Education</h2>
-              {displayedEducationList.length ? (
-                <div className="school-preview-education-list">
-                  {displayedEducationList.map((item, idx) => (
-                    <article key={`${item.degree || 'education'}-${idx}`} className="school-preview-education-item">
-                      <FiBook />
-                      <div>
-                        <strong>{item.degree || item.qualification || "Qualification not provided"}</strong>
-                        <p>{item.institution || "Institution not provided"}</p>
-                        <span>{item.period || "Period not provided"}</span>
+              <div className="school-summary-summary-content">
+                <div className="school-summary-header-title">
+                  <FiFileText className="school-summary-icon" />
+                  <h2>Professional Summary</h2>
+                </div>
+
+                <p className="school-summary-text">
+                  {summary || `${profileName} has not added a professional summary yet.`}
+                </p>
+              </div>
+
+              <div className="school-summary-clearfix" />
+            </section>
+
+            <div className="school-summary-grid-2col">
+              <section className="school-summary-section">
+                <div className="school-summary-section-header">
+                  <FiBook className="school-summary-icon" />
+                  <h2>Teaching Subjects</h2>
+                </div>
+
+                {subjectList.length ? (
+                  <div className="school-summary-tags">
+                    {subjectList.filter(Boolean).map((subject, idx) => (
+                      <span key={`${subject}-${idx}`} className="school-summary-tag">
+                        {subject}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="school-summary-text">No subjects listed.</p>
+                )}
+              </section>
+
+              <section className="school-summary-section">
+                <div className="school-summary-section-header">
+                  <FiAward className="school-summary-icon" />
+                  <h2>Qualifications</h2>
+                </div>
+
+                {qualificationList.length ? (
+                  <div className="school-summary-qualifications">
+                    {qualificationList.filter(Boolean).slice(0, 3).map((qualification, idx) => (
+                      <div key={`${qualification}-${idx}`} className="school-summary-qualification">
+                        <strong>{qualification}</strong>
+                        <span className="school-summary-qual-year">{teacher.location || "Location not set"}</span>
                       </div>
-                    </article>
+                    ))}
+
+                    {teacher.trcn_verified || teacher.trcn ? (
+                      <div className="school-summary-badge-wrapper">
+                        <span className="school-summary-badge">{teacher.trcn_verified || teacher.trcn}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="school-summary-text">No qualifications listed.</p>
+                )}
+              </section>
+            </div>
+
+            <section className="school-summary-section">
+              <div className="school-summary-section-header">
+                <FiBriefcase className="school-summary-icon" />
+                <h2>Teaching Experience</h2>
+              </div>
+
+              {Array.isArray(teacher.experience_items) && teacher.experience_items.length ? (
+                <div className="school-summary-experience-timeline">
+                  {teacher.experience_items.map((item, idx) => (
+                    <div key={`${item.title || 'experience'}-${idx}`} className="school-summary-timeline-item">
+                      <div className="school-summary-timeline-bullet school-summary-timeline-bullet--active" />
+                      <div className="school-summary-job">
+                        <div className="school-summary-job-header">
+                          <div>
+                            <strong>{item.title || "Teacher"}</strong>
+                            <p className="school-summary-job-school">{item.school || "School not set"}</p>
+                          </div>
+                          <span className="school-summary-date school-summary-date--current">
+                            {item.period || experienceText || "Not provided"}
+                          </span>
+                        </div>
+                        <p className="school-summary-job-desc">{item.description || summary || "No experience details provided."}</p>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (
-                <p className="school-preview-empty">No education has been provided.</p>
+                <p className="school-summary-text">
+                  {experienceText ? `Experience: ${experienceText}` : "No teaching experience added yet."}
+                </p>
               )}
             </section>
 
-            <section className="school-preview-panel">
-              <h2><FiShield /> Certification &amp; Documents</h2>
-
-              <div className="school-preview-trcn">
-                <FiCheckCircle />
-                <div>
-                  <strong>{teacher.trcn_number ? "TRCN Registered Educator" : "TRCN certification not provided"}</strong>
-                  <p>{teacher.trcn_number ? `Registration No: ${teacher.trcn_number}` : "No registration number available."}</p>
+            <div className="school-summary-bottom-row">
+              <section className="school-summary-section school-summary-section--skills">
+                <div className="school-summary-section-header">
+                  <h2>Key Skills</h2>
                 </div>
-                <span className={trcnVerified ? "" : "school-preview-status--muted"}>{trcnVerified ? "VERIFIED" : "NOT VERIFIED"}</span>
-              </div>
+
+                {skillList.length ? (
+                  <div className="school-summary-skills">
+                    {skillList.filter(Boolean).map((skill, idx) => (
+                      <span key={`${skill}-${idx}`} className="school-summary-skill-tag">
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="school-summary-text">No skills listed.</p>
+                )}
+              </section>
 
               {cvUrl ? (
-                <div className="school-preview-doc-actions">
-                  <button type="button" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiDownload /> Download CV</button>
-                  <button type="button" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiEye /> View CV</button>
+                <div className="school-summary-documents">
+                  <div className="school-summary-document">
+                    <div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf">
+                      <span>PDF</span>
+                    </div>
+                    <div className="school-summary-doc-info">
+                      <p className="school-summary-doc-name">{cvFileName}</p>
+                      <p className="school-summary-doc-size">CV uploaded</p>
+                    </div>
+                    <div className="school-summary-doc-actions">
+                      <button type="button" title="View" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiEye size={18} /></button>
+                      <button type="button" title="Download" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiDownload size={18} /></button>
+                    </div>
+                  </div>
                 </div>
-              ) : (
-                <p className="school-preview-empty">No CV has been uploaded.</p>
-              )}
-            </section>
+              ) : null}
+            </div>
           </div>
         </div>
-
       </div>
     );
   };
@@ -4219,7 +3786,7 @@ export default function AdminDashboard() {
                   <button
                     type="button"
                     className="school-job-applicant-view-btn"
-                    onClick={() => handleViewApplicant(app)}
+                    onClick={() => setSelectedApplicant(app)}
                   >
                     View Application
                   </button>
@@ -4325,93 +3892,34 @@ export default function AdminDashboard() {
     try {
       const response = await adminService.getTeacherById(teacherId);
       const payload = response?.data?.data ?? response?.data ?? {};
-      const detail = Array.isArray(payload) ? payload[0] ?? teacher : payload;
-      const compatibilityDetail = payload?.teacher || payload?.teacher_profile || {};
-      const detailUser = payload?.user || detail?.user || {};
-      const detailProfile = payload?.profile || detail?.profile || {};
-      const fullDetail = { ...compatibilityDetail, ...detail, ...detailUser, ...detailProfile };
-      const firstNonEmptyList = (...values) => values
-        .map((value) => normalizeMultiValueList(value))
-        .find((items) => items.length) || [];
-      const subjectAreas = firstNonEmptyList(
-        fullDetail.subjects,
-        fullDetail.subject_areas,
-        fullDetail.teaching_subjects,
-        fullDetail.skills,
-        teacher?.subjects,
-        teacher?.subject_areas,
-        teacher?.teaching_subjects,
-        teacher?.subject,
-        teacher?.specialization
-      );
-      const teachingLevels = firstNonEmptyList(
-        fullDetail.teaching_levels,
-        fullDetail.levels,
-        fullDetail.teachingLevels,
-        fullDetail.grade_levels,
-        fullDetail.teaching_level,
-        teacher?.teaching_levels,
-        teacher?.levels,
-        teacher?.grade_levels,
-        teacher?.teaching_level,
-        teacher?.level
-      );
-      const educationHistory = normalizeTeacherHistory(
-        fullDetail.education_history ||
-        fullDetail.education_items ||
-        fullDetail.education ||
-        teacher?.education_history ||
-        teacher?.education_items ||
-        teacher?.education ||
-        []
-      );
-      const teachingExperience = normalizeTeacherHistory(
-        fullDetail.teaching_experience ||
-        fullDetail.experience_items ||
-        fullDetail.experiences ||
-        fullDetail.work_experience ||
-        fullDetail.experience_history ||
-        teacher?.teaching_experience ||
-        teacher?.experience_items ||
-        teacher?.experiences ||
-        teacher?.work_experience ||
-        teacher?.experience_history ||
-        []
-      );
+      const detail = Array.isArray(payload)
+        ? payload[0] ?? teacher
+        : payload?.teacher ?? payload?.profile ?? payload?.user ?? payload ?? teacher;
 
       const merged = {
         ...teacher,
-        ...fullDetail,
-        user_id: teacher?.user_id || fullDetail?.user_id || fullDetail?.teacher_user_id,
+        ...detail,
+        ...(detail?.user || {}),
+        ...(detail?.profile || {}),
         name:
           teacher?.name ||
-          fullDetail?.full_name ||
-          fullDetail?.teacher_name ||
+          detail?.full_name ||
+          detail?.teacher_name ||
+          detail?.user?.full_name ||
           "Teacher",
         full_name:
           teacher?.full_name ||
-          fullDetail?.full_name ||
-          fullDetail?.teacher_name ||
+          detail?.full_name ||
+          detail?.teacher_name ||
+          detail?.user?.full_name ||
           teacher?.name ||
           "Teacher",
-        subjects: subjectAreas,
-        subject: normalizeMultiValueList(subjectAreas).join(", ") || teacher?.subject || fullDetail?.subject || fullDetail?.role_title || "",
-        teaching_levels: teachingLevels,
-        skills: teacher?.skills || fullDetail?.skills || fullDetail?.key_skills || fullDetail?.skillset || [],
-        education_history: educationHistory,
-        teaching_experience: teachingExperience,
-        education_items: normalizeTeacherHistory(educationHistory).map((item) => ({
-          ...item,
-          period: item.period || [item.start_year, item.end_year].filter(Boolean).join(" - "),
-        })),
-        experience_items: normalizeTeacherHistory(teachingExperience).map((item) => ({
-          ...item,
-          period: item.period || [item.start_date, item.end_date].filter(Boolean).join(" - "),
-        })),
-        summary: teacher?.summary || fullDetail?.bio || fullDetail?.about || "",
-        experience: teacher?.experience || fullDetail?.experience || fullDetail?.experience_years || "",
-        location: teacher?.location || fullDetail?.location || fullDetail?.state || "",
-        cv_url: teacher?.cv_url || fullDetail?.cv_url || fullDetail?.cv || "",
+        subject: teacher?.subject || detail?.subject || detail?.role_title || "",
+        skills: teacher?.skills || detail?.skills || detail?.profile?.skills || detail?.key_skills || detail?.skillset || [],
+        summary: teacher?.summary || detail?.bio || detail?.about || detail?.profile?.bio || "",
+        experience: teacher?.experience || detail?.experience || detail?.experience_years || "",
+        location: teacher?.location || detail?.location || detail?.state || "",
+        cv_url: teacher?.cv_url || detail?.cv_url || detail?.profile?.cv_url || detail?.cv || "",
       };
 
       setSelectedTeacherProfile(merged);
@@ -4421,115 +3929,8 @@ export default function AdminDashboard() {
     }
   };
 
-  const hydrateApplicantWithTeacherProfile = async (applicant = {}) => {
-    const teacherId = applicant?.teacher_user_id || applicant?.teacherId || applicant?.teacher_id || applicant?.user_id || applicant?.teacher?.user_id || applicant?.teacher_userid;
-    if (!teacherId) return applicant;
-
-    try {
-      const response = await adminService.getTeacherById(teacherId);
-      const payload = response?.data?.data ?? response?.data ?? {};
-      const detail = Array.isArray(payload) ? payload[0] ?? applicant : payload;
-      const compatibilityDetail = payload?.teacher || payload?.teacher_profile || {};
-      const detailUser = payload?.user || detail?.user || {};
-      const detailProfile = payload?.profile || detail?.profile || {};
-      const fullDetail = { ...compatibilityDetail, ...detail, ...detailUser, ...detailProfile };
-      const firstNonEmptyList = (...values) => values
-        .map((value) => normalizeMultiValueList(value))
-        .find((items) => items.length) || [];
-      const subjectAreas = firstNonEmptyList(
-        fullDetail.subjects,
-        fullDetail.subject_areas,
-        fullDetail.teaching_subjects,
-        fullDetail.skills,
-        applicant?.subjects,
-        applicant?.subject_areas,
-        applicant?.teaching_subjects,
-        applicant?.subject,
-        applicant?.specialization,
-        applicant?.skills
-      );
-      const teachingLevels = firstNonEmptyList(
-        fullDetail.teaching_levels,
-        fullDetail.levels,
-        fullDetail.teachingLevels,
-        fullDetail.grade_levels,
-        fullDetail.teaching_level,
-        applicant?.teaching_levels,
-        applicant?.levels,
-        applicant?.grade_levels,
-        applicant?.teaching_level,
-        applicant?.level
-      );
-      const educationHistory = normalizeTeacherHistory(
-        fullDetail.education_history ||
-        fullDetail.education_items ||
-        fullDetail.education ||
-        applicant?.education_history ||
-        applicant?.education_items ||
-        applicant?.education ||
-        []
-      );
-      const teachingExperience = normalizeTeacherHistory(
-        fullDetail.teaching_experience ||
-        fullDetail.experience_items ||
-        fullDetail.experiences ||
-        fullDetail.work_experience ||
-        fullDetail.experience_history ||
-        applicant?.teaching_experience ||
-        applicant?.experience_items ||
-        applicant?.experiences ||
-        applicant?.work_experience ||
-        applicant?.experience_history ||
-        []
-      );
-
-      return {
-        ...applicant,
-        ...fullDetail,
-        name: applicant?.name || applicant?.teacher_name || fullDetail?.full_name || fullDetail?.teacher_name || "Teacher",
-        full_name: applicant?.full_name || fullDetail?.full_name || fullDetail?.teacher_name || applicant?.name || "Teacher",
-        role: applicant?.role || applicant?.role_title || fullDetail?.role_title || "Teacher",
-        role_title: applicant?.role_title || fullDetail?.role_title || applicant?.role || "Teacher",
-        subjects: subjectAreas,
-        subject: normalizeMultiValueList(subjectAreas).join(", ") || applicant?.subject || fullDetail?.subject || fullDetail?.role_title || "",
-        teaching_levels: teachingLevels,
-        skills: applicant?.skills || fullDetail?.skills || fullDetail?.key_skills || fullDetail?.skillset || [],
-        education_history: educationHistory,
-        teaching_experience: teachingExperience,
-        education_items: normalizeTeacherHistory(educationHistory).map((item) => ({
-          ...item,
-          period: item.period || [item.start_year, item.end_year].filter(Boolean).join(" - "),
-        })),
-        experience_items: normalizeTeacherHistory(teachingExperience).map((item) => ({
-          ...item,
-          period: item.period || [item.start_date, item.end_date].filter(Boolean).join(" - "),
-        })),
-        summary: applicant?.summary || fullDetail?.bio || fullDetail?.about || "",
-        experience: applicant?.experience || fullDetail?.experience || fullDetail?.experience_years || "",
-        location: applicant?.location || fullDetail?.location || fullDetail?.state || "",
-        cv_url: applicant?.cv_url || fullDetail?.cv_url || fullDetail?.cv || "",
-        qualification: applicant?.qualification || fullDetail?.qualification || fullDetail?.education || "",
-        qualifications: applicant?.qualifications || fullDetail?.qualifications || fullDetail?.qualification || fullDetail?.education || [],
-      };
-    } catch (_err) {
-      return applicant;
-    }
-  };
-
-  const handleViewApplicant = async (applicant = {}) => {
-    const hydratedApplicant = await hydrateApplicantWithTeacherProfile(applicant);
-    setSelectedApplicant(hydratedApplicant);
-  };
-
-  const handleOpenApplicantReview = async (applicant = {}) => {
-    const hydratedApplicant = await hydrateApplicantWithTeacherProfile(applicant);
-    setSelectedApplicant(hydratedApplicant);
-  };
-
   const handleSendTeacherInvite = async () => {
-    const teacherId = selectedTeacherProfile?.user_id
-      || selectedTeacherProfile?.teacher_user_id
-      || selectedTeacherProfile?.teacher_id;
+    const teacherId = selectedTeacherProfile?.user_id;
     const message = teacherInviteMessage.trim();
 
     if (!teacherId) {
@@ -5237,6 +4638,7 @@ export default function AdminDashboard() {
     setTeacherLocationMenuOpen(false);
     setTeacherExperienceMenuOpen(false);
     setTeacherSubjectMenuOpen(false);
+    setTeacherTrcnMenuOpen(false);
   };
 
   const renderApplicants = () => {
@@ -5244,48 +4646,27 @@ export default function AdminDashboard() {
 
     const teacherUsers = (allUsers || [])
       .filter((userEntry) => String(userEntry?.role || "").toLowerCase() === "teacher")
-      .map((userEntry, index) => {
-        const canonicalSubjects = normalizeMultiValueList(
-          userEntry?.subjects ||
-          userEntry?.subject_areas ||
-          userEntry?.teaching_subjects ||
-          userEntry?.skills ||
-          userEntry?.subject ||
-          []
-        );
-        const canonicalTeachingLevels = normalizeMultiValueList(
-          userEntry?.teaching_levels ||
-          userEntry?.levels ||
-          userEntry?.grade_levels ||
-          userEntry?.teaching_level ||
-          userEntry?.level ||
-          []
-        );
-
-        return {
-          user_id: userEntry?.user_id || "",
-          name: userEntry?.full_name || userEntry?.email || `Teacher ${index + 1}`,
-          role: userEntry?.role_title || userEntry?.subject || "Teacher",
-          location: userEntry?.location || userEntry?.state || "Nigeria",
-          experience: userEntry?.experience || userEntry?.experience_years || "Not specified",
-          subject: canonicalSubjects.join(", ") || userEntry?.subject || userEntry?.role_title || "General",
-          subjects: canonicalSubjects,
-          teaching_levels: canonicalTeachingLevels,
-          availability: userEntry?.availability || "Available",
-          trcnStatus: userEntry?.trcn_status || (userEntry?.trcn_verified || userEntry?.verified ? "Verified" : "Not verified"),
-          summary:
-            userEntry?.bio ||
-            userEntry?.about ||
-            `${userEntry?.full_name || "Teacher"} is available for teaching opportunities.`,
-          accent: accentColors[index % accentColors.length],
-          email: userEntry?.email || "",
-          phone: userEntry?.phone || "",
-          cv_url: userEntry?.cv_url || "",
-          status: userEntry?.status || "active",
-          application_id: userEntry?.user_id || `teacher-${index}`,
-          teacher_id: userEntry?.user_id || "",
-        };
-      });
+      .map((userEntry, index) => ({
+        user_id: userEntry?.user_id || "",
+        name: userEntry?.full_name || userEntry?.email || `Teacher ${index + 1}`,
+        role: userEntry?.role_title || userEntry?.subject || "Teacher",
+        location: userEntry?.location || userEntry?.state || "Nigeria",
+        experience: userEntry?.experience || userEntry?.experience_years || "Not specified",
+        subject: userEntry?.subject || userEntry?.role_title || "General",
+        availability: userEntry?.availability || "Available",
+        trcnStatus: userEntry?.trcn_status || (userEntry?.trcn_verified || userEntry?.verified ? "Verified" : "Not verified"),
+        summary:
+          userEntry?.bio ||
+          userEntry?.about ||
+          `${userEntry?.full_name || "Teacher"} is available for teaching opportunities.`,
+        accent: accentColors[index % accentColors.length],
+        email: userEntry?.email || "",
+        phone: userEntry?.phone || "",
+        cv_url: userEntry?.cv_url || "",
+        status: userEntry?.status || "active",
+        application_id: userEntry?.user_id || `teacher-${index}`,
+        teacher_id: userEntry?.user_id || "",
+      }));
 
     const seenTeachers = new Set();
     const teachers = teacherUsers.length
@@ -5339,10 +4720,13 @@ export default function AdminDashboard() {
       "Subject",
       ...new Set(teachers.map((t) => t.subject).filter((s) => s !== "General")),
     ];
+    const trcnOptions = ["TRCN", "Verified", "Not verified"];
+
     const teacherOptions = {
       locations: uniqueLocations,
       experiences: uniqueExperiences,
       subjects: uniqueSubjects,
+      trcnStatuses: trcnOptions,
     };
 
     const filteredTeachers = teachers.filter((teacher) => {
@@ -5367,7 +4751,9 @@ export default function AdminDashboard() {
         teacherExperience === "Experience" || teacher.experience === teacherExperience;
       const matchesSubject =
         teacherSubject === "Subject" || teacher.subject === teacherSubject;
-      return matchesQuery && matchesLocation && matchesExperience && matchesSubject;
+      const matchesTrcn = teacherTrcn === "TRCN" || teacher.trcnStatus === teacherTrcn;
+
+      return matchesQuery && matchesLocation && matchesExperience && matchesSubject && matchesTrcn;
     });
 
     const sortedTeachers = [...filteredTeachers].sort((teacherA, teacherB) => {
@@ -5456,7 +4842,7 @@ export default function AdminDashboard() {
                 </button>
               </div>
 
-              {/* <div className="school-teachers-compact-toolbar">
+              <div className="school-teachers-compact-toolbar">
                 <div className="school-teachers-toolbar-left">
                   <div className="school-teachers-filter-menu-anchor" ref={teacherFilterMenuRef}>
                     <button
@@ -5465,7 +4851,7 @@ export default function AdminDashboard() {
                       onClick={() => setTeacherFilterMenuOpen((prev) => !prev)}
                     >
                       <FiFilter size={14} />
-                      Filters • {Number(teacherSubject !== "Subject") + Number(teacherLocation !== "All Locations") + Number(teacherExperience !== "Experience")}
+                      Filters • {Number(teacherSubject !== "Subject") + Number(teacherLocation !== "All Locations") + Number(teacherExperience !== "Experience") + Number(teacherTrcn !== "TRCN")}
                     </button>
 
                     {teacherFilterMenuOpen && (
@@ -5491,6 +4877,13 @@ export default function AdminDashboard() {
                             onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "Experience" ? null : "Experience"))}
                           >
                             Experience
+                          </button>
+                          <button
+                            type="button"
+                            className={`school-teachers-menu-group-title ${teacherActiveFilterGroup === "TRCN" ? "is-active" : ""}`}
+                            onClick={() => setTeacherActiveFilterGroup((prev) => (prev === "TRCN" ? null : "TRCN"))}
+                          >
+                            TRCN
                           </button>
                         </div>
 
@@ -5540,6 +4933,21 @@ export default function AdminDashboard() {
                                 {experience}
                               </button>
                             ))}
+
+                            {teacherActiveFilterGroup === "TRCN" && teacherOptions.trcnStatuses.map((status) => (
+                              <button
+                                key={status}
+                                type="button"
+                                className="school-teachers-menu-item"
+                                onClick={() => {
+                                  setTeacherTrcn(status);
+                                  setTeacherFilterMenuOpen(false);
+                                  setTeacherActiveFilterGroup(null);
+                                }}
+                              >
+                                {status}
+                              </button>
+                            ))}
                           </div>
                         )}
                       </div>
@@ -5574,11 +4982,21 @@ export default function AdminDashboard() {
                         Experience:<strong>{teacherExperience}</strong>
                       </button>
                     )}
-                    {(teacherSubject !== "Subject" || teacherLocation !== "All Locations" || teacherExperience !== "Experience") && (
+                    {teacherTrcn !== "TRCN" && (
+                      <button
+                        type="button"
+                        className="school-teachers-filter-chip"
+                        onClick={() => setTeacherFilterMenuOpen(true)}
+                      >
+                        TRCN:<strong>{teacherTrcn}</strong>
+                      </button>
+                    )}
+                    {(teacherSubject !== "Subject" || teacherLocation !== "All Locations" || teacherExperience !== "Experience" || teacherTrcn !== "TRCN") && (
                       <button type="button" className="school-teachers-reset-all" onClick={() => {
                         setTeacherSubject("Subject");
                         setTeacherLocation("All Locations");
                         setTeacherExperience("Experience");
+                        setTeacherTrcn("TRCN");
                         setTeacherSearch("");
                         setTeacherSearchSubmitted("");
                         setTeacherFilterMenuOpen(false);
@@ -5591,8 +5009,35 @@ export default function AdminDashboard() {
 
                 <div className="school-teachers-toolbar-right">
                   <span>Showing 1–6 of {selectedTeacherTabTeachers.length} available teachers</span>
+                  <span className="school-teachers-divider">|</span>
+                  <div className="school-teachers-sort-wrapper">
+                    <button
+                      type="button"
+                      className="school-teachers-sort-button"
+                      onClick={() => setTeacherSortMenuOpen((prev) => !prev)}
+                    >
+                      Sort by: <strong>{teacherSortMode}</strong> <FiChevronDown size={12} />
+                    </button>
+                    {teacherSortMenuOpen && (
+                      <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
+                        {['Best Match', 'Most experienced', 'Newest'].map((sortValue) => (
+                          <button
+                            key={sortValue}
+                            type="button"
+                            className="school-teachers-menu-item"
+                            onClick={() => {
+                              setTeacherSortMode(sortValue);
+                              setTeacherSortMenuOpen(false);
+                            }}
+                          >
+                            {sortValue}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div> */}
+              </div>
             </form>
 
             <div className="school-teachers-toggle-row" role="tablist" aria-label="Teacher views">
@@ -5620,32 +5065,9 @@ export default function AdminDashboard() {
 
             <div className="school-teachers-header-row">
               <h2>{selectedTeacherTabTeachers.length} Teachers Found</h2>
-              <div className="school-teachers-sort-wrapper">
-                <button
-                  type="button"
-                  className="school-teachers-sort-btn"
-                  onClick={() => setTeacherSortMenuOpen((prev) => !prev)}
-                >
-                  Sort by: {teacherSortMode} <FiChevronDown size={15} />
-                </button>
-                {teacherSortMenuOpen && (
-                  <div className="school-teachers-menu school-teachers-menu--compact" role="menu">
-                    {['Best Match', 'Most experienced', 'Newest'].map((sortValue) => (
-                      <button
-                        key={sortValue}
-                        type="button"
-                        className="school-teachers-menu-item"
-                        onClick={() => {
-                          setTeacherSortMode(sortValue);
-                          setTeacherSortMenuOpen(false);
-                        }}
-                      >
-                        {sortValue}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <button type="button" className="school-teachers-sort-btn">
+                Sort by: Relevance <FiChevronDown size={15} />
+              </button>
             </div>
 
             <div className="school-teachers-list">
@@ -5737,37 +5159,11 @@ export default function AdminDashboard() {
 
             {selectedTeacherTabTeachers.length === 0 && (
               <div className="school-teachers-empty-state">
-                <div className="school-teachers-empty-state-icon">
-                  <FiSearch size={18} />
-                </div>
-                <h3>
-                  {teacherTab === "saved"
-                    ? "No saved teachers yet."
-                    : allApplicants.length === 0
-                      ? "No teacher applications yet."
-                      : "No teachers match this filter."}
-                </h3>
-                <p>
-                  {teacherTab === "saved"
-                    ? "Save a teacher to keep them here for quick access."
-                    : allApplicants.length === 0
-                      ? "Post a job to start receiving teacher applications."
-                      : "Try changing the search or filters to find more teachers."}
-                </p>
-                <button
-                  type="button"
-                  className="school-teachers-empty-state-btn"
-                  onClick={() => {
-                    setTeacherSubject("Subject");
-                    setTeacherLocation("All Locations");
-                    setTeacherExperience("Experience");
-                    setTeacherSearch("");
-                    setTeacherSearchSubmitted("");
-                    setTeacherFilterMenuOpen(false);
-                  }}
-                >
-                  Reset filters
-                </button>
+                {teacherTab === "saved"
+                  ? "No saved teachers yet. Save a teacher to view them here."
+                  : allApplicants.length === 0
+                    ? "No teachers have applied to your jobs yet. Post a job to start receiving applications."
+                    : "No teachers match your current search and filter selection."}
               </div>
             )}
 
@@ -5838,20 +5234,16 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => handleTabChange("notifications")}
                 className="admin-topbar-notifications"
-                aria-label={`Notifications ${unreadNotificationCount} unread`}
+                aria-label="Notifications"
               >
                 <FiBell size={18} />
-                {unreadNotificationCount > 0 && (
-                  <span className="admin-topbar-notification-badge">
-                    {unreadNotificationCount > 9 ? '9+' : unreadNotificationCount}
-                  </span>
-                )}
+                {notificationItems.some((item) => item.unread) && <span />}
               </button>
               <div className="admin-topbar-divider" />
               <div className="admin-topbar-user">
-                <strong>{schoolDisplayName}</strong>
+                <strong>{user?.admin_name || "Admin User"}</strong>
                 <span>
-                  {user?.full_name || user?.admin_name || "School admin"}
+                  {user?.school_name || user?.full_name || "School"}
                 </span>
               </div>
               <div
@@ -5881,25 +5273,15 @@ export default function AdminDashboard() {
               )}
             </div>
             <BrandLogo />
-            <div className="admin-mobile-header-actions">
-              <button
-                type="button"
-                onClick={() => handleTabChange("notifications")}
-                className="admin-mobile-bell"
-                aria-label="Notifications"
-              >
-                <FiBell size={20} />
-                {notificationItems.some((item) => item.unread) && <span />}
-              </button>
-              <button
-                type="button"
-                onClick={logout}
-                className="admin-mobile-logout"
-                aria-label="Log out"
-              >
-                <FiLogOut size={18} />
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => handleTabChange("notifications")}
+              className="admin-mobile-bell"
+              aria-label="Notifications"
+            >
+              <FiBell size={20} />
+              {notificationItems.some((item) => item.unread) && <span />}
+            </button>
           </header>
 
           <main className="admin-dashboard-main w-full flex-1 px-4 py-6 md:px-8 md:py-8">
@@ -6003,7 +5385,7 @@ export default function AdminDashboard() {
                             </p>
                           ) : (
                             <div className="space-y-4">
-                              {orderFeaturedJobsFirst(jobs).map((job) => {
+                              {jobs.map((job) => {
                                 const jobId = job.job_id || job.id;
                                 const applicants = applicantsByJob[jobId] || [];
 
@@ -6176,6 +5558,103 @@ export default function AdminDashboard() {
                   {isSchool &&
                     activeTab === "notifications" &&
                     renderDesktopNotifications()}
+                  {activeTab === "notifications" && (
+                    <>
+                      <div className="admin-mobile-notification-header">
+                        <button
+                          type="button"
+                          onClick={() => handleTabChange("overview")}
+                          aria-label="Back to dashboard"
+                        >
+                          <FiArrowLeft size={22} />
+                        </button>
+                        <h2>Notifications</h2>
+                        <button
+                          type="button"
+                          className="admin-mobile-notification-mark-read"
+                          onClick={markAllNotificationsAsRead}
+                        >
+                          Mark all read
+                        </button>
+                      </div>
+                      <div className="admin-mobile-notifications-content">
+                        <div className="admin-mobile-notification-group">
+                          <h3>Today</h3>
+                          {notificationItems.slice(0, 3).map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                                onClick={() => handleNotificationItemClick(item)}
+                              >
+                                <span className="school-notification-icon">
+                                  <Icon size={16} />
+                                </span>
+                                <div>
+                                  <b>{item.label}</b>
+                                  <strong>{item.title}</strong>
+                                  {item.description && <p>{item.description}</p>}
+                                </div>
+                                <time>{item.time}</time>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="admin-mobile-notification-group">
+                          <h3>Yesterday</h3>
+                          {notificationItems.slice(3, 5).map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                                onClick={() => handleNotificationItemClick(item)}
+                              >
+                                <span className="school-notification-icon">
+                                  <Icon size={16} />
+                                </span>
+                                <div>
+                                  <b>{item.label}</b>
+                                  <strong>{item.title}</strong>
+                                  {item.description && <p>{item.description}</p>}
+                                </div>
+                                <time>{item.time}</time>
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                        <div className="admin-mobile-notification-group">
+                          <h3>Earlier</h3>
+                          {notificationItems.slice(5).map((item) => {
+                            const Icon = item.icon;
+                            return (
+                              <button
+                                key={item.key}
+                                type="button"
+                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                                onClick={() => handleNotificationItemClick(item)}
+                              >
+                                <span className="school-notification-icon">
+                                  <Icon size={16} />
+                                </span>
+                                <div>
+                                  <b>{item.label}</b>
+                                  <strong>{item.title}</strong>
+                                  {item.description && <p>{item.description}</p>}
+                                </div>
+                                <time>{item.time}</time>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   {activeTab === "settings" && (
                     settingsSection === "notifications-privacy" ? (
                       renderAdminNotificationsPrivacy()
@@ -6208,7 +5687,7 @@ export default function AdminDashboard() {
                           </p>
 
                           <div className="admin-security-grid">
-                            <div className="admin-security-card admin-security-card--password">
+                            <div className="admin-security-card">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiLock size={18} />
@@ -6216,7 +5695,13 @@ export default function AdminDashboard() {
                                 <h2>Password</h2>
                               </div>
 
-                              <span className="admin-security-last-updated">Last update: Managed securely</span>
+                              <div className="admin-security-password-box">
+                                <div className="admin-security-password-row">
+                                  <span className="admin-security-label">Current Password</span>
+                                  <span className="admin-security-label muted">Last changed: Oct 12, 2023</span>
+                                </div>
+                                <div className="admin-security-password-mask">••••••••••••••••</div>
+                              </div>
 
                               <button type="button" className="admin-security-action-btn" onClick={() => setSettingsSection("password-change")}>
                                 <FiLock size={14} />
@@ -6224,7 +5709,7 @@ export default function AdminDashboard() {
                               </button>
                             </div>
 
-                            <div className="admin-security-card admin-security-card--two-factor">
+                            <div className="admin-security-card">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiShield size={18} />
@@ -6248,12 +5733,12 @@ export default function AdminDashboard() {
                               </div>
                             </div>
 
-                            <div className="admin-security-card admin-security-card--email">
+                            <div className="admin-security-card">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiMail size={18} />
                                 </div>
-                                <h2>Email</h2>
+                                <h2>Recovery email</h2>
                               </div>
                               <p className="admin-security-card-copy">
                                 Update the email address used for account access and security notifications.
@@ -6264,7 +5749,7 @@ export default function AdminDashboard() {
                               </button>
                             </div>
 
-                            <div className="admin-security-card admin-security-card--phone">
+                            <div className="admin-security-card">
                               <div className="admin-security-card-header">
                                 <div className="admin-security-card-icon">
                                   <FiPhone size={18} />
@@ -6304,6 +5789,15 @@ export default function AdminDashboard() {
                                 Manage the core organizational details and public-facing contact information for your school.
                               </p>
                             </div>
+                            <button
+                              type="button"
+                              className="admin-school-save-btn"
+                              onClick={handleSaveSchoolProfile}
+                              disabled={savingSchoolProfile}
+                            >
+                              <FiCheck size={14} />
+                              {savingSchoolProfile ? "Saving..." : "Save Changes"}
+                            </button>
                           </div>
 
                           <div className="admin-school-info-layout">
@@ -6512,7 +6006,7 @@ export default function AdminDashboard() {
                                               className="admin-school-address-btn cancel"
                                               onClick={() => {
                                                 setIsAddressEditing(false);
-                                                setAddressValue(schoolAddressInitialValue);
+                                                setAddressValue("14 Adeola Okedun Street, Victoria Island\nLagos, Nigeria\nPostal: 101241");
                                               }}
                                             >
                                               Cancel
@@ -6560,18 +6054,6 @@ export default function AdminDashboard() {
                               </div>
                             </aside>
                           </div>
-
-                          <div className="admin-school-actions-row">
-                            <button
-                              type="button"
-                              className="admin-school-save-btn"
-                              onClick={handleSaveSchoolProfile}
-                              disabled={savingSchoolProfile}
-                            >
-                              <FiCheck size={14} />
-                              {savingSchoolProfile ? "Saving..." : "Save Changes"}
-                            </button>
-                          </div>
                         </div>
                       </div>
                     ) : (
@@ -6587,23 +6069,19 @@ export default function AdminDashboard() {
                         </p>
 
                         <section className="admin-settings-group">
-                          <button type="button" className={`admin-settings-card ${settingsSection === "school-info" ? "is-selected" : ""}`} onClick={() => setSettingsSection("school-info")}>
-                            <div className="admin-settings-card-icon gray">
-                              <FiBriefcase size={20} />
+                          <div className="admin-settings-section-head">
+                            <div className="admin-settings-section-icon green">
+                              <FiUser size={18} />
                             </div>
-                            <div className="admin-settings-card-copy">
-                              <h3>School Information</h3>
-                              <p>Configure institutional details, academic calendars, grading systems, and global contact information for external communications.</p>
-                            </div>
-                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
-                          </button>
+                            <span>Personal Settings</span>
+                          </div>
 
                           <button type="button" className={`admin-settings-card ${settingsSection === "profile" ? "is-selected" : ""}`} onClick={() => setSettingsSection("profile")}>
                             <div className="admin-settings-card-icon green">
                               <FiUser size={20} />
                             </div>
                             <div className="admin-settings-card-copy">
-                              <h3>School Administrator Profile</h3>
+                              <h3>Profile</h3>
                               <p>Update your administrator details, contact information, and professional credentials.</p>
                             </div>
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
@@ -6619,8 +6097,28 @@ export default function AdminDashboard() {
                             </div>
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
                           </button>
+                        </section>
 
-                          <button type="button" className={`admin-settings-card ${settingsSection === "notifications-privacy" ? "is-selected" : ""}`} onClick={() => setSettingsSection("notifications-privacy")} style={{ display: 'none' }}>
+                        <section className="admin-settings-group">
+                          <div className="admin-settings-section-head">
+                            <div className="admin-settings-section-icon gray">
+                              <FiHome size={18} />
+                            </div>
+                            <span>Institutional Settings</span>
+                          </div>
+
+                          <button type="button" className={`admin-settings-card ${settingsSection === "school-info" ? "is-selected" : ""}`} onClick={() => setSettingsSection("school-info")}>
+                            <div className="admin-settings-card-icon gray">
+                              <FiBriefcase size={20} />
+                            </div>
+                            <div className="admin-settings-card-copy">
+                              <h3>School Information</h3>
+                              <p>Configure institutional details, academic calendars, grading systems, and global contact information for external communications.</p>
+                            </div>
+                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
+                          </button>
+
+                          <button type="button" className={`admin-settings-card ${settingsSection === "notifications-privacy" ? "is-selected" : ""}`} onClick={() => setSettingsSection("notifications-privacy")}>
                             <div className="admin-settings-card-icon gray">
                               <FiBell size={20} />
                             </div>
@@ -6656,7 +6154,6 @@ export default function AdminDashboard() {
           </button>
         ))}
       </nav>
-      {isSchool && <FeedbackButton user={user} audience="School" />}
       {isTeacherInviteModalOpen && renderTeacherInviteModal()}
       {isRejectModalOpen && renderRejectModal()}
       {isShortlistModalOpen && renderShortlistModal()}
@@ -6690,6 +6187,16 @@ export default function AdminDashboard() {
               <time>{selectedNotification.time}</time>
             </div>
             <div className="admin-notification-modal-actions">
+              <button
+                type="button"
+                className="admin-notification-read-btn"
+                onClick={() => markSchoolNotificationAsRead(selectedNotification.key)}
+                disabled={!selectedNotification.unread || notificationActionLoading[selectedNotification.key] === "read"}
+              >
+                {notificationActionLoading[selectedNotification.key] === "read"
+                  ? "Marking as read..."
+                  : selectedNotification.unread ? "Mark as read" : "Read"}
+              </button>
               <button
                 type="button"
                 className="admin-notification-delete-btn"
@@ -6842,20 +6349,19 @@ export default function AdminDashboard() {
           padding: 10px 12px 10px 10px;
           border: 1px solid #dfe3df;
           border-radius: 12px;
-          background: #ffffff;
+          background: #f3f5f4;
           cursor: pointer;
           text-align: left;
-          transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
         }
         .admin-settings-card:hover {
-          border-color: #bfdcc8;
-          background: #ffffff;
-          box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
-          transform: translateY(-2px);
+          border-color: #ccd6d2;
+          box-shadow: 0 8px 18px rgba(19, 30, 28, 0.04);
+          transform: translateY(-1px);
         }
         .admin-settings-card.is-selected {
           border-color: #9cd1b7;
-          background: #f8fbf9;
+          background: #edf8f2;
           box-shadow: inset 0 0 0 1px rgba(28, 154, 99, 0.08), 0 8px 18px rgba(19, 30, 28, 0.04);
         }
         .admin-settings-card-icon {
@@ -7052,15 +6558,6 @@ export default function AdminDashboard() {
           color: #6d7672;
           font: inherit;
           cursor: pointer;
-          transition: color 0.15s ease, opacity 0.15s ease;
-        }
-        .admin-settings-back-link:hover {
-          color: #10b981;
-          opacity: 1;
-        }
-        .admin-settings-breadcrumb-row > span:last-of-type {
-          color: #1f2d2d;
-          font-weight: 600;
         }
         .admin-settings-breadcrumb-separator {
           color: #7d8a87;
@@ -7217,38 +6714,6 @@ export default function AdminDashboard() {
           background: #f4f5f4;
           color: #a6adaa;
           cursor: default;
-        }
-        @media (max-width: 640px) {
-          .admin-profile-card {
-            padding: 20px 16px 18px;
-          }
-          .admin-profile-header {
-            flex-direction: column;
-            align-items: flex-start;
-          }
-          .admin-profile-form-grid {
-            grid-template-columns: 1fr;
-            gap: 16px;
-          }
-          .admin-profile-input-action-row {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 8px;
-          }
-          .admin-profile-field input,
-          .admin-profile-input-action-row button {
-            width: 100%;
-          }
-          .admin-profile-input-action-row button {
-            min-width: 0;
-          }
-          .admin-profile-footer {
-            flex-direction: column-reverse;
-          }
-          .admin-profile-cancel-btn,
-          .admin-profile-save-btn {
-            width: 100%;
-          }
         }
         .admin-profile-loading {
           margin: 0;
@@ -7878,12 +7343,8 @@ export default function AdminDashboard() {
           padding: 18px 18px 16px;
           border: 1px solid #dfe3df;
           border-radius: 12px;
-          background: #ffffff;
+          background: #f4f5f4;
         }
-        .admin-security-card--password { order: 1; }
-        .admin-security-card--email { order: 2; }
-        .admin-security-card--phone { order: 3; }
-        .admin-security-card--two-factor { order: 4; }
         .admin-security-card-header {
           display: flex;
           align-items: center;
@@ -7953,19 +7414,6 @@ export default function AdminDashboard() {
           font-size: 14px;
           font-weight: 600;
           cursor: pointer;
-        }
-        .admin-security-action-btn:hover {
-          border-color: #1b9c63;
-          background: #eaf8ef;
-          color: #126b43;
-        }
-        .admin-security-card button:not(:disabled):hover {
-          filter: brightness(0.98);
-        }
-        .admin-security-last-updated {
-          color: #778680;
-          font-size: 13px;
-          font-weight: 500;
         }
         .admin-security-toggle {
           position: relative;
@@ -8044,11 +7492,6 @@ export default function AdminDashboard() {
         .admin-school-info-subtitle {
           max-width: 760px;
           margin-bottom: 0;
-        }
-        .admin-school-actions-row {
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 22px;
         }
         .admin-school-save-btn {
           display: inline-flex;
@@ -9429,52 +8872,6 @@ export default function AdminDashboard() {
         .school-jobs-toolbar-right { display: flex; align-items: center; gap: 28px; color: #718078; font-size: 11px; white-space: nowrap; }
         .school-jobs-toolbar-right button { display: inline-flex; align-items: center; gap: 7px; padding: 0; border: 0; background: transparent; color: #718078; font: inherit; font-size: 11px; cursor: pointer; }
         .school-job-list-panel { padding: 0 0 14px; background: transparent; }
-        .school-jobs-empty-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          padding: 32px 24px;
-          border: 1px dashed #d9e3db;
-          border-radius: 18px;
-          background: #f8fbf9;
-          text-align: center;
-        }
-        .school-jobs-empty-state-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 46px;
-          height: 46px;
-          border-radius: 50%;
-          background: #eaf7ee;
-          color: #15803d;
-        }
-        .school-jobs-empty-state h3 {
-          margin: 0;
-          color: #172033;
-          font-size: 18px;
-          font-weight: 800;
-        }
-        .school-jobs-empty-state p {
-          margin: 0;
-          max-width: 420px;
-          color: #5d6972;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-        .school-jobs-empty-state-btn {
-          border: 0;
-          border-radius: 999px;
-          background: #15803d;
-          color: #ffffff;
-          padding: 10px 18px;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
-        }
         .school-job-row {
           display: grid;
           grid-template-columns: 58px minmax(0, 1fr) auto;
@@ -10118,19 +9515,18 @@ export default function AdminDashboard() {
           left: 0;
           z-index: 30;
           display: flex;
-          flex-direction: column;
-          gap: 4px;
-          min-width: 180px;
+          align-items: stretch;
+          gap: 8px;
+          min-width: 190px;
           max-height: 310px;
-          padding: 8px;
+          padding: 10px 8px 8px;
           border: 1px solid #e2e8f0;
-          border-radius: 12px;
+          border-radius: 14px;
           background: #ffffff;
           box-shadow: 0 18px 38px rgba(15, 23, 42, 0.12);
         }
         .school-teachers-menu--compact {
           min-width: 180px;
-          width: 180px;
         }
         .school-teachers-menu-main-column {
           display: flex;
@@ -10169,10 +9565,9 @@ export default function AdminDashboard() {
           overflow: hidden;
         }
         .school-teachers-menu-item {
-          width: 100%;
           border: 0;
           background: transparent;
-          padding: 10px 12px;
+          padding: 9px 12px;
           border-radius: 8px;
           color: #1f2937;
           text-align: left;
@@ -10185,10 +9580,6 @@ export default function AdminDashboard() {
         .school-teachers-menu-item:hover {
           background: #f3f7f5;
           color: #0f172a;
-        }
-        .school-teachers-menu-item:focus-visible {
-          outline: 2px solid rgba(20, 121, 45, 0.2);
-          outline-offset: -2px;
         }
         .school-teachers-filter-tag {
           display: inline-flex;
@@ -10269,52 +9660,14 @@ export default function AdminDashboard() {
           margin-top: 18px;
         }
         .school-teachers-empty-state {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
           margin-top: 18px;
           border: 1px dashed #d7dcd8;
-          border-radius: 18px;
+          border-radius: 14px;
           background: #f8faf8;
-          padding: 32px 24px;
+          padding: 24px;
           text-align: center;
           color: #536267;
-        }
-        .school-teachers-empty-state-icon {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 46px;
-          height: 46px;
-          border-radius: 50%;
-          background: #eaf7ee;
-          color: #15803d;
-        }
-        .school-teachers-empty-state h3 {
-          margin: 0;
-          color: #172033;
-          font-size: 18px;
-          font-weight: 800;
-        }
-        .school-teachers-empty-state p {
-          margin: 0;
-          max-width: 430px;
-          color: #5d6972;
-          font-size: 14px;
-          line-height: 1.5;
-        }
-        .school-teachers-empty-state-btn {
-          border: 0;
-          border-radius: 999px;
-          background: #15803d;
-          color: #ffffff;
-          padding: 10px 18px;
-          font: inherit;
-          font-size: 13px;
-          font-weight: 700;
-          cursor: pointer;
+          font-size: 15px;
         }
         .school-teacher-card {
           position: relative;
@@ -10972,62 +10325,20 @@ export default function AdminDashboard() {
             align-items: flex-start;
             margin-top: 22px;
           }
-          .school-teachers-list {
-            width: 100%;
-          }
           .school-teacher-card {
-            width: 100%;
-            max-width: none;
             padding: 16px 12px;
-            gap: 12px;
-          }
-          .school-teacher-card-main {
-            width: 100%;
-            min-width: 0;
           }
           .school-teacher-profile-row {
-            display: flex;
-            align-items: flex-start;
             gap: 12px;
-            width: 100%;
-          }
-          .school-teacher-name-column {
-            flex: 1;
-            min-width: 0;
           }
           .school-teacher-name-row {
-            align-items: flex-start;
             gap: 8px;
           }
-          .school-teacher-name-content {
-            flex: 1;
-            align-items: flex-start;
-            width: 100%;
-          }
-          .school-teacher-name {
-            font-size: 1rem;
-          }
-          .school-teacher-role-wrap {
-            width: 100%;
-          }
-          .school-teacher-role {
-            margin: 0;
-            font-size: 13px;
-          }
           .school-teacher-summary {
-            margin-top: 6px;
             font-size: 13px;
-          }
-          .school-teacher-meta-row {
-            gap: 6px;
-          }
-          .school-teacher-meta-pill {
-            max-width: 100%;
-            white-space: normal;
           }
           .school-teacher-actions {
             flex-direction: column;
-            width: 100%;
           }
           .school-teacher-primary-btn,
           .school-teacher-secondary-btn {
@@ -11160,9 +10471,6 @@ export default function AdminDashboard() {
           grid-template-columns: minmax(0, 1.8fr) minmax(260px, 1fr);
           gap: 16px;
           margin-bottom: 14px;
-        }
-        .school-overview-hero--single {
-          grid-template-columns: 1fr;
         }
         .school-welcome-panel,
         .school-profile-card,
@@ -11378,237 +10686,6 @@ export default function AdminDashboard() {
         .school-empty-interviews strong { font-size: 11px; font-weight: 600; }
         .school-empty-interviews small { color: #62686d; font-size: 10px; }
         .school-schedule-button { display: block; width: calc(100% - 32px); margin: 0 16px; padding: 7px; border-radius: 5px; font-size: 10px; }
-        .school-notif-page {
-          max-width: 100%;
-          margin: 0 auto;
-          width: 100%;
-        }
-        .school-notif-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 28px;
-        }
-        .school-notif-header h1 {
-          margin: 0 0 6px;
-          color: #111;
-          font-size: 2rem;
-          font-weight: 800;
-          letter-spacing: -0.5px;
-        }
-        .school-notif-header p {
-          margin: 0;
-          color: #6C757D;
-          font-size: 14px;
-        }
-        .school-notif-header-actions {
-          display: flex;
-          align-items: center;
-          gap: 28px;
-          padding-top: 8px;
-        }
-        .school-notif-unread-summary {
-          display: inline-flex;
-          align-items: center;
-          gap: 6px;
-          color: #277a5f;
-          font-size: 11px;
-          white-space: nowrap;
-        }
-        .school-notif-unread-summary span {
-          width: 5px;
-          height: 5px;
-          border-radius: 50%;
-          background: #277a5f;
-        }
-        .school-notif-mark-read {
-          border: none;
-          padding: 0;
-          background: transparent;
-          color: #277a5f;
-          font-size: 11px;
-          font-weight: 600;
-          cursor: pointer;
-          white-space: nowrap;
-        }
-        .school-notif-filter-tabs {
-          display: flex;
-          gap: 8px;
-          margin-bottom: 28px;
-          flex-wrap: wrap;
-        }
-        .school-notif-filter-btn {
-          padding: 8px 20px;
-          border-radius: 999px;
-          border: 1px solid #E9ECEF;
-          background: #fff;
-          color: #495057;
-          font-size: 13px;
-          font-weight: 600;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .school-notif-filter-btn:hover {
-          border-color: #1CCB43;
-          color: #1CCB43;
-        }
-        .school-notif-filter-btn--active {
-          background: #1CCB43;
-          color: #fff;
-          border-color: #1CCB43;
-        }
-        .school-notif-filter-btn--active:hover {
-          background: #17b53b;
-          color: #fff;
-        }
-        .school-notif-section-label {
-          font-size: 11px;
-          letter-spacing: 0.12em;
-          color: #ADB5BD;
-          font-weight: 700;
-          margin-bottom: 16px;
-          padding-left: 4px;
-        }
-        .school-notif-list {
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-        }
-        .school-notif-card {
-          display: flex;
-          gap: 18px;
-          padding: 18px 12px 18px 18px;
-          background: #fff;
-          border: none;
-          border-bottom: 1px solid #e5e9e7;
-          border-radius: 0;
-          box-shadow: none;
-          transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
-          cursor: pointer;
-          position: relative;
-          overflow: hidden;
-        }
-        .school-notif-card:hover {
-          background: #f3faf5;
-          border-color: #d9e9de;
-          box-shadow: 0 8px 18px rgba(16, 24, 40, 0.06);
-          transform: translateY(-1px);
-        }
-        .school-notif-card--unread {
-          background: #fff;
-        }
-        .school-notif-card--unread::before {
-          content: '';
-          position: absolute;
-          left: 0;
-          top: 0;
-          bottom: 0;
-          width: 3px;
-          background: #277A16;
-        }
-        .school-notif-card-icon {
-          flex-shrink: 0;
-        }
-        .school-notif-icon-circle {
-          width: 34px;
-          height: 34px;
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #E8F9ED;
-          color: #1CCB43;
-        }
-        .school-notif-card-body {
-          flex: 1;
-          min-width: 0;
-        }
-        .school-notif-card-top {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          gap: 12px;
-          margin-bottom: 4px;
-        }
-        .school-notif-card-top h3 {
-          margin: 0;
-          color: #111;
-          font-size: 11px;
-          font-weight: 700;
-          line-height: 1.4;
-        }
-        .school-notif-card-meta {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-shrink: 0;
-        }
-        .school-notif-time {
-          font-size: 10px;
-          color: #607064;
-          white-space: nowrap;
-        }
-        .school-notif-time-mobile {
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 10px;
-          color: #607064;
-        }
-        .school-notif-new-badge {
-          font-size: 11px;
-          font-weight: 800;
-          color: #1CCB43;
-          background: #E8F9ED;
-          padding: 3px 10px;
-          border-radius: 999px;
-          letter-spacing: 0.05em;
-        }
-        .school-notif-card-desc {
-          margin: 0 0 8px;
-          color: #607064;
-          font-size: 10px;
-          line-height: 1.5;
-        }
-        .school-notif-card-actions {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-        .school-notif-link {
-          font-size: 10px;
-          font-weight: 700;
-          color: #1CCB43;
-        }
-        .school-notif-empty {
-          text-align: center;
-          padding: 60px 20px;
-          color: #ADB5BD;
-        }
-        .school-notif-empty p {
-          margin-top: 16px;
-          font-size: 14px;
-        }
-        .school-notif-footer {
-          text-align: center;
-          padding: 24px 0 8px;
-        }
-        .school-notif-count {
-          margin-bottom: 12px;
-          color: #ADB5BD;
-          font-size: 13px;
-          font-style: italic;
-        }
-        .school-notif-load-more {
-          padding: 10px 32px;
-          border: 1px solid #DEE2E6;
-          border-radius: 10px;
-          background: #fff;
-          color: #111;
-          font-size: 14px;
-          font-weight: 600;
-          cursor: pointer;
-        }
         .school-desktop-notifications { display: none; }
         .school-notifications-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
         .school-notifications-heading h2 { margin: 0; color: #20252b; font-size: 28px; font-weight: 700; }
@@ -11681,70 +10758,14 @@ export default function AdminDashboard() {
         .admin-sidebar-help { margin-top: auto; padding: 17px 16px 15px; border-radius: 17px; background: #e4f7e9; }
         .admin-sidebar-help strong { display: block; margin-bottom: 10px; color: #14552d; font-size: 12px; font-weight: 600; }
         .admin-sidebar-help button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 100%; padding: 11px 8px; border: 0; border-radius: 999px; background: #22dd55; color: #07331b; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .admin-sidebar-logout {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-          width: calc(100% - 24px);
-          margin: 16px 12px 0;
-          padding: 8px 12px;
-          border: 1px solid rgba(220, 38, 38, 0.18);
-          border-radius: 10px;
-          background: rgba(254, 242, 242, 0.9);
-          color: #b91c1c;
-          font: inherit;
-          font-size: 12px;
-          font-weight: 700;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-        .admin-sidebar-logout:hover {
-          background: #fee2e2;
-          border-color: rgba(220, 38, 38, 0.32);
-          color: #991b1b;
-          transform: translateY(-1px);
-        }
+        .admin-sidebar-logout { display: flex; align-items: center; gap: 10px; margin: 16px 12px 0; padding: 4px 0; border: 0; background: transparent; color: #65716a; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
         .admin-topbar-spacer { flex: 1; }
         .admin-topbar-search { display: flex; align-items: center; gap: 14px; width: 282px; height: 45px; margin-left: auto; padding: 0 16px; border-radius: 16px; background: #e3e5e6; color: #526158; }
         .admin-topbar-search input { width: 100%; border: 0; outline: 0; background: transparent; color: #27312d; font: inherit; font-size: 12px; }
         .admin-topbar-search input::placeholder { color: #7c858b; opacity: 1; }
         .admin-topbar-account { display: flex; align-items: center; gap: 13px; margin-left: 25px; }
-        .admin-topbar-notifications {
-          position: relative;
-          display: grid;
-          place-items: center;
-          width: 34px;
-          height: 34px;
-          padding: 0;
-          border: 1px solid #e7ebea;
-          border-radius: 50%;
-          background: #f8faf9;
-          color: #53606a;
-          cursor: pointer;
-          transition: background .2s ease, border-color .2s ease, transform .2s ease;
-        }
-        .admin-topbar-notifications:hover {
-          background: #f1f7f3;
-          border-color: #dfe9e0;
-        }
-        .admin-topbar-notification-badge {
-          position: absolute;
-          top: -6px;
-          right: -6px;
-          min-width: 18px;
-          height: 18px;
-          padding: 0 4px;
-          border-radius: 999px;
-          background: #dc2626;
-          color: #fff;
-          display: grid;
-          place-items: center;
-          font-size: 10px;
-          font-weight: 700;
-          line-height: 1;
-          box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
-        }
+        .admin-topbar-notifications { position: relative; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #48544c; cursor: pointer; }
+        .admin-topbar-notifications span { position: absolute; top: 0; right: -2px; width: 5px; height: 5px; border-radius: 50%; background: #c92c31; }
         .admin-topbar-divider { width: 1px; height: 28px; background: #d4d9d6; }
         .admin-topbar-user { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; }
         .admin-topbar-user strong { color: #20252b; font-size: 13px; font-weight: 700; }
@@ -11752,108 +10773,6 @@ export default function AdminDashboard() {
         .admin-topbar-avatar { display: grid; place-items: center; width: 36px; height: 36px; overflow: hidden; padding: 0; border: 2px solid #16843d; border-radius: 50%; background: #dcefe2; color: #166534; font: inherit; font-size: 11px; font-weight: 800; cursor: pointer; }
         .admin-topbar-avatar img { width: 100%; height: 100%; padding: 3px; border-radius: 50%; background: #fff; object-fit: contain; }
         .admin-mobile-notification-header { display: none; }
-        @media (max-width: 768px) {
-          .school-notif-page {
-            width: 100%;
-            max-width: 100%;
-          }
-          .school-notif-header {
-            display: block;
-            margin-bottom: 18px;
-          }
-          .school-notif-header h1 {
-            margin-bottom: 6px;
-            font-size: 26px;
-            line-height: 1.2;
-          }
-          .school-notif-header p {
-            font-size: 13px;
-            line-height: 1.5;
-          }
-          .school-notif-header-actions {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-top: 12px;
-            padding-top: 0;
-          }
-          .school-notif-unread-summary,
-          .school-notif-mark-read {
-            font-size: 10px;
-          }
-          .school-notif-filter-tabs {
-            gap: 8px;
-            margin-bottom: 18px;
-          }
-          .school-notif-filter-btn {
-            padding: 8px 14px;
-            font-size: 12px;
-          }
-          .school-notif-section-label {
-            margin-bottom: 12px;
-            padding-left: 0;
-          }
-          .school-notif-card {
-            gap: 12px;
-            padding: 14px 12px;
-          }
-          .school-notif-card-icon {
-            margin-top: 2px;
-          }
-          .school-notif-icon-circle {
-            width: 30px;
-            height: 30px;
-          }
-          .school-notif-card-top {
-            flex-direction: column;
-            align-items: flex-start;
-            gap: 8px;
-          }
-          .school-notif-card-top h3 {
-            font-size: 13px;
-          }
-          .school-notif-card-meta {
-            width: 100%;
-            justify-content: space-between;
-            gap: 8px;
-          }
-          .school-notif-time {
-            display: none;
-          }
-          .school-notif-time-mobile {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-          }
-          .school-notif-card-desc {
-            margin-bottom: 10px;
-            font-size: 12px;
-          }
-          .school-notif-card-actions {
-            justify-content: space-between;
-            gap: 8px;
-          }
-          .school-notif-link {
-            font-size: 11px;
-          }
-          .school-notif-empty {
-            padding: 40px 16px;
-          }
-          .school-notif-empty p {
-            font-size: 13px;
-          }
-          .school-notif-footer {
-            padding-top: 18px;
-          }
-          .school-notif-count {
-            font-size: 12px;
-          }
-          .school-notif-load-more {
-            width: 100%;
-            max-width: 220px;
-          }
-        }
         @media (min-width: 769px) {
           .admin-desktop-sidebar { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; overflow-y: auto; }
           .admin-dashboard-main-wrapper { margin-left: 14rem; }
@@ -11926,11 +10845,6 @@ export default function AdminDashboard() {
             border-bottom: 1px solid #e7ebe8;
           }
           .admin-mobile-header .brand-logo-image { width: 126px; }
-          .admin-mobile-header-actions {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-          }
           .admin-mobile-avatar {
             display: grid;
             place-items: center;
@@ -11961,23 +10875,6 @@ export default function AdminDashboard() {
             height: 6px;
             border-radius: 50%;
             background: #dc5b5b;
-          }
-          .admin-mobile-logout {
-            display: grid;
-            place-items: center;
-            width: 34px;
-            height: 34px;
-            border: 1px solid rgba(220, 38, 38, 0.18);
-            border-radius: 50%;
-            background: rgba(254, 242, 242, 0.9);
-            color: #b91c1c;
-            cursor: pointer;
-            transition: all 0.2s ease;
-          }
-          .admin-mobile-logout:hover {
-            background: #fee2e2;
-            border-color: rgba(220, 38, 38, 0.32);
-            color: #991b1b;
           }
           .admin-dashboard-main { padding: 24px 18px 20px; }
           .admin-dashboard-main > div { max-width: none; }
@@ -12058,401 +10955,6 @@ export default function AdminDashboard() {
   box-sizing: border-box;
 }
 
-
-.school-applicant-summary-page--teacher-preview {
-  padding-top: 4px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-hero {
-  display: flex;
-  align-items: center;
-  gap: 22px;
-  min-height: 146px;
-  margin-bottom: 18px;
-  padding: 24px 30px;
-  border: 1px solid #e8edf2;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 3px 13px rgba(15, 23, 42, 0.08);
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-hero-copy {
-  flex: 1;
-  min-width: 0;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-avatar {
-  display: grid;
-  place-items: center;
-  width: 78px;
-  height: 78px;
-  flex: 0 0 78px;
-  overflow: hidden;
-  border: 3px solid #dfeaf6;
-  border-radius: 50%;
-  background: #dbeafe;
-  color: #1e3a5f;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-hero-copy {
-  min-width: 0;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-name-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-name-row h1 {
-  margin: 0;
-  color: #172238;
-  font-size: 22px;
-  line-height: 1.2;
-  font-weight: 700;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-verified {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 3px 7px;
-  border-radius: 999px;
-  background: #dff5ee;
-  color: #15836d;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-verified--muted {
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-hero-copy > p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 15px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  margin-top: 10px;
-  color: #718096;
-  font-size: 12px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-meta span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.18fr) minmax(290px, 0.82fr);
-  gap: 16px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-panel {
-  padding: 17px 18px;
-  border: 1px solid #e8edf2;
-  border-radius: 12px;
-  background: #ffffff;
-  box-shadow: 0 3px 13px rgba(15, 23, 42, 0.07);
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-panel h2 {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 0;
-  padding-bottom: 9px;
-  border-bottom: 1px solid #edf1f4;
-  color: #273449;
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-panel h2 svg {
-  color: #08755d;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-summary,
-.school-applicant-summary-page--teacher-preview .school-preview-subjects {
-  min-height: 210px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-summary > p {
-  margin: 13px 0 0;
-  color: #596575;
-  font-size: 12px;
-  line-height: 1.68;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-tags,
-.school-applicant-summary-page--teacher-preview .school-preview-levels {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 12px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-tags span,
-.school-applicant-summary-page--teacher-preview .school-preview-levels span {
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: #dce7f8;
-  color: #455a78;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-levels span {
-  background: #eef2ef;
-  color: #69766e;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-tags em,
-.school-applicant-summary-page--teacher-preview .school-preview-levels em,
-.school-applicant-summary-page--teacher-preview .school-preview-empty {
-  color: #64748b;
-  font-size: 12px;
-  font-style: normal;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-levels-heading {
-  margin-top: 25px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-experience {
-  min-height: 220px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-list {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-list-item {
-  position: relative;
-  padding: 12px 42px 12px 11px;
-  border: 1px solid #e8edf2;
-  border-radius: 8px;
-  background: #fbfcfd;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-list-item::after {
-  content: '';
-  position: absolute;
-  top: 15px;
-  right: 13px;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #08755d;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-list-item span,
-.school-applicant-summary-page--teacher-preview .school-preview-education-item span {
-  display: block;
-  color: #638579;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-list-item strong,
-.school-applicant-summary-page--teacher-preview .school-preview-education-item strong {
-  display: block;
-  margin-top: 3px;
-  color: #273449;
-  font-size: 15px;
-  line-height: 1.25;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-list-item p,
-.school-applicant-summary-page--teacher-preview .school-preview-education-item p {
-  margin-top: 2px;
-  color: #718096;
-  font-size: 11px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-side-stack {
-  display: grid;
-  align-content: start;
-  gap: 16px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-education-item {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-education-item > svg {
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-  padding: 5px;
-  border-radius: 3px;
-  background: #dce7f8;
-  color: #4d668a;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-trcn {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  margin-top: 12px;
-  padding: 11px;
-  border: 1px solid #cee6dc;
-  border-radius: 8px;
-  background: #f4faf7;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-trcn > svg {
-  flex: 0 0 auto;
-  color: #08755d;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-trcn div {
-  min-width: 0;
-  flex: 1;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-trcn strong {
-  display: block;
-  color: #334155;
-  font-size: 11px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-trcn p {
-  margin-top: 3px;
-  color: #64748b;
-  font-size: 9px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-trcn > span {
-  padding: 3px 6px;
-  border-radius: 4px;
-  background: #d9f0e6;
-  color: #08755d;
-  font-size: 8px;
-  font-weight: 800;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-status--muted {
-  background: #e2e8f0;
-  color: #64748b;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-doc-actions {
-  display: grid;
-  gap: 5px;
-  margin-top: 12px;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-doc-actions button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 30px;
-  border: 1px solid #cfd6df;
-  border-radius: 6px;
-  color: #475569;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  background: #ffffff;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-doc-actions button:hover {
-  background: #f8fafc;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  justify-content: flex-end;
-  margin-left: auto;
-}
-
-.school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-shortlist-btn,
-.school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-reject-btn {
-  width: 160px;
-}
-
-@media (max-width: 900px) {
-  .school-applicant-summary-page--teacher-preview .school-preview-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-actions {
-    justify-content: stretch;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-actions > button {
-    flex: 1;
-  }
-}
-
-@media (max-width: 720px) {
-  .school-applicant-summary-page .school-summary-back-btn {
-    display: none;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-hero {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 16px;
-    padding: 18px 16px;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-hero-copy {
-    width: 100%;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-avatar {
-    width: 62px;
-    height: 62px;
-    flex-basis: 62px;
-    font-size: 18px;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-name-row {
-    align-items: flex-start;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-name-row h1 {
-    font-size: 18px;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-meta {
-    gap: 10px;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-actions {
-    width: 100%;
-    margin-left: 0;
-    justify-content: stretch;
-    flex-direction: column;
-  }
-
-  .school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-shortlist-btn,
-  .school-applicant-summary-page--teacher-preview .school-preview-actions .school-summary-reject-btn {
-    width: 100%;
-    max-width: none;
-  }
-}
 
 /* ============================================================
    MAIN CONTAINER

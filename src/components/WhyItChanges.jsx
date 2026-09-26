@@ -60,7 +60,7 @@ export default function WhyItChanges() {
   const content = tabContent[activeTab];
 
   return (
-    <section className="py-10 md:py-20" style={{ background: '#f0faf2' }}>
+    <section className="py-10 md:py-20" style={{ background: '#F7FFF4' }}>
       {/* Header */}
       <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col items-center text-center mb-8 md:mb-12">
         <h2 className="text-[22px] md:text-3xl font-bold text-gray-900 mb-3">

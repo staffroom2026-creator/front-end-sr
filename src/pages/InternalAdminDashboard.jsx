@@ -3,6 +3,7 @@ import BrandLogo from '../components/BrandLogo';
 import { useAuth } from '../context/AuthContext';
 import { apiErrorMessage } from '../services/api';
 import { internalAdminService } from '../services/internalAdminService';
+import InternalAdminSettings from './InternalAdminSettings';
 import {
   FiBell,
   FiBriefcase,
@@ -533,6 +534,22 @@ export default function InternalAdminDashboard() {
     `Teacher ${status === 'active' ? 'reactivated' : 'suspended'} successfully.`,
   );
 
+  const savePlatformSetting = async (key, value) => {
+    setActionError('');
+    try {
+      await internalAdminService.updateSettings({ key, value });
+      setSettings((current) => {
+        const index = current.findIndex((setting) => (setting.key || setting.setting_key) === key);
+        if (index === -1) return [...current, { key, value }];
+        return current.map((setting, settingIndex) => settingIndex === index ? { ...setting, value } : setting);
+      });
+      return true;
+    } catch (error) {
+      setActionError(apiErrorMessage(error, 'Unable to save platform setting.'));
+      return false;
+    }
+  };
+
   const sendAdminInvitation = () => runAction(
     () => internalAdminService.createInvitation({
       first_name: addAdminForm.firstName.trim(),
@@ -750,7 +767,7 @@ export default function InternalAdminDashboard() {
           <main className="internal-admin-content">
             {isLoading && <div className="internal-admin-loading" role="status">Loading dashboard data...</div>}
             {(loadError || actionError) && <div className="internal-admin-error" role="alert">{loadError || actionError}</div>}
-            {activeTab !== 'job-review' && activeTab !== 'school-profile' && activeTab !== 'teacher-profile' && activeTab !== 'admin-management' && activeTab !== 'add-admin' && <div className="internal-admin-overview-header">
+            {activeTab !== 'job-review' && activeTab !== 'school-profile' && activeTab !== 'teacher-profile' && activeTab !== 'admin-management' && activeTab !== 'add-admin' && activeTab !== 'settings' && <div className="internal-admin-overview-header">
               <div>
                 <div className="internal-admin-breadcrumb">Dashboard / {activeTabLabel}</div>
                 <h1>{activeTab === 'jobs' ? 'All Jobs' : activeTabLabel === 'Dashboard' ? 'Overview' : activeTabLabel}</h1>
@@ -1663,10 +1680,7 @@ export default function InternalAdminDashboard() {
                 {notifications.length ? notifications.map((notification) => <div className="internal-admin-table-row" key={notification.notification_id || notification.id}><strong>{notification.title || notification.message || 'Notification'}</strong><span>{notification.created_at || 'Not available'}</span><button type="button" className="internal-admin-review-btn" onClick={() => runAction(() => internalAdminService.markNotificationRead(notification.notification_id || notification.id), 'Notification marked as read.')}>Mark read</button></div>) : <p>No notifications found.</p>}
               </section>
             ) : activeTab === 'settings' ? (
-              <section className="internal-admin-panel" style={{ padding: '24px' }}>
-                <div className="internal-admin-panel-header"><h3>Platform Settings</h3></div>
-                {settings.length ? settings.map((setting) => <div className="internal-admin-table-row" key={setting.key || setting.setting_key}><strong>{setting.key || setting.setting_key}</strong><span>{String(setting.value ?? '')}</span><small>{setting.description || ''}</small></div>) : <p>No settings available.</p>}
-              </section>
+              <InternalAdminSettings user={user} platformSettings={settings} onSavePlatformSetting={savePlatformSetting} onLogout={logout} />
             ) : (
               <section className="internal-admin-tab-placeholder">
                 <div className="internal-admin-placeholder-icon">
@@ -1890,6 +1904,24 @@ export default function InternalAdminDashboard() {
         .internal-admin-content {
           padding: 98px 32px 36px;
           overflow: auto;
+          animation: internal-admin-content-enter 500ms ease-out both;
+        }
+
+        @keyframes internal-admin-content-enter {
+          from {
+            opacity: 0;
+            transform: translateY(14px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .internal-admin-content {
+            animation: none;
+          }
         }
 
         .internal-admin-overview-header {
