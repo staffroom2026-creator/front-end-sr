@@ -4,8 +4,14 @@ import stressedHeadTeacher from '../assets/stressed_head_teacher.webp';
 
 export default function Features() {
   return (
-    <section className="py-14 md:py-24" style={{ background: '#F7FFF4' }}>
-      <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col items-center">
+    <section className="py-14 md:py-24 relative overflow-hidden" style={{ background: '#FAF9F6' }}>
+      {/* Dissolved right-side green glow — mirrors Hero */}
+      <div
+        className="hidden md:block absolute top-1/2 right-0 -translate-y-1/2 w-[55%] h-[140%] rounded-l-[80px] blur-3xl pointer-events-none -z-0"
+        style={{ backgroundColor: 'color-mix(in srgb, #1CCB43 5%, transparent)' }}
+        aria-hidden="true"
+      />
+      <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col items-center relative z-10">
         <h2 className="text-2xl md:text-4xl font-bold text-center mb-10 md:mb-16 text-[#1a1a2e] w-full">
           Finding the Right Fit Shouldn't Be This Difficult
         </h2>

@@ -125,14 +125,31 @@ export default function HowItWorks() {
           position: 'sticky',
           top: 0,
           height: '100vh',
-          background: '#f0faf2',
+          background: '#FAF9F6',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
           overflow: 'hidden',
         }}
       >
-        <div className="max-w-5xl mx-auto px-6 md:px-8 w-full">
+        {/* Dissolved right-side green glow — mirrors Hero */}
+        <div
+          style={{
+            position: 'absolute',
+            top: '50%',
+            right: 0,
+            transform: 'translateY(-50%)',
+            width: '55%',
+            height: '140%',
+            borderRadius: '80px 0 0 80px',
+            filter: 'blur(80px)',
+            backgroundColor: 'color-mix(in srgb, #1CCB43 5%, transparent)',
+            pointerEvents: 'none',
+            zIndex: 0,
+          }}
+          aria-hidden="true"
+        />
+        <div className="max-w-5xl mx-auto px-6 md:px-8 w-full" style={{ position: 'relative', zIndex: 1 }}>
 
           {/* Header */}
           <div className="text-center mb-8 md:mb-12">

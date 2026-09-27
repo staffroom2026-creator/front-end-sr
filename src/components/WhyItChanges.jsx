@@ -60,9 +60,15 @@ export default function WhyItChanges() {
   const content = tabContent[activeTab];
 
   return (
-    <section className="py-10 md:py-20" style={{ background: '#F7FFF4' }}>
+    <section className="py-10 md:py-20 relative overflow-hidden" style={{ background: '#FAF9F6' }}>
+      {/* Dissolved right-side green glow — mirrors Hero */}
+      <div
+        className="hidden md:block absolute top-1/2 right-0 -translate-y-1/2 w-[55%] h-[140%] rounded-l-[80px] blur-3xl pointer-events-none z-0"
+        style={{ backgroundColor: 'color-mix(in srgb, #1CCB43 5%, transparent)' }}
+        aria-hidden="true"
+      />
       {/* Header */}
-      <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col items-center text-center mb-8 md:mb-12">
+      <div className="max-w-7xl mx-auto px-6 md:px-8 flex flex-col items-center text-center mb-8 md:mb-12 relative z-10">
         <h2 className="text-[22px] md:text-3xl font-bold text-gray-900 mb-3">
           Everything you need to move forward
         </h2>
@@ -72,7 +78,7 @@ export default function WhyItChanges() {
       </div>
 
       {/* Tabs */}
-      <div className="flex justify-center mb-8 md:mb-10">
+      <div className="flex justify-center mb-8 md:mb-10 relative z-10">
         <div className="flex bg-white shadow-sm border border-gray-200 rounded-full p-1 relative w-64 h-[48px]">
           <button
             id="why-tab-teachers"
@@ -102,7 +108,7 @@ export default function WhyItChanges() {
       </div>
 
       {/* Card */}
-      <div className="max-w-5xl mx-auto px-5 md:px-8">
+      <div className="max-w-5xl mx-auto px-5 md:px-8 relative z-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

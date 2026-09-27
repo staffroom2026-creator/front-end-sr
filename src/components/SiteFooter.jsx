@@ -27,8 +27,14 @@ const policyLinks = [
 
 export default function SiteFooter() {
   return (
-    <footer className="bg-[#F7FFF4] border-t border-emerald-500/10">
-      <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12 md:pt-16 pb-8">
+    <footer className="bg-[#FAF9F6] border-t border-emerald-500/10 relative overflow-hidden">
+      {/* Dissolved right-side green glow — mirrors Hero */}
+      <div
+        className="hidden md:block absolute top-1/2 right-0 -translate-y-1/2 w-[55%] h-[140%] rounded-l-[80px] blur-3xl pointer-events-none z-0"
+        style={{ backgroundColor: 'color-mix(in srgb, #1CCB43 5%, transparent)' }}
+        aria-hidden="true"
+      />
+      <div className="max-w-7xl mx-auto px-6 md:px-8 pt-12 md:pt-16 pb-8 relative z-10">
         <div className="grid grid-cols-1 gap-10 text-center md:grid-cols-4 md:gap-8 md:text-left">
           <div className="md:pr-8">
             <Link to="/" className="inline-flex items-center no-underline text-gray-900">

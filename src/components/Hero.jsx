@@ -11,8 +11,7 @@ import img10 from '../assets/Rectangle 10.webp';
 
 export default function Hero() {
   return (
-    <div className="w-full" style={{ background: '#F7FFF4' }}>
-      <section className="max-w-7xl mx-auto px-6 md:px-8 py-10 md:py-24 flex flex-col md:flex-row items-center gap-8 md:gap-12 relative overflow-hidden min-h-[85vh] md:min-h-0">
+    <section className="max-w-7xl mx-auto px-6 md:px-8 py-10 md:py-24 flex flex-col md:flex-row items-center gap-8 md:gap-12 relative overflow-hidden min-h-[85vh] md:min-h-0">
       
       {/* Mobile Background Image Grid - visible only on mobile */}
       <div className="md:hidden absolute inset-0 z-0 overflow-hidden pointer-events-none">
@@ -59,7 +58,7 @@ export default function Hero() {
         </div>
 
         {/* Fade overlay to make images more subtle */}
-        <div className="absolute inset-0 bg-[#F7FFF4]/40"></div> 
+        <div className="absolute inset-0 bg-[#FAF9F6]/40"></div> 
       </div>
 
       {/* Left Content */}
@@ -102,10 +101,13 @@ export default function Hero() {
           </div>
         </div>
         
-        {/* Subtle background glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] h-[150%] bg-primary/5 rounded-full blur-3xl -z-10"></div>
+        {/* Dissolved right-side green glow — consistent with all sections */}
+        <div
+          className="hidden md:block absolute top-1/2 right-0 -translate-y-1/2 w-[55%] h-[140%] rounded-l-[80px] blur-3xl pointer-events-none -z-10"
+          style={{ backgroundColor: 'color-mix(in srgb, #1CCB43 5%, transparent)' }}
+          aria-hidden="true"
+        />
       </div>
     </section>
-    </div>
   );
 }
