@@ -1811,6 +1811,18 @@ export default function AdminDashboard() {
 
       await applicationService.scheduleInterview(applicationId, payload);
       if (jobId) await loadApplicantsForJob(jobId);
+      setApplicantsByJob((prev) => ({
+        ...prev,
+        [jobId]: (prev[jobId] || []).map((app) => {
+          const currentId = app.application_id || app.id;
+          return String(currentId) === String(applicationId) ? { ...app, status: "shortlisted" } : app;
+        }),
+      }));
+      setSelectedApplicant((current) => (
+        current && String(current.application_id || current.id) === String(applicationId)
+          ? { ...current, status: "shortlisted" }
+          : current
+      ));
       setIsShortlistModalOpen(false);
       setIsShortlistSuccessOpen(true);
       showSnackbar("Interview scheduled", "The candidate has been shortlisted and notified.");
@@ -3048,6 +3060,7 @@ export default function AdminDashboard() {
     const applicantId = applicant.application_id || applicant.id;
     const jobId = job.job_id || job.id;
     const applicantStatus = String(applicant.status || "").toLowerCase();
+    const isShortlisted = applicantStatus === "shortlisted" || applicantStatus === "interviewing";
     const isRejected = applicantStatus === "rejected";
     const isHired = applicantStatus === "hired";
     const isWithdrawn = applicantStatus === "withdrawn";
@@ -3081,7 +3094,7 @@ export default function AdminDashboard() {
                 >
                   {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
                 </button>
-                <button
+                {!isShortlisted && <button
                   type="button"
                   className="school-summary-reject-btn"
                   disabled={isRejected || isTerminalStatus}
@@ -3089,7 +3102,7 @@ export default function AdminDashboard() {
                   style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                 >
                   Reject Applicant
-                </button>
+                </button>}
               </div>
             )}
             <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
@@ -3139,7 +3152,7 @@ export default function AdminDashboard() {
                     {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
                   </button>
 
-                  <button
+                  {!isShortlisted && <button
                     type="button"
                     className="school-summary-reject-btn"
                     disabled={isRejected || isTerminalStatus}
@@ -3147,7 +3160,7 @@ export default function AdminDashboard() {
                     style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
                   >
                     Reject Applicant
-                  </button>
+                  </button>}
                 </div>
               )}
 
