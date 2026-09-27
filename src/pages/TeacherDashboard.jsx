@@ -876,7 +876,7 @@ export default function TeacherDashboard() {
       return featuredOrder || bRecommended - aRecommended || bTime - aTime;
     });
   };
-  const dashboardJobs = sortJobsByPreference(jobs, 'Newest First').slice(0, 2);
+  const dashboardJobs = sortJobsByPreference(jobs, 'Newest First').slice(0, 5);
   const upcomingInterviews = applications
     .map((application) => {
       const normalizedInterview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || null;
