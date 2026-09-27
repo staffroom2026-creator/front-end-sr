@@ -8,6 +8,7 @@ import { featureService } from "../services/featureService";
 import { profileService } from "../services/profileService";
 import { accountService } from "../services/accountService";
 import BrandLogo from "../components/BrandLogo";
+import FeedbackButton from "../components/FeedbackButton";
 import {
   FiAlertCircle,
   FiAlertTriangle,
@@ -96,6 +97,33 @@ const normalizeResponsibilityList = (value) => {
     .split(/[;|\n•]+/)
     .map((item) => item.replace(/^[-*]\s*/, "").trim())
     .filter(Boolean);
+};
+
+const getNotificationGroups = (items) => {
+  const toDayKey = (date) => `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const todayKey = toDayKey(today);
+  const yesterdayKey = toDayKey(yesterday);
+  const groups = { Today: [], Yesterday: [], Earlier: [] };
+
+  items.forEach((item) => {
+    const timestamp = item.createdAt || item.created_at || item.date;
+    const notificationDate = timestamp ? new Date(timestamp) : null;
+    const dateKey = notificationDate && !Number.isNaN(notificationDate.getTime())
+      ? toDayKey(notificationDate)
+      : "";
+    const title = dateKey === todayKey
+      ? "Today"
+      : dateKey === yesterdayKey
+        ? "Yesterday"
+        : "Earlier";
+    groups[title].push(item);
+  });
+
+  return Object.entries(groups).map(([title, notifications]) => ({ title, notifications }));
 };
 
 
@@ -1413,6 +1441,7 @@ export default function AdminDashboard() {
           title: n.title || "Notification",
           unread: isNotificationUnread(n),
           description: n.message || n.description || "",
+          createdAt: n.created_at || n.createdAt || n.created_date || n.date || null,
           time: n.created_at
             ? new Date(n.created_at).toLocaleDateString()
             : "Recently",
@@ -2094,7 +2123,7 @@ export default function AdminDashboard() {
 
     return (
       <div className="school-overview">
-        <section className="school-overview-hero">
+        <section className={`school-overview-hero ${schoolProfileCompletion >= 100 ? "school-overview-hero--complete" : ""}`}>
           <div className="school-welcome-panel">
             <h2>
               {schoolGreeting}, {user?.full_name || "School"}
@@ -2311,6 +2340,8 @@ export default function AdminDashboard() {
 
   const renderDesktopNotifications = () => {
     const unreadCount = notificationItems.filter((item) => item.unread).length;
+    const visibleNotifications = notificationItems.slice(0, visibleSchoolNotificationCount);
+    const notificationGroups = getNotificationGroups(visibleNotifications);
 
     return (
       <div className="school-desktop-notifications">
@@ -2319,86 +2350,51 @@ export default function AdminDashboard() {
             <h2>Notifications</h2>
             <p>
               <strong>{unreadCount} UNREAD</strong>
-              <span>You have new updates.</span>
+              <span>{notificationItems.length ? "You have new updates." : "You're all caught up."}</span>
             </p>
           </div>
-          <button type="button" onClick={markAllNotificationsAsRead}>
-            <FiCheckCircle size={14} /> Mark all as read
-          </button>
+          {unreadCount > 0 && (
+            <button type="button" onClick={markAllNotificationsAsRead}>
+              <FiCheckCircle size={14} /> Mark all as read
+            </button>
+          )}
         </div>
         <div className="school-notifications-panel">
-          <h3>Today</h3>
-          {notificationItems.slice(0, Math.min(3, visibleSchoolNotificationCount)).map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                className={`school-notification-${item.type} ${item.accent ? `school-notification-${item.type}--${item.accent}` : ""
-                  } ${item.unread ? "is-unread" : ""}`}
-                onClick={() => handleNotificationItemClick(item)}
-              >
-                <span className="school-notification-icon">
-                  <Icon size={17} />
-                </span>
-                <div>
-                  <b>{item.label}</b>
-                  <strong>{item.title}</strong>
-                  {item.description && <p>{item.description}</p>}
-                </div>
-                <time>{item.time}</time>
-              </button>
-            );
-          })}
-          <h3>Yesterday</h3>
-          {notificationItems.slice(3, Math.min(5, visibleSchoolNotificationCount)).map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                className={`school-notification-${item.type} ${item.unread ? "is-unread" : ""}`}
-                onClick={() => handleNotificationItemClick(item)}
-              >
-                <span className="school-notification-icon">
-                  <Icon size={17} />
-                </span>
-                <div>
-                  <b>{item.label}</b>
-                  <strong>{item.title}</strong>
-                  {item.description && <p>{item.description}</p>}
-                </div>
-                <time>{item.time}</time>
-              </button>
-            );
-          })}
-          <h3>Earlier</h3>
-          {notificationItems.slice(5, visibleSchoolNotificationCount).map((item) => {
-            const Icon = item.icon;
-            return (
-              <button
-                key={item.key}
-                type="button"
-                className={`school-notification-simple ${item.unread ? "is-unread" : ""}`}
-                onClick={() => handleNotificationItemClick(item)}
-              >
-                <span className="school-notification-icon">
-                  <Icon size={17} />
-                </span>
-                <div>
-                  <b>{item.label}</b>
-                  <strong>{item.title}</strong>
-                  {item.description && <p>{item.description}</p>}
-                </div>
-                <time>{item.time}</time>
-              </button>
-            );
-          })}
+          {notificationItems.length === 0 ? (
+            <div className="school-notifications-empty">
+              <span><FiBell size={20} /></span>
+              <strong>You're all caught up</strong>
+              <p>New updates about your school account and applications will appear here.</p>
+            </div>
+          ) : <>
+          {notificationGroups.filter((group) => group.notifications.length > 0).map((group) => (
+            <React.Fragment key={group.title}>
+              <h3>{group.title}</h3>
+              {group.notifications.map((item) => {
+                const Icon = item.icon;
+                const itemClass = group.title === "Earlier"
+                  ? `school-notification-simple ${item.unread ? "is-unread" : ""}`
+                  : `school-notification-${item.type} ${item.accent ? `school-notification-${item.type}--${item.accent}` : ""} ${item.unread ? "is-unread" : ""}`;
+                return (
+                  <button key={item.key} type="button" className={itemClass} onClick={() => handleNotificationItemClick(item)}>
+                    <span className="school-notification-icon"><Icon size={17} /></span>
+                    <div>
+                      <b>{item.label}</b>
+                      <strong>{item.title}</strong>
+                      {item.description && <p>{item.description}</p>}
+                    </div>
+                    <time>{item.time}</time>
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
           {notificationItems.length > visibleSchoolNotificationCount && (
             <button type="button" className="school-load-more" onClick={() => setVisibleSchoolNotificationCount((count) => count + 10)}>
               Load More <FiChevronDown size={13} />
             </button>
           )}
+          </>}
         </div>
       </div>
     );
@@ -5582,89 +5578,47 @@ export default function AdminDashboard() {
                           <FiArrowLeft size={22} />
                         </button>
                         <h2>Notifications</h2>
-                        <button
-                          type="button"
-                          className="admin-mobile-notification-mark-read"
-                          onClick={markAllNotificationsAsRead}
-                        >
-                          Mark all read
-                        </button>
+                        {notificationItems.some((item) => item.unread) && (
+                          <button
+                            type="button"
+                            className="admin-mobile-notification-mark-read"
+                            onClick={markAllNotificationsAsRead}
+                          >
+                            Mark all read
+                          </button>
+                        )}
                       </div>
                       <div className="admin-mobile-notifications-content">
-                        <div className="admin-mobile-notification-group">
-                          <h3>Today</h3>
-                          {notificationItems.slice(0, 3).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <button
-                                key={item.key}
-                                type="button"
-                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
-                                onClick={() => handleNotificationItemClick(item)}
-                              >
-                                <span className="school-notification-icon">
-                                  <Icon size={16} />
-                                </span>
-                                <div>
-                                  <b>{item.label}</b>
-                                  <strong>{item.title}</strong>
-                                  {item.description && <p>{item.description}</p>}
-                                </div>
-                                <time>{item.time}</time>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="admin-mobile-notification-group">
-                          <h3>Yesterday</h3>
-                          {notificationItems.slice(3, 5).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <button
-                                key={item.key}
-                                type="button"
-                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
-                                onClick={() => handleNotificationItemClick(item)}
-                              >
-                                <span className="school-notification-icon">
-                                  <Icon size={16} />
-                                </span>
-                                <div>
-                                  <b>{item.label}</b>
-                                  <strong>{item.title}</strong>
-                                  {item.description && <p>{item.description}</p>}
-                                </div>
-                                <time>{item.time}</time>
-                              </button>
-                            );
-                          })}
-                        </div>
-
-                        <div className="admin-mobile-notification-group">
-                          <h3>Earlier</h3>
-                          {notificationItems.slice(5).map((item) => {
-                            const Icon = item.icon;
-                            return (
-                              <button
-                                key={item.key}
-                                type="button"
-                                className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
-                                onClick={() => handleNotificationItemClick(item)}
-                              >
-                                <span className="school-notification-icon">
-                                  <Icon size={16} />
-                                </span>
-                                <div>
-                                  <b>{item.label}</b>
-                                  <strong>{item.title}</strong>
-                                  {item.description && <p>{item.description}</p>}
-                                </div>
-                                <time>{item.time}</time>
-                              </button>
-                            );
-                          })}
-                        </div>
+                        {notificationItems.length === 0 ? (
+                          <div className="school-notifications-empty">
+                            <span><FiBell size={20} /></span>
+                            <strong>You're all caught up</strong>
+                            <p>New updates about your account and applications will appear here.</p>
+                          </div>
+                        ) : getNotificationGroups(notificationItems).filter((group) => group.notifications.length > 0).map((group) => (
+                          <div className="admin-mobile-notification-group" key={group.title}>
+                            <h3>{group.title}</h3>
+                            {group.notifications.map((item) => {
+                              const Icon = item.icon;
+                              return (
+                                <button
+                                  key={item.key}
+                                  type="button"
+                                  className={`admin-mobile-notification-item ${item.type} ${item.unread ? "is-unread" : ""}`}
+                                  onClick={() => handleNotificationItemClick(item)}
+                                >
+                                  <span className="school-notification-icon"><Icon size={16} /></span>
+                                  <div>
+                                    <b>{item.label}</b>
+                                    <strong>{item.title}</strong>
+                                    {item.description && <p>{item.description}</p>}
+                                  </div>
+                                  <time>{item.time}</time>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ))}
                       </div>
                     </>
                   )}
@@ -10485,6 +10439,9 @@ export default function AdminDashboard() {
           gap: 16px;
           margin-bottom: 14px;
         }
+        .school-overview-hero--complete {
+          grid-template-columns: minmax(0, 1fr);
+        }
         .school-welcome-panel,
         .school-profile-card,
         .school-overview-section {
@@ -10708,6 +10665,10 @@ export default function AdminDashboard() {
         .school-notifications-panel { padding: 32px 35px 20px; border-radius: 28px; background: #fff; box-shadow: 0 8px 25px rgba(23, 34, 56, .05); }
         .school-notifications-panel > h3 { margin: 0 0 17px; color: #20252b; font-size: 15px; font-weight: 600; }
         .school-notifications-panel > h3:not(:first-child) { margin-top: 35px; }
+        .school-notifications-empty { display: grid; min-height: 210px; place-content: center; justify-items: center; gap: 9px; padding: 24px; border: 1px dashed #d9e2dc; border-radius: 16px; background: #fbfdfb; color: #34453a; text-align: center; }
+        .school-notifications-empty > span { display: grid; width: 42px; height: 42px; place-items: center; border-radius: 50%; background: #eaf5ed; color: #35754a; }
+        .school-notifications-empty strong { font-size: 14px; font-weight: 700; }
+        .school-notifications-empty p { max-width: 360px; margin: 0; color: #68746c; font-size: 11px; line-height: 1.5; }
         .school-notification-highlight { display: grid; grid-template-columns: 46px minmax(0, 1fr) auto; gap: 18px; align-items: start; width: 100%; margin-bottom: 8px; padding: 20px; border: 0; border-radius: 24px; background: #f5f5f7; color: inherit; text-align: left; cursor: pointer; }
         .school-notification-highlight--green { background: #f4f4f6; }
         .school-notification-highlight--red { background: #f4f4f6; }
@@ -12533,6 +12494,7 @@ export default function AdminDashboard() {
 
 }  
       `}</style>
+      {isSchool && <FeedbackButton user={user} audience="School" />}
     </div>
   );
 }
