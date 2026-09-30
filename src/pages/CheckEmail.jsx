@@ -10,6 +10,7 @@ export default function CheckEmail() {
   const location = useLocation();
   const navigate = useNavigate();
   const email = location.state?.email || sessionStorage.getItem('staffroom_password_reset_email') || 'your email address';
+  const deliveryUnconfirmed = Boolean(location.state?.deliveryUnconfirmed);
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -101,8 +102,16 @@ export default function CheckEmail() {
             <ChevronLeft size={20} strokeWidth={2.5} aria-hidden="true" />
           </Link>
           <h1 id="check-email-title">Check your email</h1>
-          <p className="check-email-copy">We&apos;ve sent a password reset code to:<br />{email}</p>
-          <p className="check-email-copy check-email-instructions">Enter the 6-digit code below to create a new password.</p>
+          <p className="check-email-copy">
+            {deliveryUnconfirmed
+              ? <>We couldn&apos;t confirm delivery. If you received a password reset code at:<br />{email}</>
+              : <>We&apos;ve sent a password reset code to:<br />{email}</>}
+          </p>
+          <p className="check-email-copy check-email-instructions">
+            {deliveryUnconfirmed
+              ? 'Enter the 6-digit code below if it arrived. Otherwise, return and try again later.'
+              : 'Enter the 6-digit code below to create a new password.'}
+          </p>
           <form className="check-email-form" onSubmit={handleSubmit}>
             <span className="check-email-code-label">Verification code</span>
             <div className="check-email-otp-container" onPaste={handleOtpPaste}>

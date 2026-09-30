@@ -25,6 +25,14 @@ export default function ForgotPassword() {
       sessionStorage.setItem('staffroom_password_reset_email', normalizedEmail);
       navigate('/check-email', { state: { email: normalizedEmail } });
     } catch (err) {
+      const responseMessage = String(err?.response?.data?.message || '');
+      if (/could not send password reset email/i.test(responseMessage)) {
+        sessionStorage.setItem('staffroom_password_reset_email', normalizedEmail);
+        navigate('/check-email', {
+          state: { email: normalizedEmail, deliveryUnconfirmed: true },
+        });
+        return;
+      }
       setError(apiErrorMessage(err, 'Unable to send the password reset code.'));
     } finally {
       setSubmitting(false);
