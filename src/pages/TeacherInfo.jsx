@@ -296,7 +296,7 @@ export default function TeacherInfo() {
                     <option value="Primary">Primary</option>
                     <option value="Junior Secondary">Junior Secondary</option>
                     <option value="Senior Secondary">Senior Secondary</option>
-                    <option value="Tertiary">Tertiary</option>
+                    {/* <option value="Tertiary">Tertiary</option> */}
                   </select>
                   <span className="ti-chevron">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

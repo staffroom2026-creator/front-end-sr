@@ -650,10 +650,9 @@ export default function VerifyPhone() {
         /* ── Small screens ── */
         @media (max-width: 380px) {
           .otp-container {
-            gap: 6px;
+            gap: clamp(4px, 2vw, 6px);
           }
           .otp-input {
-            width: 42px;
             height: 48px;
             font-size: 18px;
             border-radius: 10px;
@@ -703,16 +702,20 @@ export default function VerifyPhone() {
           }
 
           .otp-container {
-            gap: 10px;
+            width: 100%;
+            gap: clamp(4px, 2vw, 8px);
           }
 
           .otp-input {
-            width: 50px;
+            flex: 1 1 0;
+            width: auto;
+            min-width: 0;
             height: 52px;
             border: 1.5px solid #b9c4c0;
             border-radius: 16px;
             background: rgba(255, 255, 255, 0.18);
             color: #374151;
+            box-sizing: border-box;
           }
 
           .otp-input:focus,

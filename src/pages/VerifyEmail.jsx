@@ -835,7 +835,7 @@ export default function VerifyEmail() {
         /* Small screens: shrink OTP boxes */
         @media (max-width: 380px) {
           .otp-container {
-            gap: 6px;
+            gap: clamp(4px, 2vw, 6px);
             max-width: 100%;
           }
           .otp-input {
@@ -897,16 +897,21 @@ export default function VerifyEmail() {
           }
 
           .otp-container {
-            gap: 8px;
-            max-width: 280px;
+            width: 100%;
+            gap: clamp(4px, 2vw, 8px);
+            max-width: 320px;
           }
 
           .otp-input {
+            flex: 1 1 0;
+            width: auto;
+            min-width: 0;
             height: 52px;
             border: 1.5px solid #b9c4c0;
             border-radius: 16px;
             background: rgba(255, 255, 255, 0.18);
             color: #374151;
+            box-sizing: border-box;
           }
 
           .otp-input:focus,
