@@ -132,6 +132,7 @@ const getNotificationGroups = (items) => {
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
+  const invitedTeachersStorageKey = `staffroom_school_invited_teachers:${user?.user_id || user?.id || user?.email || "current"}`;
   const [stats, setStats] = useState({});
   const [verifications, setVerifications] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
@@ -226,6 +227,14 @@ export default function AdminDashboard() {
     "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
   );
   const [teacherInviteSubmitting, setTeacherInviteSubmitting] = useState(false);
+  const [invitedTeacherIds, setInvitedTeacherIds] = useState(() => {
+    try {
+      const storedIds = JSON.parse(localStorage.getItem(invitedTeachersStorageKey) || "[]");
+      return Array.isArray(storedIds) ? storedIds.map(String) : [];
+    } catch {
+      return [];
+    }
+  });
   const [savedTeacherIds, setSavedTeacherIds] = useState([]);
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [schoolLogoFile, setSchoolLogoFile] = useState(null);
@@ -269,7 +278,7 @@ export default function AdminDashboard() {
   const [rejectError, setRejectError] = useState("");
   const [isTeacherInviteModalOpen, setIsTeacherInviteModalOpen] = useState(false);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
-  const [teacherTab, setTeacherTab] = useState("invited");
+  const [teacherTab, setTeacherTab] = useState("all");
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherSearchSubmitted, setTeacherSearchSubmitted] = useState("");
   const [teacherLocation, setTeacherLocation] = useState("All Locations");
@@ -1230,6 +1239,7 @@ export default function AdminDashboard() {
     const readValue = notification.is_read ?? notification.read;
     return readValue === false || readValue === "false" || Number(readValue) === 0;
   };
+  const unreadNotificationCount = notificationItems.filter((item) => item.unread).length;
 
   const markAllNotificationsAsRead = async () => {
     const unreadItems = notificationItems.filter((item) => item.unread && item.key);
@@ -3957,6 +3967,13 @@ export default function AdminDashboard() {
       await profileService.inviteTeacher(teacherId, {
         message,
       });
+      const nextInvitedTeacherIds = [...new Set([...invitedTeacherIds, String(teacherId)])];
+      setInvitedTeacherIds(nextInvitedTeacherIds);
+      try {
+        localStorage.setItem(invitedTeachersStorageKey, JSON.stringify(nextInvitedTeacherIds));
+      } catch {
+        // Keep the successful invitation even if browser storage is unavailable.
+      }
       setIsTeacherInviteModalOpen(false);
       setTeacherInviteMessage(
         "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
@@ -4797,7 +4814,9 @@ export default function AdminDashboard() {
 
     const selectedTeacherTabTeachers = teacherTab === "saved"
       ? sortedTeachers.filter((teacher) => savedTeacherIds.includes(String(teacher.user_id || "")))
-      : sortedTeachers;
+      : teacherTab === "invited"
+        ? sortedTeachers.filter((teacher) => invitedTeacherIds.includes(String(teacher.user_id || "")))
+        : sortedTeachers;
 
     return (
       <div className="school-teachers-page">
@@ -5049,27 +5068,40 @@ export default function AdminDashboard() {
               </div>
             </form>
 
-            <div className="school-teachers-toggle-row" role="tablist" aria-label="Teacher views">
-              <button
-                type="button"
-                className={`school-teachers-toggle ${teacherTab === "invited" ? "is-active" : ""}`}
-                role="tab"
-                aria-selected={teacherTab === "invited"}
-                onClick={() => setTeacherTab("invited")}
-              >
-                <FiUsers size={15} />
-                Invited teachers
-              </button>
-              <button
-                type="button"
-                className={`school-teachers-toggle ${teacherTab === "saved" ? "is-active" : ""}`}
-                role="tab"
-                aria-selected={teacherTab === "saved"}
-                onClick={() => setTeacherTab("saved")}
-              >
-                <FiBookmark size={15} />
-                Saved teachers
-              </button>
+            <div className="school-teachers-toggle-controls">
+              <div className="school-teachers-toggle-row" role="tablist" aria-label="Teacher views">
+                <button
+                  type="button"
+                  className={`school-teachers-toggle ${teacherTab === "invited" ? "is-active" : ""}`}
+                  role="tab"
+                  aria-selected={teacherTab === "invited"}
+                  onClick={() => setTeacherTab("invited")}
+                >
+                  <FiUsers size={15} />
+                  Invited teachers
+                </button>
+                <button
+                  type="button"
+                  className={`school-teachers-toggle ${teacherTab === "saved" ? "is-active" : ""}`}
+                  role="tab"
+                  aria-selected={teacherTab === "saved"}
+                  onClick={() => setTeacherTab("saved")}
+                >
+                  <FiBookmark size={15} />
+                  Saved teachers
+                </button>
+              </div>
+              {teacherTab !== "all" && (
+                <button
+                  type="button"
+                  className="school-teachers-clear-toggle"
+                  aria-label="Clear teacher view filter"
+                  title="Clear filter"
+                  onClick={() => setTeacherTab("all")}
+                >
+                  <FiX size={16} />
+                </button>
+              )}
             </div>
 
             <div className="school-teachers-header-row">
@@ -5100,7 +5132,19 @@ export default function AdminDashboard() {
 
                     <div className="school-teacher-profile-row">
                       <div className="school-teacher-name-column">
-                        <div className="school-teacher-name-row">
+                        <div
+                          className="school-teacher-name-row school-teacher-name-row--clickable"
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`View ${teacher.name}'s profile`}
+                          onClick={() => handleViewTeacherProfile(teacher)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              handleViewTeacherProfile(teacher);
+                            }
+                          }}
+                        >
                           <div
                             className="school-teacher-avatar"
                             style={{ background: teacher.accent }}
@@ -5170,6 +5214,8 @@ export default function AdminDashboard() {
               <div className="school-teachers-empty-state">
                 {teacherTab === "saved"
                   ? "No saved teachers yet. Save a teacher to view them here."
+                  : teacherTab === "invited"
+                    ? "You haven't invited any teachers yet."
                   : allApplicants.length === 0
                     ? "No teachers have applied to your jobs yet. Post a job to start receiving applications."
                     : "No teachers match your current search and filter selection."}
@@ -5243,10 +5289,14 @@ export default function AdminDashboard() {
                 type="button"
                 onClick={() => handleTabChange("notifications")}
                 className="admin-topbar-notifications"
-                aria-label="Notifications"
+                aria-label={`Notifications, ${unreadNotificationCount} unread`}
               >
                 <FiBell size={18} />
-                {notificationItems.some((item) => item.unread) && <span />}
+                {unreadNotificationCount > 0 && (
+                  <span className="admin-notification-count-badge">
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                  </span>
+                )}
               </button>
               <div className="admin-topbar-divider" />
               <div className="admin-topbar-user">
@@ -5286,10 +5336,14 @@ export default function AdminDashboard() {
               type="button"
               onClick={() => handleTabChange("notifications")}
               className="admin-mobile-bell"
-              aria-label="Notifications"
+              aria-label={`Notifications, ${unreadNotificationCount} unread`}
             >
               <FiBell size={20} />
-              {notificationItems.some((item) => item.unread) && <span />}
+              {unreadNotificationCount > 0 && (
+                <span className="admin-notification-count-badge">
+                  {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                </span>
+              )}
             </button>
           </header>
 
@@ -6085,16 +6139,6 @@ export default function AdminDashboard() {
                             <FiArrowRight className="admin-settings-card-arrow" size={18} />
                           </button>
 
-                          <button type="button" className={`admin-settings-card ${settingsSection === "notifications-privacy" ? "is-selected" : ""}`} onClick={() => setSettingsSection("notifications-privacy")}>
-                            <div className="admin-settings-card-icon gray">
-                              <FiBell size={20} />
-                            </div>
-                            <div className="admin-settings-card-copy">
-                              <h3>Notifications &amp; Privacy</h3>
-                              <p>Configure system alerts, email digests, and data privacy policies for the institution.</p>
-                            </div>
-                            <FiArrowRight className="admin-settings-card-arrow" size={18} />
-                          </button>
                         </section>
                       </div>
                     )
@@ -9380,12 +9424,7 @@ export default function AdminDashboard() {
           align-items: center;
         }
         .school-teachers-compact-toolbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 20px;
-          padding-top: 16px;
-          border-top: 1px solid #f1f5f9;
+          display: none;
         }
         .school-teachers-toolbar-left,
         .school-teachers-toolbar-right {
@@ -9561,17 +9600,39 @@ export default function AdminDashboard() {
           font-size: 13px;
           font-weight: 600;
         }
+        .school-teachers-toggle-controls {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 18px;
+        }
         .school-teachers-toggle-row {
           display: inline-flex;
           align-items: center;
           gap: 4px;
-          margin-top: 18px;
           padding: 5px;
           border: 1px solid #e4e7e5;
           border-radius: 12px;
           background: #f3f5f3;
           overflow: visible;
           box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+        }
+        .school-teachers-clear-toggle {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border: 1px solid #d5dbd7;
+          border-radius: 50%;
+          background: #fff;
+          color: #5b6871;
+          cursor: pointer;
+          transition: background-color 0.18s ease, color 0.18s ease;
+        }
+        .school-teachers-clear-toggle:hover {
+          background: #eaf5ed;
+          color: #186d3a;
         }
         .school-teachers-toggle {
           display: inline-flex;
@@ -9736,6 +9797,14 @@ export default function AdminDashboard() {
           gap: 10px;
           margin-bottom: 4px;
         }
+        .school-teacher-name-row--clickable {
+          cursor: pointer;
+        }
+        .school-teacher-name-row--clickable:focus-visible {
+          outline: 2px solid #14792d;
+          outline-offset: 4px;
+          border-radius: 6px;
+        }
         .school-teacher-name-content {
           display: flex;
           align-items: center;
@@ -9780,6 +9849,11 @@ export default function AdminDashboard() {
           color: #5f6e6b;
           font-size: 13px;
           line-height: 1.45;
+          display: -webkit-box;
+          overflow: hidden;
+          -webkit-box-orient: vertical;
+          -webkit-line-clamp: 2;
+          line-clamp: 2;
         }
         .school-teacher-actions {
           display: flex;
@@ -10739,7 +10813,7 @@ export default function AdminDashboard() {
         .admin-topbar-search input::placeholder { color: #7c858b; opacity: 1; }
         .admin-topbar-account { display: flex; align-items: center; gap: 13px; margin-left: 25px; }
         .admin-topbar-notifications { position: relative; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #48544c; cursor: pointer; }
-        .admin-topbar-notifications span { position: absolute; top: 0; right: -2px; width: 5px; height: 5px; border-radius: 50%; background: #c92c31; }
+        .admin-notification-count-badge { position: absolute; top: -8px; right: -10px; display: grid; place-items: center; min-width: 17px; height: 17px; padding: 0 4px; border: 1px solid #fff; border-radius: 999px; background: #c92c31; color: #fff; font-size: 10px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
         .admin-topbar-divider { width: 1px; height: 28px; background: #d4d9d6; }
         .admin-topbar-user { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; white-space: nowrap; }
         .admin-topbar-user strong { color: #20252b; font-size: 13px; font-weight: 700; }
@@ -10843,12 +10917,8 @@ export default function AdminDashboard() {
           }
           .admin-mobile-bell span {
             position: absolute;
-            top: 5px;
-            right: 5px;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #dc5b5b;
+            top: -2px;
+            right: -3px;
           }
           .admin-dashboard-main { padding: 24px 18px 20px; }
           .admin-dashboard-main > div { max-width: none; }
