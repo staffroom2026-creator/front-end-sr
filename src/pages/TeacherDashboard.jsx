@@ -16,7 +16,7 @@ import {
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiCreditCard, FiSend, FiCalendar, FiAlertTriangle,
-  FiUser, FiEdit2, FiTrash2, FiRotateCw, FiShield, FiAward, FiDownload, FiUpload, FiLock,
+  FiUser, FiEdit2, FiTrash2, FiX, FiRotateCw, FiShield, FiAward, FiDownload, FiUpload, FiLock,
   FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
 } from 'react-icons/fi';
 
@@ -477,8 +477,19 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
+  const profileCompletionDismissalKey = `staffroom_profile_completion_dismissed:${user?.user_id || user?.id || user?.email || 'teacher'}`;
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileSubTab, setProfileSubTab] = useState('overview');
+  const [profileCompletionCardFading, setProfileCompletionCardFading] = useState(false);
+  const [profileCompletionDismissedFor, setProfileCompletionDismissedFor] = useState(() => {
+    try {
+      return localStorage.getItem(profileCompletionDismissalKey) === 'true'
+        ? profileCompletionDismissalKey
+        : null;
+    } catch {
+      return null;
+    }
+  });
   const isRestoringDashboardHistory = useRef(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedJobOrigin, setSelectedJobOrigin] = useState('jobs');
@@ -536,6 +547,7 @@ export default function TeacherDashboard() {
   // ── Education Tab state ──
   const [educationList, setEducationList] = useState([]);
   const [showAddEduModal, setShowAddEduModal] = useState(false);
+  const [showPostEducationModal, setShowPostEducationModal] = useState(false);
   const [newEduForm, setNewEduForm] = useState({
     degree: '',
     degreeOther: '',
@@ -553,6 +565,7 @@ export default function TeacherDashboard() {
   // ── Teaching Experience Tab state ──
   const [experienceList, setExperienceList] = useState([]);
   const [showAddExpModal, setShowAddExpModal] = useState(false);
+  const [showPostExperienceModal, setShowPostExperienceModal] = useState(false);
   const [expForm, setExpForm] = useState({
     role: '',
     school: '',
@@ -911,6 +924,123 @@ export default function TeacherDashboard() {
   };
   const profileStrengthValue = getProfileStrengthValue();
   const profileViewsValue = getProfileViewsValue();
+  const isSetupComplete = [
+    profileState?.setup_completed,
+    profileState?.setupComplete,
+    profileState?.profile_complete,
+    profileState?.is_profile_complete,
+    user?.setup_completed,
+    user?.setupComplete,
+    user?.profile_complete,
+    user?.is_profile_complete,
+  ].some((value) => value === true || value === 'true' || value === 1 || value === '1');
+  const profileCompletionSteps = [
+    { key: 'onboarding', label: 'Initial Setup', completed: isSetupComplete },
+    {
+      key: 'personal-info',
+      label: 'Personal Information',
+      completed: Boolean(
+        personalFirstName.trim() &&
+        personalLastName.trim() &&
+        (personalEmail || user?.email) &&
+        (personalPhone || user?.phone) &&
+        (personalCity || personalState || profileState?.location)
+      ),
+    },
+    {
+      key: 'professional-info',
+      label: 'Professional Information',
+      completed: Boolean(
+        profileState?.role_title &&
+        profileState?.bio?.trim() &&
+        profileState?.experience_years !== null &&
+        profileState?.experience_years !== undefined &&
+        profileState?.preferred_employment_type &&
+        profileState?.availability &&
+        parseSubjectList(profileState?.skills || profileState?.subjects || []).length > 0 &&
+        parseSubjectList(profileState?.teaching_levels || []).length > 0
+      ),
+    },
+    {
+      key: 'education',
+      label: 'Education',
+      completed: normalizeEducationRecords(profileState?.education_history || educationList).length > 0,
+    },
+    {
+      key: 'teaching-experience',
+      label: 'Teaching Experience',
+      completed: normalizeExperienceRecords(
+        profileState?.teaching_experience ?? profileState?.work_experience ?? profileState?.experience_history ?? experienceList
+      ).length > 0,
+    },
+    {
+      key: 'trcn-certification',
+      label: 'TRCN Certification',
+      completed: Boolean(profileState?.trcn_number || profileState?.trcn_certificate_url || !profileState?.trcn_required),
+    },
+    {
+      key: 'cv-resume',
+      label: 'CV / Resume',
+      completed: Boolean(profileState?.cv_url || activeResume?.url),
+    },
+    {
+      key: 'availability',
+      label: 'Availability',
+      completed: Boolean(
+        (profileState?.preferred_employment_type || profileState?.employment_type) &&
+        (profileState?.preferred_location || profileState?.location) &&
+        profileState?.availability &&
+        profileState?.available_from
+      ),
+    },
+  ];
+  const completedProfileStepCount = profileCompletionSteps.filter((step) => step.completed).length;
+  const profileCompletionPercent = Math.round((completedProfileStepCount / profileCompletionSteps.length) * 100);
+  const nextProfileStep = profileCompletionSteps.find((step) => !step.completed) || null;
+  const profileCompletionCardDismissed = profileCompletionDismissedFor === profileCompletionDismissalKey;
+
+  useEffect(() => {
+    try {
+      setProfileCompletionDismissedFor(
+        localStorage.getItem(profileCompletionDismissalKey) === 'true'
+          ? profileCompletionDismissalKey
+          : null,
+      );
+    } catch {
+      setProfileCompletionDismissedFor(null);
+    }
+    setProfileCompletionCardFading(false);
+  }, [profileCompletionDismissalKey]);
+
+  useEffect(() => {
+    if (activeTab !== 'dashboard' || nextProfileStep || profileCompletionCardDismissed) return undefined;
+
+    const fadeTimeout = window.setTimeout(() => setProfileCompletionCardFading(true), 900);
+    const dismissTimeout = window.setTimeout(() => {
+      try {
+        localStorage.setItem(profileCompletionDismissalKey, 'true');
+      } catch {
+        // Keep the dismissal for this session if storage is unavailable.
+      }
+      setProfileCompletionDismissedFor(profileCompletionDismissalKey);
+    }, 1700);
+
+    return () => {
+      window.clearTimeout(fadeTimeout);
+      window.clearTimeout(dismissTimeout);
+    };
+  }, [activeTab, nextProfileStep, profileCompletionCardDismissed, profileCompletionDismissalKey]);
+
+  const goToNextProfileStep = () => {
+    if (!nextProfileStep) return;
+    if (nextProfileStep.key === 'onboarding') {
+      navigate('/teacher-info');
+      return;
+    }
+    if (nextProfileStep.key === 'personal-info') setPersonalInfoOrigin('profile');
+    setActiveTab('profile');
+    setProfileSubTab(nextProfileStep.key);
+  };
   const hasRequiredTeacherApplicationData = () => {
     const educationEntries = normalizeEducationRecords(profileState?.education_history || []);
     const experienceEntries = normalizeExperienceRecords(
@@ -949,6 +1079,8 @@ export default function TeacherDashboard() {
   const [applicationError, setApplicationError] = useState('');
   const [pendingCvFile, setPendingCvFile] = useState(null);
   const [cvUploadLoading, setCvUploadLoading] = useState(false);
+  const [showPostCvModal, setShowPostCvModal] = useState(false);
+  const cvFileInputRef = useRef(null);
 
   const handleResumeAction = (mode) => {
     if (!activeResume?.url) {
@@ -971,15 +1103,17 @@ export default function TeacherDashboard() {
   };
 
   const handleCvUpload = async (file) => {
-    if (!file) return;
+    if (!file) return false;
 
     try {
       const formData = new FormData();
       formData.append('cv', file);
       await profileService.uploadCv(formData);
       await refreshTeacherProfile();
+      return true;
     } catch (err) {
       setAppError(apiErrorMessage(err, 'Unable to upload CV.'));
+      return false;
     }
   };
 
@@ -996,8 +1130,11 @@ export default function TeacherDashboard() {
 
     setCvUploadLoading(true);
     try {
-      await handleCvUpload(pendingCvFile);
-      setPendingCvFile(null);
+      const uploaded = await handleCvUpload(pendingCvFile);
+      if (uploaded) {
+        setPendingCvFile(null);
+        setShowPostCvModal(true);
+      }
     } finally {
       setCvUploadLoading(false);
     }
@@ -1406,6 +1543,7 @@ export default function TeacherDashboard() {
   }));
 
   const handleSaveEducation = async () => {
+    const isAddingEducation = !editingEducationId;
     const startYear = String(newEduForm.startYear || '');
     const endYear = String(newEduForm.endYear || '');
     const degree = newEduForm.degree === 'Others' ? newEduForm.degreeOther : newEduForm.degree;
@@ -1451,6 +1589,7 @@ export default function TeacherDashboard() {
       setNewEduForm({ degree: '', degreeOther: '', institution: '', fieldOfStudy: '', classOfDegree: '', startYear: '2015', endYear: '2019', status: 'Completed' });
       setEditingEducationId(null);
       setShowAddEduModal(false);
+      if (isAddingEducation) setShowPostEducationModal(true);
     } catch (err) {
       setEducationError(profileApiErrorMessage(err, 'Unable to save education.'));
     } finally {
@@ -1566,6 +1705,7 @@ export default function TeacherDashboard() {
   };
 
   const handleSaveExperience = async () => {
+    const isAddingExperience = !editingExpId;
     if (!expForm.role.trim() || !expForm.school.trim() || !/^\d{4}-\d{2}$/.test(expForm.start_date) || (expForm.end_date && !/^\d{4}-\d{2}$/.test(expForm.end_date))) {
       setExperienceError('Complete the role, school, and valid start and end months.');
       return;
@@ -1602,6 +1742,7 @@ export default function TeacherDashboard() {
       const profileData = response?.data?.data ?? response?.data ?? {};
       applyLoadedTeacherProfile(profileData);
       setShowAddExpModal(false);
+      if (isAddingExperience) setShowPostExperienceModal(true);
     } catch (err) {
       setExperienceError(profileApiErrorMessage(err, 'Unable to save teaching experience.'));
     } finally {
@@ -2340,38 +2481,42 @@ export default function TeacherDashboard() {
                   {/* ── Stats Overview ── */}
                   <div className="td-stats-row">
                     {/* Profile Strength Card */}
-                    {profileStrengthValue < 100 && <motion.div variants={cardVariants} className="td-stat-card td-profile-card">
+                    {!profileCompletionCardDismissed && (
+                    <motion.div
+                      variants={cardVariants}
+                      animate={profileCompletionCardFading ? { opacity: 0, y: -8, transition: { duration: 0.7 } } : undefined}
+                      className="td-stat-card td-profile-card"
+                    >
                       <div className="td-card-header">
-                        <span className="td-profile-title">Profile Strength</span>
-                        <span className="td-percent-badge">{profileStrengthValue}%</span>
-                      </div>
-                      {/* Mobile profile strength layout */}
-                      <div className="td-mobile-profile-strength">
-                        <div className="td-mobile-ps-top">
-                          <div className="td-mobile-ps-left">
-                            <p className="td-mobile-ps-label">PROFILE STRENGTH</p>
-                            <span className="td-mobile-ps-value">{profileStrengthValue}%</span>
+                        <div className="td-profile-completion-heading">
+                          <span className="td-profile-title">Profile Completion</span>
+                          <div className="td-profile-completion-count">
+                            <strong>{completedProfileStepCount} / {profileCompletionSteps.length} steps</strong>
+                            <span className={nextProfileStep ? '' : 'is-complete'}>
+                              {nextProfileStep ? 'In Progress' : 'Completed'}
+                            </span>
                           </div>
-                          <div className="td-mobile-ps-icon"><FiZap size={20} /></div>
                         </div>
-                        <div className="td-progress-bar">
-                          <div className="td-progress-fill" style={{ width: `${profileStrengthValue}%` }}></div>
-                        </div>
-                        <p className="td-card-hint">{profileState?.bio ? 'Your profile is ready for school applications.' : 'Complete your profile to improve visibility to schools.'}</p>
                       </div>
-                      {/* Desktop layout */}
                       <div className="td-desktop-profile-strength">
                         <div className="td-profile-content-block">
                           <div className="td-progress-bar">
-                            <div className="td-progress-fill" style={{ width: `${profileStrengthValue}%` }}></div>
+                            <div className="td-progress-fill" style={{ width: `${profileCompletionPercent}%` }}></div>
                           </div>
                           <p className="td-card-hint">
-                            {profileState?.bio ? 'Your profile is ready for job applications.' : 'Complete your profile to unlock more opportunities.'}
+                            {nextProfileStep
+                              ? `Your profile is missing some key details. Complete your ${nextProfileStep.label} next.`
+                              : 'Your profile is complete. You are ready to apply for jobs.'}
                           </p>
                         </div>
-                        <button className="td-complete-profile-btn" onClick={() => setActiveTab('profile')}>Complete Profile →</button>
+                        {nextProfileStep && (
+                          <button type="button" className="td-complete-profile-btn" onClick={goToNextProfileStep}>
+                            {nextProfileStep.key === 'onboarding' ? 'Complete Setup' : 'Complete Profile'} →
+                          </button>
+                        )}
                       </div>
-                    </motion.div>}
+                    </motion.div>
+                    )}
 
                     {/* Mini cards wrapper */}
                     <div className="td-stats-mini-wrapper">
@@ -4958,6 +5103,64 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
                       )}
+
+                      {showPostEducationModal && (
+                        <div className="td-modal-overlay td-edu-next-step-overlay" onClick={() => setShowPostEducationModal(false)}>
+                          <div
+                            className="td-edu-next-step-modal"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="td-edu-next-step-title"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              className="td-edu-next-step-close"
+                              aria-label="Close education options"
+                              onClick={() => setShowPostEducationModal(false)}
+                            >
+                              <FiX size={18} />
+                            </button>
+                            <div className="td-edu-next-step-icon"><FiCheckCircle size={22} /></div>
+                            <h2 id="td-edu-next-step-title">Education added</h2>
+                            <p>
+                              {nextProfileStep
+                                ? `Would you like to add another education qualification or continue to ${nextProfileStep.label}?`
+                                : 'Your profile completion steps are finished. You can add another education qualification or return to your profile.'}
+                            </p>
+                            <div className="td-edu-next-step-actions">
+                              <button
+                                type="button"
+                                className="td-edu-next-step-secondary"
+                                onClick={() => {
+                                  setShowPostEducationModal(false);
+                                  setEditingEducationId(null);
+                                  setEducationError('');
+                                  setNewEduForm({ degree: '', degreeOther: '', institution: '', fieldOfStudy: '', classOfDegree: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+                                  setShowAddEduModal(true);
+                                }}
+                              >
+                                Add another education
+                              </button>
+                              <button
+                                type="button"
+                                className="td-edu-next-step-primary"
+                                onClick={() => {
+                                  setShowPostEducationModal(false);
+                                  if (nextProfileStep) {
+                                    goToNextProfileStep();
+                                  } else {
+                                    setProfileSubTab('overview');
+                                  }
+                                }}
+                              >
+                                {nextProfileStep ? `Continue to ${nextProfileStep.label}` : 'Finish profile'}
+                                {nextProfileStep && <FiArrowRight size={15} />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
 
@@ -5156,6 +5359,64 @@ export default function TeacherDashboard() {
                                 onClick={handleSaveExperience}
                               >
                                 {savingExperience ? 'Saving...' : editingExpId ? 'Save Changes' : 'Add Experience'}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {showPostExperienceModal && (
+                        <div className="td-modal-overlay td-edu-next-step-overlay" onClick={() => setShowPostExperienceModal(false)}>
+                          <div
+                            className="td-edu-next-step-modal"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="td-exp-next-step-title"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              className="td-edu-next-step-close"
+                              aria-label="Close experience options"
+                              onClick={() => setShowPostExperienceModal(false)}
+                            >
+                              <FiX size={18} />
+                            </button>
+                            <div className="td-edu-next-step-icon"><FiCheckCircle size={22} /></div>
+                            <h2 id="td-exp-next-step-title">Experience added</h2>
+                            <p>
+                              {nextProfileStep
+                                ? `Would you like to add another teaching experience or continue to ${nextProfileStep.label}?`
+                                : 'Your profile completion steps are finished. You can add another teaching experience or return to your profile.'}
+                            </p>
+                            <div className="td-edu-next-step-actions">
+                              <button
+                                type="button"
+                                className="td-edu-next-step-secondary"
+                                onClick={() => {
+                                  setShowPostExperienceModal(false);
+                                  setEditingExpId(null);
+                                  setExperienceError('');
+                                  setExpForm({ role: '', school: '', location: '', start_date: '', end_date: '', description: '' });
+                                  setShowAddExpModal(true);
+                                }}
+                              >
+                                Add another experience
+                              </button>
+                              <button
+                                type="button"
+                                className="td-edu-next-step-primary"
+                                onClick={() => {
+                                  setShowPostExperienceModal(false);
+                                  if (nextProfileStep) {
+                                    goToNextProfileStep();
+                                  } else {
+                                    setProfileSubTab('overview');
+                                  }
+                                }}
+                              >
+                                {nextProfileStep ? `Continue to ${nextProfileStep.label}` : 'Finish profile'}
+                                {nextProfileStep && <FiArrowRight size={15} />}
                               </button>
                             </div>
                           </div>
@@ -5464,6 +5725,7 @@ export default function TeacherDashboard() {
                             ) : (
                               <label className="td-cv-dropzone">
                                 <input
+                                  ref={cvFileInputRef}
                                   type="file"
                                   accept=".pdf,.docx,.doc"
                                   className="hidden"
@@ -5485,6 +5747,60 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
                       </div>
+                      {showPostCvModal && (
+                        <div className="td-modal-overlay td-edu-next-step-overlay" onClick={() => setShowPostCvModal(false)}>
+                          <div
+                            className="td-edu-next-step-modal"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="td-cv-next-step-title"
+                            onClick={(event) => event.stopPropagation()}
+                          >
+                            <button
+                              type="button"
+                              className="td-edu-next-step-close"
+                              aria-label="Close resume options"
+                              onClick={() => setShowPostCvModal(false)}
+                            >
+                              <FiX size={18} />
+                            </button>
+                            <div className="td-edu-next-step-icon"><FiCheckCircle size={22} /></div>
+                            <h2 id="td-cv-next-step-title">CV / Resume uploaded</h2>
+                            <p>
+                              {nextProfileStep
+                                ? `Would you like to upload another CV or continue to ${nextProfileStep.label}?`
+                                : 'Your profile completion steps are finished. You can upload another CV or return to your profile.'}
+                            </p>
+                            <div className="td-edu-next-step-actions">
+                              <button
+                                type="button"
+                                className="td-edu-next-step-secondary"
+                                onClick={() => {
+                                  cvFileInputRef.current?.click();
+                                  setShowPostCvModal(false);
+                                }}
+                              >
+                                Choose another CV
+                              </button>
+                              <button
+                                type="button"
+                                className="td-edu-next-step-primary"
+                                onClick={() => {
+                                  setShowPostCvModal(false);
+                                  if (nextProfileStep) {
+                                    goToNextProfileStep();
+                                  } else {
+                                    setProfileSubTab('overview');
+                                  }
+                                }}
+                              >
+                                {nextProfileStep ? `Continue to ${nextProfileStep.label}` : 'Finish profile'}
+                                {nextProfileStep && <FiArrowRight size={15} />}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </motion.div>
                   )}
 
@@ -5741,16 +6057,41 @@ export default function TeacherDashboard() {
 
                         {/* Subtitle */}
                         <p className="td-success-desc">
-                          Your professional profile has been updated successfully and is ready for schools to discover.
+                          {nextProfileStep
+                            ? `Your profile has been saved. Complete your ${nextProfileStep.label} next.`
+                            : 'Your profile is complete and ready for schools to discover.'}
                         </p>
 
                         {/* Progress Status */}
                         <div className="td-success-progress-section">
-                          <div className="td-success-progress-bar" />
-                          <span className="td-success-progress-text">Completion Status: 100%</span>
+                          <div
+                            className="td-success-progress-bar"
+                            role="progressbar"
+                            aria-label="Profile completion"
+                            aria-valuemin={0}
+                            aria-valuemax={100}
+                            aria-valuenow={profileCompletionPercent}
+                          >
+                            <div className="td-success-progress-fill" style={{ width: `${profileCompletionPercent}%` }} />
+                          </div>
+                          <span className="td-success-progress-text">
+                            Completion Status: {completedProfileStepCount} of {profileCompletionSteps.length} steps ({profileCompletionPercent}%)
+                          </span>
                         </div>
 
                         {/* Actions */}
+                        {nextProfileStep && (
+                          <button
+                            type="button"
+                            className="td-success-next-step-btn"
+                            onClick={() => {
+                              setShowProfileUpdatedModal(false);
+                              goToNextProfileStep();
+                            }}
+                          >
+                            {nextProfileStep.key === 'onboarding' ? 'Complete Setup' : `Complete ${nextProfileStep.label}`} <FiArrowRight size={15} />
+                          </button>
+                        )}
                         <div className="td-success-actions-row">
                           <button
                             type="button"
@@ -6957,6 +7298,34 @@ export default function TeacherDashboard() {
           font-weight: 700;
           color: #1f2937;
         }
+        .td-profile-completion-heading {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .td-profile-completion-count {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .td-profile-completion-count strong {
+          color: #1f2937;
+          font-size: 22px;
+          font-weight: 800;
+          line-height: 1.15;
+        }
+        .td-profile-completion-count span {
+          padding: 4px 8px;
+          border-radius: 999px;
+          background: #fff7dc;
+          color: #7c5b00;
+          font-size: 11px;
+          font-weight: 600;
+        }
+        .td-profile-completion-count span.is-complete {
+          background: #dcfce7;
+          color: #166534;
+        }
         .td-percent-badge {
           background: #dcfce7;
           color: #166534;
@@ -6985,7 +7354,7 @@ export default function TeacherDashboard() {
           color: #667085;
           line-height: 1.45;
           margin: 0;
-          max-width: 260px;
+          max-width: 560px;
         }
 
         .td-complete-profile-btn {
@@ -10005,6 +10374,68 @@ export default function TeacherDashboard() {
         .td-edu-modal-content .td-pers-cancel-btn, .td-edu-modal-content .td-pers-save-btn { min-height: 38px; padding: 0 17px; border-radius: 7px; font-size: 12px; }
         .td-edu-modal-content .td-pers-save-btn { background: #0d7c57; }
         .td-edu-modal-content .td-pers-save-btn:hover { background: #096846; }
+        .td-edu-next-step-overlay { z-index: 1010; }
+        .td-edu-next-step-modal {
+          position: relative;
+          width: min(440px, 100%);
+          padding: 30px;
+          border: 1px solid #e2e8e4;
+          border-radius: 16px;
+          background: #fff;
+          box-shadow: 0 20px 56px rgba(15, 23, 42, 0.22);
+          text-align: center;
+        }
+        .td-edu-next-step-close {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          display: grid;
+          place-items: center;
+          width: 32px;
+          height: 32px;
+          border: 0;
+          border-radius: 50%;
+          background: transparent;
+          color: #64748b;
+          cursor: pointer;
+        }
+        .td-edu-next-step-close:hover { background: #f1f5f9; color: #1e293b; }
+        .td-edu-next-step-icon {
+          display: grid;
+          place-items: center;
+          width: 48px;
+          height: 48px;
+          margin: 0 auto 14px;
+          border-radius: 50%;
+          background: #e8f7ee;
+          color: #15803d;
+        }
+        .td-edu-next-step-modal h2 { margin: 0 0 8px; color: #172033; font-size: 20px; font-weight: 750; }
+        .td-edu-next-step-modal p { margin: 0 auto 22px; max-width: 360px; color: #64748b; font-size: 14px; line-height: 1.5; }
+        .td-edu-next-step-actions { display: flex; justify-content: center; gap: 10px; }
+        .td-edu-next-step-actions button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          min-height: 42px;
+          padding: 0 16px;
+          border: 1px solid transparent;
+          border-radius: 8px;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .td-edu-next-step-secondary { background: #f8fafc; border-color: #dbe2e8 !important; color: #334155; }
+        .td-edu-next-step-secondary:hover { background: #f1f5f9; }
+        .td-edu-next-step-primary { background: #15803d; color: #fff; }
+        .td-edu-next-step-primary:hover { background: #166534; }
+        @media (max-width: 540px) {
+          .td-edu-next-step-modal { padding: 28px 20px 20px; }
+          .td-edu-next-step-actions { flex-direction: column; }
+          .td-edu-next-step-actions button { width: 100%; }
+        }
         .td-exp-modal-content { max-height: calc(100vh - 32px); overflow-y: auto; }
         .td-exp-modal-content .td-modal-header {
           align-items: center;
@@ -16175,9 +16606,17 @@ export default function TeacherDashboard() {
         .td-success-progress-bar {
           width: 100%;
           height: 6px;
-          background: #15803D;
+          background: #e5e7eb;
           border-radius: 9999px;
           margin-bottom: 8px;
+          overflow: hidden;
+        }
+
+        .td-success-progress-fill {
+          height: 100%;
+          background: #15803D;
+          border-radius: inherit;
+          transition: width 0.3s ease;
         }
 
         .td-success-progress-text {
@@ -16185,6 +16624,31 @@ export default function TeacherDashboard() {
           font-weight: 700;
           color: #15803D;
           display: block;
+        }
+
+        .td-success-next-step-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          width: 100%;
+          min-height: 44px;
+          margin: 0 0 14px;
+          padding: 10px 16px;
+          border: 0;
+          border-radius: 8px;
+          background: #22c55e;
+          color: #14532d;
+          font: inherit;
+          font-size: 13px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+
+        .td-success-next-step-btn:hover {
+          background: #16a34a;
+          color: #fff;
         }
 
         .td-success-actions-row {
