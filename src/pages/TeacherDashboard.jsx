@@ -3011,6 +3011,26 @@ export default function TeacherDashboard() {
                 <strong>{selectedJob.title}</strong>
               </div>
 
+              {!selectedJobApplication && !isTeacherProfileComplete && (
+                <div className="td-jd-profile-incomplete" role="alert">
+                  <FiAlertCircle size={18} />
+                  <p>You can’t apply for jobs until your profile is complete.</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (nextProfileStep) {
+                        goToNextProfileStep();
+                      } else {
+                        setActiveTab('profile');
+                        setProfileSubTab('overview');
+                      }
+                    }}
+                  >
+                    Complete your profile <FiArrowRight size={14} />
+                  </button>
+                </div>
+              )}
+
               <section className="school-job-detail-hero td-jd-hero">
                 <div className="school-job-detail-hero-main td-jd-hero-main">
                   <h2>{selectedJob.title}</h2>
@@ -9115,6 +9135,45 @@ export default function TeacherDashboard() {
           font-weight: 600;
         }
 
+        .td-jd-profile-incomplete {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          margin: 0 0 14px;
+          padding: 12px 14px;
+          border: 1px solid #f2c8bd;
+          border-radius: 10px;
+          background: #fff8f5;
+          color: #a8432d;
+        }
+        .td-jd-profile-incomplete > svg { flex: 0 0 auto; }
+        .td-jd-profile-incomplete p {
+          flex: 1;
+          margin: 0;
+          color: #92412f;
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1.4;
+        }
+        .td-jd-profile-incomplete button {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          min-height: 34px;
+          padding: 0 12px;
+          border: 0;
+          border-radius: 7px;
+          background: #147a45;
+          color: #fff;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .td-jd-profile-incomplete button:hover { background: #116438; }
+
         .td-jd-hero {
           display: flex;
           align-items: center;
@@ -9286,6 +9345,9 @@ export default function TeacherDashboard() {
         }
 
         @media (max-width: 680px) {
+          .td-jd-profile-incomplete { align-items: flex-start; flex-wrap: wrap; }
+          .td-jd-profile-incomplete p { flex-basis: calc(100% - 32px); }
+          .td-jd-profile-incomplete button { margin-left: 28px; }
           .td-jd-hero {
             flex-direction: column;
             align-items: flex-start;
