@@ -227,6 +227,7 @@ const normalizeJobData = (job = {}, index = 0) => {
     color: job.color || 'td-bg-darkgreen',
     iconType: job.iconType || 'academic',
     about: job.about || job.description || 'No job description available yet.',
+    expectedStartDate: job.expected_start_date || job.start_date || job.job_start_date || '',
     responsibilities: parseResponsibilityList(job.responsibilities || job.job_responsibilities || job.duties),
     requirements: job.requirements || { essential: [], desirable: [] },
     required_experience: job.required_experience || job.requiredExperience || '',
@@ -543,6 +544,7 @@ export default function TeacherDashboard() {
   const [phoneVerificationCode, setPhoneVerificationCode] = useState(['', '', '', '', '', '']);
   const [showPhoneSuccessSnackbar, setShowPhoneSuccessSnackbar] = useState(false);
   const [showEmailSuccessSnackbar, setShowEmailSuccessSnackbar] = useState(false);
+  const [showCvSuccessSnackbar, setShowCvSuccessSnackbar] = useState(false);
 
   // ── Education Tab state ──
   const [educationList, setEducationList] = useState([]);
@@ -593,6 +595,22 @@ export default function TeacherDashboard() {
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [showProfileUpdatedModal, setShowProfileUpdatedModal] = useState(false);
   const [profileCompletionNotice, setProfileCompletionNotice] = useState('');
+
+  const getAvailabilityStartOption = (profile) => {
+    const availableFrom = String(profile?.available_from || '').slice(0, 10);
+    if (!availableFrom) return 'immediately';
+
+    const updatedDate = String(profile?.updated_at || profile?.updatedAt || '').slice(0, 10);
+    if (!updatedDate) return 'specific-date';
+
+    const daysAfterUpdate = Math.round(
+      (Date.parse(`${availableFrom}T00:00:00Z`) - Date.parse(`${updatedDate}T00:00:00Z`)) / 86400000
+    );
+
+    if (daysAfterUpdate === 0) return 'immediately';
+    if (daysAfterUpdate === 14) return '2-weeks';
+    return 'specific-date';
+  };
 
   // ── Settings Subtab state ──
   const [settingsSubTab, setSettingsSubTab] = useState('overview');
@@ -751,6 +769,13 @@ export default function TeacherDashboard() {
   }, [showEmailSuccessSnackbar]);
 
   useEffect(() => {
+    if (!showCvSuccessSnackbar) return undefined;
+
+    const timeoutId = window.setTimeout(() => setShowCvSuccessSnackbar(false), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [showCvSuccessSnackbar]);
+
+  useEffect(() => {
     if (!profileCompletionNotice) return undefined;
 
     const timeoutId = window.setTimeout(() => setProfileCompletionNotice(''), 6000);
@@ -857,6 +882,62 @@ export default function TeacherDashboard() {
   const selectedJobApplication = selectedJob
     ? applications.find((application) => String(application.jobId) === String(selectedJob.job_id || selectedJob.id))
     : null;
+  const getTeacherJobFitScore = (job = {}) => {
+    const teacherProfile = profileState || {};
+    let score = 0;
+    const normalize = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+
+    const employmentPreference = normalize(teacherProfile.preferred_employment_type);
+    const employmentType = normalize(job.employment_type || job.type || job.job_type);
+    if (employmentPreference && employmentType) {
+      const employmentAliases = {
+        fulltime: 'full time',
+        'full time': 'full time',
+        parttime: 'part time',
+        'part time': 'part time',
+      };
+      const preferredType = employmentAliases[employmentPreference.replace(/\s/g, '')] || employmentAliases[employmentPreference] || employmentPreference;
+      const jobType = employmentAliases[employmentType.replace(/\s/g, '')] || employmentAliases[employmentType] || employmentType;
+      if (preferredType === jobType || preferredType.includes(jobType) || jobType.includes(preferredType)) score += 4;
+    }
+
+    const preferredLocation = normalize(teacherProfile.preferred_location || teacherProfile.location);
+    const jobLocation = normalize([job.location, job.city, job.state].filter(Boolean).join(' '));
+    if (preferredLocation && jobLocation && preferredLocation !== 'nigeria') {
+      const preferredParts = preferredLocation.split(' ').filter((part) => part.length > 2);
+      if (jobLocation.includes(preferredLocation) || preferredLocation.includes(jobLocation)) {
+        score += 4;
+      } else if (preferredParts.some((part) => jobLocation.includes(part))) {
+        score += 2;
+      }
+    }
+
+    const teacherSubjects = parseSubjectList(teacherProfile.skills || teacherProfile.subjects).map(normalize).filter(Boolean);
+    const jobSubjectText = normalize([job.subject, job.title, ...(Array.isArray(job.tags) ? job.tags : [])].join(' '));
+    if (teacherSubjects.some((subject) => jobSubjectText.includes(subject) || subject.includes(jobSubjectText))) score += 5;
+
+    const teacherLevels = parseSubjectList(teacherProfile.teaching_levels).map(normalize).filter(Boolean);
+    const jobLevel = normalize(job.education || job.teaching_level || job.education_level);
+    if (teacherLevels.some((level) => jobLevel.includes(level) || level.includes(jobLevel))) score += 3;
+
+    const teacherExperience = Number(teacherProfile.experience_years);
+    const requiredExperience = Number(String(job.required_experience || '').match(/\d+(?:\.\d+)?/)?.[0]);
+    if (Number.isFinite(teacherExperience) && Number.isFinite(requiredExperience)) {
+      score += teacherExperience >= requiredExperience ? 2 : -1;
+    }
+
+    const availableFrom = String(teacherProfile.available_from || '').slice(0, 10);
+    const expectedStart = String(job.expectedStartDate || job.expected_start_date || job.start_date || '').slice(0, 10);
+    if (availableFrom && expectedStart) {
+      const availableTime = Date.parse(`${availableFrom}T00:00:00Z`);
+      const expectedTime = Date.parse(`${expectedStart}T00:00:00Z`);
+      if (Number.isFinite(availableTime) && Number.isFinite(expectedTime)) {
+        score += availableTime <= expectedTime ? 2 : -3;
+      }
+    }
+
+    return score;
+  };
   const sortJobsByPreference = (jobList = [], sortMode = sortBy) => {
     return [...jobList].sort((a, b) => {
       const featuredOrder = Number(isFeaturedJob(b)) - Number(isFeaturedJob(a));
@@ -881,7 +962,10 @@ export default function TeacherDashboard() {
         0
       );
 
-      if (sortMode === 'Recommended') return featuredOrder || bRecommended - aRecommended || bTime - aTime;
+      if (sortMode === 'Recommended') {
+        const fitDifference = getTeacherJobFitScore(b) - getTeacherJobFitScore(a);
+        return fitDifference || featuredOrder || bRecommended - aRecommended || bTime - aTime;
+      }
       if (sortMode === 'Newest First') return featuredOrder || bTime - aTime;
       if (sortMode === 'Oldest First') return featuredOrder || aTime - bTime;
       if (sortMode === 'Highest Salary') return featuredOrder || bSalary - aSalary;
@@ -1108,8 +1192,23 @@ export default function TeacherDashboard() {
     try {
       const formData = new FormData();
       formData.append('cv', file);
-      await profileService.uploadCv(formData);
+      const response = await profileService.uploadCv(formData);
+      const uploadedCvUrl = response?.data?.data?.cv_url
+        || response?.data?.data?.profile?.cv_url
+        || response?.data?.cv_url;
       await refreshTeacherProfile();
+
+      if (uploadedCvUrl) {
+        const cvUrl = toTeacherAssetUrl(uploadedCvUrl);
+        setProfileState((currentProfile) => ({ ...(currentProfile || {}), cv_url: uploadedCvUrl }));
+        setActiveResume({
+          name: file.name,
+          uploadDate: new Date().toLocaleDateString(),
+          size: 'Uploaded',
+          url: cvUrl,
+        });
+      }
+
       return true;
     } catch (err) {
       setAppError(apiErrorMessage(err, 'Unable to upload CV.'));
@@ -1133,6 +1232,8 @@ export default function TeacherDashboard() {
       const uploaded = await handleCvUpload(pendingCvFile);
       if (uploaded) {
         setPendingCvFile(null);
+        if (cvFileInputRef.current) cvFileInputRef.current.value = '';
+        setShowCvSuccessSnackbar(true);
         setShowPostCvModal(true);
       }
     } finally {
@@ -1157,7 +1258,7 @@ export default function TeacherDashboard() {
     setAvailLocation(profile.preferred_location || profile.location || '');
     setAvailEmpType(profile.preferred_employment_type || 'full-time');
     setAvailSpecificDate(profile.available_from || '');
-    setAvailStartOption(profile.available_from ? 'specific-date' : 'immediately');
+    setAvailStartOption(getAvailabilityStartOption(profile));
     setProfTitle(profile.role_title || 'Teacher');
     if (!profSummaryEditedRef.current) setProfSummary(profile.bio || '');
     setProfYearsExp(profile.experience_years !== undefined && profile.experience_years !== null
@@ -1351,7 +1452,7 @@ export default function TeacherDashboard() {
       setAvailLocation(profile.preferred_location || profile.location || '');
       setAvailEmpType(profile.preferred_employment_type || 'full-time');
       setAvailSpecificDate(profile.available_from || '');
-      setAvailStartOption(profile.available_from ? 'specific-date' : 'immediately');
+      setAvailStartOption(getAvailabilityStartOption(profile));
       setProfTitle(profile.role_title || 'Teacher');
       if (!profSummaryEditedRef.current) setProfSummary(profile.bio || '');
       setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
@@ -1499,7 +1600,7 @@ export default function TeacherDashboard() {
     setAvailLocation(nextProfile.preferred_location || nextProfile.location || '');
     setAvailEmpType(nextProfile.preferred_employment_type || 'full-time');
     setAvailSpecificDate(nextProfile.available_from || '');
-    setAvailStartOption(nextProfile.available_from ? 'specific-date' : 'immediately');
+    setAvailStartOption(getAvailabilityStartOption(nextProfile));
     setEducationList(normalizeEducationRecords(nextProfile.education_history));
     setExperienceList(normalizeExperienceRecords(nextProfile.teaching_experience));
     return nextProfile;
@@ -1645,6 +1746,15 @@ export default function TeacherDashboard() {
     }
   };
 
+  const savedAvailabilityDate = String(profileState?.available_from || '').slice(0, 10);
+  const savedAvailabilityOption = getAvailabilityStartOption(profileState);
+  const availabilityHasChanges = (
+    availEmpType !== (profileState?.preferred_employment_type || 'full-time') ||
+    availLocation.trim() !== (profileState?.preferred_location || profileState?.location || '').trim() ||
+    availStartOption !== savedAvailabilityOption ||
+    (availStartOption === 'specific-date' && availSpecificDate !== savedAvailabilityDate)
+  );
+
   const handleSaveAvailability = async () => {
     const availableFrom = availStartOption === 'specific-date'
       ? availSpecificDate
@@ -1668,6 +1778,7 @@ export default function TeacherDashboard() {
         education_history: toEducationPayload(educationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
+      setAvailStartOption(availStartOption);
       setShowProfileUpdatedModal(true);
     } catch (err) {
       setAppError(profileApiErrorMessage(err, 'Unable to save availability.'));
@@ -6027,7 +6138,7 @@ export default function TeacherDashboard() {
                             type="button"
                             className="td-pers-save-btn"
                             onClick={handleSaveAvailability}
-                            disabled={savingAvailability}
+                            disabled={savingAvailability || !availabilityHasChanges || (availStartOption === 'specific-date' && !availSpecificDate)}
                           >
                             {savingAvailability ? 'Saving...' : 'Save Changes'}
                           </button>
@@ -6627,6 +6738,18 @@ export default function TeacherDashboard() {
           </div>
           <button type="button" onClick={() => setShowEmailSuccessSnackbar(false)} aria-label="Dismiss success message">×</button>
           <button type="button" className="td-phone-success-ok" onClick={() => setShowEmailSuccessSnackbar(false)}>Okay</button>
+        </div>
+      )}
+
+      {showCvSuccessSnackbar && (
+        <div className="td-phone-success-snackbar" role="status">
+          <div className="td-phone-success-icon"><FiCheck size={15} /></div>
+          <div className="td-phone-success-copy">
+            <strong>CV successfully updated</strong>
+            <span>Your new CV is now on your profile.</span>
+          </div>
+          <button type="button" onClick={() => setShowCvSuccessSnackbar(false)} aria-label="Dismiss success message">×</button>
+          <button type="button" className="td-phone-success-ok" onClick={() => setShowCvSuccessSnackbar(false)}>Okay</button>
         </div>
       )}
 
