@@ -20,6 +20,9 @@ import {
   FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
 } from 'react-icons/fi';
 
+const COVER_LETTER_MIN_LENGTH = 1000;
+const COVER_LETTER_MAX_LENGTH = 3000;
+
 const pageVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { duration: 0.5, staggerChildren: 0.1 } }
@@ -2022,7 +2025,7 @@ export default function TeacherDashboard() {
       resumeFile: null,
       coverLetterFile: null,
       useExistingCv: true,
-      coverLetter: profileState?.cover_letter || profileState?.coverLetter || '',
+      coverLetter: String(profileState?.cover_letter || profileState?.coverLetter || '').slice(0, COVER_LETTER_MAX_LENGTH),
       additionalInfo: '',
     });
     setApplicationStep(1);
@@ -2077,7 +2080,10 @@ export default function TeacherDashboard() {
 
   const handleApplicationInput = (e) => {
     const { name, value } = e.target;
-    setApplicationForm(prev => ({ ...prev, [name]: value }));
+    setApplicationForm(prev => ({
+      ...prev,
+      [name]: name === 'coverLetter' ? value.slice(0, COVER_LETTER_MAX_LENGTH) : value,
+    }));
   };
 
   const handleFileInput = (e) => {
@@ -2141,8 +2147,8 @@ export default function TeacherDashboard() {
     const jobId = normalizeJobId(selectedJob.job_id || selectedJob.id);
     const coverLetterText = applicationForm.coverLetter.trim();
 
-    if (coverLetterText.length < 30) {
-      setApplicationError('Your cover letter must be at least 30 characters long.');
+    if (coverLetterText.length < COVER_LETTER_MIN_LENGTH || coverLetterText.length > COVER_LETTER_MAX_LENGTH) {
+      setApplicationError(`Your cover letter must be between ${COVER_LETTER_MIN_LENGTH} and ${COVER_LETTER_MAX_LENGTH} characters.`);
       return;
     }
 
@@ -6344,25 +6350,38 @@ export default function TeacherDashboard() {
                   <div className="td-review-existing-letter">{applicationForm.coverLetter}</div>
                 ) : (
                   <label className="td-review-letter-field">
-                    <span>Cover letter (minimum 30 characters)</span>
+                    <span>Cover letter ({COVER_LETTER_MIN_LENGTH}–{COVER_LETTER_MAX_LENGTH} characters)</span>
                     <div className="td-review-letter-editor">
                       <textarea
                         value={applicationForm.coverLetter}
-                        onChange={(event) => setApplicationForm((current) => ({ ...current, coverLetter: event.target.value, coverLetterFile: null }))}
+                        onChange={(event) => setApplicationForm((current) => ({ ...current, coverLetter: event.target.value.slice(0, COVER_LETTER_MAX_LENGTH), coverLetterFile: null }))}
                         placeholder="Explain why you are a good fit for this role."
-                        minLength={30}
+                        minLength={COVER_LETTER_MIN_LENGTH}
+                        maxLength={COVER_LETTER_MAX_LENGTH}
                         rows={6}
                       />
                       <button
                         type="button"
                         className="td-review-letter-confirm"
-                        onClick={() => setReviewCoverLetterEditing(false)}
+                        onClick={() => {
+                          const letterLength = applicationForm.coverLetter.trim().length;
+                          if (letterLength < COVER_LETTER_MIN_LENGTH || letterLength > COVER_LETTER_MAX_LENGTH) {
+                            setApplicationError(`Your cover letter must be between ${COVER_LETTER_MIN_LENGTH} and ${COVER_LETTER_MAX_LENGTH} characters.`);
+                            return;
+                          }
+                          setApplicationError('');
+                          setReviewCoverLetterEditing(false);
+                        }}
                         aria-label="Confirm cover letter"
                         title="Confirm cover letter"
                       >
                         <FiCheck size={16} />
                       </button>
                     </div>
+                    <span className={`td-cover-letter-counter ${applicationForm.coverLetter.trim().length >= COVER_LETTER_MIN_LENGTH ? 'is-valid' : ''}`} aria-live="polite">
+                      {applicationForm.coverLetter.length} / {COVER_LETTER_MAX_LENGTH} characters
+                      {applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH && ` · ${COVER_LETTER_MIN_LENGTH - applicationForm.coverLetter.trim().length} more required`}
+                    </span>
                   </label>
                 )}
               </section>
@@ -6377,7 +6396,7 @@ export default function TeacherDashboard() {
 
             <footer className="td-review-modal-footer">
               <button type="button" className="td-review-back-btn" onClick={closeApplyModal} disabled={submittingApplication}>Back</button>
-              <button type="button" className="td-review-submit-btn" onClick={submitJobApplication} disabled={!applicationConsent || submittingApplication || (!(existingCvUrl || activeResume?.url || profileState?.cv_url || applicationForm.resumeFile)) || applicationForm.coverLetter.trim().length < 30}>
+              <button type="button" className="td-review-submit-btn" onClick={submitJobApplication} disabled={!applicationConsent || submittingApplication || (!(existingCvUrl || activeResume?.url || profileState?.cv_url || applicationForm.resumeFile)) || applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH || applicationForm.coverLetter.trim().length > COVER_LETTER_MAX_LENGTH}>
                 {submittingApplication ? 'Submitting...' : 'Submit Application'}
               </button>
             </footer>
@@ -6555,17 +6574,19 @@ export default function TeacherDashboard() {
                           name="coverLetter"
                           value={applicationForm.coverLetter}
                           onChange={handleApplicationInput}
-                          placeholder="Introduce yourself, your teaching experience, key accomplishments, and why you are interested in joining this school (minimum 30 characters)..."
+                          placeholder={`Introduce yourself, your teaching experience, key accomplishments, and why you are interested in joining this school (minimum ${COVER_LETTER_MIN_LENGTH} characters)...`}
                           required
+                          minLength={COVER_LETTER_MIN_LENGTH}
+                          maxLength={COVER_LETTER_MAX_LENGTH}
                           style={{ minHeight: '130px' }}
                         />
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
-                          <span style={{ color: applicationForm.coverLetter.trim().length >= 30 ? '#166534' : '#dc2626' }}>
-                            {applicationForm.coverLetter.trim().length >= 30
+                          <span style={{ color: applicationForm.coverLetter.trim().length >= COVER_LETTER_MIN_LENGTH ? '#166534' : '#dc2626' }}>
+                            {applicationForm.coverLetter.trim().length >= COVER_LETTER_MIN_LENGTH
                               ? '✓ Minimum length requirement satisfied'
-                              : `Must be at least 30 characters (${applicationForm.coverLetter.trim().length}/30)`}
+                              : `Must be at least ${COVER_LETTER_MIN_LENGTH} characters (${applicationForm.coverLetter.trim().length}/${COVER_LETTER_MIN_LENGTH})`}
                           </span>
-                          <span style={{ color: '#64748b' }}>{applicationForm.coverLetter.trim().length} chars</span>
+                          <span style={{ color: applicationForm.coverLetter.length >= COVER_LETTER_MAX_LENGTH ? '#dc2626' : '#64748b' }}>{applicationForm.coverLetter.length}/{COVER_LETTER_MAX_LENGTH} chars</span>
                         </div>
                       </label>
 
@@ -6601,8 +6622,8 @@ export default function TeacherDashboard() {
                       <button
                         type="submit"
                         className="td-modal-primary-btn"
-                        disabled={submittingApplication || applicationForm.coverLetter.trim().length < 30}
-                        style={{ opacity: submittingApplication || applicationForm.coverLetter.trim().length < 30 ? 0.7 : 1 }}
+                        disabled={submittingApplication || applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH || applicationForm.coverLetter.trim().length > COVER_LETTER_MAX_LENGTH}
+                        style={{ opacity: submittingApplication || applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH || applicationForm.coverLetter.trim().length > COVER_LETTER_MAX_LENGTH ? 0.7 : 1 }}
                       >
                         {submittingApplication ? 'Submitting Application...' : 'Submit Application'}
                       </button>
@@ -9775,6 +9796,17 @@ export default function TeacherDashboard() {
         .td-review-letter-field textarea:focus {
           border-color: #16A34A;
           box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+        }
+
+        .td-cover-letter-counter {
+          color: #b42318;
+          font-size: 11px;
+          font-weight: 600;
+          line-height: 1.4;
+        }
+
+        .td-cover-letter-counter.is-valid {
+          color: #166534;
         }
 
         .td-review-letter-editor {
