@@ -5332,19 +5332,30 @@ export default function AdminDashboard() {
               )}
             </div>
             <BrandLogo />
-            <button
-              type="button"
-              onClick={() => handleTabChange("notifications")}
-              className="admin-mobile-bell"
-              aria-label={`Notifications, ${unreadNotificationCount} unread`}
-            >
-              <FiBell size={20} />
-              {unreadNotificationCount > 0 && (
-                <span className="admin-notification-count-badge">
-                  {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
-                </span>
-              )}
-            </button>
+            <div className="admin-mobile-header-actions">
+              <button
+                type="button"
+                onClick={() => handleTabChange("notifications")}
+                className="admin-mobile-bell"
+                aria-label={`Notifications, ${unreadNotificationCount} unread`}
+              >
+                <FiBell size={20} />
+                {unreadNotificationCount > 0 && (
+                  <span className="admin-notification-count-badge">
+                    {unreadNotificationCount > 99 ? "99+" : unreadNotificationCount}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                className="admin-mobile-logout"
+                onClick={logout}
+                aria-label="Log out"
+                title="Log out"
+              >
+                <FiLogOut size={18} />
+              </button>
+            </div>
           </header>
 
           <main className="admin-dashboard-main w-full flex-1 px-4 py-6 md:px-8 md:py-8">
@@ -10893,6 +10904,7 @@ export default function AdminDashboard() {
             border-bottom: 1px solid #e7ebe8;
           }
           .admin-mobile-header .brand-logo-image { width: 126px; }
+          .admin-mobile-header-actions { display: flex; align-items: center; gap: 8px; }
           .admin-mobile-avatar {
             display: grid;
             place-items: center;
@@ -10920,6 +10932,20 @@ export default function AdminDashboard() {
             top: -2px;
             right: -3px;
           }
+          .admin-mobile-logout {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 34px;
+            height: 34px;
+            border: 1px solid rgba(220, 38, 38, 0.16);
+            border-radius: 50%;
+            background: rgba(254, 242, 242, 0.9);
+            color: #b91c1c;
+            cursor: pointer;
+            transition: all 0.2s ease;
+          }
+          .admin-mobile-logout:hover { background: #fee2e2; border-color: rgba(220, 38, 38, 0.32); color: #991b1b; }
           .admin-dashboard-main { padding: 24px 18px 20px; }
           .admin-dashboard-main > div { max-width: none; }
           .admin-dashboard-main h2 { line-height: 1.25; }
