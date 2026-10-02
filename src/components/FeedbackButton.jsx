@@ -41,6 +41,12 @@ export default function FeedbackButton({ user, audience }) {
 
   return (
     <>
+      <div className="dashboard-feedback-marquee" aria-label="We'd love your feedback. Tap the feedback button to share it.">
+        <div className="dashboard-feedback-marquee-track" aria-hidden="true">
+          <span>We&apos;d love your feedback. Tap the button to share it.</span>
+          <span>We&apos;d love your feedback. Tap the button to share it.</span>
+        </div>
+      </div>
       <button
         type="button"
         className="dashboard-feedback-trigger"

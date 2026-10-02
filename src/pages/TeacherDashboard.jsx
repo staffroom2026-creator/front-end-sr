@@ -8783,7 +8783,7 @@ export default function TeacherDashboard() {
           .td-main-wrapper { overflow: visible; }
 
           /* Content padding */
-          .td-content { padding: 24px 20px; }
+          .td-content { padding: 64px 20px 24px; }
 
           /* Welcome */
           .td-welcome-header {
@@ -9077,7 +9077,7 @@ export default function TeacherDashboard() {
         ═══════════════════════════════════════ */
         @media (max-width: 360px) {
           /* Content spacing */
-          .td-content { padding: 20px 16px; }
+          .td-content { padding: 64px 16px 20px; }
 
           /* Hero Section */
           .td-jobs-hero { margin-bottom: 18px; }

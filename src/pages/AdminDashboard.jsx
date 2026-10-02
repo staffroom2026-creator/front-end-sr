@@ -10942,6 +10942,7 @@ export default function AdminDashboard() {
           .admin-desktop-sidebar,
           .admin-desktop-header { display: none; }
           .admin-dashboard-main-wrapper { margin-left: 0; }
+          .admin-dashboard-main { padding-top: 64px; }
           .admin-mobile-header {
             display: flex;
             position: relative;

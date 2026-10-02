@@ -23,6 +23,15 @@
   transition: width 160ms ease, gap 160ms ease, padding 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
 
+.dashboard-feedback-marquee {
+  display: none;
+}
+
+@keyframes dashboard-feedback-marquee-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
 .dashboard-feedback-trigger span {
   max-width: 0;
   overflow: hidden;
@@ -229,6 +238,38 @@
 }
 
 @media (max-width: 768px) {
+  .dashboard-feedback-marquee {
+    position: fixed;
+    z-index: 39;
+    top: calc(76px + env(safe-area-inset-top, 0px));
+    right: 0;
+    left: 0;
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    padding: 9px 0;
+    border-top: 1px solid #d4e8da;
+    border-bottom: 1px solid #d4e8da;
+    background: rgba(255, 255, 255, .97);
+    color: #176b45;
+    box-shadow: 0 5px 18px rgba(17, 64, 43, .12);
+    pointer-events: none;
+  }
+
+  .dashboard-feedback-marquee-track {
+    display: flex;
+    width: max-content;
+    animation: dashboard-feedback-marquee-scroll 13s linear infinite;
+  }
+
+  .dashboard-feedback-marquee-track span {
+    flex: 0 0 auto;
+    padding-right: 28px;
+    font-size: 11px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
   .dashboard-feedback-trigger {
     right: 16px;
     bottom: calc(84px + env(safe-area-inset-bottom, 0px));
@@ -267,5 +308,12 @@
   .dashboard-feedback-form {
     padding-right: 18px;
     padding-left: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-feedback-marquee-track {
+    animation: none;
+    transform: translateX(0);
   }
 }
