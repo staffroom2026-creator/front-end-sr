@@ -9,6 +9,7 @@ import { profileService } from "../services/profileService";
 import { accountService } from "../services/accountService";
 import BrandLogo from "../components/BrandLogo";
 import FeedbackButton from "../components/FeedbackButton";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   FiAlertCircle,
   FiAlertTriangle,
@@ -220,6 +221,7 @@ export default function AdminDashboard() {
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const [selectedCoverLetter, setSelectedCoverLetter] = useState("");
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [selectedTeacherProfileError, setSelectedTeacherProfileError] = useState("");
   const [teacherProfileTarget, setTeacherProfileTarget] = useState(null);
@@ -239,6 +241,17 @@ export default function AdminDashboard() {
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [schoolLogoFile, setSchoolLogoFile] = useState(null);
   const [schoolLocationLocked, setSchoolLocationLocked] = useState(false);
+
+  useEffect(() => {
+    if (!selectedCoverLetter) return undefined;
+
+    const handleCoverLetterKeyDown = (event) => {
+      if (event.key === "Escape") setSelectedCoverLetter("");
+    };
+
+    window.addEventListener("keydown", handleCoverLetterKeyDown);
+    return () => window.removeEventListener("keydown", handleCoverLetterKeyDown);
+  }, [selectedCoverLetter]);
   const [isSchoolNameEditing, setIsSchoolNameEditing] = useState(false);
   const [schoolNameValue, setSchoolNameValue] = useState("");
   const [isEmailEditing, setIsEmailEditing] = useState(false);
@@ -3118,8 +3131,44 @@ export default function AdminDashboard() {
             <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
           </div>
           <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
-          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <div className="school-summary-cover-letter"><FiFileText /><div><strong>Cover letter</strong><p>{coverLetter}</p></div></div> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
+          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <button type="button" className="school-summary-cover-letter school-summary-cover-letter-trigger" onClick={() => setSelectedCoverLetter(coverLetter)} aria-label="View submitted cover letter"><FiFileText /><span><strong>Cover letter</strong><small>Click to read the submitted letter</small></span><FiArrowRight className="school-summary-cover-letter-arrow" /></button> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter school-summary-additional-info"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
         </div></div>
+          <AnimatePresence>
+            {selectedCoverLetter && (
+              <motion.div
+                className="school-cover-letter-modal-backdrop"
+                role="presentation"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setSelectedCoverLetter("")}
+              >
+                <motion.section
+                  className="school-cover-letter-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="school-cover-letter-modal-title"
+                  initial={{ opacity: 0, x: 44 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 44 }}
+                  transition={{ duration: 0.24, ease: "easeOut" }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <header className="school-cover-letter-modal-header">
+                    <div>
+                      <span><FiFileText size={16} /> Applicant document</span>
+                      <h2 id="school-cover-letter-modal-title">Cover letter</h2>
+                    </div>
+                    <button type="button" aria-label="Close cover letter" onClick={() => setSelectedCoverLetter("")}>
+                      <FiX size={19} />
+                    </button>
+                  </header>
+                  <div className="school-cover-letter-modal-content">{selectedCoverLetter}</div>
+                </motion.section>
+              </motion.div>
+            )}
+          </AnimatePresence>
       </div>
     );
 
@@ -11299,6 +11348,43 @@ export default function AdminDashboard() {
   transition: background .18s ease, border-color .18s ease, color .18s ease;
 }
 
+.school-applicant-summary-page .school-summary-cover-letter-trigger {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.school-applicant-summary-page .school-summary-cover-letter-trigger > span {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.school-applicant-summary-page .school-summary-cover-letter-trigger small {
+  color: #62736a;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.school-applicant-summary-page .school-summary-cover-letter-arrow {
+  width: 15px;
+  height: 15px;
+  margin-left: auto;
+}
+
+.school-applicant-summary-page .school-summary-additional-info {
+  justify-content: flex-start;
+  cursor: default;
+  text-align: left;
+}
+
+.school-applicant-summary-page .school-summary-additional-info:hover {
+  border-color: #cfe1d8;
+  background: #f7fbf8;
+  color: #146b49;
+}
+
 .school-applicant-summary-page .school-summary-cover-letter svg {
   width: 17px;
   height: 17px;
@@ -11314,6 +11400,91 @@ export default function AdminDashboard() {
 .school-applicant-summary-page .school-summary-cover-letter:focus-visible {
   outline: 3px solid rgba(25, 131, 68, .2);
   outline-offset: 2px;
+}
+
+.school-cover-letter-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(18, 31, 25, .48);
+  backdrop-filter: blur(3px);
+}
+
+.school-cover-letter-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(620px, 100%);
+  max-height: min(78vh, 680px);
+  overflow: hidden;
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(15, 30, 21, .24);
+}
+
+.school-cover-letter-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid #e7ece8;
+}
+
+.school-cover-letter-modal-header span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  color: #168044;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.school-cover-letter-modal-header h2 {
+  margin: 0;
+  color: #1c2922;
+  font-size: 20px;
+  font-weight: 750;
+}
+
+.school-cover-letter-modal-header button {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid #e1e7e3;
+  border-radius: 50%;
+  background: #f8faf8;
+  color: #53635a;
+  cursor: pointer;
+}
+
+.school-cover-letter-modal-header button:hover {
+  background: #eaf6ee;
+  color: #146b49;
+}
+
+.school-cover-letter-modal-content {
+  overflow-y: auto;
+  padding: 22px;
+  color: #36443c;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 540px) {
+  .school-cover-letter-modal-backdrop { padding: 16px; }
+  .school-cover-letter-modal { max-height: 84vh; }
+  .school-cover-letter-modal-header { padding: 17px 18px 14px; }
+  .school-cover-letter-modal-content { padding: 18px; }
 }
 
 
