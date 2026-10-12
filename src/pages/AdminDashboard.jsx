@@ -10885,7 +10885,7 @@ export default function AdminDashboard() {
           .admin-desktop-sidebar { position: fixed; z-index: 30; top: 0; bottom: 0; left: 0; overflow-y: auto; }
           .admin-dashboard-main-wrapper { margin-left: 14rem; }
           .admin-desktop-header { position: fixed; z-index: 25; top: 0; right: 0; left: 14rem; min-height: 68px; }
-          .admin-dashboard-main { padding-top: 92px; }
+          .admin-dashboard-main { padding-top: 132px; }
         }
         @media (min-width: 769px) {
           .school-desktop-notifications { display: block; }

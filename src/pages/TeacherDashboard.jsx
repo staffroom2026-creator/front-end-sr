@@ -7092,6 +7092,10 @@ export default function TeacherDashboard() {
         ═══════════════════════════════════════ */
         .td-content { padding: 32px; }
 
+        @media (min-width: 769px) {
+          .td-content { padding-top: 76px; }
+        }
+
         /* ═══════════════════════════════════════
            APPLICATION SUBMITTED PAGE
         ═══════════════════════════════════════ */
