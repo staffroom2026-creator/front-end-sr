@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { apiErrorMessage } from '../services/api';
 
 const passwordRules = [

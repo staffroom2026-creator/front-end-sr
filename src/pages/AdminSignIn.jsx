@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { apiErrorMessage } from '../services/api';
 
 export default function AdminSignIn() {
@@ -47,7 +47,7 @@ export default function AdminSignIn() {
   };
 
   return (
-    <motion.div
+    <Motion.div
       className="admin-auth-layout"
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
@@ -333,6 +333,6 @@ export default function AdminSignIn() {
           }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }

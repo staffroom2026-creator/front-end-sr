@@ -1,10 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useEffectEvent, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import schoolCampus from '../assets/school campus.webp';
+import { motion as Motion } from 'framer-motion';
 import BrandLogo from '../components/BrandLogo';
 import FeedbackButton from '../components/FeedbackButton';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { jobService } from '../services/jobService';
 import { applicationService } from '../services/applicationService';
 import { featureService } from '../services/featureService';
@@ -325,7 +324,7 @@ const normalizeExperienceRecords = (value) => {
   if (typeof records === 'string') {
     try {
       records = JSON.parse(records);
-    } catch (_err) {
+    } catch {
       records = [];
     }
   }
@@ -422,15 +421,6 @@ const getInterviewStart = (interview = {}) => {
   return Number.isNaN(start.getTime()) ? null : start;
 };
 
-const isInterviewInProgress = (interview = {}) => {
-  const start = getInterviewStart(interview);
-  if (!start) return false;
-  const durationMinutes = Number(interview.duration_minutes || interview.duration || 60);
-  const end = new Date(start.getTime() + (Number.isFinite(durationMinutes) ? durationMinutes : 60) * 60000);
-  const now = new Date();
-  return now >= start && now <= end;
-};
-
 const getApplicationDisplayStatus = (application = {}) => {
   const rawStatus = String(application.status || '').toLowerCase();
   if (application.interview && (rawStatus === 'shortlisted' || rawStatus === 'interviewing')) {
@@ -512,9 +502,8 @@ export default function TeacherDashboard() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [notificationActionLoading, setNotificationActionLoading] = useState({});
   const [loading, setLoading] = useState(false);
-  const [jobError, setJobError] = useState('');
   const [appError, setAppError] = useState('');
-  const [notifError, setNotifError] = useState('');
+  const [, setNotifError] = useState('');
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [profileState, setProfileState] = useState({});
   const [profileViewsCount, setProfileViewsCount] = useState(null);
@@ -742,9 +731,11 @@ export default function TeacherDashboard() {
     }
   };
 
+  const refreshLoginActivity = useEffectEvent((options) => loadLoginActivity(options));
+
   useEffect(() => {
     if (settingsSubTab === 'security') {
-      loadLoginActivity({ page: 1 });
+      refreshLoginActivity({ page: 1 });
     }
   }, [settingsSubTab]);
 
@@ -1162,7 +1153,6 @@ export default function TeacherDashboard() {
   const [existingCvUrl, setExistingCvUrl] = useState('');
   const [applicationRequirements, setApplicationRequirements] = useState(null);
   const [submittingApplication, setSubmittingApplication] = useState(false);
-  const [applicationNote, setApplicationNote] = useState('');
   const [applicationError, setApplicationError] = useState('');
   const [pendingCvFile, setPendingCvFile] = useState(null);
   const [cvUploadLoading, setCvUploadLoading] = useState(false);
@@ -1468,11 +1458,6 @@ export default function TeacherDashboard() {
       setExperienceList(normalizeExperienceRecords(
         profile.teaching_experience ?? profile.work_experience ?? profile.experience_history
       ));
-      setSettingsProfile({
-        fullName: profileData?.user?.full_name || user?.full_name || 'Teacher',
-        email: profileData?.user?.email || user?.email || '',
-        phone: profileData?.user?.phone || user?.phone || '',
-      });
       const cvUrl = toTeacherAssetUrl(profile.cv_url || '');
       const resumeDisplayName = (profileData?.user?.full_name || user?.full_name || [firstName, lastName].filter(Boolean).join(' ') || 'Current User').trim();
       setActiveResume({
@@ -1484,9 +1469,7 @@ export default function TeacherDashboard() {
       setSavedJobIds(savedJobs);
       setNotifications(nextNotifications);
     } catch (err) {
-      setJobError(apiErrorMessage(err, 'Unable to load jobs.'));
       setAppError(apiErrorMessage(err, 'Unable to load applications.'));
-      setNotifError(apiErrorMessage(err, 'Unable to load notifications.'));
     } finally {
       setLoading(false);
     }
@@ -1556,20 +1539,19 @@ export default function TeacherDashboard() {
     }
   };
 
+  const initializeDashboardData = useEffectEvent(() => Promise.all([
+    refreshTeacherProfile(),
+    loadAccountPreferences(),
+  ]));
+
+  const refreshDashboardJobs = useEffectEvent(() => refreshJobListing());
+
   useEffect(() => {
-    refreshTeacherProfile();
-    loadAccountPreferences();
+    initializeDashboardData();
 
     const jobRefreshInterval = window.setInterval(() => {
-      refreshJobListing();
+      refreshDashboardJobs();
     }, 30000);
-
-    profileService.getMe()
-      .then((response) => {
-        const profileData = response?.data?.data || response?.data || {};
-        applyLoadedTeacherProfile(profileData);
-      })
-      .catch(() => { });
 
     return () => window.clearInterval(jobRefreshInterval);
   }, []);
@@ -1865,26 +1847,6 @@ export default function TeacherDashboard() {
   };
 
   // ── Settings state ──
-  const [settingsProfile, setSettingsProfile] = useState({
-    fullName: user?.full_name || 'Teacher',
-    email: user?.email || '',
-    phone: user?.phone || ''
-  });
-  const [settingsEngagement, setSettingsEngagement] = useState('Open');
-  const [settingsLocations, setSettingsLocations] = useState([]);
-  const [settingsSalary, setSettingsSalary] = useState('');
-  const [notifToggles, setNotifToggles] = useState({
-    jobMatch: true,
-    appStatus: true,
-    directMsg: true,
-    sysAnnounce: false
-  });
-  const [twoFAEnabled, setTwoFAEnabled] = useState(true);
-
-  const toggleNotif = (key) => {
-    setNotifToggles(prev => ({ ...prev, [key]: !prev[key] }));
-  };
-
   const loadAccountPreferences = async () => {
     try {
       const [preferencesResponse, jobAlertsResponse] = await Promise.all([
@@ -2048,7 +2010,7 @@ export default function TeacherDashboard() {
       const cvUrl = payload.existing_cv_url || activeResume?.url || profileState?.cv_url || '';
       setExistingCvUrl(cvUrl);
       setApplicationRequirements(payload.requirements || null);
-    } catch (_err) {
+    } catch {
       setExistingCvUrl(activeResume?.url || profileState?.cv_url || '');
       setApplicationRequirements(null);
     } finally {
@@ -2065,17 +2027,6 @@ export default function TeacherDashboard() {
     setAlreadyAppliedState(false);
     setApplicationRequirements(null);
     setApplicationError('');
-  };
-
-  const handleShareSelectedJob = async (mode) => {
-    if (!selectedJob) return;
-    const shareUrl = window.location.href;
-    const shareText = `${selectedJob.title} at ${selectedJob.school}`;
-    if (mode === 'share' && navigator.share) {
-      await navigator.share({ title: selectedJob.title, text: shareText, url: shareUrl });
-      return;
-    }
-    await navigator.clipboard?.writeText(shareUrl);
   };
 
   const handleApplicationInput = (e) => {
@@ -2204,10 +2155,6 @@ export default function TeacherDashboard() {
     await submitJobApplication();
   };
 
-  const handleNoteChange = (e) => {
-    setApplicationNote(e.target.value);
-  };
-
   // Notifications State
   const [notifFilter, setNotifFilter] = useState('All');
   const [visibleNotifCount, setVisibleNotifCount] = useState(12);
@@ -2284,7 +2231,7 @@ export default function TeacherDashboard() {
             category: notification.type === 'application_status' ? 'Job Alerts' : 'Account',
           };
         }));
-      } catch (_err) {
+      } catch {
         // Keep the current notification state when polling is unavailable.
       }
     };
@@ -2450,7 +2397,7 @@ export default function TeacherDashboard() {
   };
 
   return (
-    <motion.div
+    <Motion.div
       className="td-layout"
       variants={pageVariants}
       initial="hidden"
@@ -2599,7 +2546,7 @@ export default function TeacherDashboard() {
                   <div className="td-stats-row">
                     {/* Profile Strength Card */}
                     {!profileCompletionCardDismissed && (
-                    <motion.div
+                    <Motion.div
                       variants={cardVariants}
                       animate={profileCompletionCardFading ? { opacity: 0, y: -8, transition: { duration: 0.7 } } : undefined}
                       className="td-stat-card td-profile-card"
@@ -2632,13 +2579,13 @@ export default function TeacherDashboard() {
                           </button>
                         )}
                       </div>
-                    </motion.div>
+                    </Motion.div>
                     )}
 
                     {/* Mini cards wrapper */}
                     <div className="td-stats-mini-wrapper">
                       {/* Profile Views */}
-                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--views">
+                      <Motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--views">
                         <div className="td-mini-icon-circle">
                           <FiEye size={18} />
                         </div>
@@ -2651,10 +2598,10 @@ export default function TeacherDashboard() {
                         <button type="button" className="td-profile-views-log-link" onClick={() => { setActiveTab('settings'); setSettingsSubTab('profile-view-logs'); loadProfileViewLogs({ page: 1 }); }}>
                           View full log
                         </button>
-                      </motion.div>
+                      </Motion.div>
 
                       {/* Jobs Applied */}
-                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--applied">
+                      <Motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--applied">
                         <div className="td-mini-icon-circle">
                           <FiSend size={18} className="td-desktop-icon" />
                           <FiBriefcase size={18} className="td-mobile-icon" />
@@ -2667,10 +2614,10 @@ export default function TeacherDashboard() {
                           <span className="td-mini-value">{totalApplications}</span>
                         </div>
                         <span className="td-mobile-subtext td-mobile-subtext--gray">Total applied</span>
-                      </motion.div>
+                      </Motion.div>
 
                       {/* Pending Applications */}
-                      <motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
+                      <Motion.div variants={cardVariants} className="td-stat-card td-mini-card td-mini-card--pending td-desktop-only-card">
                         <div className="td-mini-icon-circle td-mini-icon-circle--pending">
                           <FiFileText size={18} />
                         </div>
@@ -2679,7 +2626,7 @@ export default function TeacherDashboard() {
                           <span className="td-mini-value td-mini-value--pending">{pendingApplications}</span>
                         </div>
                         <span className="td-mobile-subtext td-mobile-subtext--gray">{pendingApplications > 0 ? 'Awaiting school response' : 'No pending applications'}</span>
-                      </motion.div>
+                      </Motion.div>
                     </div>
                   </div>
 
@@ -2698,7 +2645,7 @@ export default function TeacherDashboard() {
 
                     <div className="td-job-list">
                       {dashboardJobs.length > 0 ? dashboardJobs.map((job) => (
-                        <motion.div
+                        <Motion.div
                           key={job.id}
                           variants={cardVariants}
                           className="td-job-item"
@@ -2750,7 +2697,7 @@ export default function TeacherDashboard() {
                               Apply →
                             </button>
                           </div>
-                        </motion.div>
+                        </Motion.div>
                       )) : (
                         <div style={{ padding: '24px', textAlign: 'center', color: '#6B7280' }}>No active jobs available right now.</div>
                       )}
@@ -2761,7 +2708,7 @@ export default function TeacherDashboard() {
 
                 {/* ── Right Sidebar (Desktop Only - hidden in clean single column layout or kept empty) ── */}
                 <div className="td-right-col">
-                  <motion.div variants={cardVariants} className="td-side-section">
+                  <Motion.div variants={cardVariants} className="td-side-section">
                     <h3>Upcoming Interviews</h3>
                     {upcomingInterviews.length > 0 ? (
                       upcomingInterviews.map((app) => {
@@ -2791,16 +2738,16 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                     )}
-                  </motion.div>
+                  </Motion.div>
 
-                  <motion.div variants={cardVariants} className="td-pro-card">
+                  <Motion.div variants={cardVariants} className="td-pro-card">
                     <div className="td-pro-badge">★</div>
                     <h3>School Match Status</h3>
                     <p>{jobs.length > 0 ? `${jobs.length} active opportunities are matching your profile.` : 'No active school matches yet.'}</p>
                     <button className="td-upgrade-btn" onClick={() => setActiveTab('jobs')}>View Jobs</button>
-                  </motion.div>
+                  </Motion.div>
 
-                  <motion.div variants={cardVariants} className="td-shortcuts-section">
+                  <Motion.div variants={cardVariants} className="td-shortcuts-section">
                     <h3>QUICK SHORTCUTS</h3>
                     <div className="td-shortcuts-row">
                       <div className="td-shortcut">
@@ -2812,14 +2759,14 @@ export default function TeacherDashboard() {
                         <span>Messages</span>
                       </div>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 </div>
               </div>
             </>
           )}
 
           {activeTab === 'jobs' && !selectedJob && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-jobs-tab">
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-jobs-tab">
 
               {/* ── Hero ── */}
               <div className="td-jobs-hero">
@@ -2850,7 +2797,7 @@ export default function TeacherDashboard() {
                     <FiMapPin className="td-search-icon" size={16} />
                     <input type="text" placeholder="Benin City, Edo..." className="td-interactive-input" value={locationSearch} onChange={e => setLocationSearch(e.target.value)} />
                   </div>
-                  <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-btn-primary"><FiSearch size={14} /> Find Jobs</motion.button>
+                  <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-btn-primary"><FiSearch size={14} /> Find Jobs</Motion.button>
                 </div>
 
                 {/* Mobile Search & Chips */}
@@ -3000,7 +2947,7 @@ export default function TeacherDashboard() {
                     {filteredJobs.length > 0 ? filteredJobs.slice(0, displayedJobsCount).map(job => {
                       if (job.hot) {
                         return (
-                          <motion.div key={job.id} variants={cardVariants} className="td-feed-card td-feed-card-hot">
+                          <Motion.div key={job.id} variants={cardVariants} className="td-feed-card td-feed-card-hot">
                             <div className="td-hot-header">
                               <span className="td-hot-badge">HOT VACANCY</span>
                               <span className="td-hot-time">{job.timeLabel}</span>
@@ -3010,17 +2957,17 @@ export default function TeacherDashboard() {
                             <div className="td-hot-salary-range">SALARY RANGE</div>
                             <div className="td-hot-footer">
                               <div className="td-hot-salary-value">{job.salaryStr}</div>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={(e) => { e.stopPropagation(); openApplyModal(job, { review: true }); }}>
+                              <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-hot-action" onClick={(e) => { e.stopPropagation(); openApplyModal(job, { review: true }); }}>
                                 Apply Fast
-                              </motion.button>
+                              </Motion.button>
                             </div>
-                          </motion.div>
+                          </Motion.div>
                         );
                       }
 
                       return (
-                        <motion.div key={job.id} variants={cardVariants} className="td-feed-card td-feed-card-standard">
-                          <motion.button
+                        <Motion.div key={job.id} variants={cardVariants} className="td-feed-card td-feed-card-standard">
+                          <Motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             className={`td-bookmark-btn ${savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? 'td-bookmark-btn--saved' : ''}`}
@@ -3032,7 +2979,7 @@ export default function TeacherDashboard() {
                               size={18}
                               style={{ fill: savedJobIds.includes(normalizeJobId(job.job_id || job.id)) ? '#15803D' : 'none' }}
                             />
-                          </motion.button>
+                          </Motion.button>
 
                           {/* Card Header */}
                           <div className="td-fc-header">
@@ -3079,12 +3026,12 @@ export default function TeacherDashboard() {
                                 <FiCreditCard size={13} />
                                 <span>{job.salaryStr || 'Salary available on request'}</span>
                               </div>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
+                              <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-fc-action" onClick={() => { setSelectedJobOrigin('jobs'); setSelectedJob(job); }}>
                                 View Details
-                              </motion.button>
+                              </Motion.button>
                             </div>
                           </div>
-                        </motion.div>
+                        </Motion.div>
                       );
                     }) : (
                       <div className="td-empty-state">
@@ -3106,7 +3053,7 @@ export default function TeacherDashboard() {
 
                   {hasMoreJobResults && (
                     <div className="td-load-more-container">
-                      <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn" onClick={handleLoadMore} disabled={isLoadingMoreJobs}>{isLoadingMoreJobs ? 'Loading Jobs...' : 'Load More Jobs'}</motion.button>
+                      <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-load-more-btn" onClick={handleLoadMore} disabled={isLoadingMoreJobs}>{isLoadingMoreJobs ? 'Loading Jobs...' : 'Load More Jobs'}</Motion.button>
                       <p>Showing {Math.min(displayedJobsCount, filteredJobs.length)} of {filteredJobs.length} loaded results</p>
                     </div>
                   )}
@@ -3117,11 +3064,11 @@ export default function TeacherDashboard() {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </Motion.div>
           )}
 
           {activeTab === 'jobs' && selectedJob && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="school-job-detail-page td-job-details-page">
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="school-job-detail-page td-job-details-page">
               <div className="school-job-detail-back td-jd-back-nav" onClick={() => { setSelectedJob(null); setActiveTab(selectedJobOrigin); }}>
                 <button type="button">{selectedJobOrigin === 'applications' ? 'Applications' : 'Jobs'}</button>
                 <span>›</span>
@@ -3232,10 +3179,10 @@ export default function TeacherDashboard() {
                   </ul>
                 </div>
               </section>
-            </motion.div>
+            </Motion.div>
           )}
           {activeTab === 'application-submitted' && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-application-submitted-page">
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-application-submitted-page">
               <div className="td-application-submitted-card">
                 <div className="td-success-badge">
                   <FiCheck className="td-success-check-icon" />
@@ -3270,21 +3217,21 @@ export default function TeacherDashboard() {
                 </div>
 
                 <div className="td-application-actions">
-                  <motion.button
+                  <Motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="td-application-btn td-application-btn--primary"
                   >
                     Update Application Note
-                  </motion.button>
-                  <motion.button
+                  </Motion.button>
+                  <Motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     className="td-application-btn td-application-btn--secondary"
                     onClick={() => setActiveTab('applications')}
                   >
                     View Application Status
-                  </motion.button>
+                  </Motion.button>
                 </div>
 
                 <button
@@ -3298,10 +3245,10 @@ export default function TeacherDashboard() {
                   <FiArrowRight className="td-app-arrow" />
                 </button>
               </div>
-            </motion.div>
+            </Motion.div>
           )}
           {activeTab === 'notifications' && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-notif-page">
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-notif-page">
               <div className="td-notif-back td-desktop-only" onClick={() => setActiveTab('dashboard')}>
                 <FiArrowLeft size={14} />
                 <span>Notification</span>
@@ -3321,7 +3268,7 @@ export default function TeacherDashboard() {
 
               <div className="td-notif-filter-tabs td-desktop-only">
                 {['All', 'Unread', 'Job Alerts', 'Account'].map(filter => (
-                  <motion.button
+                  <Motion.button
                     key={filter}
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.96 }}
@@ -3329,7 +3276,7 @@ export default function TeacherDashboard() {
                     onClick={() => setNotifFilter(filter)}
                   >
                     {filter}
-                  </motion.button>
+                  </Motion.button>
                 ))}
               </div>
 
@@ -3338,7 +3285,7 @@ export default function TeacherDashboard() {
 
               <div className="td-notif-list">
                 {filteredNotifications.slice(0, visibleNotifCount).map(notif => (
-                  <motion.div
+                  <Motion.div
                     key={notif.id}
                     variants={cardVariants}
                     className={`td-notif-card ${!notif.read ? 'td-notif-card--unread' : ''}`}
@@ -3383,8 +3330,8 @@ export default function TeacherDashboard() {
                           )}
                           {notif.type === 'message' && (
                             <>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-notif-btn td-notif-btn--primary">Reply</motion.button>
-                              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-notif-btn td-notif-btn--outline">Archive</motion.button>
+                              <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-notif-btn td-notif-btn--primary">Reply</Motion.button>
+                              <Motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="td-notif-btn td-notif-btn--outline">Archive</Motion.button>
                             </>
                           )}
                         </div>
@@ -3394,7 +3341,7 @@ export default function TeacherDashboard() {
                         </div>
                       </div>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 ))}
               </div>
 
@@ -3403,7 +3350,7 @@ export default function TeacherDashboard() {
                   style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.5)', display: 'grid', placeItems: 'center', padding: '20px', zIndex: 1000 }}
                   onClick={() => setIsNotificationModalOpen(false)}
                 >
-                  <motion.div
+                  <Motion.div
                     initial={{ opacity: 0, y: 20, scale: 0.98 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 20 }}
@@ -3441,7 +3388,7 @@ export default function TeacherDashboard() {
                         {notificationActionLoading[selectedNotification.id] === 'delete' ? 'Deleting...' : 'Delete'}
                       </button>
                     </div>
-                  </motion.div>
+                  </Motion.div>
                 </div>
               )}
 
@@ -3455,20 +3402,20 @@ export default function TeacherDashboard() {
               {filteredNotifications.length > visibleNotifCount && (
                 <div className="td-notif-footer td-desktop-only">
                   <p className="td-notif-count">Showing {Math.min(visibleNotifCount, filteredNotifications.length)} of {totalNotifications} notifications</p>
-                  <motion.button
+                  <Motion.button
                     whileHover={{ scale: 1.04 }}
                     whileTap={{ scale: 0.96 }}
                     className="td-notif-load-more"
                     onClick={() => setVisibleNotifCount(prev => prev + 12)}
                   >
                     Load More
-                  </motion.button>
+                  </Motion.button>
                 </div>
               )}
-            </motion.div>
+            </Motion.div>
           )}
           {(activeTab === 'applications' || activeTab === 'application') && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-app-page">
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-app-page">
               <div className="td-app-header">
                 <h1>Applications</h1>
                 <p>Keep track of your teaching applications and follow your progress.</p>
@@ -3508,10 +3455,10 @@ export default function TeacherDashboard() {
                   </div>
                 ))}
               </div>
-            </motion.div>
+            </Motion.div>
           )}
           {activeTab === 'settings' && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-settings-page">
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-settings-page">
 
               {/* ── Settings Overview: 4 Category Boxes ── */}
               {settingsSubTab === 'overview' && (
@@ -3520,7 +3467,7 @@ export default function TeacherDashboard() {
                   <div className="td-settings-category-grid">
 
                     {/* Account Settings */}
-                    <motion.div
+                    <Motion.div
                       whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
                       className="td-settings-category-card"
                       onClick={() => {
@@ -3537,10 +3484,10 @@ export default function TeacherDashboard() {
                         <p>Manage your personal information and preferences</p>
                       </div>
                       <FiArrowRight size={20} className="td-settings-cat-arrow" />
-                    </motion.div>
+                    </Motion.div>
 
                     {/* Privacy & Profile Visibility */}
-                    <motion.div
+                    <Motion.div
                       whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
                       className="td-settings-category-card"
                       onClick={() => setSettingsSubTab('privacy')}
@@ -3553,10 +3500,10 @@ export default function TeacherDashboard() {
                         <p>Control who can see your profile and data</p>
                       </div>
                       <FiArrowRight size={20} className="td-settings-cat-arrow" />
-                    </motion.div>
+                    </Motion.div>
 
                     {/* Security & Login Activity */}
-                    <motion.div
+                    <Motion.div
                       whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
                       className="td-settings-category-card"
                       onClick={() => { setLoginActivityView('recent'); setSettingsSubTab('security'); }}
@@ -3569,10 +3516,10 @@ export default function TeacherDashboard() {
                         <p>Password, two-factor auth and active sessions</p>
                       </div>
                       <FiArrowRight size={20} className="td-settings-cat-arrow" />
-                    </motion.div>
+                    </Motion.div>
 
                     {/* Legal */}
-                    <motion.div
+                    <Motion.div
                       whileHover={{ y: -4, boxShadow: '0 8px 32px rgba(16,185,129,0.12)' }}
                       className="td-settings-category-card"
                       onClick={() => setSettingsSubTab('legal')}
@@ -3585,7 +3532,7 @@ export default function TeacherDashboard() {
                         <p>Terms of service, privacy policy and more</p>
                       </div>
                       <FiArrowRight size={20} className="td-settings-cat-arrow" />
-                    </motion.div>
+                    </Motion.div>
 
                   </div>
                 </>
@@ -4226,12 +4173,12 @@ export default function TeacherDashboard() {
                 </div>
               )}
 
-            </motion.div>
+            </Motion.div>
           )}
           {activeTab === 'profile' && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-tab-page">
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-tab-page">
               {profileSubTab === 'profile-preview' ? (
-                <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-preview-page">
+                <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-preview-page">
                   <button type="button" className="td-preview-back-btn" onClick={() => setProfileSubTab('overview')}>
                     <FiArrowLeft size={20} />
                     <span>Settings / Preview profile</span>
@@ -4300,7 +4247,7 @@ export default function TeacherDashboard() {
                       </section>
                     </div>
                   </div>
-                </motion.div>
+                </Motion.div>
               ) : profileSubTab === 'overview' ? (
                 <>
                   {profileCompletionNotice && (
@@ -4387,7 +4334,7 @@ export default function TeacherDashboard() {
                   {/* 6 Sections Grid */}
                   <div className="td-profile-grid">
                     {/* 1. Personal Info */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
+                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiUser size={18} />
@@ -4395,10 +4342,10 @@ export default function TeacherDashboard() {
                         <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Personal Info</h3>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* 2. Professional Info */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('professional-info')}>
+                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('professional-info')}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiBriefcase size={18} />
@@ -4406,10 +4353,10 @@ export default function TeacherDashboard() {
                         <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Professional Info</h3>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* 3. Education */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('education')}>
+                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('education')}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -4420,10 +4367,10 @@ export default function TeacherDashboard() {
                         <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Education</h3>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* 4. Teaching Experience */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('teaching-experience')}>
+                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('teaching-experience')}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -4435,10 +4382,10 @@ export default function TeacherDashboard() {
                         <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Teaching Experience</h3>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* 5. TRCN Certification */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('trcn-certification')}>
+                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('trcn-certification')}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-green">
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -4449,10 +4396,10 @@ export default function TeacherDashboard() {
                         <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">TRCN Certification</h3>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* 6. CV / Resume */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('cv-resume')}>
+                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('cv-resume')}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiFileText size={18} />
@@ -4460,10 +4407,10 @@ export default function TeacherDashboard() {
                         <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">CV / Resume</h3>
-                    </motion.div>
+                    </Motion.div>
 
                     {/* 7. Availability */}
-                    <motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('availability')}>
+                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('availability')}>
                       <div className="td-psc-top">
                         <div className="td-psc-icon-box td-psc-icon-teal">
                           <FiClock size={18} />
@@ -4471,14 +4418,14 @@ export default function TeacherDashboard() {
                         <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
                       </div>
                       <h3 className="td-psc-title">Availability</h3>
-                    </motion.div>
+                    </Motion.div>
                   </div>
                 </>
               ) : (
                 <div className="td-subtab-view">
                   {/* 1. Personal Info Tab */}
                   {profileSubTab === 'personal-info' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-pers-info-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-pers-info-page">
                       {/* Top Breadcrumb Header */}
                       <div
                         className="td-pers-breadcrumb"
@@ -4626,12 +4573,12 @@ export default function TeacherDashboard() {
                           </button>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* Change Phone Number Tab */}
                   {profileSubTab === 'change-phone' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-change-phone-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-change-phone-page">
                       <button type="button" className="td-change-back-btn" onClick={() => setProfileSubTab('personal-info')}>
                         <FiArrowLeft size={16} />
                         <span>Personal Information</span>
@@ -4683,12 +4630,12 @@ export default function TeacherDashboard() {
                           <p>Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* Change Email Tab */}
                   {profileSubTab === 'change-email' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-change-email-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-change-email-page">
                       <button type="button" className="td-change-back-btn" onClick={() => setProfileSubTab('personal-info')}>
                         <FiArrowLeft size={16} />
                         <span>Personal Information</span>
@@ -4736,12 +4683,12 @@ export default function TeacherDashboard() {
                           <p>Updating your email or password will require re-authentication and verification codes sent to your current trusted devices to ensure your account remains secure.</p>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* 2. Professional Info Tab */}
                   {profileSubTab === 'professional-info' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-edit-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-edit-page">
                       <button type="button" className="td-prof-edit-breadcrumb" onClick={() => setProfileSubTab('overview')}><FiArrowLeft size={18} /><span>Profile / Professional information</span></button>
                       <header className="td-prof-edit-header"><h1>Professional Information</h1><p>Define your professional identity. This information will be visible to schools and administrators viewing your profile.</p></header>
                       {appError && <p className="td-prof-edit-error">{appError}</p>}
@@ -4783,10 +4730,10 @@ export default function TeacherDashboard() {
                           <button type="button" className="td-prof-save-btn" disabled={savingProfessionalInfo} onClick={handleSaveProfessionalInfo}>{savingProfessionalInfo ? 'Saving...' : 'Save Changes'}</button>
                         </aside>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
                   {profileSubTab === 'professional-info-legacy' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-info-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-info-page">
                       {/* Top Breadcrumb */}
                       <div className="td-prof-breadcrumb" onClick={() => setProfileSubTab('overview')}>
                         <FiArrowLeft size={16} className="td-prof-back-icon" />
@@ -4999,12 +4946,12 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* 3. Education Tab */}
                   {profileSubTab === 'education' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-edu-info-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-edu-info-page">
                       {/* Top Breadcrumb Header */}
                       <div className="td-edu-breadcrumb" onClick={() => setProfileSubTab('overview')}>
                         <FiArrowLeft size={16} className="td-edu-back-icon" />
@@ -5298,12 +5245,12 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
                       )}
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* 4. Teaching Experience Tab */}
                   {profileSubTab === 'teaching-experience' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-exp-info-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-exp-info-page">
                       {/* Top Breadcrumb Header */}
                       <div className="td-exp-breadcrumb" onClick={() => setProfileSubTab('overview')}>
                         <FiArrowLeft size={16} className="td-exp-back-icon" />
@@ -5559,12 +5506,12 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
                       )}
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* 5. TRCN Certification Tab */}
                   {profileSubTab === 'trcn-certification' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-trcn-info-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-trcn-info-page">
                       {/* Top Breadcrumb Header */}
                       <div className="td-trcn-breadcrumb" onClick={() => setProfileSubTab('overview')}>
                         <FiArrowLeft size={16} className="td-trcn-back-icon" />
@@ -5730,12 +5677,12 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* 6. CV / Resume Tab */}
                   {profileSubTab === 'cv-resume' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-cv-info-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-cv-info-page">
                       {/* Top Breadcrumb Header */}
                       <div className="td-cv-breadcrumb" onClick={() => setProfileSubTab('overview')}>
                         <FiArrowLeft size={16} className="td-cv-back-icon" />
@@ -5938,12 +5885,12 @@ export default function TeacherDashboard() {
                           </div>
                         </div>
                       )}
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* 7. Availability Tab */}
                   {profileSubTab === 'availability' && (
-                    <motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-avail-info-page">
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-avail-info-page">
                       {/* Top Breadcrumb Header */}
                       <div className="td-avail-breadcrumb" onClick={() => setProfileSubTab('overview')}>
                         <FiArrowLeft size={16} className="td-avail-back-icon" />
@@ -6150,12 +6097,12 @@ export default function TeacherDashboard() {
                           </button>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
 
                   {/* 8. Profile Updated Successfully Full Screen Overlay Modal */}
                   {(profileSubTab === 'update-success' || showProfileUpdatedModal) && (
-                    <motion.div
+                    <Motion.div
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
@@ -6253,16 +6200,16 @@ export default function TeacherDashboard() {
                           </button>
                         </div>
                       </div>
-                    </motion.div>
+                    </Motion.div>
                   )}
                 </div>
               )}
-            </motion.div>
+            </Motion.div>
           )}
 
 
           {['messages'].includes(activeTab) && (
-            <motion.div variants={pageVariants} initial="hidden" animate="visible" className="flex flex-col items-center justify-center h-full px-6 py-20 text-center" style={{ minHeight: '60vh' }}>
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="flex flex-col items-center justify-center h-full px-6 py-20 text-center" style={{ minHeight: '60vh' }}>
               <div className="inline-flex items-center gap-2 bg-[#1CCB43]/10 border border-[#1CCB43]/20 text-[#1CCB43] font-semibold text-sm px-4 py-2 rounded-full mb-8">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#1CCB43] opacity-75"></span>
@@ -6291,7 +6238,7 @@ export default function TeacherDashboard() {
                   We're putting the final touches on this section of the dashboard. Check back soon!
                 </p>
               </div>
-            </motion.div>
+            </Motion.div>
           )}
         </div>
       </div>
@@ -17098,6 +17045,6 @@ export default function TeacherDashboard() {
           }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }

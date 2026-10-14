@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { profileService } from '../services/profileService';
 
 const getSetupFlag = (profile = {}) => {
@@ -20,29 +20,6 @@ const getSetupFlag = (profile = {}) => {
   }
 
   return undefined;
-};
-
-const hasCompletedTeacherProfile = (profile = {}) => {
-  const setupFlag = getSetupFlag(profile);
-  if (setupFlag !== undefined) {
-    return setupFlag;
-  }
-
-  const skillText = String(profile?.skills || profile?.subjects || '').trim();
-  const locationText = String(profile?.location || profile?.preferred_location || '').trim();
-  const levels = Array.isArray(profile?.teaching_levels)
-    ? profile.teaching_levels
-    : typeof profile?.teaching_levels === 'string'
-      ? profile.teaching_levels.split(',').map((item) => item.trim()).filter(Boolean)
-      : [];
-
-  return Boolean(
-    skillText ||
-    locationText ||
-    levels.length ||
-    String(profile?.bio || '').trim() ||
-    String(profile?.experience_years || '').trim()
-  );
 };
 
 const hasCompletedSchoolProfile = (profile = {}, account = {}) => {
@@ -66,32 +43,25 @@ const hasCompletedSchoolProfile = (profile = {}, account = {}) => {
   );
 };
 
-export default function ProtectedRoute({ children, allowedRoles = [], requireTeacherProfile = false, requireSchoolProfile = false }) {
+export default function ProtectedRoute({ children, allowedRoles = [], requireSchoolProfile = false }) {
   const { user, token, loading } = useAuth();
   const location = useLocation();
-  const [profileCheck, setProfileCheck] = useState({ loading: requireTeacherProfile || requireSchoolProfile, complete: true });
+  const [profileCheck, setProfileCheck] = useState(null);
+  const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
+  const needsProfileCheck = Boolean(token && requireSchoolProfile && role === 'school');
+  const userSetupFlag =
+    user?.setup_completed ??
+    user?.setupComplete ??
+    user?.profile_complete ??
+    user?.is_profile_complete ??
+    user?.setupCompleted;
+  const profileCheckKey = `${token}:${role}:${user?.user_id || user?.id || user?.email || ''}`;
+  const profileCheckPending = needsProfileCheck && userSetupFlag === undefined && (
+    profileCheck?.key !== profileCheckKey || profileCheck?.user !== user
+  );
 
   useEffect(() => {
-    const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
-    const needsProfileCheck = requireSchoolProfile && role === 'school';
-
-    if (!needsProfileCheck || !token) {
-      setProfileCheck({ loading: false, complete: true });
-      return undefined;
-    }
-
-    const userSetupFlag =
-      user?.setup_completed ??
-      user?.setupComplete ??
-      user?.profile_complete ??
-      user?.is_profile_complete ??
-      user?.setupCompleted;
-
-    if (userSetupFlag !== undefined) {
-      const isComplete = userSetupFlag === true || userSetupFlag === 'true' || userSetupFlag === 1 || userSetupFlag === '1';
-      setProfileCheck({ loading: false, complete: isComplete });
-      return undefined;
-    }
+    if (!profileCheckPending) return undefined;
 
     let active = true;
     profileService.getMe()
@@ -101,16 +71,16 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
         const account = payload?.user || {};
         const complete = hasCompletedSchoolProfile(profile, account);
 
-        if (active) setProfileCheck({ loading: false, complete });
+        if (active) setProfileCheck({ key: profileCheckKey, user, complete });
       })
       .catch(() => {
-        if (active) setProfileCheck({ loading: false, complete: true });
+        if (active) setProfileCheck({ key: profileCheckKey, user, complete: true });
       });
 
     return () => {
       active = false;
     };
-  }, [requireTeacherProfile, requireSchoolProfile, token, user?.role, user?.user_role, user?.setup_completed, user?.setupComplete, user?.profile_complete, user?.is_profile_complete, user?.setupCompleted]);
+  }, [profileCheckKey, profileCheckPending, user]);
 
   if (loading) {
     return <div className="flex min-h-screen items-center justify-center bg-[#FAF9F6] text-gray-700">Loading...</div>;
@@ -119,8 +89,6 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
   if (!token || !user) {
     return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
   }
-
-  const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
 
   if (allowedRoles.length && !allowedRoles.includes(role)) {
     return <Navigate to="/signin" replace state={{ from: location.pathname }} />;
@@ -131,16 +99,10 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
     return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
   }
 
-  if (profileCheck.loading) {
+  if (profileCheckPending) {
     return <div className="flex min-h-screen items-center justify-center bg-[#FAF9F6] text-gray-700">Loading profile...</div>;
   }
 
-  const userSetupFlag =
-    user?.setup_completed ??
-    user?.setupComplete ??
-    user?.profile_complete ??
-    user?.is_profile_complete ??
-    user?.setupCompleted;
   const hasKnownSetupState = userSetupFlag !== undefined;
   const knownIsComplete = hasKnownSetupState && (userSetupFlag === true || userSetupFlag === 'true' || userSetupFlag === 1 || userSetupFlag === '1');
 
@@ -148,7 +110,7 @@ export default function ProtectedRoute({ children, allowedRoles = [], requireTea
     return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
   }
 
-  if (requireSchoolProfile && role === 'school' && !profileCheck.complete && !hasKnownSetupState) {
+  if (requireSchoolProfile && role === 'school' && profileCheck?.key === profileCheckKey && profileCheck?.user === user && !profileCheck.complete && !hasKnownSetupState) {
     return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
   }
 

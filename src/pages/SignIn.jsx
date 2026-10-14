@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { apiErrorMessage } from '../services/api';
 import { authService } from '../services/authService';
 import { profileService } from '../services/profileService';
@@ -47,27 +47,6 @@ const hasCompletedTeacherSetup = (profile = {}) => {
     levels.length ||
     String(profile?.bio || '').trim() ||
     String(profile?.experience_years || '').trim()
-  );
-};
-
-const hasCompletedSchoolSetup = (profile = {}, account = {}) => {
-  const setupFlag = getSetupFlag(profile);
-  if (setupFlag !== undefined) {
-    return setupFlag;
-  }
-
-  return Boolean(
-    profile?.school_name ||
-    account?.full_name ||
-    profile?.school_type ||
-    profile?.address ||
-    profile?.city ||
-    profile?.state ||
-    profile?.country ||
-    profile?.email ||
-    account?.email ||
-    profile?.phone ||
-    account?.phone
   );
 };
 
@@ -206,7 +185,7 @@ export default function SignIn() {
   };
 
   return (
-    <motion.div 
+    <Motion.div
       className="auth-layout"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -731,6 +710,6 @@ export default function SignIn() {
           }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }

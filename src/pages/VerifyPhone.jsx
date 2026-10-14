@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 
@@ -8,7 +8,7 @@ export default function VerifyPhone() {
   const [code, setCode] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
-  const [canResend, setCanResend] = useState(false);
+  const canResend = resendTimer === 0;
   const inputRefs = useRef([]);
   const navigate = useNavigate();
 
@@ -17,14 +17,11 @@ export default function VerifyPhone() {
 
   // Countdown timer for resend
   useEffect(() => {
-    if (resendTimer > 0) {
-      const interval = setInterval(() => {
-        setResendTimer((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else {
-      setCanResend(true);
-    }
+    if (resendTimer <= 0) return undefined;
+    const interval = setInterval(() => {
+      setResendTimer((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
   }, [resendTimer]);
 
   // Auto-focus first input on mount
@@ -90,14 +87,13 @@ export default function VerifyPhone() {
 
   const handleResend = () => {
     if (!canResend) return;
-    setCanResend(false);
     setResendTimer(60);
     setCode(['', '', '', '', '', '']);
     inputRefs.current[0]?.focus();
   };
 
   return (
-    <motion.div
+    <Motion.div
       className="auth-layout"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -761,6 +757,6 @@ export default function VerifyPhone() {
           }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }

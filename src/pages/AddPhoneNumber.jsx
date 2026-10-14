@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 
@@ -35,7 +35,7 @@ export default function AddPhoneNumber() {
   };
 
   return (
-    <motion.div
+    <Motion.div
       className="auth-layout"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -595,6 +595,6 @@ export default function AddPhoneNumber() {
           }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }

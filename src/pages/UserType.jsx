@@ -1,6 +1,6 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useSyncExternalStore } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion as Motion, AnimatePresence } from 'framer-motion';
 import teacherImg from '../assets/teacher-role.webp';
 import adminImg from '../assets/admin-role.webp';
 import BrandLogo from '../components/BrandLogo';
@@ -42,26 +42,25 @@ const roles = [
   },
 ];
 
+const subscribeToMobileBreakpoint = (callback) => {
+  const mediaQuery = window.matchMedia('(max-width: 640px)');
+  mediaQuery.addEventListener('change', callback);
+  return () => mediaQuery.removeEventListener('change', callback);
+};
+
+const getMobileBreakpoint = () => window.matchMedia('(max-width: 640px)').matches;
+
 export default function UserType() {
   const [selected, setSelected]   = useState('teacher');
   const [focusedIdx, setFocusedIdx] = useState(0); // which card is in the spotlight on mobile
   const navigate   = useNavigate();
   const trackRef   = useRef(null);   // the scrollable .ut-cards div
   const cardRefs   = useRef([]);     // refs for each card button
-  const isMobile   = useRef(false);
-
-  /* ── Detect mobile breakpoint ── */
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 640px)');
-    isMobile.current = mq.matches;
-    const onChange = (e) => { isMobile.current = e.matches; };
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const isMobile = useSyncExternalStore(subscribeToMobileBreakpoint, getMobileBreakpoint, () => false);
 
   /* ── Scroll listener: find which card centre is closest to track centre ── */
   const handleScroll = useCallback(() => {
-    if (!isMobile.current || !trackRef.current) return;
+    if (!isMobile || !trackRef.current) return;
     const track      = trackRef.current;
     const trackCX    = track.scrollLeft + track.clientWidth / 2;
     let   closest    = 0;
@@ -76,7 +75,7 @@ export default function UserType() {
 
     setFocusedIdx(closest);
     setSelected(roles[closest].id);
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -88,7 +87,7 @@ export default function UserType() {
   /* ── Tap a card on mobile → smooth-scroll it to centre ── */
   const handleCardClick = (role, i) => {
     setSelected(role.id);
-    if (isMobile.current && cardRefs.current[i] && trackRef.current) {
+    if (isMobile && cardRefs.current[i] && trackRef.current) {
       const track  = trackRef.current;
       const card   = cardRefs.current[i];
       const target = card.offsetLeft - (track.clientWidth - card.offsetWidth) / 2;
@@ -98,7 +97,7 @@ export default function UserType() {
 
   /* ── Derive per-card spotlight style on mobile ── */
   const cardStyle = (i) => {
-    if (!isMobile.current) return {};           // desktop: no dimming
+    if (!isMobile) return {};           // desktop: no dimming
     const isFocused = i === focusedIdx;
     return {
       opacity:   isFocused ? 1 : 0.38,
@@ -109,14 +108,14 @@ export default function UserType() {
   };
 
   return (
-    <motion.div
+    <Motion.div
       className="ut-page"
       variants={pageVariants}
       initial="hidden"
       animate="visible"
     >
       {/* ── Top Logo ── */}
-      <motion.header className="ut-header" variants={slideUp}>
+      <Motion.header className="ut-header" variants={slideUp}>
         <Link to="/" className="ut-logo">
           <BrandLogo />
         </Link>
@@ -126,22 +125,22 @@ export default function UserType() {
           </svg>
           <span>Back</span>
         </button>
-      </motion.header>
+      </Motion.header>
 
       {/* ── Main Content ── */}
       <main className="ut-main">
 
         {/* Heading */}
-        <motion.h1 className="ut-heading" variants={slideUp}>
+        <Motion.h1 className="ut-heading" variants={slideUp}>
           Choose your role and we'll tailor your experience.
-        </motion.h1>
+        </Motion.h1>
 
         {/* ── Role Cards ── */}
         <div className="ut-cards" id="role-cards-container" ref={trackRef}>
           {roles.map((role, i) => {
             const isActive = selected === role.id;
             return (
-              <motion.button
+              <Motion.button
                 key={role.id}
                 id={`role-${role.id}`}
                 ref={(el) => (cardRefs.current[i] = el)}
@@ -155,7 +154,7 @@ export default function UserType() {
               >
                 {/* Full-cover image */}
                 <div className="ut-card-img-wrap">
-                  <motion.img
+                  <Motion.img
                     src={role.image}
                     alt={role.label}
                     className="ut-card-img"
@@ -165,7 +164,7 @@ export default function UserType() {
                   />
                   <AnimatePresence>
                     {isActive && (
-                      <motion.div
+                      <Motion.div
                         className="ut-card-shimmer"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -182,7 +181,7 @@ export default function UserType() {
                     <p className="ut-card-title">{role.label}</p>
                     <AnimatePresence>
                       {isActive && (
-                        <motion.span
+                        <Motion.span
                           className="ut-check"
                           initial={{ scale: 0, opacity: 0 }}
                           animate={{ scale: 1, opacity: 1 }}
@@ -194,19 +193,19 @@ export default function UserType() {
                             <path d="M4 7l2 2 4-4" stroke="#fff" strokeWidth="1.6"
                               strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
-                        </motion.span>
+                        </Motion.span>
                       )}
                     </AnimatePresence>
                   </div>
                   <p className="ut-card-desc">{role.description}</p>
                 </div>
-              </motion.button>
+              </Motion.button>
             );
           })}
         </div>
 
         {/* ── Next Button ── */}
-        <motion.button
+        <Motion.button
           id="usertype-next-btn"
           className="ut-next-btn"
           onClick={() => {
@@ -221,13 +220,13 @@ export default function UserType() {
           whileTap={{ scale: 0.96 }}
         >
           Next
-        </motion.button>
+        </Motion.button>
 
         {/* ── Pagination dots ── */}
-        <motion.div className="ut-dots" variants={slideUp}>
+        <Motion.div className="ut-dots" variants={slideUp}>
           <span className="ut-dot ut-dot--active" />
           <span className="ut-dot" />
-        </motion.div>
+        </Motion.div>
       </main>
 
       <style>{`
@@ -449,6 +448,6 @@ export default function UserType() {
           .ut-dots { margin-bottom: 8px; }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }

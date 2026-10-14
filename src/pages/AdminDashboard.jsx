@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useAuth } from "../context/AuthContext";
+import React, { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { useAuth } from "../context/authContext.js";
 import { adminService } from "../services/adminService";
 import { apiErrorMessage, API_ORIGIN } from "../services/api";
 import { jobService } from "../services/jobService";
@@ -9,7 +9,7 @@ import { profileService } from "../services/profileService";
 import { accountService } from "../services/accountService";
 import BrandLogo from "../components/BrandLogo";
 import FeedbackButton from "../components/FeedbackButton";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 import {
   FiAlertCircle,
   FiAlertTriangle,
@@ -240,7 +240,6 @@ export default function AdminDashboard() {
   const [savedTeacherIds, setSavedTeacherIds] = useState([]);
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [schoolLogoFile, setSchoolLogoFile] = useState(null);
-  const [schoolLocationLocked, setSchoolLocationLocked] = useState(false);
 
   useEffect(() => {
     if (!selectedCoverLetter) return undefined;
@@ -295,14 +294,9 @@ export default function AdminDashboard() {
   const [teacherSearch, setTeacherSearch] = useState("");
   const [teacherSearchSubmitted, setTeacherSearchSubmitted] = useState("");
   const [teacherLocation, setTeacherLocation] = useState("All Locations");
-  const [teacherLocationMenuOpen, setTeacherLocationMenuOpen] = useState(false);
   const [teacherExperience, setTeacherExperience] = useState("Experience");
-  const [teacherExperienceMenuOpen, setTeacherExperienceMenuOpen] =
-    useState(false);
   const [teacherSubject, setTeacherSubject] = useState("Subject");
-  const [teacherSubjectMenuOpen, setTeacherSubjectMenuOpen] = useState(false);
   const [teacherTrcn, setTeacherTrcn] = useState("TRCN");
-  const [teacherTrcnMenuOpen, setTeacherTrcnMenuOpen] = useState(false);
   const [teacherFilterMenuOpen, setTeacherFilterMenuOpen] = useState(false);
   const [teacherSortMenuOpen, setTeacherSortMenuOpen] = useState(false);
   const [teacherSortMode, setTeacherSortMode] = useState("Best Match");
@@ -500,7 +494,6 @@ export default function AdminDashboard() {
       responsibilities: normalizeResponsibilityList(job.responsibilities || job.requirements),
       requirements: normalizeResponsibilityList(job.requirements),
       required_qualification: normalizeResponsibilityList(job.required_qualification),
-      required_qualification: normalizeResponsibilityList(job.required_qualification),
     });
     setResponsibilityInput("");
     setOtherRequirementInput("");
@@ -527,14 +520,14 @@ export default function AdminDashboard() {
     setQualificationMenuOpen(false);
   };
 
-  const dismissSnackbar = () => {
+  const dismissSnackbar = useCallback(() => {
     if (!snackbar) return;
     setIsSnackbarClosing(true);
     window.setTimeout(() => {
       setSnackbar(null);
       setIsSnackbarClosing(false);
     }, 260);
-  };
+  }, [snackbar]);
 
   const showSnackbar = (title, message) => {
     setIsSnackbarClosing(false);
@@ -1231,7 +1224,6 @@ export default function AdminDashboard() {
       const updatedLocation = getSchoolLocation(mergedProfile);
       if (updatedLocation) {
         setJobForm((current) => ({ ...current, location: updatedLocation }));
-        setSchoolLocationLocked(true);
       }
       setIsSchoolNameEditing(false);
       setIsEmailEditing(false);
@@ -1337,7 +1329,7 @@ export default function AdminDashboard() {
       dismissSnackbar();
     }, 4500);
     return () => window.clearTimeout(timeoutId);
-  }, [snackbar]);
+  }, [snackbar, dismissSnackbar]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setCurrentTime(Date.now()), 30000);
@@ -1368,7 +1360,7 @@ export default function AdminDashboard() {
     try {
       const storedDrafts = JSON.parse(localStorage.getItem(schoolDraftStorageKey) || "[]");
       return Array.isArray(storedDrafts) ? storedDrafts : [];
-    } catch (_err) {
+    } catch {
       return [];
     }
   };
@@ -1472,15 +1464,17 @@ export default function AdminDashboard() {
       });
 
       setNotificationItems(mapped);
-    } catch (_err) {
+    } catch {
       // Notifications are non-critical — silently keep whatever is already loaded
     }
   };
 
+  const refreshSchoolNotifications = useEffectEvent(loadSchoolNotifications);
+
   useEffect(() => {
     if (!isSchool) return undefined;
     const intervalId = window.setInterval(() => {
-      loadSchoolNotifications();
+      refreshSchoolNotifications();
     }, 60000);
     return () => window.clearInterval(intervalId);
   }, [isSchool]);
@@ -1549,11 +1543,9 @@ export default function AdminDashboard() {
           ...prev,
           location: locationFromProfile,
         }));
-        setSchoolLocationLocked(true);
       }
-    } catch (_err) {
+    } catch {
       setSchoolProfile({});
-      setSchoolLocationLocked(false);
     }
   };
 
@@ -1582,13 +1574,12 @@ export default function AdminDashboard() {
         }));
 
       setAllUsers(normalizedUsers);
-    } catch (_err) {
+    } catch {
       setAllUsers([]);
     }
   };
 
-  useEffect(() => {
-    const loadDashboard = async () => {
+  const loadDashboard = useEffectEvent(async () => {
       try {
         setLoading(true);
 
@@ -1620,8 +1611,9 @@ export default function AdminDashboard() {
       } finally {
         setLoading(false);
       }
-    };
+  });
 
+  useEffect(() => {
     loadDashboard();
   }, [isSchool, currentUserId]);
 
@@ -1686,10 +1678,12 @@ export default function AdminDashboard() {
         }
       }));
       setApplicantsByJob((prev) => ({ ...prev, [jobId]: enrichedList }));
-    } catch (err) {
+    } catch {
       setApplicantsByJob((prev) => ({ ...prev, [jobId]: [] }));
     }
   };
+
+  const refreshApplicantsForJob = useEffectEvent(loadApplicantsForJob);
 
   useEffect(() => {
     if (!isSchool || !jobs.length) return;
@@ -1697,7 +1691,7 @@ export default function AdminDashboard() {
     jobs.forEach((job) => {
       const jobId = job.job_id || job.id;
       if (jobId) {
-        loadApplicantsForJob(jobId);
+        refreshApplicantsForJob(jobId);
       }
     });
   }, [isSchool, jobs]);
@@ -1980,9 +1974,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const adminLabel =
-    user?.role === "school" ? "School Dashboard" : "Admin Dashboard";
-
   const schoolProfileLogoPath =
     schoolProfile?.logo_url ||
     schoolProfile?.school_logo ||
@@ -2064,25 +2055,6 @@ export default function AdminDashboard() {
     const safeTime = time ? String(time).trim() : "00:00:00";
     const start = new Date(`${date}T${safeTime}`);
     return Number.isNaN(start.getTime()) ? null : start;
-  };
-  const getUpdatedTimestamp = (app = {}) => {
-    const rawValue =
-      app.updated_at ||
-      app.updatedAt ||
-      app.updated_date ||
-      app.updatedDate ||
-      app.interview?.updated_at ||
-      app.interview?.updatedAt ||
-      app.interview?.updated_date ||
-      app.interview?.updatedDate ||
-      app.last_updated ||
-      app.lastUpdated ||
-      app.application_updated_at ||
-      app.applicationUpdatedAt;
-
-    if (!rawValue) return null;
-    const parsed = new Date(rawValue);
-    return Number.isNaN(parsed.getTime()) ? null : parsed;
   };
   const getApplicantDisplayStatus = (app = {}) => {
     const rawStatus = String(app.status || "").toLowerCase();
@@ -3135,7 +3107,7 @@ export default function AdminDashboard() {
         </div></div>
           <AnimatePresence>
             {selectedCoverLetter && (
-              <motion.div
+              <Motion.div
                 className="school-cover-letter-modal-backdrop"
                 role="presentation"
                 initial={{ opacity: 0 }}
@@ -3144,7 +3116,7 @@ export default function AdminDashboard() {
                 transition={{ duration: 0.2 }}
                 onClick={() => setSelectedCoverLetter("")}
               >
-                <motion.section
+                <Motion.section
                   className="school-cover-letter-modal"
                   role="dialog"
                   aria-modal="true"
@@ -3165,8 +3137,8 @@ export default function AdminDashboard() {
                     </button>
                   </header>
                   <div className="school-cover-letter-modal-content">{selectedCoverLetter}</div>
-                </motion.section>
-              </motion.div>
+                </Motion.section>
+              </Motion.div>
             )}
           </AnimatePresence>
       </div>
@@ -4681,7 +4653,7 @@ export default function AdminDashboard() {
         .filter(Boolean)
         .map((value) => String(value));
       setSavedTeacherIds([...new Set(savedIds)]);
-    } catch (_err) {
+    } catch {
       setSavedTeacherIds([]);
     }
   };
@@ -4710,10 +4682,6 @@ export default function AdminDashboard() {
 
   const handleTeacherSearch = () => {
     setTeacherSearchSubmitted(teacherSearch.trim());
-    setTeacherLocationMenuOpen(false);
-    setTeacherExperienceMenuOpen(false);
-    setTeacherSubjectMenuOpen(false);
-    setTeacherTrcnMenuOpen(false);
   };
 
   const renderApplicants = () => {
@@ -5300,7 +5268,7 @@ export default function AdminDashboard() {
                   onClick={() => handleTabChange(key)}
                   className={`admin-sidebar-nav-item ${activeTab === key ? "is-active" : ""}`}
                 >
-                  <Icon size={19} />
+                  {React.createElement(Icon, { size: 19 })}
                   <span>
                     {isSchool && key === "applicants" ? "Teachers" : label}
                   </span>
@@ -5487,7 +5455,7 @@ export default function AdminDashboard() {
                               key={key}
                               className="rounded-2xl border border-[#dfe5e1] bg-white p-5 shadow-sm"
                             >
-                              <Icon className="mb-4 text-[#8ca49a]" />
+                              {React.createElement(Icon, { className: "mb-4 text-[#8ca49a]" })}
                               <p className="text-xs text-[#718078]">{label}</p>
                               <p className="mt-2 text-3xl font-bold">
                                 {stats[key] ?? 0}
@@ -6220,7 +6188,7 @@ export default function AdminDashboard() {
             onClick={() => handleTabChange(key)}
             className={activeTab === key ? "is-active" : ""}
           >
-            <Icon size={19} />
+            {React.createElement(Icon, { size: 19 })}
             <span>{isSchool && key === "applicants" ? "Teachers" : label}</span>
           </button>
         ))}

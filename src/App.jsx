@@ -54,7 +54,7 @@ function LandingPage() {
 
 function DashboardLoader({ label = 'Dashboard' }) {
   return (
-    <div style={{
+    <div role="status" aria-label={label} style={{
       minHeight: '100vh',
       background: '#f6f8f7',
       display: 'grid',

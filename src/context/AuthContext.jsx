@@ -1,8 +1,7 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authService } from '../services/authService';
 import { api, apiErrorMessage } from '../services/api';
-
-const AuthContext = createContext(null);
+import { AuthContext } from './authContext.js';
 
 const getStoredSessionValue = (key) => {
   const sessionValue = sessionStorage.getItem(key);
@@ -90,7 +89,7 @@ export function AuthProvider({ children }) {
     initialize();
   }, []);
 
-  const persistSession = (userData, newToken) => {
+  const persistSession = useCallback((userData, newToken) => {
     if (newToken) {
       sessionStorage.setItem('staffroom_token', newToken);
       setToken(newToken);
@@ -100,9 +99,9 @@ export function AuthProvider({ children }) {
       sessionStorage.setItem('staffroom_user', JSON.stringify(userData));
       setUser(userData);
     }
-  };
+  }, []);
 
-  const clearSession = () => {
+  const clearSession = useCallback(() => {
     sessionStorage.removeItem('staffroom_token');
     sessionStorage.removeItem('staffroom_user');
     localStorage.removeItem('staffroom_token');
@@ -115,20 +114,20 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('staffroom_applications_cache');
     setToken('');
     setUser(null);
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     clearSession();
     window.location.href = '/signin';
-  };
+  }, [clearSession]);
 
-  const register = async (payload) => {
+  const register = useCallback(async (payload) => {
     const method = payload?.role === 'school' ? authService.register_sch : authService.register;
     const response = await method(payload);
     return response?.data ?? {};
-  };
+  }, []);
 
-  const login = async (payload) => {
+  const login = useCallback(async (payload) => {
     const response = await authService.login(payload);
     const result = response?.data ?? {};
     const responseData = result?.data ?? {};
@@ -184,9 +183,9 @@ export function AuthProvider({ children }) {
         token: newToken,
       },
     };
-  };
+  }, [persistSession]);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     const savedToken = getStoredSessionValue('staffroom_token');
     if (!savedToken) {
       setUser(null);
@@ -211,7 +210,7 @@ export function AuthProvider({ children }) {
       logout();
       throw error;
     }
-  };
+  }, [logout, persistSession, user]);
 
   const value = useMemo(
     () => ({
@@ -227,16 +226,8 @@ export function AuthProvider({ children }) {
       setToken,
       apiErrorMessage,
     }),
-    [user, token, loading]
+    [user, token, loading, login, register, logout, refreshUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
 }

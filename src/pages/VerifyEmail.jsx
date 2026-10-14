@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import authHero from '../assets/auth-hero.webp';
 import BrandLogo from '../components/BrandLogo';
 import { authService } from '../services/authService';
@@ -20,7 +20,6 @@ export default function VerifyEmail() {
   const email = location.state?.email || localStorage.getItem('staffroom_verification_email') || '';
   const role = location.state?.role || localStorage.getItem('staffroom_verification_role') || 'teacher';
   const arrivalMessage = location.state?.message || '';
-  const fromLogin = Boolean(location.state?.fromLogin);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -150,7 +149,7 @@ export default function VerifyEmail() {
   const isCodeComplete = code.every((d) => d !== '');
 
   return (
-    <motion.div
+    <Motion.div
       className="auth-layout"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -232,7 +231,7 @@ export default function VerifyEmail() {
 
               {/* Error message */}
               {error && (
-                <motion.p
+                <Motion.p
                   className="error-message"
                   initial={{ opacity: 0, y: -4 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -243,12 +242,12 @@ export default function VerifyEmail() {
                     <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
                   </svg>
                   {error}
-                </motion.p>
+                </Motion.p>
               )}
 
               {/* Arrival message (e.g., resend from login) */}
               {arrivalMessage && !error && (
-                <motion.div
+                <Motion.div
                   className="info-banner"
                   initial={{ opacity: 0, scale: 0.98 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -256,11 +255,11 @@ export default function VerifyEmail() {
                   style={{ marginBottom: '8px', padding: '8px 12px', borderRadius: 8, background: '#FEF3C7', color: '#92400e' }}
                 >
                   {arrivalMessage}
-                </motion.div>
+                </Motion.div>
               )}
               {/* Success message */}
               {success && (
-                <motion.div
+                <Motion.div
                   className="success-banner"
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -271,7 +270,7 @@ export default function VerifyEmail() {
                     <polyline points="22 4 12 14.01 9 11.01" />
                   </svg>
                   <span>Email verified successfully! Redirecting…</span>
-                </motion.div>
+                </Motion.div>
               )}
 
               {/* Verify Button */}
@@ -955,6 +954,6 @@ export default function VerifyEmail() {
           }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }

@@ -1,6 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { profileService } from '../services/profileService';
 
 const getSetupFlag = (profile = {}) => {
@@ -20,23 +20,6 @@ const getSetupFlag = (profile = {}) => {
   }
 
   return undefined;
-};
-
-const hasCompletedTeacherSetup = (profile = {}) => {
-  const setupFlag = getSetupFlag(profile);
-  if (setupFlag !== undefined) {
-    return setupFlag;
-  }
-
-  const hasLevels = Array.isArray(profile?.teaching_levels) && profile.teaching_levels.length > 0;
-
-  return Boolean(
-    String(profile?.skills || profile?.subjects || '').trim() ||
-    String(profile?.location || profile?.preferred_location || '').trim() ||
-    String(profile?.bio || '').trim() ||
-    hasLevels ||
-    String(profile?.experience_years || '').trim()
-  );
 };
 
 const hasCompletedSchoolSetup = (profile = {}, account = {}) => {
@@ -63,30 +46,24 @@ const hasCompletedSchoolSetup = (profile = {}, account = {}) => {
 export default function PublicRoute({ children }) {
   const { user, token, loading } = useAuth();
   const location = useLocation();
-  const [profileCheck, setProfileCheck] = useState({ loading: false, complete: true });
+  const [profileCheck, setProfileCheck] = useState(null);
+  const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
+  const userSetupFlag =
+    user?.setup_completed ??
+    user?.setupComplete ??
+    user?.profile_complete ??
+    user?.is_profile_complete ??
+    user?.setupCompleted;
+  const needsProfileCheck = Boolean(token && user && ['school', 'school_admin'].includes(role) && userSetupFlag === undefined);
+  const profileCheckKey = `${token}:${role}:${user?.user_id || user?.id || user?.email || ''}`;
+  const profileCheckPending = needsProfileCheck && (
+    profileCheck?.key !== profileCheckKey || profileCheck?.user !== user
+  );
 
   useEffect(() => {
-    const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
-    if (!token || !user || !['school', 'school_admin'].includes(role)) {
-      setProfileCheck({ loading: false, complete: true });
-      return undefined;
-    }
-
-    const userSetupFlag =
-      user?.setup_completed ??
-      user?.setupComplete ??
-      user?.profile_complete ??
-      user?.is_profile_complete ??
-      user?.setupCompleted;
-
-    if (userSetupFlag !== undefined) {
-      const isComplete = userSetupFlag === true || userSetupFlag === 'true' || userSetupFlag === 1 || userSetupFlag === '1';
-      setProfileCheck({ loading: false, complete: isComplete });
-      return undefined;
-    }
+    if (!profileCheckPending) return undefined;
 
     let active = true;
-    setProfileCheck({ loading: true, complete: false });
     profileService.getMe()
       .then((response) => {
         const payload = response?.data?.data ?? response?.data ?? {};
@@ -94,18 +71,18 @@ export default function PublicRoute({ children }) {
         const account = payload?.user || {};
         const complete = hasCompletedSchoolSetup(profile, account);
 
-        if (active) setProfileCheck({ loading: false, complete });
+        if (active) setProfileCheck({ key: profileCheckKey, user, complete });
       })
       .catch(() => {
-        if (active) setProfileCheck({ loading: false, complete: false });
+        if (active) setProfileCheck({ key: profileCheckKey, user, complete: false });
       });
 
     return () => {
       active = false;
     };
-  }, [token, user, user?.setup_completed, user?.setupComplete, user?.profile_complete, user?.is_profile_complete, user?.setupCompleted]);
+  }, [profileCheckKey, profileCheckPending, user]);
 
-  if (loading || profileCheck.loading) {
+  if (loading || profileCheckPending) {
     return <div className="flex min-h-screen items-center justify-center bg-[#FAF9F6] text-gray-700">Loading...</div>;
   }
 
@@ -115,13 +92,6 @@ export default function PublicRoute({ children }) {
       return children;
     }
 
-    const role = String(user?.role || user?.user_role || user?.account_type || '').trim().toLowerCase();
-    const userSetupFlag =
-      user?.setup_completed ??
-      user?.setupComplete ??
-      user?.profile_complete ??
-      user?.is_profile_complete ??
-      user?.setupCompleted;
     const hasKnownSetupState = userSetupFlag !== undefined;
     const isSetupComplete = hasKnownSetupState && (userSetupFlag === true || userSetupFlag === 'true' || userSetupFlag === 1 || userSetupFlag === '1');
 
@@ -137,7 +107,7 @@ export default function PublicRoute({ children }) {
         return <Navigate to="/school-dashboard" replace state={{ from: location.pathname }} />;
       }
 
-      if (!hasKnownSetupState && !profileCheck.complete) {
+      if (!hasKnownSetupState && profileCheck?.key === profileCheckKey && profileCheck?.user === user && !profileCheck.complete) {
         if (location.pathname !== '/sch-info') {
           return <Navigate to="/sch-info" replace state={{ from: location.pathname }} />;
         }

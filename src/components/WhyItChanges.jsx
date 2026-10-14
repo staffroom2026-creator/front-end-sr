@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion as Motion } from 'framer-motion';
 import teacherImg from '../assets/smiley.webp';
 import schoolImg from '../assets/happy_head_teacher.webp';
 
@@ -110,7 +110,7 @@ export default function WhyItChanges() {
       {/* Card */}
       <div className="max-w-5xl mx-auto px-5 md:px-8 relative z-10">
         <AnimatePresence mode="wait">
-          <motion.div
+          <Motion.div
             key={activeTab}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -154,7 +154,7 @@ export default function WhyItChanges() {
                 className="w-full h-full object-cover"
               />
             </div>
-          </motion.div>
+          </Motion.div>
         </AnimatePresence>
 
         {/* Dot indicators */}

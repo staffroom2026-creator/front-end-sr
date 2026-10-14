@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import BrandLogo from '../components/BrandLogo';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { apiErrorMessage } from '../services/api';
 import { internalAdminService } from '../services/internalAdminService';
 import InternalAdminSettings from './InternalAdminSettings';
@@ -393,8 +393,8 @@ export default function InternalAdminDashboard() {
     return [];
   };
   const pageData = (payload) => payload?.pagination || {};
-  const displayStatus = (value = '') => String(value).replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
-  const normalizeJob = (job = {}) => ({
+  const displayStatus = useCallback((value = '') => String(value).replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()), []);
+  const normalizeJob = useCallback((job = {}) => ({
     ...job,
     job_id: job.job_id || job.id,
     title: job.title || job.role || 'Untitled job',
@@ -404,8 +404,8 @@ export default function InternalAdminDashboard() {
     submitted: job.submitted_at || job.created_at || 'Not available',
     updated: job.updated_at || 'Not available',
     action: displayStatus(job.status) === 'Pending Review' || displayStatus(job.status) === 'Changes Requested' ? 'Review' : 'View',
-  });
-  const normalizeSchool = (school = {}) => ({
+  }), [displayStatus]);
+  const normalizeSchool = useCallback((school = {}) => ({
     ...school,
     school_id: school.school_id || school.id,
     name: school.school_name || school.name || 'Unnamed school',
@@ -414,8 +414,8 @@ export default function InternalAdminDashboard() {
     email: school.email || school.contact_email || 'Not provided',
     joined: school.joined_at || school.created_at || 'Not available',
     status: displayStatus(school.status || school.verification_status),
-  });
-  const normalizeTeacher = (teacher = {}) => ({
+  }), [displayStatus]);
+  const normalizeTeacher = useCallback((teacher = {}) => ({
     ...teacher,
     user_id: teacher.user_id || teacher.id,
     name: teacher.full_name || teacher.name || 'Unnamed teacher',
@@ -425,8 +425,8 @@ export default function InternalAdminDashboard() {
     contact: teacher.email || teacher.contact || 'Not provided',
     joined: teacher.joined_at || teacher.created_at || 'Not available',
     status: displayStatus(teacher.status),
-  });
-  const normalizeAdmin = (admin = {}) => ({
+  }), [displayStatus]);
+  const normalizeAdmin = useCallback((admin = {}) => ({
     ...admin,
     admin_id: admin.admin_id || admin.user_id || admin.id,
     name: admin.full_name || admin.name || 'Unnamed admin',
@@ -436,7 +436,7 @@ export default function InternalAdminDashboard() {
     lastActive: admin.last_active_at || admin.lastActive || 'Never',
     status: displayStatus(admin.status),
     created: admin.created_at || admin.created || 'Not available',
-  });
+  }), [displayStatus]);
   const normalizeInvitation = (invitation = {}) => ({
     ...invitation,
     admin_id: invitation.invitation_id || invitation.id,
@@ -450,7 +450,7 @@ export default function InternalAdminDashboard() {
     invitation_id: invitation.invitation_id || invitation.id,
   });
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     setIsLoading(true);
     setLoadError('');
     try {
@@ -482,11 +482,11 @@ export default function InternalAdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [activeJobFilter, activeJobPage, activeSchoolFilter, activeSchoolPage, activeTeacherFilter, activeTeacherPage, teacherSearch, adminSearch, adminRoleFilter, adminStatusFilter, adminPage, normalizeJob, normalizeSchool, normalizeTeacher, normalizeAdmin]);
 
   useEffect(() => {
     loadDashboardData();
-  }, [activeJobFilter, activeJobPage, activeSchoolFilter, activeSchoolPage, activeTeacherFilter, activeTeacherPage, teacherSearch, adminSearch, adminRoleFilter, adminStatusFilter, adminPage]);
+  }, [loadDashboardData]);
 
   useEffect(() => {
     const loadSecondaryData = async () => {

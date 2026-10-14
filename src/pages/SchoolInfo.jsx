@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import { Country, State, City } from 'country-state-city';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { profileService } from '../services/profileService';
 import { apiErrorMessage } from '../services/api';
 import BrandLogo from '../components/BrandLogo';

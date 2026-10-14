@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion as Motion } from 'framer-motion';
 import { Country, State } from 'country-state-city';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/authContext.js';
 import { profileService } from '../services/profileService';
 import { apiErrorMessage } from '../services/api';
 import BrandLogo from '../components/BrandLogo';
@@ -91,7 +91,6 @@ export default function TeacherInfo() {
     subjects: [],
   });
   const [subjectInput, setSubjectInput] = useState('');
-  const [setupAlreadyCompleted, setSetupAlreadyCompleted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [countries, setCountries] = useState([]);
@@ -127,7 +126,6 @@ export default function TeacherInfo() {
         profile?.is_profile_complete;
 
       if (setupComplete === true || setupComplete === 'true' || setupComplete === 1) {
-        setSetupAlreadyCompleted(true);
         navigate('/teacher-dashboard', { replace: true });
         return;
       }
@@ -241,7 +239,7 @@ export default function TeacherInfo() {
   };
 
   return (
-    <motion.div
+    <Motion.div
       className="ti-page"
       variants={pageVariants}
       initial="hidden"
@@ -260,7 +258,7 @@ export default function TeacherInfo() {
           <div className="ti-grid ti-grid--single">
             {/* ── Left Column ── */}
             <div className="ti-col">
-              <motion.section variants={itemVariants} className="ti-section">
+              <Motion.section variants={itemVariants} className="ti-section">
                 <label className="ti-label">Location</label>
                 <div className="ti-select-wrapper">
                   <SearchableSelect
@@ -280,9 +278,9 @@ export default function TeacherInfo() {
                     onChange={(state) => setForm((current) => ({ ...current, state }))}
                   />
                 </div>
-              </motion.section>
+              </Motion.section>
 
-              <motion.section variants={itemVariants} className="ti-section">
+              <Motion.section variants={itemVariants} className="ti-section">
                 <label className="ti-label">Teaching Level</label>
                 <div className="ti-select-wrapper">
                   <select 
@@ -304,9 +302,9 @@ export default function TeacherInfo() {
                     </svg>
                   </span>
                 </div>
-              </motion.section>
+              </Motion.section>
 
-              <motion.section variants={itemVariants} className="ti-section">
+              <Motion.section variants={itemVariants} className="ti-section">
                 <label className="ti-label">Subjects</label>
                 <div className="ti-subjects-input">
                   {form.subjects.length > 0 && (
@@ -338,7 +336,7 @@ export default function TeacherInfo() {
                     }}
                   />
                 </div>
-              </motion.section>
+              </Motion.section>
             </div>
 
           </div>
@@ -348,11 +346,11 @@ export default function TeacherInfo() {
           )}
 
           {/* ── Submit Button ── */}
-          <motion.div variants={itemVariants} className="ti-footer">
+          <Motion.div variants={itemVariants} className="ti-footer">
             <button className="ti-next-btn" onClick={handleNext} disabled={saving}>
               {saving ? 'Saving…' : 'Save'}
             </button>
-          </motion.div>
+          </Motion.div>
         </div>
       </main>
 
@@ -760,6 +758,6 @@ export default function TeacherInfo() {
           }
         }
       `}</style>
-    </motion.div>
+    </Motion.div>
   );
 }
