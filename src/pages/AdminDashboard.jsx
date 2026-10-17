@@ -2874,7 +2874,7 @@ export default function AdminDashboard() {
               {job.role_type && <span className="school-job-detail-meta-item"><FiBook size={13} />{job.role_type}</span>}
               {job.employment_type && <span className="school-job-detail-meta-item"><FiClock size={13} />{job.employment_type}</span>}
               {job.location && <span className="school-job-detail-meta-item"><FiMapPin size={13} />{job.location}</span>}
-              {job.salary_range && <span className="school-job-detail-meta-item"><FiDollarSign size={13} />{job.salary_range}</span>}
+              {job.salary_range && <span className="school-job-detail-meta-item"><span className="school-job-detail-naira" aria-hidden="true">₦</span>{job.salary_range}</span>}
               <span className={`school-job-detail-status school-job-detail-status--${status.replace(/\s+/g, "-")}`}>{status === "open" ? "Active" : status}</span>
             </div>
             <h2>{job.title || "Job position"}</h2>
@@ -11540,6 +11540,15 @@ export default function AdminDashboard() {
           display: inline-flex;
           align-items: center;
           gap: 7px;
+        }
+        .school-job-detail-naira {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 13px;
+          font-size: 13px;
+          font-weight: 600;
+          line-height: 1;
         }
         .school-job-detail-actions {
           display: flex;
