@@ -4344,94 +4344,80 @@ export default function TeacherDashboard() {
                     </div>
                   </div>
 
-                  {/* 6 Sections Grid */}
+                  {/* Profile sections */}
                   <div className="td-profile-grid">
-                    {/* 1. Personal Info */}
-                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
-                      <div className="td-psc-top">
-                        <div className="td-psc-icon-box td-psc-icon-teal">
-                          <FiUser size={18} />
-                        </div>
-                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
-                      </div>
-                      <h3 className="td-psc-title">Personal Info</h3>
-                    </Motion.div>
-
-                    {/* 2. Professional Info */}
-                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('professional-info')}>
-                      <div className="td-psc-top">
-                        <div className="td-psc-icon-box td-psc-icon-teal">
-                          <FiBriefcase size={18} />
-                        </div>
-                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
-                      </div>
-                      <h3 className="td-psc-title">Professional Info</h3>
-                    </Motion.div>
-
-                    {/* 3. Education */}
-                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('education')}>
-                      <div className="td-psc-top">
-                        <div className="td-psc-icon-box td-psc-icon-teal">
+                    {[
+                      {
+                        key: 'personal-info',
+                        title: 'Personal Info',
+                        icon: <FiUser size={18} />,
+                        onClick: () => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); },
+                      },
+                      {
+                        key: 'professional-info',
+                        title: 'Professional Info',
+                        icon: <FiBriefcase size={18} />,
+                        onClick: () => setProfileSubTab('professional-info'),
+                      },
+                      {
+                        key: 'education',
+                        title: 'Education',
+                        icon: (
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
                             <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
                           </svg>
-                        </div>
-                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
-                      </div>
-                      <h3 className="td-psc-title">Education</h3>
-                    </Motion.div>
+                        ),
+                        onClick: () => setProfileSubTab('education'),
+                      },
+                      {
+                        key: 'teaching-experience',
+                        title: 'Teaching Experience',
+                        icon: <FiClock size={18} />,
+                        onClick: () => setProfileSubTab('teaching-experience'),
+                      },
+                      {
+                        key: 'trcn-certification',
+                        title: 'TRCN Certification',
+                        icon: <FiAward size={18} />,
+                        onClick: () => setProfileSubTab('trcn-certification'),
+                      },
+                      {
+                        key: 'cv-resume',
+                        title: 'CV / Resume',
+                        icon: <FiFileText size={18} />,
+                        onClick: () => setProfileSubTab('cv-resume'),
+                      },
+                      {
+                        key: 'availability',
+                        title: 'Availability',
+                        icon: <FiCheckCircle size={18} />,
+                        onClick: () => setProfileSubTab('availability'),
+                      },
+                    ].map(({ key, title, icon, onClick }) => {
+                      const isComplete = profileCompletionSteps.find((step) => step.key === key)?.completed ?? false;
+                      const status = isComplete ? 'Completed' : 'Incomplete';
 
-                    {/* 4. Teaching Experience */}
-                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('teaching-experience')}>
-                      <div className="td-psc-top">
-                        <div className="td-psc-icon-box td-psc-icon-teal">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                            <path d="M3 3v5h5" />
-                            <path d="M12 7v5l4 2" />
-                          </svg>
-                        </div>
-                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
-                      </div>
-                      <h3 className="td-psc-title">Teaching Experience</h3>
-                    </Motion.div>
-
-                    {/* 5. TRCN Certification */}
-                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('trcn-certification')}>
-                      <div className="td-psc-top">
-                        <div className="td-psc-icon-box td-psc-icon-green">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" />
-                            <path d="M9 12l2 2 4-4" />
-                          </svg>
-                        </div>
-                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
-                      </div>
-                      <h3 className="td-psc-title">TRCN Certification</h3>
-                    </Motion.div>
-
-                    {/* 6. CV / Resume */}
-                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('cv-resume')}>
-                      <div className="td-psc-top">
-                        <div className="td-psc-icon-box td-psc-icon-teal">
-                          <FiFileText size={18} />
-                        </div>
-                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
-                      </div>
-                      <h3 className="td-psc-title">CV / Resume</h3>
-                    </Motion.div>
-
-                    {/* 7. Availability */}
-                    <Motion.div whileHover={{ y: -3 }} className="td-profile-section-card" onClick={() => setProfileSubTab('availability')}>
-                      <div className="td-psc-top">
-                        <div className="td-psc-icon-box td-psc-icon-teal">
-                          <FiClock size={18} />
-                        </div>
-                        <span className="td-psc-edit-badge"><FiEdit2 size={12} /> Edit</span>
-                      </div>
-                      <h3 className="td-psc-title">Availability</h3>
-                    </Motion.div>
+                      return (
+                        <Motion.button
+                          key={key}
+                          type="button"
+                          whileHover={{ y: -2 }}
+                          className="td-profile-section-card"
+                          onClick={onClick}
+                          aria-label={`${title}: ${status}`}
+                        >
+                          <div className="td-psc-top">
+                            <div className="td-psc-icon-box">{icon}</div>
+                            <span className={`td-psc-status ${isComplete ? 'is-complete' : 'is-incomplete'}`}>{status}</span>
+                          </div>
+                          <div className="td-psc-bottom">
+                            <h3 className="td-psc-title">{title}</h3>
+                            <FiArrowRight size={18} className="td-psc-arrow" aria-hidden="true" />
+                          </div>
+                        </Motion.button>
+                      );
+                    })}
                   </div>
                 </>
               ) : (
@@ -11627,24 +11613,6 @@ export default function TeacherDashboard() {
           width: 100%;
           max-width: 100%;
         }
-        .td-psc-edit-badge {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          font-size: 11px;
-          font-weight: 700;
-          color: #059669;
-          background: #ecfdf5;
-          border: 1px solid #a7f3d0;
-          padding: 4px 10px;
-          border-radius: 999px;
-          transition: all 0.2s;
-        }
-        .td-profile-section-card:hover .td-psc-edit-badge {
-          background: #10b981;
-          color: #fff;
-          border-color: #10b981;
-        }
         .td-settings-category-card {
           display: flex;
           align-items: center;
@@ -13638,22 +13606,30 @@ export default function TeacherDashboard() {
         }
 
         .td-profile-section-card {
-          background: #FFFFFF;
-          border-radius: 18px;
-          border: 1px solid #E5E7EB;
-          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
-          padding: 22px 20px;
+          width: 100%;
+          min-height: 134px;
+          padding: 20px;
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          min-height: 150px;
+          text-align: left;
+          font: inherit;
+          color: inherit;
+          background: #FAFAFA;
+          border: 1px solid #E5E5E5;
+          border-radius: 12px;
           cursor: pointer;
-          transition: all 0.2s ease;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .td-profile-section-card:hover {
-          border-color: #E2E8F0;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+          border-color: #B9D8C3;
+          box-shadow: 0 4px 14px rgba(15, 23, 42, 0.06);
+        }
+
+        .td-profile-section-card:focus-visible {
+          outline: 3px solid rgba(22, 133, 59, 0.25);
+          outline-offset: 2px;
         }
 
         .td-psc-top {
@@ -13663,41 +13639,58 @@ export default function TeacherDashboard() {
         }
 
         .td-psc-icon-box {
-          width: 38px;
-          height: 38px;
-          border-radius: 10px;
+          width: 34px;
+          height: 34px;
+          border-radius: 8px;
           display: flex;
           align-items: center;
           justify-content: center;
+          flex: 0 0 auto;
+          background: #EFF4FF;
+          color: #13833B;
         }
 
-        .td-psc-icon-teal {
-          background: #E0F2FE;
-          color: #0284C7;
+        .td-psc-status {
+          padding: 7px 9px;
+          border-radius: 999px;
+          font-size: 12px;
+          font-weight: 500;
+          line-height: 1;
         }
 
-        .td-psc-icon-green {
-          background: #DCFCE7;
-          color: #16A34A;
+        .td-psc-status.is-complete {
+          color: #08752E;
+          background: #E5F7EA;
+        }
+
+        .td-psc-status.is-incomplete {
+          color: #9A7800;
+          background: #FBF7DF;
+        }
+
+        .td-psc-bottom {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
         }
 
         .td-psc-arrow {
-          color: #CBD5E1;
-          transition: transform 0.2s ease, color 0.2s ease;
+          flex: 0 0 auto;
+          color: #13833B;
+          transition: transform 0.2s ease;
         }
 
         .td-profile-section-card:hover .td-psc-arrow {
-          color: #64748B;
-          transform: translateX(3px);
+          transform: translateX(2px);
         }
 
         .td-psc-title {
-          font-size: 17px;
-          font-weight: 700;
-          color: #0F172A;
+          font-size: 20px;
+          font-weight: 600;
+          color: #555555;
           margin: 0;
-          margin-top: 32px;
-          letter-spacing: -0.2px;
+          letter-spacing: -0.25px;
         }
 
         @media (max-width: 1024px) {
