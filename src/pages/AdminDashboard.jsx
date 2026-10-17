@@ -53,6 +53,7 @@ import {
   FiEye,
   FiDownload,
   FiBookmark,
+  FiVideo,
 } from "react-icons/fi";
 
 const qualificationOptions = [
@@ -230,6 +231,29 @@ export default function AdminDashboard() {
     "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
   );
   const [teacherInviteSubmitting, setTeacherInviteSubmitting] = useState(false);
+  const [isTeacherInviteChooserOpen, setIsTeacherInviteChooserOpen] = useState(false);
+  const [isTeacherOpportunityDrawerOpen, setIsTeacherOpportunityDrawerOpen] = useState(false);
+  const [isTeacherInterviewFlowOpen, setIsTeacherInterviewFlowOpen] = useState(false);
+  const [isTeacherOpportunityCreateOpen, setIsTeacherOpportunityCreateOpen] = useState(false);
+  const [teacherInterviewSubmitting, setTeacherInterviewSubmitting] = useState(false);
+  const [teacherInviteType, setTeacherInviteType] = useState("apply");
+  const [teacherInviteJobId, setTeacherInviteJobId] = useState("");
+  const [teacherInterviewForm, setTeacherInterviewForm] = useState({
+    interviewMode: "virtual",
+    platform: "Google Meet",
+    meetingLink: "",
+    venue: "",
+    interviewDate: "",
+    interviewTime: "",
+    duration: "45",
+    preparationNotes: "",
+    contactName: "",
+    contactEmail: "",
+    contactPhone: "",
+    directContactVisibility: true,
+    personalMessage: "",
+  });
+  const teacherInviteChooserRef = useRef(null);
   const [invitedTeacherIds, setInvitedTeacherIds] = useState(() => {
     try {
       const storedIds = JSON.parse(localStorage.getItem(invitedTeachersStorageKey) || "[]");
@@ -478,6 +502,16 @@ export default function AdminDashboard() {
     setSelectedJob(null);
     setSelectedApplicant(null);
     setActiveTab("post-job");
+  };
+
+  const openTeacherOpportunityCreate = () => {
+    setEditingJobId(null);
+    setPublishingDraftId(null);
+    setJobForm(emptyJobForm);
+    setResponsibilityInput("");
+    setOtherRequirementInput("");
+    setError("");
+    setIsTeacherOpportunityCreateOpen(true);
   };
 
   const openEditJobForm = (job) => {
@@ -1349,7 +1383,7 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-    if (!isShortlistModalOpen && !isShortlistSuccessOpen && !isTeacherInviteModalOpen) {
+    if (!isShortlistModalOpen && !isShortlistSuccessOpen && !isTeacherInviteModalOpen && !isTeacherOpportunityDrawerOpen && !isTeacherOpportunityCreateOpen) {
       return undefined;
     }
 
@@ -1359,7 +1393,36 @@ export default function AdminDashboard() {
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isShortlistModalOpen, isShortlistSuccessOpen, isTeacherInviteModalOpen]);
+  }, [isShortlistModalOpen, isShortlistSuccessOpen, isTeacherInviteModalOpen, isTeacherOpportunityDrawerOpen, isTeacherOpportunityCreateOpen]);
+
+  useEffect(() => {
+    if (!isTeacherInviteChooserOpen && !isTeacherInviteModalOpen && !isTeacherOpportunityDrawerOpen && !isTeacherOpportunityCreateOpen && !isTeacherInterviewFlowOpen) return undefined;
+
+    const handleEscape = (event) => {
+      if (event.key !== "Escape") return;
+      setIsTeacherInviteChooserOpen(false);
+      setIsTeacherInviteModalOpen(false);
+      setIsTeacherOpportunityDrawerOpen(false);
+      setIsTeacherOpportunityCreateOpen(false);
+      setIsTeacherInterviewFlowOpen(false);
+    };
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [isTeacherInviteChooserOpen, isTeacherInviteModalOpen, isTeacherOpportunityDrawerOpen, isTeacherOpportunityCreateOpen, isTeacherInterviewFlowOpen]);
+
+  useEffect(() => {
+    if (!isTeacherInviteChooserOpen) return undefined;
+
+    const handleOutsideClick = (event) => {
+      if (!teacherInviteChooserRef.current?.contains(event.target)) {
+        setIsTeacherInviteChooserOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handleOutsideClick);
+    return () => document.removeEventListener("pointerdown", handleOutsideClick);
+  }, [isTeacherInviteChooserOpen]);
 
   const currentUserId = useMemo(
     () => user?.user_id || "",
@@ -1817,7 +1880,12 @@ export default function AdminDashboard() {
       setEditingJobId(null);
       setSelectedJob(null);
       setSelectedApplicant(null);
-      setActiveTab(previousTab);
+      if (isTeacherOpportunityCreateOpen) {
+        setTeacherInviteJobId(String(savedJob.job_id || savedJob.id || ""));
+        setIsTeacherOpportunityCreateOpen(false);
+      } else {
+        setActiveTab(previousTab);
+      }
       showSnackbar(
         editingJobId ? "Job updated successfully" : "Vacancy published successfully",
         editingJobId ? "Your job posting has been updated" : "New job has been published successfully",
@@ -2486,15 +2554,15 @@ export default function AdminDashboard() {
 
   const selectedQualifications = Array.isArray(jobForm.required_qualification) ? jobForm.required_qualification : [];
 
-  const renderJobForm = () => (
-    <div className="school-job-form-page">
-      <div className="school-job-form-breadcrumb">
+  const renderJobForm = ({ insideOpportunityDrawer = false } = {}) => (
+    <div className={`school-job-form-page${insideOpportunityDrawer ? " school-job-form-page--drawer" : ""}`}>
+      {!insideOpportunityDrawer && <div className="school-job-form-breadcrumb">
         Jobs <span>›</span> {editingJobId ? "Edit Job" : "Post New Job"}
-      </div>
-      <h2 className="school-job-form-title">{editingJobId ? "Edit Job Posting" : "Post a New Teaching Opportunity"}</h2>
-      <p className="school-job-form-subtitle">
+      </div>}
+      {!insideOpportunityDrawer && <h2 className="school-job-form-title">{editingJobId ? "Edit Job Posting" : "Post a New Teaching Opportunity"}</h2>}
+      {!insideOpportunityDrawer && <p className="school-job-form-subtitle">
         {editingJobId ? "Update the details of your job listing below." : "Reach thousands of qualified educators across the country."}
-      </p>
+      </p>}
 
       <form onSubmit={handleCreateJob} className="school-job-form">
         <section className="school-job-form-card school-job-basic-fields">
@@ -2732,7 +2800,7 @@ export default function AdminDashboard() {
         </section>
 
         <div className="school-job-form-actions">
-          {publishingDraftId && (
+          {!insideOpportunityDrawer && publishingDraftId && (
             <button
               type="button"
               className="school-job-discard"
@@ -2741,16 +2809,18 @@ export default function AdminDashboard() {
               Discard Draft
             </button>
           )}
-          <button
-            type="button"
-            onClick={saveSchoolJobDraft}
-          >
-            Save Draft
-          </button>
+          {!insideOpportunityDrawer && (
+            <button
+              type="button"
+              onClick={saveSchoolJobDraft}
+            >
+              Save Draft
+            </button>
+          )}
           <button type="submit" disabled={submitting}>
             {submitting
               ? (editingJobId ? "Updating..." : "Publishing...")
-              : (editingJobId ? "Update Job" : "Publish Job")}
+              : (insideOpportunityDrawer ? "Create Opportunity" : editingJobId ? "Update Job" : "Publish Job")}
           </button>
         </div>
       </form>
@@ -3499,13 +3569,18 @@ export default function AdminDashboard() {
           <div className="school-summary-content">
             <section className="school-summary-section school-summary-section--first">
               <div className="school-summary-actions">
-                <button
-                  type="button"
-                  className="school-summary-shortlist-btn"
-                  onClick={() => setIsTeacherInviteModalOpen(true)}
-                >
-                  Invite
-                </button>
+                <div className="school-teacher-invite-anchor" ref={teacherInviteChooserRef}>
+                  <button
+                    type="button"
+                    className="school-summary-shortlist-btn"
+                    onClick={() => setIsTeacherInviteChooserOpen((open) => !open)}
+                    aria-haspopup="dialog"
+                    aria-expanded={isTeacherInviteChooserOpen}
+                  >
+                    Invite
+                  </button>
+                  {isTeacherInviteChooserOpen && renderTeacherInviteChooser()}
+                </div>
                 <button
                   type="button"
                   className="school-summary-reject-btn"
@@ -3648,6 +3723,381 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const renderTeacherInterviewInvitePage = (teacher = {}) => {
+    const openInviteJobs = jobs.filter(
+      (job) =>
+        ["open", "published", "active"].includes(String(job.status || "").trim().toLowerCase())
+        && (job.id || job.job_id),
+    );
+    const selectedJobForInterview = openInviteJobs.find(
+      (job) => String(job.id || job.job_id) === teacherInviteJobId,
+    );
+    const teacherName = teacher.name || teacher.full_name || teacher.teacher_name || "Teacher";
+    const subject = normalizeMultiValueList(
+      teacher.subjects || teacher.subject || teacher.teaching_subjects,
+    ).join(", ") || "Teacher";
+    const dateForInput = new Date();
+    dateForInput.setMinutes(dateForInput.getMinutes() - dateForInput.getTimezoneOffset());
+    const today = dateForInput.toISOString().slice(0, 10);
+    const updateForm = (key, value) => {
+      setTeacherInterviewForm((current) => ({ ...current, [key]: value }));
+    };
+    const teacherInitials = (teacherName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase();
+
+    return (
+      <div className="school-teacher-interview-page">
+        <div className="school-teacher-interview-topline">
+          <button
+            type="button"
+            className="school-summary-back-btn"
+            onClick={() => setIsTeacherInterviewFlowOpen(false)}
+          >
+            <FiArrowLeft /> Back to teacher
+          </button>
+          <div className="school-teacher-interview-breadcrumb" aria-label="Breadcrumb">
+            <span>Find Teachers</span>
+            <FiChevronDown aria-hidden="true" />
+            <span>{teacherName}</span>
+            <FiChevronDown aria-hidden="true" />
+            <span>Direct Invitation</span>
+            <FiChevronDown aria-hidden="true" />
+            <strong>Invite to Interview</strong>
+          </div>
+          <button
+            type="button"
+            className="school-teacher-interview-draft"
+            onClick={saveTeacherInterviewDraft}
+          >
+            <FiBookmark aria-hidden="true" /> Save as Draft
+          </button>
+        </div>
+
+        <header className="school-teacher-interview-heading">
+          <h1>Invite to Interview</h1>
+          <p>Invite this teacher to interview for an opportunity at your school.</p>
+        </header>
+
+        <div className="school-interview-teacher-card">
+          <div className="school-interview-teacher-avatar" aria-hidden="true">{teacherInitials}</div>
+          <div className="school-interview-teacher-info">
+            <strong>{teacherName}</strong>
+            <span>{subject} <i /> {teacher.experience || teacher.experience_years || "Experience not listed"} experience <i /> {teacher.location || "Location not listed"}</span>
+            <small>Teacher profile selected for direct invitation</small>
+          </div>
+        </div>
+
+        <form
+          className="school-teacher-interview-form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            handleSendTeacherInterviewInvite();
+          }}
+        >
+          <section className="school-interview-section">
+            <div className="school-interview-section-heading">
+              <span className="school-interview-section-index">A</span>
+              <div>
+                <h2>Target Opportunity</h2>
+                <p>Designate the academic position this teacher is being evaluated for.</p>
+              </div>
+              <span className="school-interview-required">MANDATORY</span>
+            </div>
+
+            <div className="school-interview-target-actions">
+              <span className="is-active"><FiCheckCircle aria-hidden="true" /> Select Existing Opportunity</span>
+              <button type="button" onClick={openTeacherOpportunityCreate}>
+                <FiPlus aria-hidden="true" /> Create New Opportunity
+              </button>
+            </div>
+
+            {openInviteJobs.length ? (
+              <div className="school-interview-opportunity-list">
+                {openInviteJobs.map((job) => {
+                  const jobId = String(job.id || job.job_id);
+                  const selected = teacherInviteJobId === jobId;
+                  return (
+                    <label
+                      key={jobId}
+                      className={`school-interview-opportunity-card${selected ? " is-selected" : ""}`}
+                    >
+                      <input
+                        type="radio"
+                        name="teacher-interview-opportunity"
+                        value={jobId}
+                        checked={selected}
+                        onChange={() => setTeacherInviteJobId(jobId)}
+                        required
+                      />
+                      <span className="school-interview-opportunity-radio" aria-hidden="true" />
+                      <span className="school-interview-opportunity-icon" aria-hidden="true">
+                        <FiBriefcase />
+                      </span>
+                      <span className="school-interview-opportunity-copy">
+                        <strong>{job.title || job.role_title || "Open position"}</strong>
+                        <span>
+                          {[job.teaching_level, job.location, job.employment_type || job.role_type]
+                            .filter(Boolean)
+                            .join(" · ")}
+                        </span>
+                      </span>
+                      <span className="school-interview-active-badge">ACTIVE LISTING</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="school-interview-no-opportunities">
+                <FiInfo aria-hidden="true" />
+                <p>No open opportunities are available. Create and publish an opportunity before sending an interview invitation.</p>
+              </div>
+            )}
+
+            {selectedJobForInterview && (
+              <div className="school-interview-selected-opportunity">
+                <div className="school-interview-selected-opportunity-heading">
+                  <span>
+                    <strong>{selectedJobForInterview.title || selectedJobForInterview.role_title || "Open position"}</strong>
+                    <span className="school-interview-public-badge">Public Job</span>
+                  </span>
+                  <strong>{selectedJobForInterview.salary_range || "Compensation details available"}</strong>
+                </div>
+                <p>
+                  {[selectedJobForInterview.employment_type || selectedJobForInterview.role_type, selectedJobForInterview.teaching_level, selectedJobForInterview.location]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+                {selectedJobForInterview.benefits && (
+                  <div className="school-interview-benefits">
+                    {normalizeMultiValueList(selectedJobForInterview.benefits).map((benefit) => (
+                      <span key={benefit}><FiCheckCircle aria-hidden="true" /> {benefit}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </section>
+
+          <section className="school-interview-section school-interview-section--details">
+            <div className="school-interview-section-heading">
+              <span className="school-interview-section-index">B</span>
+              <div>
+                <h2>Interview Details</h2>
+                <p>Establish schedule, medium, duration, and assessment instructions.</p>
+              </div>
+              <span className="school-interview-required">MANDATORY</span>
+            </div>
+
+            <div className="school-interview-field">
+              <span className="school-interview-field-label">Interview Medium</span>
+              <div className="school-interview-mode-options">
+                <label className={teacherInterviewForm.interviewMode === "virtual" ? "is-selected" : ""}>
+                  <input
+                    type="radio"
+                    name="teacher-interview-mode"
+                    checked={teacherInterviewForm.interviewMode === "virtual"}
+                    onChange={() => updateForm("interviewMode", "virtual")}
+                  />
+                  <FiVideo aria-hidden="true" /> Video / Online
+                </label>
+                <label className={teacherInterviewForm.interviewMode === "in_person" ? "is-selected" : ""}>
+                  <input
+                    type="radio"
+                    name="teacher-interview-mode"
+                    checked={teacherInterviewForm.interviewMode === "in_person"}
+                    onChange={() => updateForm("interviewMode", "in_person")}
+                  />
+                  <FiMapPin aria-hidden="true" /> In-person
+                </label>
+              </div>
+            </div>
+
+            {teacherInterviewForm.interviewMode === "virtual" ? (
+              <div className="school-interview-schedule-row school-interview-connection-row">
+                <label className="school-interview-field">
+                  <span className="school-interview-field-label">Meeting Platform</span>
+                  <select
+                    value={teacherInterviewForm.platform}
+                    onChange={(event) => updateForm("platform", event.target.value)}
+                  >
+                    <option>Google Meet</option>
+                    <option>Zoom</option>
+                    <option>Microsoft Teams</option>
+                    <option>Other</option>
+                  </select>
+                </label>
+                <label className="school-interview-field school-interview-field-grow">
+                  <span className="school-interview-field-label">Meeting Link <b>*</b></span>
+                  <input
+                    type="url"
+                    value={teacherInterviewForm.meetingLink}
+                    onChange={(event) => updateForm("meetingLink", event.target.value)}
+                    placeholder="https://meet.google.com/..."
+                    required
+                  />
+                </label>
+              </div>
+            ) : (
+              <label className="school-interview-field">
+                <span className="school-interview-field-label">Interview Venue <b>*</b></span>
+                <input
+                  type="text"
+                  value={teacherInterviewForm.venue}
+                  onChange={(event) => updateForm("venue", event.target.value)}
+                  placeholder="Enter the school address or interview venue"
+                  required
+                />
+              </label>
+            )}
+
+            <div className="school-interview-schedule-row school-interview-time-row">
+              <label className="school-interview-field">
+                <span className="school-interview-field-label">Interview Date <b>*</b></span>
+                <input
+                  type="date"
+                  min={today}
+                  value={teacherInterviewForm.interviewDate}
+                  onChange={(event) => updateForm("interviewDate", event.target.value)}
+                  required
+                />
+              </label>
+              <label className="school-interview-field">
+                <span className="school-interview-field-label">Interview Time <b>*</b></span>
+                <input
+                  type="time"
+                  value={teacherInterviewForm.interviewTime}
+                  onChange={(event) => updateForm("interviewTime", event.target.value)}
+                  required
+                />
+              </label>
+              <label className="school-interview-field">
+                <span className="school-interview-field-label">Duration</span>
+                <select
+                  value={teacherInterviewForm.duration}
+                  onChange={(event) => updateForm("duration", event.target.value)}
+                >
+                  <option value="15">15 minutes</option>
+                  <option value="30">30 minutes</option>
+                  <option value="45">45 minutes</option>
+                  <option value="60">60 minutes</option>
+                  <option value="90">90 minutes</option>
+                </select>
+              </label>
+            </div>
+
+            <label className="school-interview-field">
+              <span className="school-interview-field-label">Interview Preparation Notes <small>OPTIONAL</small></span>
+              <textarea
+                rows="3"
+                value={teacherInterviewForm.preparationNotes}
+                onChange={(event) => updateForm("preparationNotes", event.target.value)}
+                placeholder="Share materials to prepare, interview format, or anything the candidate should know."
+              />
+            </label>
+          </section>
+
+          <section className="school-interview-section">
+            <div className="school-interview-section-heading">
+              <span className="school-interview-section-index">C</span>
+              <div>
+                <h2>Institutional Contact Person</h2>
+                <p>Designate the staff member who will be coordinating this panel.</p>
+              </div>
+              <span className="school-interview-required">MANDATORY</span>
+            </div>
+            <div className="school-interview-contact-card">
+              <div className="school-interview-contact-avatar" aria-hidden="true">
+                {(teacherInterviewForm.contactName.match(/\b\w/g) || []).slice(0, 2).join("").toUpperCase() || "SC"}
+              </div>
+              <div className="school-interview-contact-fields">
+                <label className="school-interview-field">
+                  <span className="school-interview-field-label">Contact Name <b>*</b></span>
+                  <input
+                    type="text"
+                    value={teacherInterviewForm.contactName}
+                    onChange={(event) => updateForm("contactName", event.target.value)}
+                    placeholder="Hiring contact name"
+                    required
+                  />
+                </label>
+                <label className="school-interview-field">
+                  <span className="school-interview-field-label">Contact Email <b>*</b></span>
+                  <input
+                    type="email"
+                    value={teacherInterviewForm.contactEmail}
+                    onChange={(event) => updateForm("contactEmail", event.target.value)}
+                    placeholder="hiring@school.com"
+                    required={teacherInterviewForm.directContactVisibility}
+                  />
+                </label>
+                <label className="school-interview-field">
+                  <span className="school-interview-field-label">Phone Number</span>
+                  <input
+                    type="tel"
+                    value={teacherInterviewForm.contactPhone}
+                    onChange={(event) => updateForm("contactPhone", event.target.value)}
+                    placeholder="Contact phone"
+                  />
+                </label>
+              </div>
+            </div>
+            <label className="school-interview-contact-visibility">
+              <input
+                type="checkbox"
+                checked={teacherInterviewForm.directContactVisibility}
+                onChange={(event) => updateForm("directContactVisibility", event.target.checked)}
+              />
+              <span className="school-interview-toggle" aria-hidden="true" />
+              <span>
+                <strong>Direct Contact Visibility</strong>
+                <small>Allow the candidate to see the contact details in the interview invitation.</small>
+              </span>
+            </label>
+          </section>
+
+          <section className="school-interview-section">
+            <div className="school-interview-section-heading">
+              <span className="school-interview-section-index">D</span>
+              <div>
+                <h2>Personal Message from the Hiring Desk</h2>
+                <p>Personalize the communication to increase candidate acceptance rate.</p>
+              </div>
+              <span className="school-interview-optional">OPTIONAL</span>
+            </div>
+            <label className="school-interview-field">
+              <span className="school-interview-field-label">Message to Candidate</span>
+              <textarea
+                rows="4"
+                value={teacherInterviewForm.personalMessage}
+                onChange={(event) => updateForm("personalMessage", event.target.value)}
+                placeholder="Add a personal note to accompany the interview details."
+              />
+            </label>
+            <p className="school-interview-message-note">
+              Interview details and the selected opportunity will be included with this message.
+            </p>
+          </section>
+
+          <div className="school-teacher-interview-submit-row">
+            <button
+              type="button"
+              className="school-teacher-interview-cancel"
+              onClick={() => setIsTeacherInterviewFlowOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="school-teacher-interview-submit"
+              disabled={teacherInterviewSubmitting || !openInviteJobs.length}
+            >
+              {teacherInterviewSubmitting ? "Sending..." : <><FiMail aria-hidden="true" /> Send Interview Invitation</>}
+            </button>
+          </div>
+        </form>
       </div>
     );
   };
@@ -4074,10 +4524,18 @@ export default function AdminDashboard() {
       return;
     }
 
+    if (teacherInviteType === "apply" && !teacherInviteJobId) {
+      showSnackbar("Position required", "Select an open position before inviting this teacher to apply.");
+      return;
+    }
+
     try {
       setTeacherInviteSubmitting(true);
       await profileService.inviteTeacher(teacherId, {
         message,
+        ...(teacherInviteType === "apply" && teacherInviteJobId
+          ? { job_id: teacherInviteJobId }
+          : {}),
       });
       const nextInvitedTeacherIds = [...new Set([...invitedTeacherIds, String(teacherId)])];
       setInvitedTeacherIds(nextInvitedTeacherIds);
@@ -4087,10 +4545,11 @@ export default function AdminDashboard() {
         // Keep the successful invitation even if browser storage is unavailable.
       }
       setIsTeacherInviteModalOpen(false);
-      setTeacherInviteMessage(
-        "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
+      setTeacherInviteJobId("");
+      showSnackbar(
+        "Invitation Sent",
+        `${selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "Teacher"} has been invited ${teacherInviteType === "interview" ? "to interview" : "to apply"}.`,
       );
-      showSnackbar("Invitation Sent", `${selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "Teacher"} has been invited to apply.`);
     } catch (err) {
       showSnackbar("Invitation failed", apiErrorMessage(err, "Unable to send this invitation right now."));
     } finally {
@@ -4098,10 +4557,366 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleSendTeacherInterviewInvite = async () => {
+    const teacherId = selectedTeacherProfile?.user_id;
+    const job = jobs.find(
+      (item) => String(item.id || item.job_id || "") === teacherInviteJobId,
+    );
+
+    if (!teacherId) {
+      showSnackbar("Unable to invite teacher", "This teacher profile is missing a valid ID.");
+      return;
+    }
+    if (!job || !["open", "published", "active"].includes(String(job.status || "").trim().toLowerCase())) {
+      showSnackbar("Opportunity required", "Select an open opportunity for this interview invitation.");
+      return;
+    }
+    if (!teacherInterviewForm.interviewDate || !teacherInterviewForm.interviewTime) {
+      showSnackbar("Interview details required", "Choose an interview date and time before sending.");
+      return;
+    }
+    if (teacherInterviewForm.interviewMode === "virtual" && !teacherInterviewForm.meetingLink.trim()) {
+      showSnackbar("Meeting link required", "Add a meeting link for a video or online interview.");
+      return;
+    }
+    if (teacherInterviewForm.interviewMode === "in_person" && !teacherInterviewForm.venue?.trim()) {
+      showSnackbar("Interview location required", "Add a venue for an in-person interview.");
+      return;
+    }
+    if (teacherInterviewForm.directContactVisibility && !teacherInterviewForm.contactEmail.trim()) {
+      showSnackbar("Contact email required", "Add an institutional contact email or turn off direct contact visibility.");
+      return;
+    }
+    if (!teacherInterviewForm.contactName.trim()) {
+      showSnackbar("Contact person required", "Add the name of the institutional contact person.");
+      return;
+    }
+
+    const schoolName = user?.school_name || schoolProfile?.school_name || user?.full_name || "Your school";
+    const jobTitle = job.title || job.role_title || "Open opportunity";
+    const interviewDetails = [
+      `Interview invitation for ${jobTitle}`,
+      `Interview format: ${teacherInterviewForm.interviewMode === "virtual" ? "Video / Online" : "In-person"}`,
+      `Date: ${teacherInterviewForm.interviewDate}`,
+      `Time: ${teacherInterviewForm.interviewTime}`,
+      `Duration: ${teacherInterviewForm.duration} minutes`,
+      teacherInterviewForm.interviewMode === "virtual"
+        ? `Platform: ${teacherInterviewForm.platform}\nMeeting link: ${teacherInterviewForm.meetingLink.trim()}`
+        : `Venue: ${teacherInterviewForm.venue.trim()}`,
+      teacherInterviewForm.preparationNotes.trim()
+        ? `Preparation notes: ${teacherInterviewForm.preparationNotes.trim()}`
+        : "",
+      teacherInterviewForm.directContactVisibility
+        ? `Institutional contact: ${teacherInterviewForm.contactName.trim()}${teacherInterviewForm.contactEmail.trim() ? ` · ${teacherInterviewForm.contactEmail.trim()}` : ""}${teacherInterviewForm.contactPhone.trim() ? ` · ${teacherInterviewForm.contactPhone.trim()}` : ""}`
+        : "Institutional contact details will be shared after the candidate responds.",
+      `Sent by ${schoolName}.`,
+    ].filter(Boolean).join("\n");
+    const message = [
+      teacherInterviewForm.personalMessage.trim(),
+      interviewDetails,
+    ].filter(Boolean).join("\n\n");
+
+    try {
+      setTeacherInterviewSubmitting(true);
+      await profileService.inviteTeacher(teacherId, {
+        message,
+        job_id: teacherInviteJobId,
+      });
+      const nextInvitedTeacherIds = [...new Set([...invitedTeacherIds, String(teacherId)])];
+      setInvitedTeacherIds(nextInvitedTeacherIds);
+      try {
+        localStorage.setItem(invitedTeachersStorageKey, JSON.stringify(nextInvitedTeacherIds));
+      } catch {
+        // Keep the successful invitation even if browser storage is unavailable.
+      }
+      try {
+        localStorage.removeItem(
+          `staffroom_interview_invite_draft:${user?.user_id || user?.id || "current"}:${teacherId}`,
+        );
+      } catch {
+        // Invitation delivery must not depend on local draft cleanup.
+      }
+      setIsTeacherInterviewFlowOpen(false);
+      showSnackbar(
+        "Interview invitation sent",
+        `${selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "Teacher"} has been invited to interview for ${jobTitle}.`,
+      );
+    } catch (err) {
+      showSnackbar("Invitation failed", apiErrorMessage(err, "Unable to send this interview invitation right now."));
+    } finally {
+      setTeacherInterviewSubmitting(false);
+    }
+  };
+
+  const saveTeacherInterviewDraft = () => {
+    const draftKey = `staffroom_interview_invite_draft:${user?.user_id || user?.id || "current"}:${selectedTeacherProfile?.user_id || "teacher"}`;
+    try {
+      localStorage.setItem(draftKey, JSON.stringify({
+        jobId: teacherInviteJobId,
+        form: teacherInterviewForm,
+        savedAt: new Date().toISOString(),
+      }));
+      showSnackbar("Draft saved", "Your interview invitation draft has been saved on this device.");
+    } catch (err) {
+      showSnackbar("Unable to save draft", apiErrorMessage(err, "Browser storage is unavailable."));
+    }
+  };
+
+  const openTeacherOpportunityDrawer = () => {
+    setTeacherInviteType("apply");
+    setTeacherInviteJobId("");
+    setIsTeacherInviteChooserOpen(false);
+    setIsTeacherOpportunityDrawerOpen(true);
+  };
+
+  const selectTeacherInviteJob = (job) => {
+    const jobId = job?.id || job?.job_id;
+    if (!jobId) {
+      showSnackbar("Unable to select position", "This open position is missing a valid ID.");
+      return;
+    }
+
+    setTeacherInviteType("apply");
+    setTeacherInviteJobId(String(jobId));
+    setTeacherInviteMessage(
+      `Hi there, we were impressed by your profile and would love for you to apply for our ${job.title || job.role_title || "open teaching"} position. We would be delighted to discuss the role with you and learn more about your experience.`,
+    );
+    setIsTeacherOpportunityDrawerOpen(false);
+    setIsTeacherInviteModalOpen(true);
+  };
+
+  const openTeacherInviteComposer = (type) => {
+    if (type === "interview") {
+      const activeJobs = jobs.filter(
+        (job) =>
+          ["open", "published", "active"].includes(String(job.status || "").trim().toLowerCase())
+          && (job.id || job.job_id),
+      );
+      const firstJob = activeJobs[0];
+      const contactName =
+        schoolProfile?.contact_person_name
+        || schoolProfile?.contact_name
+        || schoolProfile?.admin_name
+        || user?.full_name
+        || "";
+      const draftKey = `staffroom_interview_invite_draft:${user?.user_id || user?.id || "current"}:${selectedTeacherProfile?.user_id || "teacher"}`;
+      let savedDraft = null;
+      try {
+        const serializedDraft = localStorage.getItem(draftKey);
+        if (serializedDraft) {
+          const parsedDraft = JSON.parse(serializedDraft);
+          if (parsedDraft?.form && typeof parsedDraft.form === "object") {
+            savedDraft = parsedDraft;
+          }
+        }
+      } catch (err) {
+        showSnackbar("Unable to load draft", apiErrorMessage(err, "The saved interview draft could not be read."));
+      }
+      setTeacherInviteType("interview");
+      const savedJobId = String(savedDraft?.jobId || "");
+      const savedJobIsOpen = activeJobs.some(
+        (job) => String(job.id || job.job_id) === savedJobId,
+      );
+      const savedForm = savedDraft?.form || {};
+      setTeacherInviteJobId(
+        savedJobIsOpen ? savedJobId : String(firstJob?.id || firstJob?.job_id || ""),
+      );
+      setTeacherInterviewForm((current) => ({
+        ...current,
+        interviewMode: savedForm.interviewMode === "in_person" ? "in_person" : "virtual",
+        platform: typeof savedForm.platform === "string" ? savedForm.platform : "Google Meet",
+        meetingLink: typeof savedForm.meetingLink === "string" ? savedForm.meetingLink : "",
+        venue: typeof savedForm.venue === "string" ? savedForm.venue : "",
+        interviewDate: typeof savedForm.interviewDate === "string" ? savedForm.interviewDate : "",
+        interviewTime: typeof savedForm.interviewTime === "string" ? savedForm.interviewTime : "",
+        duration: typeof savedForm.duration === "string" ? savedForm.duration : "45",
+        preparationNotes: typeof savedForm.preparationNotes === "string" ? savedForm.preparationNotes : "",
+        contactName: typeof savedForm.contactName === "string" ? savedForm.contactName : contactName,
+        contactEmail: typeof savedForm.contactEmail === "string" ? savedForm.contactEmail : schoolProfile?.email || user?.email || "",
+        contactPhone: typeof savedForm.contactPhone === "string" ? savedForm.contactPhone : schoolProfile?.phone || user?.phone || "",
+        directContactVisibility: typeof savedForm.directContactVisibility === "boolean"
+          ? savedForm.directContactVisibility
+          : true,
+        personalMessage: typeof savedForm.personalMessage === "string"
+          ? savedForm.personalMessage
+          : `Hi ${selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "there"},\n\nWe reviewed your profile and believe your experience could be a great fit for our school. We would like to invite you to an interview to discuss the opportunity.`,
+      }));
+      setIsTeacherInviteChooserOpen(false);
+      setIsTeacherInterviewFlowOpen(true);
+      return;
+    }
+
+    setTeacherInviteType(type);
+    setTeacherInviteJobId("");
+    setTeacherInviteMessage(
+      type === "interview"
+        ? "Hi there, we were impressed by your profile and would like to invite you to interview with our school. Please let us know your availability so we can arrange a suitable time."
+        : "Hi there, we were impressed by your profile and would love for you to apply for one of our open teaching opportunities. We would be delighted to discuss the role with you and learn more about your experience.",
+    );
+    setIsTeacherInviteChooserOpen(false);
+    setIsTeacherInviteModalOpen(true);
+  };
+
+  const renderTeacherInviteChooser = () => (
+    <div
+      className="school-teacher-invite-modal school-teacher-invite-chooser"
+      role="dialog"
+      aria-labelledby="teacher-invite-chooser-title"
+    >
+      <h3 id="teacher-invite-chooser-title" className="school-teacher-invite-title">
+        TYPE OF INVITE
+      </h3>
+
+      <button
+        type="button"
+        className="school-teacher-invite-choice"
+        onClick={openTeacherOpportunityDrawer}
+      >
+        <span className="school-teacher-invite-choice-icon" aria-hidden="true">
+          <FiFileText />
+        </span>
+        <span className="school-teacher-invite-choice-copy">
+          <strong>Invite to Apply</strong>
+          <span>Ask this teacher to apply for an open opportunity.</span>
+        </span>
+        <FiChevronDown className="school-teacher-invite-choice-arrow" aria-hidden="true" />
+      </button>
+
+      <button
+        type="button"
+        className="school-teacher-invite-choice"
+        onClick={() => openTeacherInviteComposer("interview")}
+      >
+        <span className="school-teacher-invite-choice-icon" aria-hidden="true">
+          <FiCalendar />
+        </span>
+        <span className="school-teacher-invite-choice-copy">
+          <strong>Invite to Interview</strong>
+          <span>Invite this teacher directly to an interview.</span>
+        </span>
+        <FiChevronDown className="school-teacher-invite-choice-arrow" aria-hidden="true" />
+      </button>
+
+      <div className="school-teacher-invite-chooser-note">
+        <FiInfo aria-hidden="true" />
+        <span>
+          Selecting Invite to Apply opens your school's open positions so you can link an opportunity.
+        </span>
+      </div>
+
+      <button
+        type="button"
+        className="school-teacher-invite-cancel-btn"
+        onClick={() => setIsTeacherInviteChooserOpen(false)}
+      >
+        Cancel
+      </button>
+    </div>
+  );
+
+  const renderTeacherOpportunityDrawer = () => {
+    const teacherName = selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "this teacher";
+    const schoolName = user?.school_name || user?.full_name || "your school";
+    const openInviteJobs = jobs.filter(
+      (job) =>
+        ["open", "published", "active"].includes(String(job.status || "").trim().toLowerCase())
+        && (job.id || job.job_id),
+    );
+
+    return (
+      <div
+        className="school-opportunity-drawer-backdrop"
+        role="presentation"
+        onClick={() => setIsTeacherOpportunityDrawerOpen(false)}
+      >
+        <aside
+          className="school-opportunity-drawer"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="school-opportunity-drawer-title"
+          onClick={(event) => event.stopPropagation()}
+        >
+          <header className="school-opportunity-drawer-header">
+            <div>
+              <p className="school-opportunity-drawer-eyebrow">INVITE TO APPLY</p>
+              <h2 id="school-opportunity-drawer-title">Choose an opportunity</h2>
+              <p>Select an open position at {schoolName} to invite {teacherName} to apply.</p>
+            </div>
+            <button
+              type="button"
+              className="school-opportunity-drawer-close"
+              onClick={() => setIsTeacherOpportunityDrawerOpen(false)}
+              aria-label="Close opportunity drawer"
+            >
+              <FiX />
+            </button>
+          </header>
+
+          <div className="school-opportunity-drawer-body">
+            {openInviteJobs.length ? (
+              <>
+                <p className="school-opportunity-drawer-section-title">
+                  OPEN POSITIONS <span>{openInviteJobs.length}</span>
+                </p>
+                <div className="school-opportunity-list">
+                  {openInviteJobs.map((job) => {
+                    const jobId = String(job.id || job.job_id);
+                    return (
+                      <button
+                        type="button"
+                        className="school-opportunity-option"
+                        key={jobId}
+                        onClick={() => selectTeacherInviteJob(job)}
+                      >
+                        <span className="school-opportunity-option-icon" aria-hidden="true">
+                          <FiBriefcase />
+                        </span>
+                        <span className="school-opportunity-option-copy">
+                          <strong>{job.title || job.role_title || "Open position"}</strong>
+                          <span>
+                            {[job.location, job.employment_type || job.role_type]
+                              .filter(Boolean)
+                              .join(" · ") || "Open opportunity"}
+                          </span>
+                        </span>
+                        <FiChevronDown className="school-opportunity-option-arrow" aria-hidden="true" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              <div className="school-opportunity-empty">
+                <span className="school-opportunity-empty-icon" aria-hidden="true">
+                  <FiBriefcase />
+                </span>
+                <h3>No open positions yet</h3>
+                <p>Publish an opportunity at {schoolName} to invite {teacherName} to apply.</p>
+                <button
+                  type="button"
+                  className="school-teacher-invite-send-btn"
+                  onClick={() => {
+                    setIsTeacherOpportunityDrawerOpen(false);
+                    openJobForm("overview");
+                  }}
+                >
+                  Create an Opportunity
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
+    );
+  };
+
   const renderTeacherInviteModal = () => {
     const teacherName = selectedTeacherProfile?.name || selectedTeacherProfile?.full_name || "Teacher";
     const teacherRole = selectedTeacherProfile?.role || selectedTeacherProfile?.subject || "Teacher";
     const teacherAvailability = selectedTeacherProfile?.experience || "Experience available";
+    const selectedInviteJob = jobs.find(
+      (job) => String(job.id || job.job_id || "") === teacherInviteJobId,
+    );
 
     return (
       <div
@@ -4117,11 +4932,13 @@ export default function AdminDashboard() {
           onClick={(event) => event.stopPropagation()}
         >
           <h3 id="teacher-invite-modal-title" className="school-teacher-invite-title">
-            Invite to Apply
+            {teacherInviteType === "interview" ? "Invite to Interview" : "Invite to Apply"}
           </h3>
 
           <p className="school-teacher-invite-subtitle">
-            Send an invitation to <strong>{teacherName}</strong> on behalf of <strong>{user?.school_name || user?.full_name || "Your school"}</strong>.
+            {teacherInviteType === "interview"
+              ? <>Invite <strong>{teacherName}</strong> to interview on behalf of <strong>{user?.school_name || user?.full_name || "Your school"}</strong>.</>
+              : <>Send an invitation to <strong>{teacherName}</strong> on behalf of <strong>{user?.school_name || user?.full_name || "Your school"}</strong>.</>}
           </p>
 
           <div className="school-teacher-invite-profile-card">
@@ -4163,6 +4980,15 @@ export default function AdminDashboard() {
 
           <div className="school-teacher-invite-details-block">
             <p className="school-teacher-invite-label">DETAILS</p>
+            {teacherInviteType === "apply" && selectedInviteJob && (
+              <div className="school-teacher-invite-selected-job">
+                <FiBriefcase aria-hidden="true" />
+                <span>
+                  <small>APPLYING FOR</small>
+                  <strong>{selectedInviteJob.title || selectedInviteJob.role_title || "Open position"}</strong>
+                </span>
+              </div>
+            )}
             <textarea
               className="school-teacher-invite-textarea"
               rows="5"
@@ -4951,7 +5777,9 @@ export default function AdminDashboard() {
             </button>
           </div>
         ) : selectedTeacherProfile ? (
-          renderTeacherProfileSummaryPage(selectedTeacherProfile)
+          isTeacherInterviewFlowOpen
+            ? renderTeacherInterviewInvitePage(selectedTeacherProfile)
+            : renderTeacherProfileSummaryPage(selectedTeacherProfile)
         ) : (
           <>
             <div className="school-teachers-hero">
@@ -6329,6 +7157,48 @@ export default function AdminDashboard() {
         ))}
       </nav>
       {isTeacherInviteModalOpen && renderTeacherInviteModal()}
+      {isTeacherOpportunityDrawerOpen && renderTeacherOpportunityDrawer()}
+      {isTeacherOpportunityCreateOpen && (
+        <div
+          className="school-opportunity-create-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !submitting) {
+              setIsTeacherOpportunityCreateOpen(false);
+              setError("");
+            }
+          }}
+        >
+          <aside
+            className="school-opportunity-create-drawer"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="school-opportunity-create-title"
+          >
+            <header className="school-opportunity-create-header">
+              <div>
+                <h2 id="school-opportunity-create-title">Create Opportunity</h2>
+                <p>Create an opportunity to attach to your interview invitation.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTeacherOpportunityCreateOpen(false);
+                  setError("");
+                }}
+                disabled={submitting}
+                aria-label="Close create opportunity panel"
+              >
+                <FiX />
+              </button>
+            </header>
+            <div className="school-opportunity-create-content">
+              {error && <p className="school-opportunity-create-error" role="alert">{error}</p>}
+              {renderJobForm({ insideOpportunityDrawer: true })}
+            </div>
+          </aside>
+        </div>
+      )}
       {isRejectModalOpen && renderRejectModal()}
       {isShortlistModalOpen && renderShortlistModal()}
       {isShortlistSuccessOpen && renderShortlistSuccessModal()}
@@ -8201,6 +9071,809 @@ export default function AdminDashboard() {
         .admin-snackbar p { margin: 8px 0 0; color: #090b0d; font-size: 14px; line-height: 1.35; }
         .admin-snackbar > button { display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: #090b0d; cursor: pointer; }
 
+        .school-teacher-interview-page {
+          width: min(100%, 920px);
+          margin: 0 auto;
+          padding: 4px 0 30px;
+          color: #17251d;
+        }
+        .school-teacher-interview-topline {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 14px;
+          margin-bottom: 20px;
+        }
+        .school-teacher-interview-topline .school-summary-back-btn {
+          flex: 0 0 auto;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 7px 9px;
+          border: 1px solid #e1e7e2;
+          border-radius: 8px;
+          background: #fff;
+          color: #536158;
+          font-size: 0.69rem;
+          cursor: pointer;
+        }
+        .school-teacher-interview-topline .school-summary-back-btn:hover {
+          border-color: #a4d4ad;
+          color: #147a34;
+        }
+        .school-teacher-interview-breadcrumb {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          min-width: 0;
+          color: #77817a;
+          font-size: 0.69rem;
+          white-space: nowrap;
+        }
+        .school-teacher-interview-breadcrumb svg {
+          width: 11px;
+          height: 11px;
+          transform: rotate(-90deg);
+        }
+        .school-teacher-interview-breadcrumb strong {
+          color: #16823b;
+          font-weight: 700;
+        }
+        .school-teacher-interview-draft {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex: 0 0 auto;
+          gap: 7px;
+          padding: 8px 10px;
+          border: 1px solid #e0e7e2;
+          border-radius: 8px;
+          background: #fff;
+          color: #435148;
+          font-size: 0.72rem;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .school-teacher-interview-draft:hover {
+          border-color: #91c69d;
+          color: #147a34;
+        }
+        .school-teacher-interview-heading {
+          margin: 0 0 16px;
+        }
+        .school-teacher-interview-heading h1 {
+          margin: 0;
+          color: #19251f;
+          font-size: 1.55rem;
+          font-weight: 750;
+          letter-spacing: -0.035em;
+        }
+        .school-teacher-interview-heading p {
+          margin: 4px 0 0;
+          color: #707b74;
+          font-size: 0.8rem;
+        }
+        .school-interview-teacher-card {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          margin-bottom: 16px;
+          padding: 13px 16px;
+          border: 1px solid #e7ece8;
+          border-radius: 12px;
+          background: #fff;
+        }
+        .school-interview-teacher-avatar {
+          display: grid;
+          place-items: center;
+          flex: 0 0 42px;
+          width: 42px;
+          height: 42px;
+          border-radius: 11px;
+          background: #e7f5ea;
+          color: #147c35;
+          font-size: 0.82rem;
+          font-weight: 800;
+        }
+        .school-interview-teacher-info {
+          display: grid;
+          gap: 3px;
+          min-width: 0;
+        }
+        .school-interview-teacher-info strong {
+          color: #1a2820;
+          font-size: 0.9rem;
+          font-weight: 750;
+        }
+        .school-interview-teacher-info > span {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
+          color: #5e6b62;
+          font-size: 0.68rem;
+        }
+        .school-interview-teacher-info i {
+          width: 3px;
+          height: 3px;
+          border-radius: 50%;
+          background: #a7b0aa;
+        }
+        .school-interview-teacher-info small {
+          color: #16823b;
+          font-size: 0.63rem;
+          font-weight: 650;
+        }
+        .school-teacher-interview-form {
+          display: grid;
+          gap: 14px;
+        }
+        .school-interview-section {
+          padding: 18px;
+          border: 1px solid #e8ece9;
+          border-radius: 13px;
+          background: #fff;
+          box-shadow: 0 2px 7px rgba(30, 47, 36, 0.025);
+        }
+        .school-interview-section-heading {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          margin-bottom: 15px;
+          padding-bottom: 12px;
+          border-bottom: 1px solid #eef1ef;
+        }
+        .school-interview-section-index {
+          display: grid;
+          place-items: center;
+          flex: 0 0 19px;
+          width: 19px;
+          height: 19px;
+          border-radius: 50%;
+          background: #e8f5eb;
+          color: #138039;
+          font-size: 0.63rem;
+          font-weight: 800;
+        }
+        .school-interview-section-heading > div {
+          flex: 1;
+          min-width: 0;
+        }
+        .school-interview-section-heading h2 {
+          margin: 0;
+          color: #1a2921;
+          font-size: 0.94rem;
+          font-weight: 720;
+          line-height: 1.3;
+        }
+        .school-interview-section-heading p {
+          margin: 2px 0 0;
+          color: #737e76;
+          font-size: 0.66rem;
+          line-height: 1.35;
+        }
+        .school-interview-required,
+        .school-interview-optional {
+          align-self: flex-start;
+          flex: 0 0 auto;
+          color: #718078;
+          font-size: 0.53rem;
+          font-weight: 750;
+          letter-spacing: 0.04em;
+        }
+        .school-interview-opportunity-list {
+          display: grid;
+          gap: 7px;
+        }
+        .school-interview-target-actions {
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          margin: -4px 0 10px;
+        }
+        .school-interview-target-actions > span,
+        .school-interview-target-actions > button {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          padding: 0;
+          background: transparent;
+          color: #79847c;
+          font-size: 0.61rem;
+          font-weight: 650;
+        }
+        .school-interview-target-actions > .is-active {
+          color: #16823b;
+        }
+        .school-interview-target-actions > button {
+          cursor: pointer;
+        }
+        .school-interview-target-actions > button:hover {
+          color: #116d30;
+        }
+        .school-interview-opportunity-card {
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          min-height: 46px;
+          padding: 7px 10px;
+          border: 1px solid #e5eae6;
+          border-radius: 9px;
+          background: #fff;
+          cursor: pointer;
+        }
+        .school-interview-opportunity-card.is-selected {
+          border-color: #83c994;
+          background: #f4fbf5;
+        }
+        .school-interview-opportunity-card > input {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          opacity: 0;
+        }
+        .school-interview-opportunity-radio {
+          display: grid;
+          place-items: center;
+          flex: 0 0 12px;
+          width: 12px;
+          height: 12px;
+          border: 1px solid #aab4ad;
+          border-radius: 50%;
+        }
+        .school-interview-opportunity-card.is-selected .school-interview-opportunity-radio {
+          border-color: #17823a;
+        }
+        .school-interview-opportunity-card.is-selected .school-interview-opportunity-radio::after {
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: #17823a;
+          content: "";
+        }
+        .school-interview-opportunity-icon {
+          display: grid;
+          place-items: center;
+          flex: 0 0 28px;
+          width: 28px;
+          height: 28px;
+          border-radius: 7px;
+          background: #f0f5f1;
+          color: #52685a;
+          font-size: 13px;
+        }
+        .school-interview-opportunity-copy {
+          display: grid;
+          flex: 1;
+          gap: 2px;
+          min-width: 0;
+        }
+        .school-interview-opportunity-copy strong {
+          overflow: hidden;
+          color: #27352c;
+          font-size: 0.68rem;
+          font-weight: 700;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .school-interview-opportunity-copy span {
+          overflow: hidden;
+          color: #768179;
+          font-size: 0.6rem;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .school-interview-active-badge,
+        .school-interview-public-badge {
+          flex: 0 0 auto;
+          padding: 3px 6px;
+          border-radius: 999px;
+          background: #e9f6ec;
+          color: #177f38;
+          font-size: 0.5rem;
+          font-weight: 750;
+          text-transform: uppercase;
+        }
+        .school-interview-selected-opportunity {
+          margin-top: 9px;
+          padding: 12px;
+          border-radius: 9px;
+          background: #f6f8f6;
+        }
+        .school-interview-selected-opportunity-heading,
+        .school-interview-selected-opportunity-heading > span {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 8px;
+        }
+        .school-interview-selected-opportunity-heading > span:first-child {
+          justify-content: flex-start;
+          min-width: 0;
+        }
+        .school-interview-selected-opportunity-heading strong {
+          color: #27342b;
+          font-size: 0.71rem;
+          font-weight: 700;
+        }
+        .school-interview-selected-opportunity-heading > strong {
+          flex: 0 0 auto;
+          color: #138039;
+          font-size: 0.62rem;
+        }
+        .school-interview-selected-opportunity p {
+          margin: 5px 0 0;
+          color: #6e7971;
+          font-size: 0.62rem;
+        }
+        .school-interview-benefits {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 5px;
+          margin-top: 8px;
+        }
+        .school-interview-benefits span {
+          display: inline-flex;
+          align-items: center;
+          gap: 3px;
+          padding: 4px 6px;
+          border-radius: 999px;
+          background: #fff;
+          color: #4d5e52;
+          font-size: 0.55rem;
+        }
+        .school-interview-benefits svg {
+          color: #17823a;
+        }
+        .school-interview-no-opportunities {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 12px;
+          border: 1px solid #f0e4c6;
+          border-radius: 9px;
+          background: #fffaf0;
+          color: #6d5a2c;
+          font-size: 0.72rem;
+        }
+        .school-interview-no-opportunities p {
+          flex: 1;
+          margin: 0;
+        }
+        .school-interview-no-opportunities button {
+          padding: 7px 10px;
+          border-radius: 7px;
+          background: #17823a;
+          color: #fff;
+          font-size: 0.66rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .school-interview-field {
+          display: grid;
+          flex: 1;
+          gap: 5px;
+          min-width: 0;
+          margin-bottom: 10px;
+        }
+        .school-interview-field:last-child {
+          margin-bottom: 0;
+        }
+        .school-interview-field-label {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          color: #2b3930;
+          font-size: 0.62rem;
+          font-weight: 700;
+        }
+        .school-interview-field-label b {
+          color: #d83a3a;
+        }
+        .school-interview-field-label small {
+          margin-left: auto;
+          color: #7c8780;
+          font-size: 0.5rem;
+          font-weight: 550;
+        }
+        .school-interview-field input:not([type="radio"]):not([type="checkbox"]),
+        .school-interview-field select,
+        .school-interview-field textarea {
+          width: 100%;
+          min-height: 36px;
+          padding: 8px 10px;
+          border: 1px solid #e3e8e4;
+          border-radius: 8px;
+          background: #fff;
+          color: #2a382f;
+          font: inherit;
+          font-size: 0.67rem;
+          outline: none;
+        }
+        .school-interview-field input:focus,
+        .school-interview-field select:focus,
+        .school-interview-field textarea:focus {
+          border-color: #69bf7c;
+          box-shadow: 0 0 0 2px rgba(45, 179, 77, 0.1);
+        }
+        .school-interview-field textarea {
+          min-height: 72px;
+          resize: vertical;
+          line-height: 1.45;
+        }
+        .school-interview-schedule-row {
+          display: flex;
+          gap: 9px;
+          margin-bottom: 10px;
+        }
+        .school-interview-field-grow {
+          flex: 1.5;
+        }
+        .school-interview-mode-options {
+          display: flex;
+          gap: 7px;
+        }
+        .school-interview-mode-options label {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          min-height: 33px;
+          padding: 0 10px;
+          border: 1px solid #e4e9e5;
+          border-radius: 8px;
+          background: #f7f9f7;
+          color: #69756d;
+          font-size: 0.63rem;
+          cursor: pointer;
+        }
+        .school-interview-mode-options label.is-selected {
+          border-color: #cbe8d1;
+          background: #f1faf2;
+          color: #177f38;
+          font-weight: 700;
+        }
+        .school-interview-mode-options input {
+          accent-color: #16823b;
+        }
+        .school-interview-section--details {
+          padding: 22px;
+        }
+        .school-interview-section--details .school-interview-section-heading {
+          margin-bottom: 19px;
+          padding-bottom: 15px;
+        }
+        .school-interview-section--details .school-interview-section-index {
+          flex-basis: 25px;
+          width: 25px;
+          height: 25px;
+          font-size: 0.72rem;
+        }
+        .school-interview-section--details .school-interview-section-heading h2 {
+          font-size: 1.05rem;
+          letter-spacing: -0.015em;
+        }
+        .school-interview-section--details .school-interview-section-heading p {
+          margin-top: 3px;
+          font-size: 0.72rem;
+        }
+        .school-interview-section--details .school-interview-required {
+          padding: 5px 8px;
+          border: 1px solid #e7ebe8;
+          border-radius: 999px;
+          background: #f7f9f7;
+          font-size: 0.58rem;
+          letter-spacing: 0.06em;
+        }
+        .school-interview-section--details > .school-interview-field:first-of-type {
+          margin-bottom: 15px;
+        }
+        .school-interview-section--details .school-interview-field-label {
+          color: #344239;
+          font-size: 0.73rem;
+          font-weight: 700;
+        }
+        .school-interview-section--details .school-interview-mode-options {
+          gap: 9px;
+          margin-top: 3px;
+        }
+        .school-interview-section--details .school-interview-mode-options label {
+          position: relative;
+          flex: 0 0 auto;
+          min-width: 138px;
+          min-height: 40px;
+          width: auto;
+          padding: 0 13px;
+          border-color: #e1e7e2;
+          border-radius: 9px;
+          background: #f8faf8;
+          font-size: 0.75rem;
+          font-weight: 600;
+          transition: border-color 140ms ease, background 140ms ease, box-shadow 140ms ease;
+        }
+        .school-interview-section--details .school-interview-mode-options label:hover {
+          border-color: #b9d9c0;
+        }
+        .school-interview-section--details .school-interview-mode-options label.is-selected {
+          border-color: #81c891;
+          background: #f1faf3;
+          box-shadow: inset 0 0 0 1px rgba(23, 130, 58, 0.06);
+        }
+        .school-interview-section--details .school-interview-mode-options label svg {
+          width: 15px;
+          height: 15px;
+          flex: 0 0 15px;
+        }
+        .school-interview-section--details .school-interview-mode-options input[type="radio"] {
+          flex: 0 0 14px;
+          width: 14px;
+          height: 14px;
+          min-height: 14px;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          box-shadow: none;
+          accent-color: #16823b;
+        }
+        .school-interview-section--details .school-interview-schedule-row {
+          display: grid;
+          gap: 14px;
+          margin-bottom: 15px;
+        }
+        .school-interview-section--details .school-interview-connection-row {
+          grid-template-columns: minmax(190px, 0.72fr) minmax(0, 1.55fr);
+          padding: 13px;
+          border: 1px solid #edf0ee;
+          border-radius: 10px;
+          background: #f8faf8;
+        }
+        .school-interview-section--details .school-interview-time-row {
+          grid-template-columns: 1.05fr 0.85fr 1fr;
+        }
+        .school-interview-section--details .school-interview-field {
+          gap: 7px;
+          margin: 0;
+        }
+        .school-interview-section--details .school-interview-field input,
+        .school-interview-section--details .school-interview-field select {
+          min-height: 42px;
+          padding: 9px 11px;
+          border-color: #e0e6e1;
+          border-radius: 8px;
+          font-size: 0.76rem;
+        }
+        .school-interview-section--details .school-interview-field input:hover,
+        .school-interview-section--details .school-interview-field select:hover {
+          border-color: #b8c9bc;
+        }
+        .school-interview-section--details .school-interview-field input:focus,
+        .school-interview-section--details .school-interview-field select:focus,
+        .school-interview-section--details .school-interview-field textarea:focus {
+          border-color: #36a955;
+          box-shadow: 0 0 0 3px rgba(45, 179, 77, 0.12);
+        }
+        .school-interview-section--details .school-interview-field textarea {
+          min-height: 84px;
+          padding: 11px 12px;
+          border-color: #e0e6e1;
+          border-radius: 9px;
+          font-size: 0.76rem;
+        }
+        .school-interview-section--details .school-interview-field textarea::placeholder,
+        .school-interview-section--details .school-interview-field input::placeholder {
+          color: #9aa49d;
+        }
+        @media (max-width: 700px) {
+          .school-interview-section--details {
+            padding: 16px;
+          }
+          .school-interview-section--details .school-interview-connection-row {
+            grid-template-columns: 1fr;
+          }
+          .school-interview-section--details .school-interview-time-row {
+            grid-template-columns: 1fr 1fr;
+          }
+          .school-interview-section--details .school-interview-time-row .school-interview-field:last-child {
+            grid-column: 1 / -1;
+          }
+        }
+        @media (max-width: 460px) {
+          .school-interview-section--details .school-interview-time-row {
+            grid-template-columns: 1fr;
+          }
+          .school-interview-section--details .school-interview-time-row .school-interview-field:last-child {
+            grid-column: auto;
+          }
+          .school-interview-section--details .school-interview-mode-options {
+            flex-direction: column;
+          }
+          .school-interview-section--details .school-interview-mode-options label {
+            width: 100%;
+          }
+        }
+        .school-interview-contact-card {
+          display: flex;
+          align-items: flex-start;
+          gap: 11px;
+          padding: 12px;
+          border-radius: 9px;
+          background: #f6f8f6;
+        }
+        .school-interview-contact-avatar {
+          display: grid;
+          place-items: center;
+          flex: 0 0 34px;
+          width: 34px;
+          height: 34px;
+          margin-top: 15px;
+          border-radius: 8px;
+          background: #16823b;
+          color: #fff;
+          font-size: 0.65rem;
+          font-weight: 800;
+        }
+        .school-interview-contact-fields {
+          display: flex;
+          flex: 1;
+          gap: 8px;
+        }
+        .school-interview-contact-fields .school-interview-field {
+          margin: 0;
+        }
+        .school-interview-contact-visibility {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          margin-top: 8px;
+          padding: 9px 11px;
+          border-radius: 8px;
+          background: #f1f3f1;
+          cursor: pointer;
+        }
+        .school-interview-contact-visibility > input {
+          position: absolute;
+          width: 1px;
+          height: 1px;
+          opacity: 0;
+        }
+        .school-interview-toggle {
+          position: relative;
+          flex: 0 0 28px;
+          width: 28px;
+          height: 16px;
+          border-radius: 999px;
+          background: #b7c0b9;
+          transition: background 140ms ease;
+        }
+        .school-interview-toggle::after {
+          position: absolute;
+          top: 2px;
+          left: 2px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          background: #fff;
+          content: "";
+          transition: transform 140ms ease;
+        }
+        .school-interview-contact-visibility > input:checked + .school-interview-toggle {
+          background: #16823b;
+        }
+        .school-interview-contact-visibility > input:checked + .school-interview-toggle::after {
+          transform: translateX(12px);
+        }
+        .school-interview-contact-visibility > span:last-child {
+          display: grid;
+          gap: 2px;
+        }
+        .school-interview-contact-visibility strong {
+          color: #37443b;
+          font-size: 0.62rem;
+        }
+        .school-interview-contact-visibility small {
+          color: #78827b;
+          font-size: 0.57rem;
+        }
+        .school-interview-message-note {
+          margin: 6px 0 0;
+          color: #78837b;
+          font-size: 0.58rem;
+        }
+        .school-teacher-interview-submit-row {
+          display: flex;
+          justify-content: flex-end;
+          gap: 9px;
+        }
+        .school-teacher-interview-cancel,
+        .school-teacher-interview-submit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          min-height: 40px;
+          padding: 0 16px;
+          border-radius: 8px;
+          font-size: 0.72rem;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .school-teacher-interview-cancel {
+          border: 1px solid #e0e6e1;
+          background: #fff;
+          color: #526056;
+        }
+        .school-teacher-interview-submit {
+          min-width: 190px;
+          background: #23d653;
+          color: #073417;
+          box-shadow: 0 3px 8px rgba(17, 146, 51, 0.15);
+        }
+        .school-teacher-interview-submit:hover:not(:disabled) {
+          background: #18c94a;
+        }
+        .school-teacher-interview-submit:disabled {
+          cursor: not-allowed;
+          opacity: 0.6;
+        }
+        @media (max-width: 760px) {
+          .school-teacher-interview-topline {
+            flex-wrap: wrap;
+          }
+          .school-teacher-interview-breadcrumb {
+            order: 3;
+            justify-content: flex-start;
+            width: 100%;
+            overflow-x: auto;
+            padding: 3px 0;
+          }
+          .school-interview-contact-fields {
+            flex-direction: column;
+          }
+        }
+        @media (max-width: 560px) {
+          .school-teacher-interview-heading h1 {
+            font-size: 1.3rem;
+          }
+          .school-interview-section {
+            padding: 13px;
+          }
+          .school-interview-section-heading {
+            align-items: flex-start;
+            gap: 7px;
+          }
+          .school-interview-section-heading p {
+            max-width: 230px;
+          }
+          .school-interview-required,
+          .school-interview-optional {
+            font-size: 0.46rem;
+          }
+          .school-interview-active-badge {
+            display: none;
+          }
+          .school-interview-schedule-row {
+            flex-direction: column;
+            gap: 0;
+          }
+          .school-interview-contact-card {
+            padding: 9px;
+          }
+          .school-interview-contact-avatar {
+            flex-basis: 30px;
+            width: 30px;
+            height: 30px;
+            margin-top: 12px;
+          }
+          .school-teacher-interview-submit-row {
+            flex-direction: column-reverse;
+          }
+          .school-teacher-interview-cancel,
+          .school-teacher-interview-submit {
+            width: 100%;
+          }
+        }
+
         .school-teacher-invite-backdrop {
           position: fixed;
           inset: 0;
@@ -8220,6 +9893,443 @@ export default function AdminDashboard() {
           background: rgba(246, 247, 246, 0.96);
           box-shadow: 0 12px 26px rgba(18, 24, 19, 0.12);
           text-align: left;
+        }
+        .school-teacher-invite-anchor {
+          position: relative;
+          z-index: 20;
+          width: 100%;
+        }
+        .school-teacher-invite-chooser {
+          position: absolute;
+          top: calc(100% + 8px);
+          right: 0;
+          width: min(350px, calc(100vw - 32px));
+          max-height: min(75vh, 560px);
+          overflow-y: auto;
+          padding: 18px;
+          background: #fff;
+          box-shadow: 0 12px 32px rgba(16, 24, 20, 0.18);
+          text-align: left;
+        }
+        .school-teacher-invite-chooser .school-teacher-invite-title {
+          margin-bottom: 14px;
+          font-size: 0.95rem;
+          letter-spacing: 0.1em;
+        }
+        .school-teacher-invite-choice {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          min-height: 88px;
+          gap: 14px;
+          padding: 16px;
+          border: 1px solid #e0e7e3;
+          border-radius: 12px;
+          background: #fff;
+          color: #1a2922;
+          text-align: left;
+          cursor: pointer;
+          transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
+        }
+        .school-teacher-invite-choice + .school-teacher-invite-choice {
+          margin-top: 12px;
+        }
+        .school-teacher-invite-choice:hover,
+        .school-teacher-invite-choice:focus-visible {
+          border-color: #31c65b;
+          background: #f5fbf6;
+          outline: none;
+        }
+        .school-teacher-invite-choice:active {
+          transform: translateY(1px);
+        }
+        .school-teacher-invite-choice-icon {
+          display: grid;
+          place-items: center;
+          flex: 0 0 46px;
+          height: 46px;
+          border-radius: 10px;
+          background: #eaf8ee;
+          color: #138536;
+          font-size: 21px;
+        }
+        .school-teacher-invite-choice-copy {
+          display: grid;
+          flex: 1;
+          gap: 5px;
+        }
+        .school-teacher-invite-choice-copy strong {
+          font-size: 0.95rem;
+          font-weight: 700;
+        }
+        .school-teacher-invite-choice-copy span {
+          color: #66736d;
+          font-size: 0.8rem;
+          line-height: 1.4;
+        }
+        .school-teacher-invite-choice-arrow {
+          flex: 0 0 auto;
+          color: #748078;
+          transform: rotate(-90deg);
+        }
+        .school-teacher-invite-chooser-note {
+          display: flex;
+          align-items: flex-start;
+          gap: 9px;
+          margin: 16px 0 12px;
+          padding: 12px;
+          border: 1px solid #cce8d3;
+          border-radius: 10px;
+          background: #f1faf3;
+          color: #375b41;
+          font-size: 0.77rem;
+          line-height: 1.45;
+        }
+        .school-teacher-invite-chooser-note svg {
+          flex: 0 0 auto;
+          margin-top: 1px;
+          color: #16823b;
+        }
+        .school-opportunity-create-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 130;
+          display: flex;
+          justify-content: flex-end;
+          background: rgba(17, 27, 22, 0.42);
+          backdrop-filter: blur(2px);
+        }
+        .school-opportunity-create-drawer {
+          display: flex;
+          flex-direction: column;
+          width: min(760px, 78vw);
+          height: 100%;
+          overflow: hidden;
+          background: #fff;
+          box-shadow: -18px 0 48px rgba(18, 34, 25, 0.2);
+          animation: school-opportunity-drawer-in 180ms ease-out;
+        }
+        .school-opportunity-create-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          flex: 0 0 auto;
+          gap: 20px;
+          padding: 24px 26px 18px;
+          border-bottom: 1px solid #edf0ee;
+        }
+        .school-opportunity-create-header h2 {
+          margin: 0;
+          color: #1c2921;
+          font-size: 1.22rem;
+          font-weight: 750;
+          letter-spacing: -0.025em;
+        }
+        .school-opportunity-create-header p {
+          margin: 4px 0 0;
+          color: #737e76;
+          font-size: 0.74rem;
+        }
+        .school-opportunity-create-header > button {
+          display: grid;
+          place-items: center;
+          flex: 0 0 34px;
+          width: 34px;
+          height: 34px;
+          border: 1px solid #e4e9e5;
+          border-radius: 9px;
+          background: #fff;
+          color: #5d6961;
+          cursor: pointer;
+        }
+        .school-opportunity-create-header > button:hover:not(:disabled) {
+          border-color: #b9d8c0;
+          background: #f4faf5;
+          color: #167b36;
+        }
+        .school-opportunity-create-header > button:disabled {
+          cursor: wait;
+          opacity: 0.55;
+        }
+        .school-opportunity-create-content {
+          flex: 1;
+          overflow-y: auto;
+          padding: 20px 26px 30px;
+        }
+        .school-job-form-page--drawer {
+          width: 100%;
+          max-width: none;
+          margin: 0;
+          padding: 0;
+        }
+        .school-job-form-page--drawer .school-job-form {
+          gap: 13px;
+        }
+        .school-job-form-page--drawer .school-job-form-card {
+          gap: 14px;
+          padding: 16px;
+          border-color: #e7ece8;
+          border-radius: 11px;
+          box-shadow: none;
+        }
+        .school-job-form-page--drawer .school-job-form-actions {
+          position: sticky;
+          bottom: -30px;
+          z-index: 3;
+          margin: 0 -26px;
+          padding: 13px 26px calc(13px + env(safe-area-inset-bottom));
+          border-top: 1px solid #edf0ee;
+          background: rgba(255, 255, 255, 0.96);
+          backdrop-filter: blur(10px);
+        }
+        .school-opportunity-create-error {
+          margin: 0 0 12px;
+          padding: 10px 12px;
+          border: 1px solid #f0caca;
+          border-radius: 8px;
+          background: #fff6f6;
+          color: #a72e2e;
+          font-size: 0.75rem;
+        }
+        @media (max-width: 640px) {
+          .school-opportunity-create-drawer {
+            width: 100%;
+          }
+          .school-opportunity-create-header {
+            padding: 18px 16px 14px;
+          }
+          .school-opportunity-create-content {
+            padding: 16px 16px 24px;
+          }
+          .school-job-form-page--drawer .school-job-form-actions {
+            bottom: -24px;
+            margin: 0 -16px;
+            padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+          }
+        }
+        .school-opportunity-drawer-backdrop {
+          position: fixed;
+          inset: 0;
+          z-index: 120;
+          display: flex;
+          justify-content: flex-end;
+          background: rgba(17, 27, 22, 0.38);
+          backdrop-filter: blur(2px);
+        }
+        .school-opportunity-drawer {
+          display: flex;
+          flex-direction: column;
+          width: min(100%, 500px);
+          height: 100%;
+          overflow: auto;
+          background: #fff;
+          box-shadow: -18px 0 48px rgba(18, 34, 25, 0.16);
+          animation: school-opportunity-drawer-in 180ms ease-out;
+        }
+        @keyframes school-opportunity-drawer-in {
+          from { transform: translateX(24px); opacity: 0.8; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        .school-opportunity-drawer-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 18px;
+          padding: 28px 26px 22px;
+          border-bottom: 1px solid #edf0ee;
+        }
+        .school-opportunity-drawer-eyebrow {
+          margin: 0 0 8px;
+          color: #16823b;
+          font-size: 0.7rem;
+          font-weight: 800;
+          letter-spacing: 0.12em;
+        }
+        .school-opportunity-drawer-header h2 {
+          margin: 0;
+          color: #17251d;
+          font-size: 1.45rem;
+          font-weight: 750;
+          letter-spacing: -0.035em;
+        }
+        .school-opportunity-drawer-header p:last-child {
+          margin: 8px 0 0;
+          color: #66736b;
+          font-size: 0.88rem;
+          line-height: 1.5;
+        }
+        .school-opportunity-drawer-close {
+          display: grid;
+          place-items: center;
+          flex: 0 0 38px;
+          width: 38px;
+          height: 38px;
+          border: 1px solid #e4e9e5;
+          border-radius: 10px;
+          background: #fff;
+          color: #536159;
+          cursor: pointer;
+        }
+        .school-opportunity-drawer-close:hover {
+          background: #f3f7f4;
+          color: #17251d;
+        }
+        .school-opportunity-drawer-body {
+          flex: 1;
+          padding: 22px 26px 30px;
+        }
+        .school-opportunity-drawer-section-title {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin: 0 0 12px;
+          color: #69756e;
+          font-size: 0.7rem;
+          font-weight: 800;
+          letter-spacing: 0.1em;
+        }
+        .school-opportunity-drawer-section-title span {
+          display: grid;
+          place-items: center;
+          min-width: 24px;
+          height: 24px;
+          padding: 0 6px;
+          border-radius: 999px;
+          background: #edf7ef;
+          color: #157d36;
+          letter-spacing: 0;
+        }
+        .school-opportunity-list {
+          display: grid;
+          gap: 10px;
+        }
+        .school-opportunity-option {
+          display: flex;
+          align-items: center;
+          width: 100%;
+          gap: 13px;
+          padding: 15px;
+          border: 1px solid #e3e9e5;
+          border-radius: 12px;
+          background: #fff;
+          color: #1b2921;
+          text-align: left;
+          cursor: pointer;
+          transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+        }
+        .school-opportunity-option:hover,
+        .school-opportunity-option:focus-visible {
+          border-color: #4ac66b;
+          background: #f5fbf6;
+          outline: none;
+        }
+        .school-opportunity-option:active {
+          transform: translateY(1px);
+        }
+        .school-opportunity-option-icon,
+        .school-opportunity-empty-icon {
+          display: grid;
+          place-items: center;
+          flex: 0 0 44px;
+          width: 44px;
+          height: 44px;
+          border-radius: 11px;
+          background: #eff9f1;
+          color: #16823b;
+          font-size: 19px;
+        }
+        .school-opportunity-option-copy {
+          display: grid;
+          flex: 1;
+          gap: 4px;
+          min-width: 0;
+        }
+        .school-opportunity-option-copy strong {
+          overflow: hidden;
+          color: #192820;
+          font-size: 0.92rem;
+          font-weight: 700;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .school-opportunity-option-copy span {
+          overflow: hidden;
+          color: #6b776f;
+          font-size: 0.78rem;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .school-opportunity-option-arrow {
+          flex: 0 0 auto;
+          color: #78847c;
+          transform: rotate(-90deg);
+        }
+        .school-opportunity-empty {
+          display: grid;
+          justify-items: center;
+          max-width: 340px;
+          margin: 72px auto 0;
+          text-align: center;
+        }
+        .school-opportunity-empty-icon {
+          width: 56px;
+          height: 56px;
+          margin-bottom: 16px;
+          font-size: 23px;
+        }
+        .school-opportunity-empty h3 {
+          margin: 0;
+          color: #1b2921;
+          font-size: 1.05rem;
+          font-weight: 700;
+        }
+        .school-opportunity-empty p {
+          margin: 7px 0 18px;
+          color: #69756e;
+          font-size: 0.86rem;
+          line-height: 1.5;
+        }
+        .school-opportunity-empty .school-teacher-invite-send-btn {
+          max-width: 260px;
+          margin-top: 0;
+          padding: 0 16px;
+        }
+        .school-teacher-invite-selected-job {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          margin: 0 0 10px;
+          padding: 10px 12px;
+          border: 1px solid #d8ecdd;
+          border-radius: 10px;
+          background: #f3faf4;
+          color: #16823b;
+        }
+        .school-teacher-invite-selected-job > span {
+          display: grid;
+          gap: 2px;
+          color: #26382b;
+        }
+        .school-teacher-invite-selected-job small {
+          color: #588061;
+          font-size: 0.58rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+        }
+        .school-teacher-invite-selected-job strong {
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+        @media (max-width: 520px) {
+          .school-opportunity-drawer-header {
+            padding: 22px 18px 18px;
+          }
+          .school-opportunity-drawer-body {
+            padding: 18px;
+          }
+          .school-opportunity-drawer-header h2 {
+            font-size: 1.25rem;
+          }
         }
         .school-teacher-invite-title {
           margin: 0 0 4px;
@@ -8372,6 +10482,18 @@ export default function AdminDashboard() {
           font-size: 0.86rem;
           font-weight: 700;
           cursor: pointer;
+        }
+        @media (max-width: 520px) {
+          .school-teacher-invite-chooser {
+            right: -6px;
+            width: min(340px, calc(100vw - 28px));
+            padding: 14px;
+          }
+          .school-teacher-invite-choice {
+            min-height: 78px;
+            gap: 10px;
+            padding: 12px;
+          }
         }
 
         .school-shortlist-modal-backdrop {
