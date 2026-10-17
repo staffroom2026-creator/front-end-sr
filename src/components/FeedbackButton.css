@@ -67,6 +67,18 @@
   }
 }
 
+@media (min-width: 768px) {
+  .dashboard-feedback-marquee--school {
+    right: 0;
+    left: 224px;
+    width: calc(100% - 224px);
+  }
+
+  .dashboard-feedback-marquee--school .dashboard-feedback-marquee-track {
+    animation-name: dashboard-feedback-school-desktop-scroll;
+  }
+}
+
 @keyframes dashboard-feedback-marquee-scroll {
   from { transform: translateX(0); }
   to { transform: translateX(-50%); }
@@ -79,6 +91,11 @@
 
 @keyframes dashboard-feedback-teacher-desktop-scroll {
   from { transform: translateX(calc(100vw - 240px)); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes dashboard-feedback-school-desktop-scroll {
+  from { transform: translateX(calc(100vw - 224px)); }
   to { transform: translateX(-50%); }
 }
 
@@ -325,12 +342,13 @@
   min-width: 110px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 767px) {
   .dashboard-feedback-marquee {
     top: calc(76px + env(safe-area-inset-top, 0px));
   }
 
-  .dashboard-feedback-marquee--teacher {
+  .dashboard-feedback-marquee--teacher,
+  .dashboard-feedback-marquee--school {
     right: 0;
     left: 0;
     width: 100%;

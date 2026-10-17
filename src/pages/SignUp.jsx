@@ -178,64 +178,91 @@ export default function SignUp() {
               {/* Teacher fields */}
               {role === 'teacher' && (
                 <>
-                  <input id="mob-firstname" type="text" required autoComplete="given-name"
-                    placeholder="First Name" value={form.firstName}
-                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                    className="su-mob-input" />
-                  <input id="mob-lastname" type="text" required autoComplete="family-name"
-                    placeholder="Last Name" value={form.lastName}
-                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                    className="su-mob-input" />
-                  <input id="mob-email" type="email" required autoComplete="email"
-                    placeholder="Email Address" value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="su-mob-input" />
-                  <input id="mob-phone" type="tel" inputMode="numeric" required autoComplete="tel"
-                    placeholder="Phone number" value={form.phone}
-                    onChange={handlePhoneChange}
-                    className="su-mob-input" />
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="mob-firstname">First name <span aria-hidden="true">*</span></label>
+                    <input id="mob-firstname" type="text" required autoComplete="given-name"
+                      placeholder="First Name" value={form.firstName}
+                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                      className="su-mob-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="mob-lastname">Last name <span aria-hidden="true">*</span></label>
+                    <input id="mob-lastname" type="text" required autoComplete="family-name"
+                      placeholder="Last Name" value={form.lastName}
+                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                      className="su-mob-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="mob-email">Email address <span aria-hidden="true">*</span></label>
+                    <input id="mob-email" type="email" required autoComplete="email"
+                      placeholder="Email Address" value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="su-mob-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="mob-phone">Phone number <span aria-hidden="true">*</span></label>
+                    <input id="mob-phone" type="tel" inputMode="numeric" required autoComplete="tel"
+                      placeholder="Phone number" value={form.phone}
+                      onChange={handlePhoneChange}
+                      className="su-mob-input" />
+                  </div>
                 </>
               )}
 
               {/* School Admin fields */}
               {role === 'school' && (
                 <>
-                  <input id="mob-school" type="text" required autoComplete="organization"
-                    placeholder="Schools name" value={form.schoolName}
-                    onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
-                    className="su-mob-input" />
-                  <input id="mob-official-email" type="email" required autoComplete="email"
-                    placeholder="Official Email address" value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="su-mob-input" />
-                  <input id="mob-school-phone" type="tel" inputMode="numeric" required autoComplete="tel"
-                    placeholder="Phone number" value={form.phone}
-                    onChange={handlePhoneChange}
-                    className="su-mob-input" />
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="mob-school">School name <span aria-hidden="true">*</span></label>
+                    <input id="mob-school" type="text" required autoComplete="organization"
+                      placeholder="Schools name" value={form.schoolName}
+                      onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
+                      className="su-mob-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="mob-official-email">Official email address <span aria-hidden="true">*</span></label>
+                    <input id="mob-official-email" type="email" required autoComplete="email"
+                      placeholder="Official Email address" value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="su-mob-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="mob-school-phone">Phone number <span aria-hidden="true">*</span></label>
+                    <input id="mob-school-phone" type="tel" inputMode="numeric" required autoComplete="tel"
+                      placeholder="Phone number" value={form.phone}
+                      onChange={handlePhoneChange}
+                      className="su-mob-input" />
+                  </div>
                 </>
               )}
 
               {/* Password */}
-              <div className="su-mob-input-wrap">
-                <input id="mob-password" type={showPassword ? 'text' : 'password'} required
-                  autoComplete="new-password" placeholder="Password" value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="su-mob-input su-mob-input--icon" />
-                <button type="button" className="su-mob-eye" onClick={() => setShowPassword(!showPassword)}>
-                  <EyeIcon open={showPassword} />
-                </button>
+              <div className="su-required-group">
+                <label className="su-required-label" htmlFor="mob-password">Password <span aria-hidden="true">*</span></label>
+                <div className="su-mob-input-wrap">
+                  <input id="mob-password" type={showPassword ? 'text' : 'password'} required
+                    autoComplete="new-password" placeholder="Password" value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    className="su-mob-input su-mob-input--icon" />
+                  <button type="button" className="su-mob-eye" onClick={() => setShowPassword(!showPassword)}>
+                    <EyeIcon open={showPassword} />
+                  </button>
+                </div>
               </div>
 
               {/* Confirm password */}
-              <div className="su-mob-input-wrap">
-                <input id="mob-confirm" type={showConfirm ? 'text' : 'password'} required
-                  autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
-                  aria-invalid={passwordsDoNotMatch}
-                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  className="su-mob-input su-mob-input--icon" />
-                <button type="button" className="su-mob-eye" onClick={() => setShowConfirm(!showConfirm)}>
-                  <EyeIcon open={showConfirm} />
-                </button>
+              <div className="su-required-group">
+                <label className="su-required-label" htmlFor="mob-confirm">Confirm password <span aria-hidden="true">*</span></label>
+                <div className="su-mob-input-wrap">
+                  <input id="mob-confirm" type={showConfirm ? 'text' : 'password'} required
+                    autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
+                    aria-invalid={passwordsDoNotMatch}
+                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                    className="su-mob-input su-mob-input--icon" />
+                  <button type="button" className="su-mob-eye" onClick={() => setShowConfirm(!showConfirm)}>
+                    <EyeIcon open={showConfirm} />
+                  </button>
+                </div>
               </div>
               <ul className="su-password-rules" aria-label="Password requirements">
                 {passwordRules.map((rule) => {
@@ -256,12 +283,12 @@ export default function SignUp() {
 
               {/* Terms Checkbox */}
               <label className="su-mob-terms-row" htmlFor="mob-terms">
-                <input id="mob-terms" type="checkbox" className="su-mob-checkbox"
+                <input id="mob-terms" type="checkbox" required className="su-mob-checkbox"
                   checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
                 <span className="su-mob-terms-text">
                   I confirm that i agree to the{' '}
                   <Link to="/terms" className="su-mob-terms-link">terms and conditions</Link>
-                  {' '}below
+                  {' '}below <span className="su-required-marker" aria-hidden="true">*</span>
                 </span>
               </label>
 
@@ -335,66 +362,93 @@ export default function SignUp() {
               {/* Teacher fields */}
               {role === 'teacher' && (
                 <>
-                  <input id="signup-firstname" type="text" required autoComplete="given-name"
-                    placeholder="First name" value={form.firstName}
-                    onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-                    className="su-input" />
-                  <input id="signup-lastname" type="text" required autoComplete="family-name"
-                    placeholder="Last name" value={form.lastName}
-                    onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-                    className="su-input" />
-                  <input id="signup-email" type="email" required autoComplete="email"
-                    placeholder="Email address" value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="su-input" />
-                  <input id="signup-phone" type="tel" inputMode="numeric" required autoComplete="tel"
-                    placeholder="Phone number" value={form.phone}
-                    onChange={handlePhoneChange}
-                    className="su-input" />
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="signup-firstname">First name <span aria-hidden="true">*</span></label>
+                    <input id="signup-firstname" type="text" required autoComplete="given-name"
+                      placeholder="First name" value={form.firstName}
+                      onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                      className="su-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="signup-lastname">Last name <span aria-hidden="true">*</span></label>
+                    <input id="signup-lastname" type="text" required autoComplete="family-name"
+                      placeholder="Last name" value={form.lastName}
+                      onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                      className="su-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="signup-email">Email address <span aria-hidden="true">*</span></label>
+                    <input id="signup-email" type="email" required autoComplete="email"
+                      placeholder="Email address" value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="su-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="signup-phone">Phone number <span aria-hidden="true">*</span></label>
+                    <input id="signup-phone" type="tel" inputMode="numeric" required autoComplete="tel"
+                      placeholder="Phone number" value={form.phone}
+                      onChange={handlePhoneChange}
+                      className="su-input" />
+                  </div>
                 </>
               )}
 
               {/* School Admin fields */}
               {role === 'school' && (
                 <>
-                  <input id="signup-school-name" type="text" required autoComplete="organization"
-                    placeholder="Schools name" value={form.schoolName}
-                    onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
-                    className="su-input" />
-                  <input id="signup-official-email" type="email" required autoComplete="email"
-                    placeholder="Official Email address" value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    className="su-input" />
-                  <input id="signup-school-phone" type="tel" inputMode="numeric" required autoComplete="tel"
-                    placeholder="Phone number" value={form.phone}
-                    onChange={handlePhoneChange}
-                    className="su-input" />
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="signup-school-name">School name <span aria-hidden="true">*</span></label>
+                    <input id="signup-school-name" type="text" required autoComplete="organization"
+                      placeholder="Schools name" value={form.schoolName}
+                      onChange={(e) => setForm({ ...form, schoolName: e.target.value })}
+                      className="su-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="signup-official-email">Official email address <span aria-hidden="true">*</span></label>
+                    <input id="signup-official-email" type="email" required autoComplete="email"
+                      placeholder="Official Email address" value={form.email}
+                      onChange={(e) => setForm({ ...form, email: e.target.value })}
+                      className="su-input" />
+                  </div>
+                  <div className="su-required-group">
+                    <label className="su-required-label" htmlFor="signup-school-phone">Phone number <span aria-hidden="true">*</span></label>
+                    <input id="signup-school-phone" type="tel" inputMode="numeric" required autoComplete="tel"
+                      placeholder="Phone number" value={form.phone}
+                      onChange={handlePhoneChange}
+                      className="su-input" />
+                  </div>
                 </>
               )}
 
               {/* Password */}
-              <div className="su-input-wrap">
-                <input id="signup-password" type={showPassword ? 'text' : 'password'} required
-                  autoComplete="new-password" placeholder="Password" value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="su-input su-input--icon" />
-                <button type="button" id="signup-toggle-password" className="su-eye-btn"
-                  onClick={() => setShowPassword(!showPassword)}>
-                  <EyeIcon open={showPassword} />
-                </button>
+              <div className="su-required-group">
+                <label className="su-required-label" htmlFor="signup-password">Password <span aria-hidden="true">*</span></label>
+                <div className="su-input-wrap">
+                  <input id="signup-password" type={showPassword ? 'text' : 'password'} required
+                    autoComplete="new-password" placeholder="Password" value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    className="su-input su-input--icon" />
+                  <button type="button" id="signup-toggle-password" className="su-eye-btn"
+                    onClick={() => setShowPassword(!showPassword)}>
+                    <EyeIcon open={showPassword} />
+                  </button>
+                </div>
               </div>
 
               {/* Confirm password */}
-              <div className="su-input-wrap">
-                <input id="signup-confirm-password" type={showConfirm ? 'text' : 'password'} required
-                  autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
-                  aria-invalid={passwordsDoNotMatch}
-                  onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                  className="su-input su-input--icon" />
-                <button type="button" id="signup-toggle-confirm" className="su-eye-btn"
-                  onClick={() => setShowConfirm(!showConfirm)}>
-                  <EyeIcon open={showConfirm} />
-                </button>
+              <div className="su-required-group">
+                <label className="su-required-label" htmlFor="signup-confirm-password">Confirm password <span aria-hidden="true">*</span></label>
+                <div className="su-input-wrap">
+                  <input id="signup-confirm-password" type={showConfirm ? 'text' : 'password'} required
+                    autoComplete="new-password" placeholder="Confirmed password" value={form.confirmPassword}
+                    aria-invalid={passwordsDoNotMatch}
+                    onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
+                    className="su-input su-input--icon" />
+                  <button type="button" id="signup-toggle-confirm" className="su-eye-btn"
+                    onClick={() => setShowConfirm(!showConfirm)}>
+                    <EyeIcon open={showConfirm} />
+                  </button>
+                </div>
               </div>
               <ul className="su-password-rules" aria-label="Password requirements">
                 {passwordRules.map((rule) => {
@@ -415,12 +469,12 @@ export default function SignUp() {
 
               {/* Terms */}
               <label className="su-terms-row" htmlFor="signup-terms">
-                <input id="signup-terms" type="checkbox" className="su-checkbox"
+                <input id="signup-terms" type="checkbox" required className="su-checkbox"
                   checked={agreedToTerms} onChange={(e) => setAgreedToTerms(e.target.checked)} />
                 <span className="su-terms-text">
                   I confirm that i agree to the{' '}
                   <Link to="/terms" className="su-terms-link">terms and conditions</Link>
-                  {' '}below
+                  {' '}below <span className="su-required-marker" aria-hidden="true">*</span>
                 </span>
               </label>
 
@@ -492,6 +546,22 @@ export default function SignUp() {
           stroke: #fff;
         }
         .su-input[aria-invalid="true"], .su-mob-input[aria-invalid="true"] { border-color: #b91c1c; }
+
+        .su-required-group {
+          display: flex;
+          flex-direction: column;
+          gap: 5px;
+        }
+        .su-required-label {
+          color: #374151;
+          font-size: 12px;
+          font-weight: 600;
+          line-height: 1.3;
+        }
+        .su-required-marker,
+        .su-required-label span {
+          color: #dc2626;
+        }
 
         .su-layout {
           min-height: 100vh;

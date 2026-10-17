@@ -222,6 +222,7 @@ export default function AdminDashboard() {
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
   const [selectedCoverLetter, setSelectedCoverLetter] = useState("");
+  const [selectedCvPreview, setSelectedCvPreview] = useState(null);
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
   const [selectedTeacherProfileError, setSelectedTeacherProfileError] = useState("");
   const [teacherProfileTarget, setTeacherProfileTarget] = useState(null);
@@ -251,6 +252,17 @@ export default function AdminDashboard() {
     window.addEventListener("keydown", handleCoverLetterKeyDown);
     return () => window.removeEventListener("keydown", handleCoverLetterKeyDown);
   }, [selectedCoverLetter]);
+
+  useEffect(() => {
+    if (!selectedCvPreview) return undefined;
+
+    const handleCvPreviewKeyDown = (event) => {
+      if (event.key === "Escape") setSelectedCvPreview(null);
+    };
+
+    window.addEventListener("keydown", handleCvPreviewKeyDown);
+    return () => window.removeEventListener("keydown", handleCvPreviewKeyDown);
+  }, [selectedCvPreview]);
   const [isSchoolNameEditing, setIsSchoolNameEditing] = useState(false);
   const [schoolNameValue, setSchoolNameValue] = useState("");
   const [isEmailEditing, setIsEmailEditing] = useState(false);
@@ -1550,33 +1562,74 @@ export default function AdminDashboard() {
   };
 
   const loadUsers = async () => {
-    try {
-      const response = await adminService.getTeachers();
+    const perPage = 100;
+    const maxPages = 1000;
+    let page = 1;
+    let lastPage = 1;
+    const allTeacherRecords = [];
+
+    while (page <= lastPage) {
+      if (page > maxPages) {
+        throw new Error(`Teacher directory exceeded the ${maxPages}-page safety limit.`);
+      }
+
+      const response = await adminService.getTeachers({ page, per_page: perPage });
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const pagination = payload?.pagination
+        || payload?.meta?.pagination
+        || response?.data?.pagination
+        || response?.data?.meta?.pagination
+        || {};
       const users = extractApiList(response, ["teachers", "users"]);
+      allTeacherRecords.push(...users.filter(Boolean));
 
-      const normalizedUsers = users
-        .filter(Boolean)
-        .map((entry) => ({
-          ...entry,
-          role: String(entry?.role || "teacher").toLowerCase(),
-          full_name:
-            entry?.full_name ||
-            entry?.teacher_name ||
-            [entry?.first_name, entry?.last_name].filter(Boolean).join(" ") ||
-            entry?.name ||
-            "Teacher",
-          email: entry?.email || entry?.teacher_email || "",
-          phone: entry?.phone || entry?.teacher_phone || "",
-          subject: entry?.subject || entry?.role_title || entry?.specialization || "General",
-          location: entry?.location || entry?.state || entry?.city || "Nigeria",
-          experience: entry?.experience || entry?.experience_years || "Not specified",
-          availability: entry?.availability || "Available",
-        }));
+      const reportedLastPage = Number(
+        pagination.last_page
+        ?? pagination.lastPage
+        ?? pagination.total_pages
+        ?? pagination.totalPages,
+      );
+      const reportedTotal = Number(pagination.total ?? pagination.total_items ?? pagination.totalItems);
+      const reportedPageSize = Number(pagination.per_page ?? pagination.perPage);
 
-      setAllUsers(normalizedUsers);
-    } catch {
-      setAllUsers([]);
+      if (Number.isFinite(reportedLastPage) && reportedLastPage > 0) {
+        lastPage = reportedLastPage;
+      } else if (
+        Number.isFinite(reportedTotal)
+        && reportedTotal >= 0
+        && Number.isFinite(reportedPageSize)
+        && reportedPageSize > 0
+      ) {
+        lastPage = Math.ceil(reportedTotal / reportedPageSize);
+      } else {
+        const pageSize = Number.isFinite(reportedPageSize) && reportedPageSize > 0
+          ? reportedPageSize
+          : perPage;
+        lastPage = users.length >= pageSize ? page + 1 : page;
+      }
+
+      page += 1;
     }
+
+    const normalizedUsers = allTeacherRecords
+      .map((entry) => ({
+        ...entry,
+        role: String(entry?.role || "teacher").toLowerCase(),
+        full_name:
+          entry?.full_name ||
+          entry?.teacher_name ||
+          [entry?.first_name, entry?.last_name].filter(Boolean).join(" ") ||
+          entry?.name ||
+          "Teacher",
+        email: entry?.email || entry?.teacher_email || "",
+        phone: entry?.phone || entry?.teacher_phone || "",
+        subject: entry?.subject || entry?.role_title || entry?.specialization || "General",
+        location: entry?.location || entry?.state || entry?.city || "Nigeria",
+        experience: entry?.experience || entry?.experience_years || "Not specified",
+        availability: entry?.availability || "Available",
+      }));
+
+    setAllUsers(normalizedUsers);
   };
 
   const loadDashboard = useEffectEvent(async () => {
@@ -3103,7 +3156,7 @@ export default function AdminDashboard() {
             <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
           </div>
           <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
-          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <button type="button" className="school-summary-cover-letter school-summary-cover-letter-trigger" onClick={() => setSelectedCoverLetter(coverLetter)} aria-label="View submitted cover letter"><FiFileText /><span><strong>Cover letter</strong><small>Click to read the submitted letter</small></span><FiArrowRight className="school-summary-cover-letter-arrow" /></button> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter school-summary-additional-info"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
+          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => setSelectedCvPreview({ url: cvUrl, name: cvUrl.split('/').pop() || "Applicant CV" })}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <button type="button" className="school-summary-cover-letter school-summary-cover-letter-trigger" onClick={() => setSelectedCoverLetter(coverLetter)} aria-label="View submitted cover letter"><FiFileText /><span><strong>Cover letter</strong><small>Click to read the submitted letter</small></span><FiArrowRight className="school-summary-cover-letter-arrow" /></button> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter school-summary-additional-info"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
         </div></div>
           <AnimatePresence>
             {selectedCoverLetter && (
@@ -3137,6 +3190,44 @@ export default function AdminDashboard() {
                     </button>
                   </header>
                   <div className="school-cover-letter-modal-content">{selectedCoverLetter}</div>
+                </Motion.section>
+              </Motion.div>
+            )}
+            {selectedCvPreview && (
+              <Motion.div
+                className="school-cv-preview-backdrop"
+                role="presentation"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setSelectedCvPreview(null)}
+              >
+                <Motion.section
+                  className="school-cv-preview-modal"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="school-cv-preview-title"
+                  initial={{ opacity: 0, y: 18, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 18, scale: 0.98 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <header className="school-cover-letter-modal-header">
+                    <div>
+                      <span><FiFileText size={16} /> Applicant document</span>
+                      <h2 id="school-cv-preview-title">{selectedCvPreview.name}</h2>
+                    </div>
+                    <button type="button" aria-label="Close CV preview" onClick={() => setSelectedCvPreview(null)}>
+                      <FiX size={19} />
+                    </button>
+                  </header>
+                  <iframe
+                    className="school-cv-preview-frame"
+                    src={selectedCvPreview.url}
+                    title={`CV preview: ${selectedCvPreview.name}`}
+                  />
                 </Motion.section>
               </Motion.div>
             )}
@@ -11446,6 +11537,38 @@ export default function AdminDashboard() {
   backdrop-filter: blur(3px);
 }
 
+.school-cv-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1310;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(18, 31, 25, .56);
+  backdrop-filter: blur(3px);
+}
+
+.school-cv-preview-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1000px, 100%);
+  height: min(88vh, 900px);
+  overflow: hidden;
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 24px 64px rgba(15, 30, 21, .24);
+}
+
+.school-cv-preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  border: 0;
+  background: #f1f4f2;
+}
+
 .school-cover-letter-modal {
   display: flex;
   flex-direction: column;
@@ -11518,6 +11641,8 @@ export default function AdminDashboard() {
   .school-cover-letter-modal { max-height: 84vh; }
   .school-cover-letter-modal-header { padding: 17px 18px 14px; }
   .school-cover-letter-modal-content { padding: 18px; }
+  .school-cv-preview-backdrop { padding: 12px; }
+  .school-cv-preview-modal { width: 100%; height: 90vh; }
 }
 
 

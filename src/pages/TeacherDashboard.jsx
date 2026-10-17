@@ -19,7 +19,6 @@ import {
   FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
 } from 'react-icons/fi';
 
-const COVER_LETTER_MIN_LENGTH = 1000;
 const COVER_LETTER_MAX_LENGTH = 3000;
 
 const pageVariants = {
@@ -795,6 +794,7 @@ export default function TeacherDashboard() {
   const [showApplicationSuccessModal, setShowApplicationSuccessModal] = useState(false);
   const [reviewCoverLetterEditing, setReviewCoverLetterEditing] = useState(false);
   const [reviewCvEditing, setReviewCvEditing] = useState(false);
+  const [reviewCvPreviewOpen, setReviewCvPreviewOpen] = useState(false);
   const [applicationStep, setApplicationStep] = useState(1);
   const [sortBy, setSortBy] = useState('Newest First');
 
@@ -1164,6 +1164,7 @@ export default function TeacherDashboard() {
   const [applyDetailsLoading, setApplyDetailsLoading] = useState(false);
   const [alreadyAppliedState, setAlreadyAppliedState] = useState(false);
   const [existingCvUrl, setExistingCvUrl] = useState('');
+  const profileCvUrl = toTeacherAssetUrl(existingCvUrl || activeResume?.url || profileState?.cv_url || '');
   const [applicationRequirements, setApplicationRequirements] = useState(null);
   const [submittingApplication, setSubmittingApplication] = useState(false);
   const [applicationError, setApplicationError] = useState('');
@@ -1173,18 +1174,18 @@ export default function TeacherDashboard() {
   const cvFileInputRef = useRef(null);
 
   const handleResumeAction = (mode) => {
-    if (!activeResume?.url) {
+    if (!profileCvUrl) {
       setAppError('No resume uploaded for this teacher profile.');
       return;
     }
 
     if (mode === 'view') {
-      window.open(activeResume.url, '_blank', 'noopener,noreferrer');
+      window.open(profileCvUrl, '_blank', 'noopener,noreferrer');
       return;
     }
 
     const link = document.createElement('a');
-    link.href = activeResume.url;
+    link.href = profileCvUrl;
     link.download = activeResume.name || 'resume';
     link.target = '_blank';
     document.body.appendChild(link);
@@ -2111,8 +2112,8 @@ export default function TeacherDashboard() {
     const jobId = normalizeJobId(selectedJob.job_id || selectedJob.id);
     const coverLetterText = applicationForm.coverLetter.trim();
 
-    if (coverLetterText.length < COVER_LETTER_MIN_LENGTH || coverLetterText.length > COVER_LETTER_MAX_LENGTH) {
-      setApplicationError(`Your cover letter must be between ${COVER_LETTER_MIN_LENGTH} and ${COVER_LETTER_MAX_LENGTH} characters.`);
+    if (coverLetterText.length > COVER_LETTER_MAX_LENGTH) {
+      setApplicationError(`Your cover letter must be no more than ${COVER_LETTER_MAX_LENGTH} characters.`);
       return;
     }
 
@@ -4454,8 +4455,11 @@ export default function TeacherDashboard() {
                         <div className="td-pers-grid">
                           {/* First Name */}
                           <div className="td-pers-field-group">
-                            <label className="td-pers-label">First Name</label>
+                            <label className="td-pers-label">
+                              First Name <span className="td-pers-required-marker" aria-hidden="true">*</span>
+                            </label>
                             <input
+                              required
                               type="text"
                               className="td-pers-input"
                               value={personalFirstName}
@@ -4465,8 +4469,11 @@ export default function TeacherDashboard() {
 
                           {/* Last Name */}
                           <div className="td-pers-field-group">
-                            <label className="td-pers-label">Last Name</label>
+                            <label className="td-pers-label">
+                              Last Name <span className="td-pers-required-marker" aria-hidden="true">*</span>
+                            </label>
                             <input
+                              required
                               type="text"
                               className="td-pers-input"
                               value={personalLastName}
@@ -4597,13 +4604,14 @@ export default function TeacherDashboard() {
                         </label>
 
                         <label className="td-change-phone-field">
-                          <span>New phone number</span>
+                          <span>New phone number <span className="td-pers-required-marker" aria-hidden="true">*</span></span>
                           <div className="td-change-phone-input-wrap">
                             <span className="td-change-phone-prefix">NG (+234)<FiChevronDown size={14} /></span>
                             <input
                               type="tel"
                               inputMode="numeric"
                               autoComplete="tel-national"
+                              required
                               placeholder="Enter mobile number"
                               value={newPhoneNumber}
                               onChange={(event) => setNewPhoneNumber(event.target.value.replace(/\D/g, '').slice(0, 11))}
@@ -4654,10 +4662,11 @@ export default function TeacherDashboard() {
                         </label>
 
                         <label className="td-change-email-field">
-                          <span>New email address</span>
+                          <span>New email address <span className="td-pers-required-marker" aria-hidden="true">*</span></span>
                           <input
                             type="email"
                             autoComplete="email"
+                            required
                             placeholder="e.g. adeyemi.t@school.edu"
                             value={newEmailAddress}
                             onChange={(event) => setNewEmailAddress(event.target.value)}
@@ -4694,9 +4703,9 @@ export default function TeacherDashboard() {
                       <div className="td-prof-edit-grid">
                         <section className="td-prof-edit-card td-prof-edit-card--primary">
                           <h2><FiBriefcase /> Identity &amp; Experience</h2>
-                          <label>Professional Title<input type="text" value={profTitle} onChange={(event) => setProfTitle(event.target.value)} /></label>
+                          <label>Professional Title <span className="td-pers-required-marker" aria-hidden="true">*</span><input type="text" value={profTitle} onChange={(event) => setProfTitle(event.target.value)} /></label>
                           <label>
-                            Professional Summary
+                            Professional Summary <span className="td-pers-required-marker" aria-hidden="true">*</span>
                             <textarea
                               value={profSummary}
                               maxLength={1000}
@@ -4710,21 +4719,21 @@ export default function TeacherDashboard() {
                               {profSummary.length}/1000 characters
                             </span>
                           </label>
-                          <label>Years of Experience<select value={profYearsExp} onChange={(event) => setProfYearsExp(event.target.value)}><option value="Not provided">Not provided</option><option value="0+ years">0+ years</option><option value="1+ years">1+ years</option><option value="2+ years">2+ years</option><option value="3+ years">3+ years</option><option value="5+ years">5+ years</option><option value="8+ years">8+ years</option><option value="10+ years">10+ years</option></select></label>
+                          <label>Years of Experience <span className="td-pers-required-marker" aria-hidden="true">*</span><select value={profYearsExp} onChange={(event) => setProfYearsExp(event.target.value)}><option value="Not provided">Not provided</option><option value="0+ years">0+ years</option><option value="1+ years">1+ years</option><option value="2+ years">2+ years</option><option value="3+ years">3+ years</option><option value="5+ years">5+ years</option><option value="8+ years">8+ years</option><option value="10+ years">10+ years</option></select></label>
                           <div className="td-prof-preferences">
                             <h2><FiFilter /> Preferences</h2>
-                            <label>Preferred Employment Type<select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
+                            <label>Preferred Employment Type <span className="td-pers-required-marker" aria-hidden="true">*</span><select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
                             <label>Teaching Mode<select value={profTeachingMode} onChange={(event) => setProfTeachingMode(event.target.value)}><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
                           </div>
                         </section>
                         <aside className="td-prof-edit-aside">
                           <section className="td-prof-edit-card">
-                            <h2><FiAward /> Expertise</h2><span className="td-prof-edit-label">Subjects</span>
+                            <h2><FiAward /> Expertise</h2><span className="td-prof-edit-label">Subjects <span className="td-pers-required-marker" aria-hidden="true">*</span></span>
                             <div className="td-prof-edit-subjects">
                               {profSubjects.map((subject) => <button type="button" key={subject} onClick={() => setProfSubjects((items) => items.filter((item) => item !== subject))}>{subject} x</button>)}
                               {showAddSubject ? <input autoFocus value={newSubjectInput} onChange={(event) => setNewSubjectInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && newSubjectInput.trim()) { event.preventDefault(); setProfSubjects((items) => [...items, newSubjectInput.trim()]); setNewSubjectInput(''); setShowAddSubject(false); } }} onBlur={() => setShowAddSubject(false)} aria-label="New subject" /> : <button type="button" className="td-prof-add-subject" onClick={() => setShowAddSubject(true)}>+ Add Subject</button>}
                             </div>
-                            <div className="td-prof-edit-levels"><span className="td-prof-edit-label">Teaching Levels</span>{teacherLevelOptions.map((level) => <label key={level}><input type="checkbox" checked={profTeachingLevels.includes(level)} onChange={() => setProfTeachingLevels((levels) => levels.includes(level) ? levels.filter((item) => item !== level) : [...levels, level])} />{level}</label>)}</div>
+                            <div className="td-prof-edit-levels"><span className="td-prof-edit-label">Teaching Levels <span className="td-pers-required-marker" aria-hidden="true">*</span></span>{teacherLevelOptions.map((level) => <label key={level}><input type="checkbox" checked={profTeachingLevels.includes(level)} onChange={() => setProfTeachingLevels((levels) => levels.includes(level) ? levels.filter((item) => item !== level) : [...levels, level])} />{level}</label>)}</div>
                           </section>
                           <button type="button" className="td-prof-save-btn" disabled={savingProfessionalInfo} onClick={handleSaveProfessionalInfo}>{savingProfessionalInfo ? 'Saving...' : 'Save Changes'}</button>
                         </aside>
@@ -5069,7 +5078,7 @@ export default function TeacherDashboard() {
                             </div>
                             <div className="td-modal-body">
                               <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                <label className="td-pers-label">Degree / Certificate</label>
+                                <label className="td-pers-label">Degree / Certificate <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                 <select
                                   className="td-pers-input"
                                   value={newEduForm.degree}
@@ -5081,7 +5090,7 @@ export default function TeacherDashboard() {
                               </div>
                               {newEduForm.degree === 'Others' && (
                                 <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                  <label className="td-pers-label">Other Degree / Certificate</label>
+                                  <label className="td-pers-label">Other Degree / Certificate <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                   <input
                                     type="text"
                                     placeholder="Enter your degree or certificate"
@@ -5092,7 +5101,7 @@ export default function TeacherDashboard() {
                                 </div>
                               )}
                               <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                <label className="td-pers-label">Institution / University</label>
+                                <label className="td-pers-label">Institution / University <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                 <input
                                   type="text"
                                   placeholder="e.g. University of Benin"
@@ -5113,7 +5122,7 @@ export default function TeacherDashboard() {
                               </div>
                               <div className="td-pers-grid td-edu-years-grid" style={{ marginBottom: '16px' }}>
                                 <div className="td-pers-field-group">
-                                  <label className="td-pers-label">Start Year</label>
+                                  <label className="td-pers-label">Start Year <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                   <input
                                     type="number"
                                     placeholder="2015"
@@ -5142,7 +5151,7 @@ export default function TeacherDashboard() {
                                 </div>
                               </div>
                               <div className="td-pers-field-group">
-                                <label className="td-pers-label">Status</label>
+                                <label className="td-pers-label">Status <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                 <select
                                   className="td-pers-input"
                                   value={newEduForm.status}
@@ -5374,7 +5383,7 @@ export default function TeacherDashboard() {
                             </div>
                             <div className="td-modal-body">
                               <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                <label className="td-pers-label">Role / Job Title</label>
+                                <label className="td-pers-label">Role / Job Title <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                 <input
                                   type="text"
                                   placeholder="e.g. Senior Mathematics Teacher"
@@ -5385,7 +5394,7 @@ export default function TeacherDashboard() {
                               </div>
                               <div className="td-pers-grid" style={{ marginBottom: '16px' }}>
                                 <div className="td-pers-field-group">
-                                  <label className="td-pers-label">School / Institution</label>
+                                  <label className="td-pers-label">School / Institution <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                   <input
                                     type="text"
                                     placeholder="e.g. Bright Future College"
@@ -5407,7 +5416,7 @@ export default function TeacherDashboard() {
                               </div>
                               <div className="td-pers-grid td-exp-period-grid" style={{ marginBottom: '16px' }}>
                                 <div className="td-pers-field-group">
-                                  <label className="td-pers-label">Start Month and Year</label>
+                                  <label className="td-pers-label">Start Month and Year <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
                                   <input type="month" className="td-pers-input" value={expForm.start_date} onChange={(e) => setExpForm({ ...expForm, start_date: e.target.value })} />
                                 </div>
                                 <div className="td-pers-field-group">
@@ -6279,7 +6288,15 @@ export default function TeacherDashboard() {
                       <strong>{activeResume?.name || existingCvUrl.split('/').pop() || 'Profile CV'}</strong>
                       <span>Last updated: {activeResume.uploadDate}</span>
                     </div>
-                    <FiEye size={18} className="td-review-document-action" />
+                    <button
+                      type="button"
+                      className="td-review-document-action"
+                      onClick={() => setReviewCvPreviewOpen((open) => !open)}
+                      aria-label={reviewCvPreviewOpen ? 'Hide CV preview' : 'Preview CV'}
+                      aria-expanded={reviewCvPreviewOpen}
+                    >
+                      <FiEye size={18} />
+                    </button>
                   </div>
                 ) : (
                   <label className="td-review-upload-field">
@@ -6287,6 +6304,22 @@ export default function TeacherDashboard() {
                     <span>{applicationForm.resumeFile ? applicationForm.resumeFile.name : 'Upload a CV for this application'}</span>
                     <input type="file" accept=".pdf,.doc,.docx" onChange={handleFileInput} />
                   </label>
+                )}
+                {reviewCvPreviewOpen && (
+                  <div className="td-review-document-preview">
+                    <div className="td-review-document-preview-header">
+                      <strong>CV preview</strong>
+                      <div>
+                        <button type="button" onClick={() => handleResumeAction('download')}>Download CV</button>
+                        <button type="button" onClick={() => setReviewCvPreviewOpen(false)}>Close preview</button>
+                      </div>
+                    </div>
+                    <iframe
+                      className="td-review-pdf-preview"
+                      src={profileCvUrl}
+                      title="CV preview"
+                    />
+                  </div>
                 )}
               </section>
 
@@ -6296,13 +6329,12 @@ export default function TeacherDashboard() {
                   <div className="td-review-existing-letter">{applicationForm.coverLetter}</div>
                 ) : (
                   <label className="td-review-letter-field">
-                    <span>Cover letter ({COVER_LETTER_MIN_LENGTH}–{COVER_LETTER_MAX_LENGTH} characters)</span>
+                    <span>Cover letter (Optional, up to {COVER_LETTER_MAX_LENGTH} characters)</span>
                     <div className="td-review-letter-editor">
                       <textarea
                         value={applicationForm.coverLetter}
                         onChange={(event) => setApplicationForm((current) => ({ ...current, coverLetter: event.target.value.slice(0, COVER_LETTER_MAX_LENGTH), coverLetterFile: null }))}
                         placeholder="Explain why you are a good fit for this role."
-                        minLength={COVER_LETTER_MIN_LENGTH}
                         maxLength={COVER_LETTER_MAX_LENGTH}
                         rows={6}
                       />
@@ -6310,11 +6342,6 @@ export default function TeacherDashboard() {
                         type="button"
                         className="td-review-letter-confirm"
                         onClick={() => {
-                          const letterLength = applicationForm.coverLetter.trim().length;
-                          if (letterLength < COVER_LETTER_MIN_LENGTH || letterLength > COVER_LETTER_MAX_LENGTH) {
-                            setApplicationError(`Your cover letter must be between ${COVER_LETTER_MIN_LENGTH} and ${COVER_LETTER_MAX_LENGTH} characters.`);
-                            return;
-                          }
                           setApplicationError('');
                           setReviewCoverLetterEditing(false);
                         }}
@@ -6324,9 +6351,8 @@ export default function TeacherDashboard() {
                         <FiCheck size={16} />
                       </button>
                     </div>
-                    <span className={`td-cover-letter-counter ${applicationForm.coverLetter.trim().length >= COVER_LETTER_MIN_LENGTH ? 'is-valid' : ''}`} aria-live="polite">
+                    <span className="td-cover-letter-counter" aria-live="polite">
                       {applicationForm.coverLetter.length} / {COVER_LETTER_MAX_LENGTH} characters
-                      {applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH && ` · ${COVER_LETTER_MIN_LENGTH - applicationForm.coverLetter.trim().length} more required`}
                     </span>
                   </label>
                 )}
@@ -6336,13 +6362,13 @@ export default function TeacherDashboard() {
 
               <label className="td-review-consent">
                 <input type="checkbox" checked={applicationConsent} onChange={(event) => setApplicationConsent(event.target.checked)} />
-                <span>I confirm that the information provided in this application is true and accurate to the best of my knowledge. I understand that any false statements may result in disqualification from the hiring process.</span>
+                <span>I confirm that the information provided in this application is true and accurate to the best of my knowledge. I understand that any false statements may result in disqualification from the hiring process. <span className="td-pers-required-marker" aria-hidden="true">*</span></span>
               </label>
             </div>
 
             <footer className="td-review-modal-footer">
               <button type="button" className="td-review-back-btn" onClick={closeApplyModal} disabled={submittingApplication}>Back</button>
-              <button type="button" className="td-review-submit-btn" onClick={submitJobApplication} disabled={!applicationConsent || submittingApplication || (!(existingCvUrl || activeResume?.url || profileState?.cv_url || applicationForm.resumeFile)) || applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH || applicationForm.coverLetter.trim().length > COVER_LETTER_MAX_LENGTH}>
+              <button type="button" className="td-review-submit-btn" onClick={submitJobApplication} disabled={!applicationConsent || submittingApplication || (!(existingCvUrl || activeResume?.url || profileState?.cv_url || applicationForm.resumeFile))}>
                 {submittingApplication ? 'Submitting...' : 'Submit Application'}
               </button>
             </footer>
@@ -6407,15 +6433,15 @@ export default function TeacherDashboard() {
                       <h3>1. Candidate Details</h3>
                       <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Verify your contact information before proceeding to your CV and cover letter.</p>
                       <label>
-                        Full name
+                        Full name <span className="td-pers-required-marker" aria-hidden="true">*</span>
                         <input name="name" type="text" value={applicationForm.name} onChange={handleApplicationInput} required placeholder="Jane Doe" />
                       </label>
                       <label>
-                        Email address
+                        Email address <span className="td-pers-required-marker" aria-hidden="true">*</span>
                         <input name="email" type="email" value={applicationForm.email} onChange={handleApplicationInput} required placeholder="jane@example.com" />
                       </label>
                       <label>
-                        Phone number
+                        Phone number <span className="td-pers-required-marker" aria-hidden="true">*</span>
                         <input name="phone" type="tel" value={applicationForm.phone} onChange={handleApplicationInput} required placeholder="+234 800 000 0000" />
                       </label>
                       <label>
@@ -6427,7 +6453,7 @@ export default function TeacherDashboard() {
 
                   {applicationStep === 2 && (
                     <div className="td-modal-step">
-                      <h3>2. Curriculum Vitae (CV)</h3>
+                      <h3>2. Curriculum Vitae (CV) <span className="td-pers-required-marker" aria-hidden="true">*</span></h3>
                       <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Attach your CV to give the employer a complete view of your academic background.</p>
 
                       {(existingCvUrl || activeResume?.url || profileState?.cv_url) && (
@@ -6512,26 +6538,20 @@ export default function TeacherDashboard() {
                   {applicationStep === 3 && (
                     <div className="td-modal-step">
                       <h3>3. Cover Letter & Additional Information</h3>
-                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Provide a tailored cover letter explaining why you are the best fit for this position.</p>
+                      <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>Add a cover letter to explain why you are a good fit for this position (optional).</p>
 
                       <label>
-                        Cover letter <span style={{ color: '#dc2626' }}>*</span>
+                        Cover letter (Optional)
                         <textarea
                           name="coverLetter"
                           value={applicationForm.coverLetter}
                           onChange={handleApplicationInput}
-                          placeholder={`Introduce yourself, your teaching experience, key accomplishments, and why you are interested in joining this school (minimum ${COVER_LETTER_MIN_LENGTH} characters)...`}
-                          required
-                          minLength={COVER_LETTER_MIN_LENGTH}
+                          placeholder="Introduce yourself, your teaching experience, key accomplishments, and why you are interested in joining this school..."
                           maxLength={COVER_LETTER_MAX_LENGTH}
                           style={{ minHeight: '130px' }}
                         />
                         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginTop: '6px' }}>
-                          <span style={{ color: applicationForm.coverLetter.trim().length >= COVER_LETTER_MIN_LENGTH ? '#166534' : '#dc2626' }}>
-                            {applicationForm.coverLetter.trim().length >= COVER_LETTER_MIN_LENGTH
-                              ? '✓ Minimum length requirement satisfied'
-                              : `Must be at least ${COVER_LETTER_MIN_LENGTH} characters (${applicationForm.coverLetter.trim().length}/${COVER_LETTER_MIN_LENGTH})`}
-                          </span>
+                          <span>No minimum length</span>
                           <span style={{ color: applicationForm.coverLetter.length >= COVER_LETTER_MAX_LENGTH ? '#dc2626' : '#64748b' }}>{applicationForm.coverLetter.length}/{COVER_LETTER_MAX_LENGTH} chars</span>
                         </div>
                       </label>
@@ -6568,8 +6588,8 @@ export default function TeacherDashboard() {
                       <button
                         type="submit"
                         className="td-modal-primary-btn"
-                        disabled={submittingApplication || applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH || applicationForm.coverLetter.trim().length > COVER_LETTER_MAX_LENGTH}
-                        style={{ opacity: submittingApplication || applicationForm.coverLetter.trim().length < COVER_LETTER_MIN_LENGTH || applicationForm.coverLetter.trim().length > COVER_LETTER_MAX_LENGTH ? 0.7 : 1 }}
+                        disabled={submittingApplication}
+                        style={{ opacity: submittingApplication ? 0.7 : 1 }}
                       >
                         {submittingApplication ? 'Submitting Application...' : 'Submit Application'}
                       </button>
@@ -9672,8 +9692,65 @@ export default function TeacherDashboard() {
         }
 
         .td-review-document-action {
+          display: grid;
+          place-items: center;
+          border: 0;
+          padding: 5px;
           flex-shrink: 0;
           color: #64748B;
+          background: transparent;
+          cursor: pointer;
+        }
+
+        .td-review-document-action:hover {
+          color: #166534;
+        }
+
+        .td-review-document-preview {
+          margin-top: 12px;
+          overflow: hidden;
+          border: 1px solid #CBD8D0;
+          border-radius: 8px;
+          background: #F8FAFC;
+        }
+
+        .td-review-document-preview-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 10px 12px;
+          border-bottom: 1px solid #E2E8F0;
+          background: #FFFFFF;
+        }
+
+        .td-review-document-preview-header strong {
+          color: #334155;
+          font-size: 12px;
+        }
+
+        .td-review-document-preview-header > div {
+          display: flex;
+          gap: 12px;
+        }
+
+        .td-review-document-preview-header button {
+          border: 0;
+          padding: 0;
+          color: #166534;
+          background: transparent;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+        }
+
+        .td-review-pdf-preview {
+          display: block;
+          width: 100%;
+          height: min(65vh, 680px);
+          border: 0;
+          background: #FFFFFF;
         }
 
         .td-review-upload-field {
@@ -14622,6 +14699,10 @@ export default function TeacherDashboard() {
           font-size: 13px;
           font-weight: 700;
           color: #111827;
+        }
+
+        .td-pers-required-marker {
+          color: #DC2626;
         }
 
         .td-pers-input {
