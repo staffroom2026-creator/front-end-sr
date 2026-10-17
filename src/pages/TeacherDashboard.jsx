@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useEffectEvent, useRef } from 'react';
+import React, { useState, useEffect, useEffectEvent, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import BrandLogo from '../components/BrandLogo';
@@ -967,7 +967,20 @@ export default function TeacherDashboard() {
       return featuredOrder || bRecommended - aRecommended || bTime - aTime;
     });
   };
-  const dashboardJobs = sortJobsByPreference(jobs, 'Newest First').slice(0, 5);
+  const dashboardJobs = useMemo(() => {
+    const recommendedJobs = sortJobsByPreference(
+      jobs.filter((job) => job.recommended),
+      'Newest First',
+    );
+    if (recommendedJobs.length) return recommendedJobs.slice(0, 5);
+
+    const fallbackJobs = [...jobs];
+    for (let index = fallbackJobs.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [fallbackJobs[index], fallbackJobs[randomIndex]] = [fallbackJobs[randomIndex], fallbackJobs[index]];
+    }
+    return fallbackJobs.slice(0, 5);
+  }, [jobs]);
   const upcomingInterviews = applications
     .map((application) => {
       const normalizedInterview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || null;
@@ -2634,8 +2647,8 @@ export default function TeacherDashboard() {
                   <div className="td-jobs-section">
                     <div className="td-section-header">
                       <h2>
-                        <span className="td-desktop-label">Active Job Feeds</span>
-                        <span className="td-mobile-label">Active Job Feeds</span>
+                        <span className="td-desktop-label">Recommended Jobs</span>
+                        <span className="td-mobile-label">Recommended Jobs</span>
                       </h2>
                       <a onClick={() => setActiveTab('jobs')} className="td-view-all-link">
                         <span className="td-desktop-text">View All Vacancies</span>

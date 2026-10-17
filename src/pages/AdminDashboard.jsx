@@ -275,7 +275,7 @@ export default function AdminDashboard() {
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [notificationActionLoading, setNotificationActionLoading] = useState({});
   const [visibleSchoolNotificationCount, setVisibleSchoolNotificationCount] = useState(10);
-  const [visibleTeacherCount, setVisibleTeacherCount] = useState(10);
+  const [teacherPage, setTeacherPage] = useState(1);
   const [visibleSchoolJobCount, setVisibleSchoolJobCount] = useState(10);
   const [schoolProfile, setSchoolProfile] = useState({});
   const [editingJobId, setEditingJobId] = useState(null);
@@ -4682,6 +4682,10 @@ export default function AdminDashboard() {
 
   const handleTeacherSearch = () => {
     setTeacherSearchSubmitted(teacherSearch.trim());
+    setTeacherPage(1);
+    setTeacherFilterMenuOpen(false);
+    setTeacherSortMenuOpen(false);
+    setTeacherActiveFilterGroup(null);
   };
 
   const renderApplicants = () => {
@@ -4834,6 +4838,13 @@ export default function AdminDashboard() {
       : teacherTab === "invited"
         ? sortedTeachers.filter((teacher) => invitedTeacherIds.includes(String(teacher.user_id || "")))
         : sortedTeachers;
+    const teachersPerPage = 10;
+    const teacherPageCount = Math.max(1, Math.ceil(selectedTeacherTabTeachers.length / teachersPerPage));
+    const currentTeacherPage = Math.min(teacherPage, teacherPageCount);
+    const firstTeacherIndex = (currentTeacherPage - 1) * teachersPerPage;
+    const pageTeachers = selectedTeacherTabTeachers.slice(firstTeacherIndex, firstTeacherIndex + teachersPerPage);
+    const teacherRangeStart = selectedTeacherTabTeachers.length ? firstTeacherIndex + 1 : 0;
+    const teacherRangeEnd = Math.min(firstTeacherIndex + teachersPerPage, selectedTeacherTabTeachers.length);
 
     return (
       <div className="school-teachers-page">
@@ -4941,6 +4952,7 @@ export default function AdminDashboard() {
                                 className="school-teachers-menu-item"
                                 onClick={() => {
                                   setTeacherSubject(subject);
+                                  setTeacherPage(1);
                                   setTeacherFilterMenuOpen(false);
                                   setTeacherActiveFilterGroup(null);
                                 }}
@@ -4956,6 +4968,7 @@ export default function AdminDashboard() {
                                 className="school-teachers-menu-item"
                                 onClick={() => {
                                   setTeacherLocation(location);
+                                  setTeacherPage(1);
                                   setTeacherFilterMenuOpen(false);
                                   setTeacherActiveFilterGroup(null);
                                 }}
@@ -4971,6 +4984,7 @@ export default function AdminDashboard() {
                                 className="school-teachers-menu-item"
                                 onClick={() => {
                                   setTeacherExperience(experience);
+                                  setTeacherPage(1);
                                   setTeacherFilterMenuOpen(false);
                                   setTeacherActiveFilterGroup(null);
                                 }}
@@ -4986,6 +5000,7 @@ export default function AdminDashboard() {
                                 className="school-teachers-menu-item"
                                 onClick={() => {
                                   setTeacherTrcn(status);
+                                  setTeacherPage(1);
                                   setTeacherFilterMenuOpen(false);
                                   setTeacherActiveFilterGroup(null);
                                 }}
@@ -5044,6 +5059,7 @@ export default function AdminDashboard() {
                         setTeacherTrcn("TRCN");
                         setTeacherSearch("");
                         setTeacherSearchSubmitted("");
+                        setTeacherPage(1);
                         setTeacherFilterMenuOpen(false);
                       }}>
                         Reset all
@@ -5053,7 +5069,7 @@ export default function AdminDashboard() {
                 </div>
 
                 <div className="school-teachers-toolbar-right">
-                  <span>Showing 1–6 of {selectedTeacherTabTeachers.length} available teachers</span>
+                  <span>Showing {teacherRangeStart}–{teacherRangeEnd} of {selectedTeacherTabTeachers.length} available teachers</span>
                   <span className="school-teachers-divider">|</span>
                   <div className="school-teachers-sort-wrapper">
                     <button
@@ -5072,6 +5088,7 @@ export default function AdminDashboard() {
                             className="school-teachers-menu-item"
                             onClick={() => {
                               setTeacherSortMode(sortValue);
+                              setTeacherPage(1);
                               setTeacherSortMenuOpen(false);
                             }}
                           >
@@ -5092,7 +5109,7 @@ export default function AdminDashboard() {
                   className={`school-teachers-toggle ${teacherTab === "invited" ? "is-active" : ""}`}
                   role="tab"
                   aria-selected={teacherTab === "invited"}
-                  onClick={() => setTeacherTab("invited")}
+                  onClick={() => { setTeacherTab("invited"); setTeacherPage(1); }}
                 >
                   <FiUsers size={15} />
                   Invited teachers
@@ -5102,7 +5119,7 @@ export default function AdminDashboard() {
                   className={`school-teachers-toggle ${teacherTab === "saved" ? "is-active" : ""}`}
                   role="tab"
                   aria-selected={teacherTab === "saved"}
-                  onClick={() => setTeacherTab("saved")}
+                  onClick={() => { setTeacherTab("saved"); setTeacherPage(1); }}
                 >
                   <FiBookmark size={15} />
                   Saved teachers
@@ -5114,7 +5131,7 @@ export default function AdminDashboard() {
                   className="school-teachers-clear-toggle"
                   aria-label="Clear teacher view filter"
                   title="Clear filter"
-                  onClick={() => setTeacherTab("all")}
+                  onClick={() => { setTeacherTab("all"); setTeacherPage(1); }}
                 >
                   <FiX size={16} />
                 </button>
@@ -5129,9 +5146,9 @@ export default function AdminDashboard() {
             </div>
 
             <div className="school-teachers-list">
-              {selectedTeacherTabTeachers.slice(0, visibleTeacherCount).map((teacher, index) => (
+              {pageTeachers.map((teacher, index) => (
                 <div
-                  className={`school-teacher-card ${index === 0 ? "school-teacher-card--first" : ""} ${index === Math.min(selectedTeacherTabTeachers.length, visibleTeacherCount) - 1 ? "school-teacher-card--last" : ""}`}
+                  className={`school-teacher-card ${index === 0 ? "school-teacher-card--first" : ""} ${index === pageTeachers.length - 1 ? "school-teacher-card--last" : ""}`}
                   key={`${teacher.name}-${index}`}
                 >
                   <button
@@ -5239,12 +5256,39 @@ export default function AdminDashboard() {
               </div>
             )}
 
-            {selectedTeacherTabTeachers.length > visibleTeacherCount && (
-              <div className="school-teachers-load-more-wrap">
-                <button type="button" className="school-teachers-load-more" onClick={() => setVisibleTeacherCount((count) => count + 10)}>
-                  Load More Candidates ▾
+            {teacherPageCount > 1 && (
+              <nav className="school-teachers-pagination" aria-label="Teacher result pages">
+                <button
+                  type="button"
+                  className="school-teachers-page-button"
+                  onClick={() => setTeacherPage((page) => Math.max(1, page - 1))}
+                  disabled={currentTeacherPage === 1}
+                  aria-label="Previous page"
+                >
+                  Previous
                 </button>
-              </div>
+                {Array.from({ length: teacherPageCount }, (_, index) => index + 1).map((page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={`school-teachers-page-button school-teachers-page-number ${currentTeacherPage === page ? "is-current" : ""}`}
+                    onClick={() => setTeacherPage(page)}
+                    aria-label={`Page ${page}`}
+                    aria-current={currentTeacherPage === page ? "page" : undefined}
+                  >
+                    {page}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  className="school-teachers-page-button"
+                  onClick={() => setTeacherPage((page) => Math.min(teacherPageCount, page + 1))}
+                  disabled={currentTeacherPage === teacherPageCount}
+                  aria-label="Next page"
+                >
+                  Next
+                </button>
+              </nav>
             )}
           </>
         )}
@@ -9919,25 +9963,45 @@ export default function AdminDashboard() {
         .school-teacher-secondary-btn--wide {
           width: 100%;
         }
-        .school-teachers-load-more-wrap {
+        .school-teachers-pagination {
           display: flex;
           justify-content: center;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 6px;
           margin-top: 20px;
           padding-bottom: 18px;
         }
-        .school-teachers-load-more {
+        .school-teachers-page-button {
           display: inline-flex;
           align-items: center;
           justify-content: center;
-          min-width: 190px;
-          min-height: 46px;
-          padding: 0 22px;
+          min-width: 38px;
+          min-height: 38px;
+          padding: 0 12px;
           border: 1px solid #dfe4df;
-          border-radius: 10px;
-          background: #f6f8f7;
-          color: #212d39;
-          font-size: 16px;
-          font-weight: 700;
+          border-radius: 8px;
+          background: #fff;
+          color: #34423a;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background-color .15s ease, border-color .15s ease, color .15s ease;
+        }
+        .school-teachers-page-button:hover:not(:disabled) {
+          border-color: #168044;
+          background: #f0f8f2;
+          color: #146b49;
+        }
+        .school-teachers-page-number.is-current {
+          border-color: #168044;
+          background: #168044;
+          color: #fff;
+        }
+        .school-teachers-page-button:disabled {
+          color: #a4aea7;
+          background: #f5f7f5;
+          cursor: not-allowed;
         }
 
         .school-job-applicants-page {
