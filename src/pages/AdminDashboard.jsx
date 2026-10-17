@@ -2565,9 +2565,15 @@ export default function AdminDashboard() {
       </p>}
 
       <form onSubmit={handleCreateJob} className="school-job-form">
+        {insideOpportunityDrawer && (
+          <div className="school-job-drawer-section-heading">
+            <h3>Role Details</h3>
+            <p>Provide the core details for the opportunity you want to attach to this invitation.</p>
+          </div>
+        )}
         <section className="school-job-form-card school-job-basic-fields">
           <label>
-            Job Title
+            Job Title {insideOpportunityDrawer && <span className="school-job-drawer-required">*</span>}
             <input
               placeholder="e.g. Senior Mathematics Teacher"
               value={jobForm.title}
@@ -2602,7 +2608,7 @@ export default function AdminDashboard() {
           </label>
 
           <fieldset>
-            <legend>Employment Type</legend>
+            <legend>Employment Type {insideOpportunityDrawer && <span className="school-job-drawer-required">*</span>}</legend>
             <div className="school-employment-options">
               {[
                 ["full-time", "Full-time"],
@@ -2632,7 +2638,7 @@ export default function AdminDashboard() {
           </label>
 
           <label>
-            School Location
+            School Location {insideOpportunityDrawer && <span className="school-job-drawer-required">*</span>}
             <div className="school-input-with-icon">
               <FiMapPin size={16} />
               <input
@@ -2645,9 +2651,15 @@ export default function AdminDashboard() {
           </label>
         </section>
 
+        {insideOpportunityDrawer && (
+          <div className="school-job-drawer-section-heading school-job-drawer-section-heading--next">
+            <h3>Role Summary</h3>
+            <p>Describe the position and the responsibilities of the successful teacher.</p>
+          </div>
+        )}
         <section className="school-job-form-card school-job-description-card">
           <label>
-            Job Summary
+            Job Summary {insideOpportunityDrawer && <span className="school-job-drawer-required">*</span>}
             <textarea
               placeholder="Describe the role, what the school is looking for, and the teaching environment..."
               value={jobForm.description}
@@ -2686,6 +2698,12 @@ export default function AdminDashboard() {
 
         </section>
 
+        {insideOpportunityDrawer && (
+          <div className="school-job-drawer-section-heading school-job-drawer-section-heading--next">
+            <h3>Requirements &amp; Preferences</h3>
+            <p>Add the experience and qualifications you are looking for.</p>
+          </div>
+        )}
         <section className="school-job-form-card school-job-extra-fields">
           <label>
             Required Experience
@@ -11095,6 +11113,11 @@ export default function AdminDashboard() {
         .school-job-form-breadcrumb span { padding: 0 5px; color: #b1b8bd; }
         .school-job-form-title { margin: 7px 0 3px; font-size: 30px; font-weight: 700; line-height: 1.2; color: #1e2a33; }
         .school-job-form-subtitle { margin: 0 0 23px; color: #6a7682; font-size: 13px; }
+        .school-job-drawer-section-heading { padding: 0 0 2px; }
+        .school-job-drawer-section-heading--next { padding-top: 5px; }
+        .school-job-drawer-section-heading h3 { margin: 0; color: #202921; font-size: 1rem; font-weight: 720; letter-spacing: -0.02em; }
+        .school-job-drawer-section-heading p { margin: 3px 0 0; color: #7b857d; font-size: 0.68rem; line-height: 1.4; }
+        .school-job-drawer-required { color: #d84040; font-size: 0.76rem; font-weight: 750; }
         .school-job-form { display: flex; flex-direction: column; gap: 16px; }
         .school-job-form-card { display: grid; gap: 18px 16px; padding: 19px 17px; border: 1px solid #e8ecf0; border-radius: 14px; background: #fff; box-shadow: 0 4px 18px rgba(19, 28, 35, 0.02); }
         .school-job-basic-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -11156,6 +11179,147 @@ export default function AdminDashboard() {
         .school-job-form-actions button { min-width: 120px; height: 40px; padding: 0 18px; border: 1px solid #dfe6eb; border-radius: 999px; background: #fff; color: #384056; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
         .school-job-form-actions button:last-child { border-color: #1ccb43; background: #1ccb43; color: #07331b; }
         .school-job-form-actions button:disabled { cursor: wait; opacity: .6; }
+        .school-job-form-page--drawer .school-job-form { gap: 10px; }
+        .school-job-form-page--drawer .school-job-drawer-section-heading { margin: 4px 0 -3px; }
+        .school-job-form-page--drawer .school-job-drawer-section-heading--next { margin-top: 9px; }
+        .school-job-form-page--drawer .school-job-form-card {
+          gap: 13px 15px;
+          padding: 15px;
+          border-color: #edf0ed;
+          border-radius: 11px;
+          background: #fff;
+          box-shadow: 0 1px 4px rgba(31, 48, 37, 0.025);
+        }
+        .school-job-form-page--drawer .school-job-basic-fields > label:first-child {
+          grid-column: 1 / -1;
+        }
+        .school-job-form-page--drawer .school-job-basic-fields > fieldset {
+          grid-column: 1 / -1;
+        }
+        .school-job-form-page--drawer .school-job-form label,
+        .school-job-form-page--drawer .school-job-form legend {
+          color: #364239;
+          font-size: 0.68rem;
+          font-weight: 650;
+          line-height: 1.4;
+        }
+        .school-job-form-page--drawer .school-job-form input:not([type="checkbox"]),
+        .school-job-form-page--drawer .school-job-form textarea,
+        .school-job-form-page--drawer .school-job-form select {
+          min-height: 39px;
+          margin-top: 5px;
+          padding: 0 11px;
+          border: 1px solid #e0e5e1;
+          border-radius: 8px;
+          background: #f7f8f7;
+          color: #3c4840;
+          font-size: 0.7rem;
+          transition: border-color 140ms ease, box-shadow 140ms ease, background 140ms ease;
+        }
+        .school-job-form-page--drawer .school-job-form textarea {
+          min-height: 100px;
+          padding: 10px 11px;
+          line-height: 1.5;
+        }
+        .school-job-form-page--drawer .school-job-form input:hover,
+        .school-job-form-page--drawer .school-job-form textarea:hover,
+        .school-job-form-page--drawer .school-job-form select:hover {
+          border-color: #c4d1c7;
+          background: #fff;
+        }
+        .school-job-form-page--drawer .school-job-form input:focus,
+        .school-job-form-page--drawer .school-job-form textarea:focus,
+        .school-job-form-page--drawer .school-job-form select:focus {
+          border-color: #39a852;
+          background: #fff;
+          box-shadow: 0 0 0 3px rgba(28, 151, 61, 0.09);
+        }
+        .school-job-form-page--drawer .school-job-form input::placeholder,
+        .school-job-form-page--drawer .school-job-form textarea::placeholder {
+          color: #9aa39c;
+        }
+        .school-job-form-page--drawer .school-employment-options {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 7px;
+          margin-top: 7px;
+        }
+        .school-job-form-page--drawer .school-employment-options button {
+          width: auto;
+          height: 33px;
+          padding: 0 12px;
+          border-color: #e5e9e6;
+          border-radius: 999px;
+          background: #f7f8f7;
+          color: #69746c;
+          font-size: 0.65rem;
+          font-weight: 600;
+          transition: border-color 140ms ease, background 140ms ease, color 140ms ease;
+        }
+        .school-job-form-page--drawer .school-employment-options button.is-selected {
+          border-color: #cce8d2;
+          background: #eff9f1;
+          color: #187d37;
+        }
+        .school-job-form-page--drawer .school-job-description-card > label:first-child,
+        .school-job-form-page--drawer .school-job-description-card > label:nth-child(2) {
+          grid-column: 1 / -1;
+        }
+        .school-job-form-page--drawer .school-input-with-icon > svg {
+          top: 17px;
+          width: 14px;
+          height: 14px;
+          color: #738078;
+        }
+        .school-job-form-page--drawer .school-input-with-icon input {
+          padding-left: 33px;
+        }
+        .school-job-form-page--drawer .school-responsibility-input-row button {
+          height: 39px;
+          margin-top: 5px;
+          border-radius: 8px;
+          background: #eff8f1;
+          font-size: 0.68rem;
+        }
+        .school-job-form-page--drawer .school-qualification-trigger {
+          min-height: 39px;
+          border-color: #e0e5e1;
+          border-radius: 8px;
+          background: #f7f8f7;
+        }
+        .school-job-form-page--drawer .school-field-helper-text {
+          font-size: 0.62rem;
+        }
+        .school-job-form-page--drawer .school-feature-option {
+          grid-column: 1 / -1;
+          align-self: center;
+          padding-top: 0;
+          font-size: 0.66rem;
+        }
+        .school-job-form-page--drawer .school-job-form-actions {
+          justify-content: center;
+          padding-top: 5px;
+        }
+        .school-job-form-page--drawer .school-job-form-actions button {
+          min-width: 116px;
+          height: 38px;
+          border-radius: 9px;
+          font-size: 0.7rem;
+          box-shadow: 0 3px 7px rgba(17, 146, 51, 0.12);
+        }
+        @media (max-width: 620px) {
+          .school-job-form-page--drawer .school-job-basic-fields,
+          .school-job-form-page--drawer .school-job-extra-fields {
+            grid-template-columns: minmax(0, 1fr);
+          }
+          .school-job-form-page--drawer .school-job-basic-fields > label:first-child,
+          .school-job-form-page--drawer .school-job-basic-fields > fieldset,
+          .school-job-form-page--drawer .school-job-description-card > label:first-child,
+          .school-job-form-page--drawer .school-job-description-card > label:nth-child(2),
+          .school-job-form-page--drawer .school-feature-option {
+            grid-column: auto;
+          }
+        }
 
         .school-jobs-page { color: #252b3d; }
         .school-jobs-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 36px; }
