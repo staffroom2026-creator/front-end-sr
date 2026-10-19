@@ -1,0 +1,94 @@
+
+name: Frontend CD
+
+on:
+  workflow_run:
+    workflows: ["Frontend CI"]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staffroom-frontend-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy Staffroom
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out the commit that passed CI
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Audit dependencies
+        run: npm audit --audit-level=low
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build production frontend
+        run: npm run build
+
+      - name: Deploy dist to Truehost
+        shell: bash
+        env:
+          CPANEL_SSH_HOST: ${{ secrets.CPANEL_SSH_HOST }}
+          CPANEL_SSH_PORT: ${{ secrets.CPANEL_SSH_PORT }}
+          CPANEL_SSH_USER: ${{ secrets.CPANEL_SSH_USER }}
+          CPANEL_SSH_PRIVATE_KEY: ${{ secrets.CPANEL_SSH_PRIVATE_KEY }}
+          CPANEL_SSH_KNOWN_HOSTS: ${{ secrets.CPANEL_SSH_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          : "${CPANEL_SSH_HOST:?Missing CPANEL_SSH_HOST}"
+          : "${CPANEL_SSH_PORT:?Missing CPANEL_SSH_PORT}"
+          : "${CPANEL_SSH_USER:?Missing CPANEL_SSH_USER}"
+          : "${CPANEL_SSH_PRIVATE_KEY:?Missing CPANEL_SSH_PRIVATE_KEY}"
+          : "${CPANEL_SSH_KNOWN_HOSTS:?Missing CPANEL_SSH_KNOWN_HOSTS}"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$CPANEL_SSH_KNOWN_HOSTS" > "$HOME/.ssh/known_hosts"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+          KEY_FILE="$RUNNER_TEMP/staffroom_deploy_key"
+          printf '%s\n' "$CPANEL_SSH_PRIVATE_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          trap 'rm -f "$KEY_FILE"' EXIT
+
+          ssh \
+            -i "$KEY_FILE" \
+            -p "$CPANEL_SSH_PORT" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            "$CPANEL_SSH_USER@$CPANEL_SSH_HOST" \
+            'test -d /home/lkwxtmwn/public_html && command -v tar >/dev/null'
+
+          tar -C dist -czf - . |
+            ssh \
+              -i "$KEY_FILE" \
+              -p "$CPANEL_SSH_PORT" \
+              -o BatchMode=yes \
+              -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes \
+              "$CPANEL_SSH_USER@$CPANEL_SSH_HOST" \
+              'tar -xzf - -C /home/lkwxtmwn/public_html'
