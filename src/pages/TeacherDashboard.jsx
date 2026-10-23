@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useEffectEvent, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useEffectEvent, useRef, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import BrandLogo from '../components/BrandLogo';
@@ -876,7 +876,7 @@ export default function TeacherDashboard() {
   const selectedJobApplication = selectedJob
     ? applications.find((application) => String(application.jobId) === String(selectedJob.job_id || selectedJob.id))
     : null;
-  const getTeacherJobFitScore = (job = {}) => {
+  const getTeacherJobFitScore = useCallback((job = {}) => {
     const teacherProfile = profileState || {};
     let score = 0;
     const normalize = (value) => String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -931,8 +931,8 @@ export default function TeacherDashboard() {
     }
 
     return score;
-  };
-  const sortJobsByPreference = (jobList = [], sortMode = sortBy) => {
+  }, [profileState]);
+  const sortJobsByPreference = useCallback((jobList = [], sortMode = sortBy) => {
     return [...jobList].sort((a, b) => {
       const featuredOrder = Number(isFeaturedJob(b)) - Number(isFeaturedJob(a));
       const aTimeValue = new Date(a.timePosted || a.created_at || 0).getTime();
@@ -966,7 +966,7 @@ export default function TeacherDashboard() {
       if (sortMode === 'Lowest Salary') return featuredOrder || aSalary - bSalary;
       return featuredOrder || bRecommended - aRecommended || bTime - aTime;
     });
-  };
+  }, [getTeacherJobFitScore, sortBy]);
   const dashboardJobs = useMemo(() => {
     const recommendedJobs = sortJobsByPreference(
       jobs.filter((job) => job.recommended),
@@ -980,7 +980,7 @@ export default function TeacherDashboard() {
       [fallbackJobs[index], fallbackJobs[randomIndex]] = [fallbackJobs[randomIndex], fallbackJobs[index]];
     }
     return fallbackJobs.slice(0, 5);
-  }, [jobs]);
+  }, [jobs, sortJobsByPreference]);
   const upcomingInterviews = applications
     .map((application) => {
       const normalizedInterview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || null;
