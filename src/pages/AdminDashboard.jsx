@@ -211,6 +211,7 @@ export default function AdminDashboard() {
   const [openJobMenuId, setOpenJobMenuId] = useState(null);
   const [openApplicantMenuId, setOpenApplicantMenuId] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
+  const [closingJobId, setClosingJobId] = useState(null);
   const [publishingDraftId, setPublishingDraftId] = useState(null);
   const isRestoringAdminHistory = useRef(false);
   const [jobDetailView, setJobDetailView] = useState("detail");
@@ -2058,14 +2059,22 @@ export default function AdminDashboard() {
 
     try {
       setError("");
-      setJobs((prev) =>
-        prev.map((job) =>
-          (job.job_id || job.id) === jobId ? { ...job, status: "closed" } : job,
-        ),
-      );
+      setClosingJobId(String(jobId));
+      await jobService.updateJob(jobId, { status: "closed" });
+      setJobs((prev) => prev.map((job) =>
+        String(job.job_id || job.id) === String(jobId) ? { ...job, status: "closed" } : job,
+      ));
+      setSelectedJob((current) => (
+        current && String(current.job_id || current.id) === String(jobId)
+          ? { ...current, status: "closed" }
+          : current
+      ));
       setOpenJobMenuId(null);
+      showSnackbar("Job closed", "This job is no longer accepting applications.");
     } catch (err) {
       setError(apiErrorMessage(err, "Unable to close this job."));
+    } finally {
+      setClosingJobId(null);
     }
   };
 
@@ -2881,7 +2890,7 @@ export default function AdminDashboard() {
             <div className="school-job-detail-actions">
               <button type="button" className="school-job-detail-primary" onClick={() => { setJobDetailView("applicants"); setApplicantFilter("All"); setApplicantPage(1); loadApplicantsForJob(jobId); }}><FiUsers size={15} /> View Applicants</button>
               <button type="button" className="school-job-detail-secondary" onClick={() => openEditJobForm(job)}>Edit Job</button>
-              {status !== "closed" && <button type="button" className="school-job-detail-close" onClick={() => handleCloseJob(jobId)}>Close Job</button>}
+              {status !== "closed" && <button type="button" className="school-job-detail-close" disabled={closingJobId === String(jobId)} onClick={() => handleCloseJob(jobId)}>{closingJobId === String(jobId) ? "Closing..." : "Close Job"}</button>}
             </div>
           </div>
           {timeline.length > 0 && <aside className="school-job-timeline"><h3>Job Timeline</h3>{timeline.map(([label, date], index) => <div key={label} className="school-job-timeline-item"><span className={index === 0 ? "is-current" : ""} /><div><small>{label}</small><strong>{formatDate(date)}</strong></div></div>)}</aside>}
