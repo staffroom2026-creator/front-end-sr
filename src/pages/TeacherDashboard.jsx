@@ -855,6 +855,7 @@ export default function TeacherDashboard() {
   const [expertiseTagInput, setExpertiseTagInput] = useState('');
   const [showBasicProfileModal, setShowBasicProfileModal] = useState(false);
   const [basicProfileError, setBasicProfileError] = useState('');
+  const [profileShareMessage, setProfileShareMessage] = useState('');
   const [basicProfileDraft, setBasicProfileDraft] = useState({
     title: '',
     location: '',
@@ -5047,78 +5048,167 @@ export default function TeacherDashboard() {
           )}
           {activeTab === 'profile' && (
             <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-tab-page">
-              {profileSubTab === 'profile-preview' ? (
+              {profileSubTab === 'profile-preview' && !showBasicProfileModal ? (
                 <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-profile-preview-page">
-                  <button type="button" className="td-preview-back-btn" onClick={() => setProfileSubTab('overview')}>
-                    <FiArrowLeft size={20} />
-                    <span>Settings / Preview profile</span>
-                  </button>
-
-                  <section className="td-preview-hero">
-                    <div className="td-preview-avatar" aria-label={profileFullName}>
-                      {profileState?.avatar_url || profileState?.profile_photo || profileState?.photo_url ? (
-                        <img src={toTeacherAssetUrl(profileState.avatar_url || profileState.profile_photo || profileState.photo_url)} alt="" />
-                      ) : getInitials(profileFullName)}
+                  <header className="td-preview-page-heading">
+                    <div>
+                      <button type="button" className="td-preview-back-btn" onClick={() => setProfileSubTab('overview')}>
+                        <FiArrowLeft size={17} />
+                        <span>Back to profile</span>
+                      </button>
+                      <h1>Preview Your Profile</h1>
                     </div>
-                    <div className="td-preview-hero-copy">
-                      <div className="td-preview-name-row">
-                        <h1>{profileFullName}</h1>
-                        <span className={`td-preview-verified ${isTrcnVerified ? '' : 'td-preview-verified--muted'}`}><FiCheckCircle size={12} />{trcnStatusLabel}</span>
-                      </div>
-                      <p>{profileRoleTitle}</p>
-                      <div className="td-preview-meta">
-                        <span><FiMapPin size={15} />{profileLocation}</span>
-                        <span><FiAward size={15} />{profYearsExp}</span>
-                      </div>
+                    <div className="td-preview-page-actions">
+                      <button type="button" className="td-preview-edit-btn" onClick={openBasicProfileModal}>
+                        <FiEdit2 size={15} /> Edit Profile
+                      </button>
+                      <button
+                        type="button"
+                        className="td-preview-share-btn"
+                        onClick={async () => {
+                          const shareData = { title: `${profileFullName} | Teacher Profile`, url: window.location.href };
+                          try {
+                            if (navigator.share) await navigator.share(shareData);
+                            else {
+                              await navigator.clipboard.writeText(shareData.url);
+                              setProfileShareMessage('Profile link copied to clipboard.');
+                            }
+                          } catch (error) {
+                            if (error.name !== 'AbortError') {
+                              console.error('Unable to share teacher profile.', error);
+                              setProfileShareMessage('Unable to share the profile link.');
+                            }
+                          }
+                        }}
+                      >
+                        <FiShare2 size={15} /> Share Profile
+                      </button>
                     </div>
-                  </section>
+                  </header>
+                  {profileShareMessage && <p className="td-preview-share-message" role="status">{profileShareMessage}</p>}
 
-                  <div className="td-preview-grid">
-                    <section className="td-preview-panel td-preview-summary">
+                  <section className="td-preview-card">
+                    <header className="td-preview-hero">
+                      <div className="td-preview-avatar" aria-label={profileFullName}>
+                        {profileState?.avatar_url || profileState?.profile_photo || profileState?.photo_url ? (
+                          <img src={toTeacherAssetUrl(profileState.avatar_url || profileState.profile_photo || profileState.photo_url)} alt="" />
+                        ) : getInitials(profileFullName)}
+                      </div>
+                      <div className="td-preview-hero-copy">
+                        <div className="td-preview-name-row">
+                          <h2>{profileFullName}</h2>
+                          <span className={`td-preview-verified ${isTrcnVerified ? '' : 'td-preview-verified--muted'}`}><FiCheckCircle size={12} />{trcnStatusLabel}</span>
+                        </div>
+                        <p>{profileRoleTitle}</p>
+                        <div className="td-preview-meta">
+                          <span><FiMapPin size={15} />{profileLocation}</span>
+                          <span><FiAward size={15} />{profYearsExp}</span>
+                        </div>
+                      </div>
+                    </header>
+
+                    <section className="td-preview-section td-preview-summary">
                       <h2><FiFileText /> Professional Summary</h2>
                       <p>{profSummary || 'No professional summary has been provided.'}</p>
                     </section>
-                    <section className="td-preview-panel td-preview-subjects">
-                      <h2><FiBook /> Subjects</h2>
-                      <div className="td-preview-tags">{profSubjects.length ? profSubjects.map((subject) => <span key={subject}>{subject}</span>) : <em>Not provided</em>}</div>
-                      <h2 className="td-preview-levels-heading"><FiCheckCircle /> Teaching Levels</h2>
-                      <div className="td-preview-levels">{profTeachingLevels.length ? profTeachingLevels.map((level) => <span key={level}>{level}</span>) : <em>Not provided</em>}</div>
-                    </section>
-                    <section className="td-preview-panel td-preview-experience">
-                      <h2><FiBriefcase /> Experience</h2>
+
+                    <section className="td-preview-section td-preview-experience">
+                      <h2><FiBriefcase /> Professional Experience</h2>
                       {experienceList.length ? <div className="td-preview-list">{experienceList.map((experience, index) => (
                         <article key={`${experience.role || 'experience'}-${index}`} className="td-preview-list-item">
-                          <span>{normalizeProfileValue(experience.period)}</span>
-                          <strong>{normalizeProfileValue(experience.role, 'Role not provided')}</strong>
-                          <p>{normalizeProfileValue(experience.school, 'School not provided')}</p>
+                          <div className="td-preview-timeline-dot" />
+                          <div>
+                            <span>{normalizeProfileValue(experience.period)}</span>
+                            <strong>{normalizeProfileValue(experience.role, 'Role not provided')}</strong>
+                            <p>{normalizeProfileValue(experience.school, 'School not provided')}{experience.location ? ` · ${experience.location}` : ''}</p>
+                            {experience.description && <p className="td-preview-experience-description">{experience.description}</p>}
+                          </div>
                         </article>
-                      ))}</div> : <p className="td-preview-empty">No teaching experience has been provided.</p>}
+                      ))}</div> : <p className="td-preview-empty">No professional experience has been provided.</p>}
                     </section>
-                    <div className="td-preview-side-stack">
-                      <section className="td-preview-panel">
-                        <h2><FiAward /> Education</h2>
-                        {educationList.length ? educationList.map((education, index) => (
-                          <article key={`${education.degree || 'education'}-${index}`} className="td-preview-education-item">
-                            <FiBook /><div><strong>{normalizeProfileValue(education.degree, 'Qualification not provided')}</strong><p>{normalizeProfileValue(education.institution, 'Institution not provided')}</p><span>{normalizeProfileValue(education.period)}</span></div>
-                          </article>
-                        )) : <p className="td-preview-empty">No education has been provided.</p>}
-                      </section>
-                      <section className="td-preview-panel">
-                        <h2><FiShield /> Certification &amp; Documents</h2>
-                        <div className="td-preview-trcn">
-                          <FiCheckCircle />
-                          <div><strong>{profileState?.trcn_number ? 'TRCN Registered Educator' : 'TRCN certification not provided'}</strong><p>{profileState?.trcn_number ? `Registration No: ${profileState.trcn_number}` : 'No registration number available.'}</p></div>
-                          <span className={isTrcnVerified ? '' : 'td-preview-status--muted'}>{trcnStatusBadge}</span>
-                        </div>
-                        {activeResume?.url ? <div className="td-preview-doc-actions">
-                          <button type="button" onClick={() => handleResumeAction('download')}><FiDownload /> Download CV</button>
-                          <button type="button" onClick={() => handleResumeAction('view')}><FiEye /> View CV</button>
-                        </div> : <p className="td-preview-empty">No CV has been uploaded.</p>}
-                      </section>
+
+                    <div className="td-preview-grid">
+                      <div className="td-preview-column">
+                        <section className="td-preview-section">
+                          <h2><FiBook /> Education</h2>
+                          {educationList.length ? educationList.map((education, index) => (
+                            <article key={`${education.degree || 'education'}-${index}`} className="td-preview-education-item">
+                              <FiBook /><div><strong>{normalizeProfileValue(education.degree, 'Qualification not provided')}</strong><p>{normalizeProfileValue(education.institution, 'Institution not provided')}</p><span>{normalizeProfileValue(education.period)}</span></div>
+                            </article>
+                          )) : <p className="td-preview-empty">No education has been provided.</p>}
+                        </section>
+
+                        <section className="td-preview-section">
+                          <h2><FiAward /> Professional Certifications</h2>
+                          {sessionCertifications.length || profileState?.trcn_number ? (
+                            <div className="td-preview-certification-list">
+                              {sessionCertifications.map((certification) => (
+                                <article key={certification.id} className="td-preview-certification-item">
+                                  <FiShield />
+                                  <div><strong>{certification.name}</strong><p>{certification.organisation}{certification.number ? ` · ${certification.number}` : ''}</p></div>
+                                </article>
+                              ))}
+                              {profileState?.trcn_number && (
+                                <article className="td-preview-certification-item">
+                                  <FiShield />
+                                  <div><strong>TRCN Registered Educator</strong><p>Registration No: {profileState.trcn_number}</p></div>
+                                  <span className={`td-preview-certification-status ${isTrcnVerified ? '' : 'is-muted'}`}>{trcnStatusBadge}</span>
+                                </article>
+                              )}
+                            </div>
+                          ) : <p className="td-preview-empty">No professional certifications have been provided.</p>}
+                        </section>
+
+                        <section className="td-preview-section">
+                          <h2><FiGlobe /> Languages</h2>
+                          <div className="td-preview-tags">{skillExpertise.languages.length ? skillExpertise.languages.map((language) => <span key={language}>{language}</span>) : <em>Not provided</em>}</div>
+                        </section>
+                      </div>
+
+                      <div className="td-preview-column">
+                        <section className="td-preview-section">
+                          <h2><FiZap /> Skills &amp; Expertise</h2>
+                          <dl className="td-preview-expertise-details">
+                            <div>
+                              <dt>Subjects:</dt>
+                              <dd>{profSubjects.length ? profSubjects.join(', ') : 'Not provided'}</dd>
+                            </div>
+                            <div>
+                              <dt>Teaching Levels:</dt>
+                              <dd>{profTeachingLevels.length ? profTeachingLevels.join(', ') : 'Not provided'}</dd>
+                            </div>
+                            <div>
+                              <dt>Teaching Skills:</dt>
+                              <dd>{skillExpertise.teachingSkills.length ? skillExpertise.teachingSkills.join(', ') : 'Not provided'}</dd>
+                            </div>
+                          </dl>
+                        </section>
+
+                        <section className="td-preview-section">
+                          <h2><FiBook /> Curriculum &amp; Examination Experience</h2>
+                          <div className="td-preview-tags">{skillExpertise.curriculumExperience.length ? skillExpertise.curriculumExperience.map((item) => <span key={item}>{item}</span>) : <em>Not provided</em>}</div>
+                        </section>
+
+                        <section className="td-preview-section">
+                          <h2><FiMonitor /> Digital &amp; Classroom Tools</h2>
+                          <div className="td-preview-tags">{skillExpertise.classroomTools.length ? skillExpertise.classroomTools.map((tool) => <span key={tool}>{tool}</span>) : <em>Not provided</em>}</div>
+                        </section>
+                      </div>
                     </div>
-                  </div>
+
+                    {activeResume?.url && (
+                      <footer className="td-preview-resume">
+                        <span><FiFileText /> CV / Resume</span>
+                        <strong>{activeResume.name}</strong>
+                        <div className="td-preview-doc-actions">
+                          <button type="button" onClick={() => handleResumeAction('download')}><FiDownload /> Download</button>
+                          <button type="button" onClick={() => handleResumeAction('view')}><FiEye /> Preview</button>
+                        </div>
+                      </footer>
+                    )}
+                  </section>
                 </Motion.div>
-              ) : profileSubTab === 'overview' ? (
+              ) : profileSubTab === 'overview' || showBasicProfileModal ? (
                 <>
                   {profileCompletionNotice && (
                     <div
@@ -15871,57 +15961,80 @@ export default function TeacherDashboard() {
           .td-prof-skills-modal-footer > button { flex: 1; }
         }
 
-        .td-profile-preview-page { max-width: 1180px; margin: 0 auto; padding: 8px 0 42px; }
-        .td-preview-back-btn { display: inline-flex; align-items: center; gap: 12px; margin: 0 0 28px; color: #1e293b; font-size: 13px; font-weight: 600; cursor: pointer; }
-        .td-preview-hero { display: flex; align-items: center; gap: 22px; min-height: 145px; padding: 24px 30px; background: #fff; border-radius: 8px; box-shadow: 0 3px 13px rgba(15, 23, 42, .08); }
-        .td-preview-avatar { display: grid; place-items: center; width: 78px; height: 78px; flex: 0 0 78px; overflow: hidden; border: 3px solid #e2e8f0; border-radius: 50%; background: #dbeafe; color: #1e3a5f; font-size: 24px; font-weight: 700; }
+        .td-profile-preview-page { max-width: 1120px; margin: 0 auto; padding: 12px 0 42px; color: #253044; }
+        .td-preview-page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; margin-bottom: 20px; }
+        .td-preview-page-heading h1 { margin-top: 7px; color: #202b3d; font-size: 25px; line-height: 1.2; font-weight: 700; }
+        .td-preview-back-btn { display: inline-flex; align-items: center; gap: 7px; padding: 0; color: #657185; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .td-preview-page-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+        .td-preview-page-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 38px; padding: 0 14px; border: 1px solid #d5dce5; border-radius: 6px; background: #fff; color: #344256; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .td-preview-page-actions button:hover { background: #f7faf9; border-color: #9ab8ad; }
+        .td-preview-share-message { margin: -8px 0 14px; color: #08755d; font-size: 12px; }
+        .td-preview-card { overflow: hidden; padding: 0 30px 28px; border: 1px solid #e7ebef; border-radius: 9px; background: #fff; box-shadow: 0 4px 18px rgba(15, 23, 42, .06); }
+        .td-preview-hero { display: flex; align-items: center; gap: 22px; min-height: 154px; padding: 27px 0; }
+        .td-preview-avatar { display: grid; place-items: center; width: 88px; height: 88px; flex: 0 0 88px; overflow: hidden; border: 3px solid #e7ecef; border-radius: 50%; background: #e5f0ec; color: #08755d; font-size: 26px; font-weight: 700; }
         .td-preview-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .td-preview-hero-copy { min-width: 0; }
         .td-preview-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-        .td-preview-name-row h1 { color: #172238; font-size: 22px; line-height: 1.2; font-weight: 700; }
-        .td-preview-verified { display: inline-flex; align-items: center; gap: 4px; padding: 3px 7px; border-radius: 999px; background: #dff5ee; color: #15836d; font-size: 10px; font-weight: 700; }
-        .td-preview-verified--muted { background: #f1f5f9; color: #64748b; }
-        .td-preview-hero-copy > p { margin-top: 3px; color: #64748b; font-size: 15px; }
-        .td-preview-meta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; color: #718096; font-size: 12px; }
-        .td-preview-meta span { display: inline-flex; align-items: center; gap: 5px; }
-        .td-preview-grid { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(290px, .82fr); gap: 16px; margin-top: 18px; }
-        .td-preview-panel { padding: 17px 18px; background: #fff; border-radius: 8px; box-shadow: 0 3px 13px rgba(15, 23, 42, .07); }
-        .td-preview-panel h2 { display: flex; align-items: center; gap: 6px; padding-bottom: 9px; border-bottom: 1px solid #edf1f4; color: #273449; font-size: 16px; font-weight: 700; }
-        .td-preview-panel h2 svg { color: #08755d; }
-        .td-preview-summary, .td-preview-subjects { min-height: 205px; }
-        .td-preview-summary > p { margin-top: 13px; color: #596575; font-size: 12px; line-height: 1.68; }
-        .td-preview-tags, .td-preview-levels { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
-        .td-preview-tags span, .td-preview-levels span { padding: 4px 10px; border-radius: 999px; background: #dce7f8; color: #455a78; font-size: 10px; }
-        .td-preview-levels span { background: #eef2ef; color: #69766e; }
-        .td-preview-tags em, .td-preview-levels em { color: #64748b; font-size: 12px; font-style: normal; }
-        .td-preview-levels-heading { margin-top: 25px; }
-        .td-preview-experience { min-height: 220px; }
-        .td-preview-list { display: grid; gap: 12px; margin-top: 14px; }
-        .td-preview-list-item { position: relative; padding: 12px 42px 12px 11px; border: 1px solid #e8edf2; border-radius: 8px; background: #fbfcfd; }
-        .td-preview-list-item::after { content: ''; position: absolute; top: 15px; right: 13px; width: 20px; height: 20px; border-radius: 50%; background: #08755d; }
-        .td-preview-list-item span, .td-preview-education-item span { display: block; color: #638579; font-size: 10px; font-weight: 700; }
-        .td-preview-list-item strong, .td-preview-education-item strong { display: block; margin-top: 3px; color: #273449; font-size: 15px; line-height: 1.25; }
-        .td-preview-list-item p, .td-preview-education-item p { margin-top: 2px; color: #718096; font-size: 11px; }
-        .td-preview-side-stack { display: grid; align-content: start; gap: 16px; }
-        .td-preview-education-item { display: flex; gap: 12px; margin-top: 12px; }
-        .td-preview-education-item > svg { width: 26px; height: 26px; flex: 0 0 26px; padding: 5px; border-radius: 3px; background: #dce7f8; color: #4d668a; }
-        .td-preview-trcn { display: flex; align-items: center; gap: 9px; margin-top: 12px; padding: 11px; border: 1px solid #cee6dc; border-radius: 5px; background: #f4faf7; }
-        .td-preview-trcn > svg { flex: 0 0 auto; color: #08755d; }
-        .td-preview-trcn div { min-width: 0; flex: 1; }
-        .td-preview-trcn strong { display: block; color: #334155; font-size: 11px; }
-        .td-preview-trcn p { color: #64748b; font-size: 9px; }
-        .td-preview-trcn > span { padding: 3px 6px; border-radius: 2px; background: #d9f0e6; color: #08755d; font-size: 8px; font-weight: 800; }
-        .td-preview-trcn > .td-preview-status--muted { background: #e2e8f0; color: #64748b; }
-        .td-preview-doc-actions { display: grid; gap: 5px; margin-top: 12px; }
-        .td-preview-doc-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 29px; border: 1px solid #cfd6df; border-radius: 4px; color: #475569; font-size: 10px; font-weight: 600; cursor: pointer; }
+        .td-preview-name-row h2 { color: #1f2c3d; font-size: 22px; line-height: 1.2; font-weight: 700; }
+        .td-preview-verified { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: #e5f5ee; color: #168263; font-size: 10px; font-weight: 700; }
+        .td-preview-verified--muted { background: #f1f3f5; color: #64748b; }
+        .td-preview-hero-copy > p { margin-top: 5px; color: #4e5c6e; font-size: 14px; }
+        .td-preview-meta { display: flex; flex-wrap: wrap; gap: 17px; margin-top: 11px; color: #6b7789; font-size: 12px; }
+        .td-preview-meta span { display: inline-flex; align-items: center; gap: 6px; }
+        .td-preview-meta svg { color: #08755d; }
+        .td-preview-section { min-width: 0; padding: 20px 0; }
+        .td-preview-section h2 { display: flex; align-items: center; gap: 9px; color: #263447; font-size: 15px; font-weight: 700; }
+        .td-preview-section h2 svg { flex: 0 0 auto; color: #08755d; }
+        .td-preview-summary > p { margin-top: 12px; color: #5d6878; font-size: 12px; line-height: 1.75; white-space: pre-line; }
+        .td-preview-experience .td-preview-list { margin-top: 17px; }
+        .td-preview-list { display: grid; gap: 16px; }
+        .td-preview-list-item { position: relative; display: flex; gap: 13px; padding: 0 0 0 2px; }
+        .td-preview-timeline-dot { width: 11px; height: 11px; flex: 0 0 11px; margin-top: 3px; border: 2px solid #128064; border-radius: 50%; background: #fff; }
+        .td-preview-list-item > div:last-child { min-width: 0; }
+        .td-preview-list-item span, .td-preview-education-item span { display: block; color: #718093; font-size: 10px; font-weight: 600; }
+        .td-preview-list-item strong, .td-preview-education-item strong { display: block; margin-top: 4px; color: #273449; font-size: 13px; line-height: 1.35; }
+        .td-preview-list-item p, .td-preview-education-item p { margin-top: 3px; color: #718096; font-size: 11px; line-height: 1.5; }
+        .td-preview-list-item .td-preview-experience-description { margin-top: 7px; color: #566274; white-space: pre-line; }
+        .td-preview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; }
+        .td-preview-column { min-width: 0; }
+        .td-preview-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+        .td-preview-tags span { padding: 6px 10px; border-radius: 5px; background: #f1f6f4; color: #40594f; font-size: 10px; }
+        .td-preview-tags em { color: #64748b; font-size: 12px; font-style: normal; }
+        .td-preview-expertise-details { display: grid; gap: 8px; margin-top: 12px; }
+        .td-preview-expertise-details > div { display: grid; grid-template-columns: 90px minmax(0, 1fr); gap: 8px; }
+        .td-preview-expertise-details dt { color: #273449; font-size: 10px; font-weight: 700; }
+        .td-preview-expertise-details dd { min-width: 0; color: #4b5563; font-size: 10px; line-height: 1.55; }
+        .td-preview-education-item, .td-preview-certification-item { display: flex; align-items: flex-start; gap: 11px; margin-top: 14px; }
+        .td-preview-education-item > svg, .td-preview-certification-item > svg { width: 29px; height: 29px; flex: 0 0 29px; padding: 7px; border-radius: 5px; background: #eff5f3; color: #08755d; }
+        .td-preview-education-item > div, .td-preview-certification-item > div { min-width: 0; }
+        .td-preview-certification-list { display: grid; gap: 14px; }
+        .td-preview-certification-item strong { color: #273449; font-size: 12px; }
+        .td-preview-certification-item p { margin-top: 4px; color: #718096; font-size: 10px; line-height: 1.5; }
+        .td-preview-certification-status { margin-left: auto; padding: 3px 7px; border-radius: 999px; background: #e5f5ee; color: #168263; font-size: 9px; font-weight: 700; }
+        .td-preview-certification-status.is-muted { background: #f1f3f5; color: #64748b; }
+        .td-preview-empty { margin-top: 12px; color: #718096; font-size: 11px; }
+        .td-preview-resume { display: flex; align-items: center; flex-wrap: wrap; gap: 13px; padding-top: 19px; }
+        .td-preview-resume > span { display: inline-flex; align-items: center; gap: 6px; color: #344256; font-size: 12px; font-weight: 700; }
+        .td-preview-resume > span svg { color: #08755d; }
+        .td-preview-resume > strong { color: #718096; font-size: 11px; font-weight: 500; }
+        .td-preview-doc-actions { display: flex; gap: 7px; margin-left: auto; }
+        .td-preview-doc-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 0 9px; border: 1px solid #cfd6df; border-radius: 5px; background: #fff; color: #475569; font-size: 10px; font-weight: 600; cursor: pointer; }
         .td-preview-doc-actions button:hover { background: #f8fafc; }
-        .td-preview-empty { margin-top: 12px; color: #718096; font-size: 12px; }
         @media (max-width: 720px) {
-          .td-profile-preview-page { padding-bottom: 88px; }
-          .td-preview-hero { align-items: flex-start; padding: 20px; }
-          .td-preview-avatar { width: 58px; height: 58px; flex-basis: 58px; font-size: 18px; }
-          .td-preview-name-row h1 { font-size: 18px; }
-          .td-preview-grid { grid-template-columns: 1fr; }
+          .td-profile-preview-page { padding: 8px 0 88px; }
+          .td-preview-page-heading { align-items: flex-start; flex-direction: column; gap: 13px; }
+          .td-preview-page-heading h1 { font-size: 22px; }
+          .td-preview-page-actions { width: 100%; }
+          .td-preview-page-actions button { flex: 1; }
+          .td-preview-card { padding: 0 18px 22px; }
+          .td-preview-hero { align-items: flex-start; gap: 14px; min-height: unset; padding: 22px 0; }
+          .td-preview-avatar { width: 62px; height: 62px; flex-basis: 62px; font-size: 19px; }
+          .td-preview-name-row h2 { font-size: 18px; }
+          .td-preview-meta { gap: 8px 14px; }
+          .td-preview-grid { grid-template-columns: 1fr; gap: 0; }
+          .td-preview-expertise-details > div { grid-template-columns: 100px minmax(0, 1fr); }
+          .td-preview-resume { align-items: flex-start; flex-direction: column; }
+          .td-preview-doc-actions { margin-left: 0; }
         }
 
         .td-profile-btn-edit {
@@ -20433,6 +20546,345 @@ export default function TeacherDashboard() {
 
           .td-edu-certification-more > button {
             right: 0;
+          }
+        }
+
+        @media (max-width: 900px) {
+          .td-profile-overview-top {
+            grid-template-columns: minmax(0, 1fr);
+          }
+        }
+
+        @media (max-width: 720px) {
+          .td-profile-tab-page {
+            min-width: 0;
+            padding: 14px 12px 88px;
+          }
+
+          .td-profile-page-heading {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 12px;
+          }
+
+          .td-profile-page-heading p {
+            max-width: 100%;
+          }
+
+          .td-profile-page-heading > .td-profile-btn-preview {
+            min-height: 40px;
+          }
+
+          .td-profile-overview-top {
+            gap: 12px;
+          }
+
+          .td-profile-overview-top .td-profile-header-card {
+            padding: 18px;
+          }
+
+          .td-profile-overview-top .td-profile-header-left {
+            width: 100%;
+            gap: 14px;
+          }
+
+          .td-profile-overview-top .td-profile-info-block {
+            flex: 1 1 0;
+          }
+
+          .td-profile-overview-top .td-profile-name-row {
+            flex-wrap: wrap;
+          }
+
+          .td-profile-overview-top .td-profile-name-row h2 {
+            overflow-wrap: anywhere;
+          }
+
+          .td-profile-overview-top .td-profile-meta-row {
+            flex-wrap: wrap;
+          }
+
+          .td-profile-overview-top .td-profile-meta-item + .td-profile-meta-item::before {
+            display: none;
+          }
+
+          .td-profile-tabs {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0;
+            margin-right: 0;
+            padding: 4px;
+          }
+
+          .td-profile-tabs > button {
+            min-width: 0;
+            min-height: 44px;
+            padding: 7px 8px;
+            white-space: normal;
+            line-height: 1.3;
+            text-align: center;
+          }
+
+          .td-profile-overview-panel {
+            padding: 16px;
+          }
+
+          .td-profile-overview-panel-heading {
+            display: grid;
+            grid-template-columns: 38px minmax(0, 1fr);
+            align-items: start;
+            gap: 10px;
+          }
+
+          .td-profile-overview-panel-heading > div:nth-child(2) {
+            min-width: 0;
+          }
+
+          .td-profile-overview-panel-heading h2 {
+            overflow-wrap: anywhere;
+          }
+
+          .td-profile-overview-panel-heading > button {
+            grid-column: 2;
+            justify-self: start;
+            margin-left: 0;
+          }
+
+          .td-profile-overview-details {
+            gap: 14px;
+          }
+
+          .td-profile-overview-details > * {
+            min-width: 0;
+          }
+
+          .td-profile-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
+          }
+
+          .td-profile-section-card {
+            min-height: 120px;
+            padding: 16px;
+          }
+
+          .td-psc-title {
+            font-size: 17px;
+            overflow-wrap: anywhere;
+          }
+
+          .td-subtab-view {
+            gap: 14px;
+          }
+
+          .td-subtab-top-nav {
+            align-items: stretch;
+            gap: 12px;
+          }
+
+          .td-subtab-pill-bar {
+            width: 100%;
+          }
+
+          .td-subtab-card {
+            padding: 20px;
+            border-radius: 16px;
+          }
+
+          .td-subtab-card-header {
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding-bottom: 18px;
+          }
+
+          .td-subtab-header-left {
+            min-width: 0;
+            gap: 12px;
+          }
+
+          .td-subtab-header-left h2 {
+            font-size: 18px;
+            overflow-wrap: anywhere;
+          }
+
+          .td-subtab-form-grid {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 14px;
+          }
+
+          .td-subtab-field-full {
+            grid-column: auto;
+          }
+
+          .td-profile-tab-page .td-subtab-input,
+          .td-profile-tab-page .td-subtab-textarea {
+            min-width: 0;
+            width: 100%;
+          }
+
+          .td-prof-skills-card {
+            padding: 20px;
+          }
+
+          .td-prof-skills-heading {
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+          }
+
+          .td-prof-skills-heading h1 {
+            font-size: 18px;
+          }
+
+          .td-prof-skills-heading p {
+            font-size: 13px;
+          }
+
+          .td-prof-skills-item {
+            grid-template-columns: 34px minmax(0, 1fr);
+            gap: 12px;
+            padding: 16px;
+          }
+
+          .td-prof-skills-item-icon {
+            width: 34px;
+            height: 34px;
+          }
+
+          .td-prof-skills-item-title {
+            flex-wrap: wrap;
+            gap: 10px;
+          }
+
+          .td-more-card {
+            min-height: 0;
+            padding: 20px;
+          }
+
+          .td-profile-tab-page .td-basic-profile-modal-backdrop,
+          .td-profile-tab-page .td-prof-skills-modal-overlay,
+          .td-profile-tab-page .td-education-form-overlay {
+            padding: 12px;
+          }
+
+          .td-profile-tab-page .td-basic-profile-modal,
+          .td-profile-tab-page .td-prof-skills-modal {
+            max-height: calc(100dvh - 24px);
+          }
+        }
+
+        @media (max-width: 480px) {
+          .td-profile-tab-page {
+            padding-right: 10px;
+            padding-left: 10px;
+          }
+
+          .td-profile-overview-top .td-profile-header-card {
+            padding: 15px;
+          }
+
+          .td-profile-overview-top .td-profile-header-left {
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .td-profile-overview-top .td-profile-avatar-container {
+            width: 72px;
+            height: 72px;
+          }
+
+          .td-profile-overview-top .td-profile-header-actions {
+            margin-top: 12px;
+          }
+
+          .td-profile-readiness {
+            padding: 14px;
+          }
+
+          .td-profile-tabs {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            border-radius: 10px;
+          }
+
+          .td-profile-tabs > button {
+            gap: 5px;
+            padding: 7px 5px;
+            font-size: 11px;
+          }
+
+          .td-profile-overview-panel {
+            padding: 14px;
+          }
+
+          .td-profile-overview-panel-heading {
+            grid-template-columns: 32px minmax(0, 1fr);
+            gap: 8px;
+          }
+
+          .td-profile-overview-panel-heading .td-overview-icon {
+            width: 32px;
+            height: 32px;
+          }
+
+          .td-profile-overview-panel-heading h2 {
+            font-size: 14px;
+          }
+
+          .td-profile-overview-panel-heading p {
+            font-size: 10px;
+          }
+
+          .td-profile-grid {
+            grid-template-columns: minmax(0, 1fr);
+          }
+
+          .td-profile-section-card {
+            min-height: 110px;
+          }
+
+          .td-subtab-card {
+            padding: 16px;
+            border-radius: 13px;
+          }
+
+          .td-subtab-header-left {
+            align-items: flex-start;
+          }
+
+          .td-subtab-actions {
+            justify-content: stretch;
+          }
+
+          .td-subtab-save-btn {
+            width: 100%;
+          }
+
+          .td-prof-skills-card {
+            padding: 15px;
+          }
+
+          .td-prof-skills-heading-icon {
+            width: 38px;
+            height: 38px;
+            flex-basis: 38px;
+          }
+
+          .td-prof-skills-item {
+            grid-template-columns: minmax(0, 1fr);
+            gap: 10px;
+            padding: 14px;
+          }
+
+          .td-prof-skills-item-title button {
+            min-height: 40px;
+          }
+
+          .td-prof-skills-input-row {
+            flex-wrap: wrap;
+          }
+
+          .td-prof-skills-input-row > button {
+            min-height: 40px;
           }
         }
       `}</style>
