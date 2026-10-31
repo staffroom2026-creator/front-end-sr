@@ -9,17 +9,58 @@ import { applicationService } from '../services/applicationService';
 import { featureService } from '../services/featureService';
 import { profileService } from '../services/profileService';
 import { accountService } from '../services/accountService';
+import { TEACHER_EXPERTISE_CATEGORIES, normalizeTeacherExpertise, toTeacherExpertisePayload } from '../services/teacherExpertiseService';
 import { apiErrorMessage, API_ORIGIN } from '../services/api';
+import DocumentViewer from '@cyntler/react-doc-viewer';
+import '@cyntler/react-doc-viewer/dist/index.css';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiCreditCard, FiSend, FiCalendar, FiAlertTriangle,
   FiUser, FiEdit2, FiTrash2, FiX, FiRotateCw, FiShield, FiAward, FiDownload, FiUpload, FiLock,
-  FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut
+  FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut, FiMoreHorizontal, FiMoreVertical, FiBarChart2, FiUsers, FiCopy, FiSliders
 } from 'react-icons/fi';
 
 const COVER_LETTER_MAX_LENGTH = 3000;
+const DocumentPreviewRenderer = ({ mainState }) => {
+  const document = mainState.currentDocument;
+  if (!document?.uri) return null;
+
+  const mimeType = getDocumentMimeType(document.fileName);
+  return mimeType.startsWith('image/')
+    ? <img className="td-document-preview-image" src={document.uri} alt={document.fileName || 'Document preview'} />
+    : <iframe className="td-document-preview-frame" src={document.uri} title={document.fileName || 'PDF document preview'} />;
+};
+
+DocumentPreviewRenderer.fileTypes = ['pdf', 'application/pdf', 'png', 'image/png', 'jpg', 'jpeg', 'image/jpeg'];
+DocumentPreviewRenderer.weight = 1;
+DocumentPreviewRenderer.fileLoader = ({ fileLoaderComplete }) => fileLoaderComplete();
+
+const DOCUMENT_PREVIEW_RENDERERS = [DocumentPreviewRenderer];
+const MAX_CV_FILE_SIZE = 5 * 1024 * 1024;
+const CV_FILE_EXTENSIONS = ['pdf', 'doc', 'docx'];
+const SUPPORTING_DOCUMENT_EXTENSIONS = [...CV_FILE_EXTENSIONS, 'jpg', 'jpeg', 'png'];
+
+const formatFileSize = (bytes) => {
+  if (!Number.isFinite(bytes) || bytes < 0) return 'Size unavailable';
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+};
+
+const getFileNameFromUrl = (url) => String(url || '').split(/[?#]/)[0].split('/').pop() || 'CV document';
+const getDocumentMimeType = (fileName) => {
+  const extension = String(fileName || '').split('.').pop()?.toLowerCase();
+  return ({
+    pdf: 'application/pdf',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    png: 'image/png',
+  })[extension] || '';
+};
 
 const pageVariants = {
   hidden: { opacity: 0 },
@@ -434,8 +475,6 @@ const teacherLevelOptions = [
   'JUNIOR SECONDARY (JSS1 - JSS3)',
   'SENIOR SECONDARY (SS1 - SS2)',
 ];
-const degreeOptions = ['B.Ed', 'B.A.', 'B.Sc.', 'M.Ed', 'M.A.', 'M.Sc.', 'Ph.D.', 'ND', 'NCE', 'HND', 'PGDE', 'Diploma', 'Certificate', 'Others'];
-
 const normalizeEducationLevel = (value = '') => {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -454,15 +493,26 @@ const normalizeEducationLevel = (value = '') => {
 const normalizeTeachingLevels = (value) => [...new Set(
   parseSubjectList(value).map(normalizeEducationLevel),
 )];
-const degreeClassOptions = [
-  'First Class Honours / Distinction',
-  'Second Class Honours (Upper Division) / Upper Credit',
-  'Second Class Honours (Lower Division) / Lower Credit',
-  'Third Class Honours',
-  'Credit',
-  'Merit',
-  'Pass',
+const educationMonths = [
+  ['01', 'January'], ['02', 'February'], ['03', 'March'], ['04', 'April'],
+  ['05', 'May'], ['06', 'June'], ['07', 'July'], ['08', 'August'],
+  ['09', 'September'], ['10', 'October'], ['11', 'November'], ['12', 'December'],
 ];
+const educationLevelOptions = ['OND', 'NCE', 'B.Sc', 'B.Ed', 'M.Ed', 'PhD', 'Other'];
+const educationFieldOptions = ['Mathematics', 'English', 'Biology', 'Chemistry', 'Physics', 'Computer Science', 'Education', 'Other'];
+const createEducationForm = () => ({
+  degree: '',
+  institution: '',
+  fieldOfStudy: '',
+  fieldOfStudyOther: '',
+  educationLevel: '',
+  classOfDegree: '',
+  startMonth: '',
+  startYear: '',
+  endMonth: '',
+  endYear: '',
+  currentlyStudying: false,
+});
 
 export default function TeacherDashboard() {
   const jobsPerPage = 20;
@@ -470,19 +520,9 @@ export default function TeacherDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const profileCompletionDismissalKey = `staffroom_profile_completion_dismissed:${user?.user_id || user?.id || user?.email || 'teacher'}`;
   const [activeTab, setActiveTab] = useState('dashboard');
   const [profileSubTab, setProfileSubTab] = useState('overview');
-  const [profileCompletionCardFading, setProfileCompletionCardFading] = useState(false);
-  const [profileCompletionDismissedFor, setProfileCompletionDismissedFor] = useState(() => {
-    try {
-      return localStorage.getItem(profileCompletionDismissalKey) === 'true'
-        ? profileCompletionDismissalKey
-        : null;
-    } catch {
-      return null;
-    }
-  });
+  const [showMoreInformationModal, setShowMoreInformationModal] = useState(false);
   const isRestoringDashboardHistory = useRef(false);
   const [selectedJob, setSelectedJob] = useState(null);
   const [selectedJobOrigin, setSelectedJobOrigin] = useState('jobs');
@@ -505,6 +545,7 @@ export default function TeacherDashboard() {
   const [, setNotifError] = useState('');
   const [savedJobIds, setSavedJobIds] = useState([]);
   const [profileState, setProfileState] = useState({});
+  const [teacherProfileLoaded, setTeacherProfileLoaded] = useState(false);
   const [profileViewsCount, setProfileViewsCount] = useState(null);
   const [profileViewLogs, setProfileViewLogs] = useState([]);
   const [profileViewLogsLoading, setProfileViewLogsLoading] = useState(false);
@@ -541,16 +582,28 @@ export default function TeacherDashboard() {
   const [educationList, setEducationList] = useState([]);
   const [showAddEduModal, setShowAddEduModal] = useState(false);
   const [showPostEducationModal, setShowPostEducationModal] = useState(false);
-  const [newEduForm, setNewEduForm] = useState({
-    degree: '',
-    degreeOther: '',
-    institution: '',
-    fieldOfStudy: '',
-    classOfDegree: '',
-    startYear: '2015',
-    endYear: '2019',
-    status: 'Completed'
+  const [newEduForm, setNewEduForm] = useState(createEducationForm);
+  const [educationDocumentFile, setEducationDocumentFile] = useState(null);
+  const [educationDocumentError, setEducationDocumentError] = useState('');
+  const educationDocumentInputRef = useRef(null);
+  const [sessionCertifications, setSessionCertifications] = useState([]);
+  const [editingCertificationId, setEditingCertificationId] = useState(null);
+  const [showAddCertificationModal, setShowAddCertificationModal] = useState(false);
+  const [certificationForm, setCertificationForm] = useState({
+    name: '',
+    organisation: '',
+    number: '',
+    issueMonth: '',
+    issueYear: '',
+    expiryMonth: '',
+    expiryYear: '',
+    doesNotExpire: false,
+    notes: '',
   });
+  const [certificationFile, setCertificationFile] = useState(null);
+  const [certificationError, setCertificationError] = useState('');
+  const [certificationFileError, setCertificationFileError] = useState('');
+  const certificationFileInputRef = useRef(null);
   const [educationError, setEducationError] = useState('');
   const [savingEducation, setSavingEducation] = useState(false);
   const [editingEducationId, setEditingEducationId] = useState(null);
@@ -583,6 +636,17 @@ export default function TeacherDashboard() {
   const [availLocation, setAvailLocation] = useState('');
   const [availStartOption, setAvailStartOption] = useState('immediately');
   const [availSpecificDate, setAvailSpecificDate] = useState('');
+  const [availabilityDraft, setAvailabilityDraft] = useState(null);
+  const [availabilityTagInput, setAvailabilityTagInput] = useState('');
+  const [availabilityLocationInput, setAvailabilityLocationInput] = useState('');
+  const [availabilityModalError, setAvailabilityModalError] = useState('');
+  const [availabilitySessionExtras, setAvailabilitySessionExtras] = useState({
+    employmentTypes: [],
+    workArrangements: [],
+    salaryRange: '',
+    relocationPreference: '',
+    notes: '',
+  });
   const [savingAvailability, setSavingAvailability] = useState(false);
   const [showProfileUpdatedModal, setShowProfileUpdatedModal] = useState(false);
   const [profileCompletionNotice, setProfileCompletionNotice] = useState('');
@@ -600,6 +664,7 @@ export default function TeacherDashboard() {
 
     if (daysAfterUpdate === 0) return 'immediately';
     if (daysAfterUpdate === 14) return '2-weeks';
+    if (daysAfterUpdate > 14 && daysAfterUpdate <= 31) return 'within-month';
     return 'specific-date';
   };
 
@@ -782,11 +847,25 @@ export default function TeacherDashboard() {
   const [profYearsExp, setProfYearsExp] = useState('0+ years');
   const [profEmpPref, setProfEmpPref] = useState('Open');
   const [profTeachMode, setProfTeachMode] = useState('Open');
-  const [profTeachingMode, setProfTeachingMode] = useState('In Person');
   const [profSubjects, setProfSubjects] = useState([]);
   const [profTeachingLevels, setProfTeachingLevels] = useState([]);
-  const [newSubjectInput, setNewSubjectInput] = useState('');
-  const [showAddSubject, setShowAddSubject] = useState(false);
+  const [skillExpertise, setSkillExpertise] = useState(() => normalizeTeacherExpertise());
+  const [editingExpertiseCategory, setEditingExpertiseCategory] = useState('');
+  const [expertiseDraftTags, setExpertiseDraftTags] = useState([]);
+  const [expertiseTagInput, setExpertiseTagInput] = useState('');
+  const [showBasicProfileModal, setShowBasicProfileModal] = useState(false);
+  const [basicProfileError, setBasicProfileError] = useState('');
+  const [basicProfileDraft, setBasicProfileDraft] = useState({
+    title: '',
+    location: '',
+    subjects: [],
+    teachingLevels: [],
+    summary: '',
+  });
+  const [basicProfileSubjectInput, setBasicProfileSubjectInput] = useState('');
+  const [profilePhotoUploading, setProfilePhotoUploading] = useState(false);
+  const [profilePhotoError, setProfilePhotoError] = useState('');
+  const profilePhotoInputRef = useRef(null);
   const [savingProfessionalInfo, setSavingProfessionalInfo] = useState(false);
   const [showApplyModal, setShowApplyModal] = useState(false);
   const [applicationReviewMode, setApplicationReviewMode] = useState(false);
@@ -844,6 +923,27 @@ export default function TeacherDashboard() {
   const profileFullName = (user?.full_name || [personalFirstName, personalLastName].filter(Boolean).join(' ') || 'Teacher').trim() || 'Teacher';
   const profileLocation = profileState?.location || [personalCity, personalState].filter(Boolean).join(', ') || 'Location not set';
   const profileRoleTitle = profileState?.role_title || profTitle || 'Teacher';
+  const profilePreferredEmployment = String(profileState?.preferred_employment_type || '').replace(/[-_]/g, ' ');
+  const sessionEmploymentSummary = availabilitySessionExtras.employmentTypes
+    .map((type) => type.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()))
+    .join(', ');
+  const moreJobPreferenceSummary = sessionEmploymentSummary
+    ? `${sessionEmploymentSummary}${profileState?.preferred_location ? ` · ${profileState.preferred_location}` : ''}`
+    : profilePreferredEmployment
+      ? `${profilePreferredEmployment.replace(/\b\w/g, (letter) => letter.toUpperCase())}${profileState?.preferred_location ? ` · ${profileState.preferred_location}` : ''}`
+    : 'Tell us the roles, locations and employment types you are interested in.';
+  const profileAvailableFromDate = profileState?.available_from
+    ? new Date(`${String(profileState.available_from).slice(0, 10)}T00:00:00`)
+    : null;
+  const moreAvailabilitySummary = profileAvailableFromDate && !Number.isNaN(profileAvailableFromDate.getTime())
+    ? `Available from ${profileAvailableFromDate.toLocaleDateString()}.`
+    : 'Let schools know when you are available to start.';
+  const moreDocumentName = activeResume?.url
+    ? activeResume.name
+    : String(profileState?.cv_url || '').split('/').pop();
+  const moreDocumentsSummary = profileState?.cv_url || activeResume?.url
+    ? `CV uploaded: ${moreDocumentName || 'View your uploaded CV.'}`
+    : 'Upload your CV and other relevant documents (e.g. testimonials).';
   const isTrcnVerified = Boolean(
     profileState?.trcn_verified ||
     profileState?.is_trcn_verified ||
@@ -1088,39 +1188,50 @@ export default function TeacherDashboard() {
   const completedProfileStepCount = profileCompletionSteps.filter((step) => step.completed).length;
   const profileCompletionPercent = Math.round((completedProfileStepCount / profileCompletionSteps.length) * 100);
   const nextProfileStep = profileCompletionSteps.find((step) => !step.completed) || null;
-  const profileCompletionCardDismissed = profileCompletionDismissedFor === profileCompletionDismissalKey;
+  const [showProfileCompletionModal, setShowProfileCompletionModal] = useState(false);
+  const profileCompletionModalSession = useRef({ userKey: '', shown: false });
+  const profileCompletionModalItems = [
+    {
+      key: 'teaching-experience',
+      label: 'Teaching Experience',
+      description: 'Add at least one current or most recent teaching experience.',
+      icon: <FiBriefcase size={25} style={{ color: '#1f9ad7' }} />,
+      button: 'Add experience',
+      completed: normalizeExperienceRecords(
+        profileState?.teaching_experience ?? profileState?.work_experience ?? profileState?.experience_history ?? experienceList,
+      ).length > 0,
+    },
+    {
+      key: 'education',
+      label: 'Education & Certifications',
+      description: 'Add your highest qualification and any relevant teaching certifications (e.g. TRCN).',
+      icon: <FiAward size={25} style={{ color: '#9c5ad9' }} />,
+      button: 'Add education',
+      completed: normalizeEducationRecords(profileState?.education_history || educationList).length > 0,
+    },
+  ].filter((item) => !item.completed);
 
   useEffect(() => {
-    try {
-      setProfileCompletionDismissedFor(
-        localStorage.getItem(profileCompletionDismissalKey) === 'true'
-          ? profileCompletionDismissalKey
-          : null,
-      );
-    } catch {
-      setProfileCompletionDismissedFor(null);
+    const userKey = String(user?.user_id || user?.id || user?.email || 'teacher');
+    if (profileCompletionModalSession.current.userKey !== userKey) {
+      profileCompletionModalSession.current = { userKey, shown: false };
     }
-    setProfileCompletionCardFading(false);
-  }, [profileCompletionDismissalKey]);
 
-  useEffect(() => {
-    if (activeTab !== 'dashboard' || nextProfileStep || profileCompletionCardDismissed) return undefined;
+    if (
+      activeTab !== 'dashboard' ||
+      !teacherProfileLoaded ||
+      profileCompletionModalItems.length === 0 ||
+      profileCompletionModalSession.current.shown
+    ) return undefined;
 
-    const fadeTimeout = window.setTimeout(() => setProfileCompletionCardFading(true), 900);
-    const dismissTimeout = window.setTimeout(() => {
-      try {
-        localStorage.setItem(profileCompletionDismissalKey, 'true');
-      } catch {
-        // Keep the dismissal for this session if storage is unavailable.
-      }
-      setProfileCompletionDismissedFor(profileCompletionDismissalKey);
-    }, 1700);
+    profileCompletionModalSession.current.shown = true;
+    setShowProfileCompletionModal(true);
+    return undefined;
+  }, [activeTab, profileCompletionModalItems.length, teacherProfileLoaded, user?.user_id, user?.id, user?.email]);
 
-    return () => {
-      window.clearTimeout(fadeTimeout);
-      window.clearTimeout(dismissTimeout);
-    };
-  }, [activeTab, nextProfileStep, profileCompletionCardDismissed, profileCompletionDismissalKey]);
+  const dismissProfileCompletionModal = () => {
+    setShowProfileCompletionModal(false);
+  };
 
   const goToNextProfileStep = () => {
     if (!nextProfileStep) return;
@@ -1130,6 +1241,10 @@ export default function TeacherDashboard() {
     }
     if (nextProfileStep.key === 'personal-info') setPersonalInfoOrigin('profile');
     setActiveTab('profile');
+    if (nextProfileStep.key === 'availability') {
+      openAvailabilityPreferencesModal();
+      return;
+    }
     setProfileSubTab(nextProfileStep.key);
   };
   const hasRequiredTeacherApplicationData = () => {
@@ -1165,13 +1280,83 @@ export default function TeacherDashboard() {
   const [alreadyAppliedState, setAlreadyAppliedState] = useState(false);
   const [existingCvUrl, setExistingCvUrl] = useState('');
   const profileCvUrl = toTeacherAssetUrl(existingCvUrl || activeResume?.url || profileState?.cv_url || '');
+  const teacherCvUrl = toTeacherAssetUrl(activeResume?.url || profileState?.cv_url || '');
+  const cvDocumentUrl = activeResume?.url || profileState?.cv_url || '';
+  const cvDocumentName = activeResume?.url && activeResume.name && activeResume.name !== profileFullName
+    ? activeResume.name
+    : getFileNameFromUrl(cvDocumentUrl);
   const [applicationRequirements, setApplicationRequirements] = useState(null);
   const [submittingApplication, setSubmittingApplication] = useState(false);
   const [applicationError, setApplicationError] = useState('');
   const [pendingCvFile, setPendingCvFile] = useState(null);
-  const [cvUploadLoading, setCvUploadLoading] = useState(false);
   const [showPostCvModal, setShowPostCvModal] = useState(false);
+  const hasCvDocument = Boolean(teacherCvUrl || pendingCvFile);
+  const displayedCvName = pendingCvFile?.name || cvDocumentName;
+  const [cvUploadLoading, setCvUploadLoading] = useState(false);
+  const [supportingDocuments, setSupportingDocuments] = useState([]);
+  const [supportingDocumentsDraft, setSupportingDocumentsDraft] = useState(null);
+  const [savingDocuments, setSavingDocuments] = useState(false);
+  const [manageDocumentsError, setManageDocumentsError] = useState('');
+  const [cvDropActive, setCvDropActive] = useState(false);
+  const [documentPreview, setDocumentPreview] = useState(null);
   const cvFileInputRef = useRef(null);
+  const supportingDocumentFileInputRef = useRef(null);
+  const previousDocumentUrlsRef = useRef(new Set());
+
+  useEffect(() => {
+    const currentUrls = new Set([
+      ...supportingDocuments,
+      ...(supportingDocumentsDraft || []),
+    ].map((document) => document.previewUrl));
+    previousDocumentUrlsRef.current.forEach((url) => {
+      if (!currentUrls.has(url)) URL.revokeObjectURL(url);
+    });
+    previousDocumentUrlsRef.current = currentUrls;
+  }, [supportingDocuments, supportingDocumentsDraft]);
+
+  useEffect(() => () => {
+    previousDocumentUrlsRef.current.forEach((url) => URL.revokeObjectURL(url));
+  }, []);
+
+  const savedEmploymentTypes = availabilitySessionExtras.employmentTypes.length
+    ? availabilitySessionExtras.employmentTypes
+    : profileState?.preferred_employment_type
+      ? [String(profileState.preferred_employment_type)]
+      : [];
+  const moreEmploymentDisplay = savedEmploymentTypes
+    .map((type) => type.replace(/[-_]/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase()))
+    .join(', ');
+  const moreLocationDisplay = String(profileState?.preferred_location || '').split(';').map((location) => location.trim()).filter(Boolean).join(', ');
+  const availableFromDate = profileState?.available_from ? new Date(`${String(profileState.available_from).slice(0, 10)}T00:00:00`) : null;
+  const moreAvailabilityDisplay = availableFromDate && !Number.isNaN(availableFromDate.getTime())
+    ? availableFromDate <= new Date(new Date().toDateString())
+      ? 'Available immediately'
+      : `Available ${availableFromDate.toLocaleDateString()}`
+    : '';
+  const moreRelocationDisplay = availabilitySessionExtras.relocationPreference;
+  const hasPopulatedPreferences = Boolean(
+    moreAvailabilityDisplay ||
+    moreEmploymentDisplay ||
+    moreLocationDisplay ||
+    moreRelocationDisplay
+  );
+  const hasPopulatedDocuments = Boolean(teacherCvUrl || supportingDocuments.length);
+  const hasPopulatedMoreContent = hasPopulatedPreferences || hasPopulatedDocuments;
+
+  useEffect(() => {
+    if (!documentPreview) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handlePreviewKeyDown = (event) => {
+      if (event.key === 'Escape') setDocumentPreview(null);
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handlePreviewKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handlePreviewKeyDown);
+    };
+  }, [documentPreview]);
 
   const handleResumeAction = (mode) => {
     if (!profileCvUrl) {
@@ -1211,7 +1396,7 @@ export default function TeacherDashboard() {
         setActiveResume({
           name: file.name,
           uploadDate: new Date().toLocaleDateString(),
-          size: 'Uploaded',
+          size: formatFileSize(file.size),
           url: cvUrl,
         });
       }
@@ -1227,7 +1412,20 @@ export default function TeacherDashboard() {
     const nextFile = event.target.files && event.target.files[0];
     if (!nextFile) return;
 
+    const extension = nextFile.name.split('.').pop()?.toLowerCase();
+    if (!CV_FILE_EXTENSIONS.includes(extension)) {
+      setManageDocumentsError('Choose a PDF, DOC, or DOCX file for your CV.');
+      event.target.value = '';
+      return;
+    }
+    if (nextFile.size > MAX_CV_FILE_SIZE) {
+      setManageDocumentsError('The CV must be 5 MB or smaller.');
+      event.target.value = '';
+      return;
+    }
+
     setPendingCvFile(nextFile);
+    setManageDocumentsError('');
     event.target.value = '';
   };
 
@@ -1248,8 +1446,154 @@ export default function TeacherDashboard() {
     }
   };
 
-  const cancelCvUpload = () => {
+  const cancelCvUpload = () => setPendingCvFile(null);
+
+  const handleSupportingDocumentSelection = (files) => {
+    const selectedFiles = Array.from(files || []);
+    if (!selectedFiles.length) return;
+
+    const invalidFile = selectedFiles.find((file) => {
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      return !SUPPORTING_DOCUMENT_EXTENSIONS.includes(extension);
+    });
+    if (invalidFile) {
+      setManageDocumentsError('Supporting documents must be PDF, DOC, DOCX, JPG, or PNG files.');
+      return;
+    }
+
+    const existingDocuments = supportingDocumentsDraft || supportingDocuments;
+    const newDocuments = selectedFiles
+      .filter((file) => !existingDocuments.some((document) => (
+        document.name === file.name && document.size === file.size && document.lastModified === file.lastModified
+      )))
+      .map((file, index) => ({
+        id: `${Date.now()}-${index}-${file.name}-${file.lastModified}`,
+        name: file.name,
+        size: file.size,
+        lastModified: file.lastModified,
+        addedAt: new Date().toLocaleDateString(),
+        previewUrl: URL.createObjectURL(file),
+        file,
+      }));
+    setSupportingDocumentsDraft([...existingDocuments, ...newDocuments]);
+    setManageDocumentsError('');
+  };
+
+  const openCvDocumentsModal = () => {
     setPendingCvFile(null);
+    setSupportingDocumentsDraft([...supportingDocuments]);
+    setManageDocumentsError('');
+    setProfileSubTab('cv-resume');
+  };
+
+  const openDocumentPreview = (document) => {
+    if (!document?.uri) {
+      setAppError('This document is not available to preview.');
+      return;
+    }
+    setDocumentPreview({
+      name: document.name || getFileNameFromUrl(document.uri),
+      uri: document.uri,
+    });
+  };
+
+  const renderDocumentPreviewModal = () => documentPreview && (
+    <div
+      className="td-modal-overlay td-document-preview-overlay"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) setDocumentPreview(null);
+      }}
+    >
+      <section className="td-document-preview-modal" role="dialog" aria-modal="true" aria-labelledby="td-document-preview-title">
+        <header>
+          <div><h2 id="td-document-preview-title">{documentPreview.name}</h2><p>Document preview</p></div>
+          <button type="button" aria-label="Close document preview" onClick={() => setDocumentPreview(null)}><FiX size={19} /></button>
+        </header>
+        <div className="td-document-preview-viewer">
+          <DocumentViewer
+            documents={[{
+              uri: documentPreview.uri,
+              fileName: documentPreview.name,
+              fileType: getDocumentMimeType(documentPreview.name),
+            }]}
+            pluginRenderers={DOCUMENT_PREVIEW_RENDERERS}
+            prefetchMethod="GET"
+            config={{
+              header: { disableHeader: true },
+              noRenderer: {
+                overrideComponent: ({ fileName }) => (
+                  <div className="td-document-preview-unsupported">
+                    <FiInfo size={22} />
+                    <strong>Preview not available for this file type</strong>
+                    <span>{fileName || 'This document'} cannot be previewed in the browser. PDF, JPG and PNG previews are supported.</span>
+                  </div>
+                ),
+              },
+            }}
+          />
+        </div>
+      </section>
+    </div>
+  );
+
+  const closeCvDocumentsModal = () => {
+    if (savingDocuments) return;
+    setPendingCvFile(null);
+    setSupportingDocumentsDraft(null);
+    setManageDocumentsError('');
+    setCvDropActive(false);
+    setProfileSubTab('more');
+  };
+
+  const isCvDocumentsOpen = profileSubTab === 'cv-resume';
+  useEffect(() => {
+    if (!isCvDocumentsOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleModalKeyDown = (event) => {
+      if (event.key === 'Escape' && !savingDocuments) {
+        setPendingCvFile(null);
+        setSupportingDocumentsDraft(null);
+        setManageDocumentsError('');
+        setCvDropActive(false);
+        setProfileSubTab('more');
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleModalKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleModalKeyDown);
+    };
+  }, [isCvDocumentsOpen, savingDocuments]);
+
+  const handleSaveDocuments = async (event) => {
+    event.preventDefault();
+    if (savingDocuments) return;
+    if (!teacherCvUrl && !pendingCvFile) {
+      setManageDocumentsError('A CV is required. Select your CV before saving.');
+      return;
+    }
+
+    setSavingDocuments(true);
+    setManageDocumentsError('');
+    try {
+      if (pendingCvFile) {
+        const uploaded = await handleCvUpload(pendingCvFile);
+        if (!uploaded) {
+          setManageDocumentsError('CV upload failed. Please review the dashboard alert and try again.');
+          return;
+        }
+        setPendingCvFile(null);
+        setShowCvSuccessSnackbar(true);
+      }
+
+      if (supportingDocumentsDraft) setSupportingDocuments(supportingDocumentsDraft);
+      setSupportingDocumentsDraft(null);
+      setProfileSubTab('more');
+    } finally {
+      setSavingDocuments(false);
+    }
   };
 
   const applyLoadedTeacherProfile = (profileData = {}) => {
@@ -1273,7 +1617,6 @@ export default function TeacherDashboard() {
       : 'Not provided');
     setProfEmpPref(profile.preferred_employment_type || 'Open');
     setProfTeachMode(profile.availability || 'Open');
-    setProfTeachingMode(profile.teaching_mode || 'In Person');
     setProfSubjects(getProfileSubjects(profile));
     setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
     setEducationList(normalizeEducationRecords(profile.education_history));
@@ -1449,6 +1792,7 @@ export default function TeacherDashboard() {
       });
       setApplications(applicationsWithInterviews);
       setProfileState(profile);
+      setTeacherProfileLoaded(true);
       setPersonalFirstName(firstName);
       setPersonalLastName(lastName);
       setPersonalPhone(profileData?.user?.phone || '');
@@ -1465,7 +1809,6 @@ export default function TeacherDashboard() {
       setProfYearsExp(profile.experience_years ? `${profile.experience_years}+ years` : 'Not provided');
       setProfEmpPref(profile.preferred_employment_type || 'Open');
       setProfTeachMode(profile.availability || 'Open');
-      setProfTeachingMode(profile.teaching_mode || 'In Person');
       setProfSubjects(getProfileSubjects(profile));
       setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
       setEducationList(normalizeEducationRecords(profile.education_history));
@@ -1593,7 +1936,6 @@ export default function TeacherDashboard() {
     setProfYearsExp(nextProfile.experience_years ? `${nextProfile.experience_years}+ years` : '0+ years');
     setProfEmpPref(nextProfile.preferred_employment_type || 'Open');
     setProfTeachMode(nextProfile.availability || 'Open');
-    setProfTeachingMode(nextProfile.teaching_mode || 'In Person');
     setProfSubjects(getProfileSubjects(nextProfile));
     setProfTeachingLevels(normalizeTeachingLevels(nextProfile.teaching_levels || []));
     setAvailLocation(nextProfile.preferred_location || nextProfile.location || '');
@@ -1642,38 +1984,115 @@ export default function TeacherDashboard() {
     description: description.trim(),
   }));
 
+  const closeEducationModal = () => {
+    if (savingEducation) return;
+    setShowAddEduModal(false);
+    setEducationError('');
+    setEducationDocumentError('');
+    setEducationDocumentFile(null);
+    if (educationDocumentInputRef.current) educationDocumentInputRef.current.value = '';
+  };
+
+  const resetCertificationForm = () => {
+    setEditingCertificationId(null);
+    setCertificationForm({
+      name: '',
+      organisation: '',
+      number: '',
+      issueMonth: '',
+      issueYear: '',
+      expiryMonth: '',
+      expiryYear: '',
+      doesNotExpire: false,
+      notes: '',
+    });
+    setCertificationFile(null);
+    setCertificationError('');
+    setCertificationFileError('');
+    if (certificationFileInputRef.current) certificationFileInputRef.current.value = '';
+  };
+
+  const closeCertificationModal = () => {
+    setShowAddCertificationModal(false);
+    resetCertificationForm();
+  };
+
+  const handleSaveCertification = (event) => {
+    event.preventDefault();
+    const form = certificationForm;
+    if (!form.name.trim() || !form.organisation.trim() || !form.issueMonth || !form.issueYear) {
+      setCertificationError('Complete the certification name, issuing organisation, and issue date.');
+      return;
+    }
+    if (!form.doesNotExpire && Boolean(form.expiryMonth) !== Boolean(form.expiryYear)) {
+      setCertificationError('Select both the expiry month and year, or mark that the certification does not expire.');
+      return;
+    }
+    if (!form.doesNotExpire && form.expiryMonth && form.expiryYear) {
+      const issueDate = `${form.issueYear}-${form.issueMonth}`;
+      const expiryDate = `${form.expiryYear}-${form.expiryMonth}`;
+      if (expiryDate < issueDate) {
+        setCertificationError('The expiry date must be after the issue date.');
+        return;
+      }
+    }
+
+    const savedCertification = {
+        ...form,
+        name: form.name.trim(),
+        organisation: form.organisation.trim(),
+        number: form.number.trim(),
+        notes: form.notes.trim(),
+        fileName: certificationFile?.name || sessionCertifications.find(({ id }) => id === editingCertificationId)?.fileName || '',
+        id: editingCertificationId || `session-certification-${Date.now()}`,
+      };
+    setSessionCertifications((certifications) => editingCertificationId
+      ? certifications.map((certification) => certification.id === editingCertificationId ? savedCertification : certification)
+      : [...certifications, savedCertification]);
+    closeCertificationModal();
+  };
+
   const handleSaveEducation = async () => {
     const isAddingEducation = !editingEducationId;
     const startYear = String(newEduForm.startYear || '');
     const endYear = String(newEduForm.endYear || '');
-    const degree = newEduForm.degree === 'Others' ? newEduForm.degreeOther : newEduForm.degree;
-    if (!degree.trim() || !newEduForm.institution.trim()) {
-      setEducationError('Degree and institution are required.');
+    const degree = newEduForm.degree.trim();
+    const fieldOfStudy = newEduForm.fieldOfStudy === 'Other'
+      ? newEduForm.fieldOfStudyOther.trim()
+      : newEduForm.fieldOfStudy.trim();
+    if (!degree || !newEduForm.institution.trim() || !fieldOfStudy || !newEduForm.educationLevel || !startYear || !newEduForm.startMonth) {
+      setEducationError('Complete all required qualification, institution, field of study, education level, and start date fields.');
       return;
     }
-    if (!/^\d{4}$/.test(startYear) || (endYear && !/^\d{4}$/.test(endYear))) {
-      setEducationError('Start and end years must be four digits.');
+    if (newEduForm.fieldOfStudy === 'Other' && !fieldOfStudy) {
+      setEducationError('Enter your field of study.');
       return;
     }
-    if (endYear && Number(endYear) < Number(startYear)) {
-      setEducationError('The end year must be after the start year.');
+    if (!newEduForm.currentlyStudying && (!endYear || !newEduForm.endMonth)) {
+      setEducationError('Select an end date or mark that you are currently studying here.');
       return;
     }
-    if (!['Completed', 'In Progress', 'Pending'].includes(newEduForm.status)) {
-      setEducationError('Select a valid education status.');
+    if (!/^\d{4}$/.test(startYear) || (!newEduForm.currentlyStudying && !/^\d{4}$/.test(endYear))) {
+      setEducationError('Select a valid start and end year.');
+      return;
+    }
+    const startDate = `${startYear}-${newEduForm.startMonth}`;
+    const endDate = `${endYear}-${newEduForm.endMonth}`;
+    if (!newEduForm.currentlyStudying && endDate < startDate) {
+      setEducationError('The end date must be after the start date.');
       return;
     }
 
     const educationRecord = {
       education_id: editingEducationId || null,
-      degree: degree.trim(),
-      other_degree: newEduForm.degree === 'Others' ? newEduForm.degreeOther.trim() : '',
+      degree,
+      other_degree: '',
       institution: newEduForm.institution.trim(),
-      field_of_study: newEduForm.fieldOfStudy.trim(),
-      class_of_degree: newEduForm.classOfDegree,
+      field_of_study: fieldOfStudy,
+      class_of_degree: newEduForm.classOfDegree.trim(),
       start_year: startYear,
-      end_year: endYear,
-      status: newEduForm.status,
+      end_year: newEduForm.currentlyStudying ? '' : endYear,
+      status: newEduForm.currentlyStudying ? 'In Progress' : 'Completed',
     };
     const nextEducationList = editingEducationId
       ? educationList.map((item) => item.education_id === editingEducationId ? { ...item, ...educationRecord } : item)
@@ -1686,7 +2105,10 @@ export default function TeacherDashboard() {
         education_history: toEducationPayload(nextEducationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
-      setNewEduForm({ degree: '', degreeOther: '', institution: '', fieldOfStudy: '', classOfDegree: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+      setNewEduForm(createEducationForm());
+      setEducationDocumentFile(null);
+      setEducationDocumentError('');
+      if (educationDocumentInputRef.current) educationDocumentInputRef.current.value = '';
       setEditingEducationId(null);
       setShowAddEduModal(false);
       if (isAddingEducation) setShowPostEducationModal(true);
@@ -1729,17 +2151,120 @@ export default function TeacherDashboard() {
     }
   };
 
-  const handleSaveProfessionalInfo = async () => {
+  const openExpertiseModal = (category) => {
+    setEditingExpertiseCategory(category);
+    setExpertiseDraftTags(skillExpertise[category] || []);
+    setExpertiseTagInput('');
+  };
+
+  const closeExpertiseModal = () => {
+    setEditingExpertiseCategory('');
+    setExpertiseDraftTags([]);
+    setExpertiseTagInput('');
+  };
+
+  const addExpertiseTag = () => {
+    const tag = expertiseTagInput.trim();
+    if (!tag || expertiseDraftTags.some((item) => item.toLocaleLowerCase() === tag.toLocaleLowerCase())) return;
+    setExpertiseDraftTags((tags) => [...tags, tag]);
+    setExpertiseTagInput('');
+  };
+
+  const saveExpertiseTags = (event) => {
+    event.preventDefault();
+    setSkillExpertise((categories) => toTeacherExpertisePayload({
+      ...categories,
+      [editingExpertiseCategory]: expertiseDraftTags,
+    }));
+    closeExpertiseModal();
+  };
+
+  const activeExpertiseCategory = TEACHER_EXPERTISE_CATEGORIES.find(({ key }) => key === editingExpertiseCategory);
+
+  const openBasicProfileModal = () => {
+    setBasicProfileDraft({
+      title: profileState?.role_title || profTitle || '',
+      location: profileState?.preferred_location || profileState?.location || availLocation || '',
+      subjects: getProfileSubjects(profileState).length ? getProfileSubjects(profileState) : profSubjects,
+      teachingLevels: normalizeTeachingLevels(profileState?.teaching_levels || profTeachingLevels),
+      summary: profileState?.bio || profSummary || '',
+    });
+    setBasicProfileSubjectInput('');
+    setBasicProfileError('');
+    setProfilePhotoError('');
+    setShowBasicProfileModal(true);
+  };
+
+  const handleProfilePhotoSelection = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      setProfilePhotoError('Choose a JPG, PNG or WebP image.');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setProfilePhotoError('The profile photo must be 2 MB or smaller.');
+      return;
+    }
+
+    try {
+      setProfilePhotoUploading(true);
+      setProfilePhotoError('');
+      const formData = new FormData();
+      formData.append('profile_photo', file);
+      const response = await accountService.uploadProfilePhoto(formData);
+      const payload = response?.data?.data ?? response?.data ?? {};
+      const photoUrl = payload?.user?.profile_photo || payload?.profile_photo;
+      if (!photoUrl) throw new Error('The server did not return the uploaded profile photo.');
+      setProfileState((current) => ({ ...current, profile_photo: photoUrl }));
+    } catch (error) {
+      setProfilePhotoError(apiErrorMessage(error, 'Unable to upload profile photo.'));
+    } finally {
+      setProfilePhotoUploading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showBasicProfileModal) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleModalKeyDown = (event) => {
+      if (event.key === 'Escape' && !savingProfessionalInfo && !profilePhotoUploading) {
+        setShowBasicProfileModal(false);
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleModalKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleModalKeyDown);
+    };
+  }, [showBasicProfileModal, savingProfessionalInfo, profilePhotoUploading]);
+
+  const handleSaveBasicProfile = async (event) => {
+    event.preventDefault();
+    if (!basicProfileDraft.title.trim() || !basicProfileDraft.location.trim() || basicProfileDraft.subjects.length === 0 || basicProfileDraft.teachingLevels.length === 0 || !basicProfileDraft.summary.trim()) {
+      setBasicProfileError('Complete all required fields before saving.');
+      return;
+    }
+
     try {
       setSavingProfessionalInfo(true);
-      setAppError('');
+      setBasicProfileError('');
       await saveUnifiedTeacherProfile({
+        role_title: basicProfileDraft.title.trim(),
+        preferred_location: basicProfileDraft.location.trim(),
+        skills: basicProfileDraft.subjects,
+        teaching_levels: basicProfileDraft.teachingLevels,
+        bio: basicProfileDraft.summary.trim(),
         education_history: toEducationPayload(educationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
-      setShowProfileUpdatedModal(true);
-    } catch (err) {
-      setAppError(profileApiErrorMessage(err, 'Unable to save professional information.'));
+      setShowBasicProfileModal(false);
+    } catch (error) {
+      setBasicProfileError(profileApiErrorMessage(error, 'Unable to save profile information.'));
     } finally {
       setSavingProfessionalInfo(false);
     }
@@ -1781,6 +2306,137 @@ export default function TeacherDashboard() {
       setShowProfileUpdatedModal(true);
     } catch (err) {
       setAppError(profileApiErrorMessage(err, 'Unable to save availability.'));
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
+
+  const openAvailabilityPreferencesModal = () => {
+    const savedEmploymentType = String(profileState?.preferred_employment_type || '').toLowerCase().replace(/[\s_]+/g, '-');
+    const employmentTypes = availabilitySessionExtras.employmentTypes.length > 1
+      ? [...availabilitySessionExtras.employmentTypes]
+      : ['full-time', 'part-time', 'contract'].includes(savedEmploymentType)
+        ? [savedEmploymentType]
+        : [...availabilitySessionExtras.employmentTypes];
+    const currentLevels = normalizeTeachingLevels(profileState?.teaching_levels || profTeachingLevels);
+    const teachingLevels = [
+      ...(currentLevels.includes('KG') ? ['Early Years'] : []),
+      ...(currentLevels.includes('PRIMARY') ? ['Primary'] : []),
+      ...(currentLevels.some((level) => level.includes('SECONDARY')) ? ['Secondary'] : []),
+      ...(currentLevels.some((level) => /tertiary|post-secondary/i.test(level)) ? ['Post-Secondary'] : []),
+    ];
+
+    setAvailabilityDraft({
+      roles: [...profSubjects],
+      locations: availLocation.split(';').map((location) => location.trim()).filter(Boolean),
+      employmentTypes,
+      teachingLevels,
+      availableStart: getAvailabilityStartOption(profileState || {}),
+      specificDate: String(profileState?.available_from || '').slice(0, 10),
+      workArrangements: [...availabilitySessionExtras.workArrangements],
+      salaryRange: availabilitySessionExtras.salaryRange,
+      relocationPreference: availabilitySessionExtras.relocationPreference,
+      notes: availabilitySessionExtras.notes,
+    });
+    setAvailabilityTagInput('');
+    setAvailabilityLocationInput('');
+    setAvailabilityModalError('');
+    setProfileSubTab('availability');
+  };
+
+  const closeAvailabilityPreferencesModal = () => {
+    if (savingAvailability) return;
+    setAvailabilityDraft(null);
+    setAvailabilityModalError('');
+    setProfileSubTab('more');
+  };
+
+  const isAvailabilityPreferencesOpen = profileSubTab === 'availability' && Boolean(availabilityDraft);
+  useEffect(() => {
+    if (!isAvailabilityPreferencesOpen) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const handleModalKeyDown = (event) => {
+      if (event.key === 'Escape' && !savingAvailability) {
+        setAvailabilityDraft(null);
+        setAvailabilityModalError('');
+        setProfileSubTab('more');
+      }
+    };
+
+    document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', handleModalKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', handleModalKeyDown);
+    };
+  }, [isAvailabilityPreferencesOpen, savingAvailability]);
+
+  const addAvailabilityDraftTag = () => {
+    const tag = availabilityTagInput.trim();
+    if (!tag || availabilityDraft.roles.some((role) => role.toLocaleLowerCase() === tag.toLocaleLowerCase())) return;
+    setAvailabilityDraft((draft) => ({ ...draft, roles: [...draft.roles, tag] }));
+    setAvailabilityTagInput('');
+  };
+
+  const addAvailabilityDraftLocation = () => {
+    const location = availabilityLocationInput.trim();
+    if (!location || availabilityDraft.locations.some((item) => item.toLocaleLowerCase() === location.toLocaleLowerCase())) return;
+    setAvailabilityDraft((draft) => ({ ...draft, locations: [...draft.locations, location] }));
+    setAvailabilityLocationInput('');
+  };
+
+  const handleSaveAvailabilityPreferences = async (event) => {
+    event.preventDefault();
+    if (!availabilityDraft) return;
+    if (availabilityDraft.availableStart === 'specific-date' && !availabilityDraft.specificDate) {
+      setAvailabilityModalError('Choose the date you will be available to start.');
+      return;
+    }
+
+    const startDate = new Date();
+    const dayOffset = availabilityDraft.availableStart === '2-weeks' ? 14 : availabilityDraft.availableStart === 'within-month' ? 30 : 0;
+    if (availabilityDraft.availableStart !== 'specific-date') startDate.setDate(startDate.getDate() + dayOffset);
+    const availableFrom = availabilityDraft.availableStart === 'specific-date'
+      ? availabilityDraft.specificDate
+      : `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')}`;
+    const apiTeachingLevels = [
+      ...(availabilityDraft.teachingLevels.includes('Early Years') ? ['KG'] : []),
+      ...(availabilityDraft.teachingLevels.includes('Primary') ? ['PRIMARY'] : []),
+      ...(availabilityDraft.teachingLevels.includes('Secondary') ? ['JUNIOR SECONDARY (JSS1 - JSS3)', 'SENIOR SECONDARY (SS1 - SS2)'] : []),
+      ...(availabilityDraft.teachingLevels.includes('Post-Secondary') ? ['Tertiary Institution'] : []),
+    ];
+    const preferredEmploymentType = availabilityDraft.employmentTypes.length === 1
+      ? availabilityDraft.employmentTypes[0]
+      : profEmpPref;
+    const preferredLocation = availabilityDraft.locations.join('; ');
+
+    try {
+      setSavingAvailability(true);
+      setAvailabilityModalError('');
+      await saveUnifiedTeacherProfile({
+        skills: availabilityDraft.roles,
+        teaching_levels: apiTeachingLevels,
+        preferred_employment_type: preferredEmploymentType,
+        preferred_location: preferredLocation,
+        available_from: availableFrom,
+        availability: 'Open',
+        education_history: toEducationPayload(educationList),
+        teaching_experience: toExperiencePayload(experienceList),
+      });
+      setAvailabilitySessionExtras({
+        employmentTypes: [...availabilityDraft.employmentTypes],
+        workArrangements: [...availabilityDraft.workArrangements],
+        salaryRange: availabilityDraft.salaryRange,
+        relocationPreference: availabilityDraft.relocationPreference,
+        notes: availabilityDraft.notes.trim(),
+      });
+      if (availabilityDraft.employmentTypes.length === 1) setAvailEmpType(availabilityDraft.employmentTypes[0]);
+      setAvailLocation(preferredLocation);
+      setProfileCompletionNotice('Job preferences and availability saved.');
+      setAvailabilityDraft(null);
+      setProfileSubTab('more');
+    } catch (error) {
+      setAvailabilityModalError(profileApiErrorMessage(error, 'Unable to save job preferences and availability.'));
     } finally {
       setSavingAvailability(false);
     }
@@ -2410,6 +3066,127 @@ export default function TeacherDashboard() {
     setApplicationStep(1);
   };
 
+  const openProfileSection = (section) => {
+    if (section === 'personal-info') setPersonalInfoOrigin('profile');
+    if (section === 'availability') {
+      openAvailabilityPreferencesModal();
+      return;
+    }
+    if (section === 'cv-resume') {
+      openCvDocumentsModal();
+      return;
+    }
+    setProfileSubTab(section);
+  };
+
+  const renderProfileNavigation = (activeSection) => {
+    const moreSections = ['more', 'personal-info', 'trcn-certification', 'cv-resume', 'availability'];
+    return (
+      <nav className="td-profile-tabs" aria-label="Profile sections">
+        <button type="button" className={activeSection === 'overview' ? 'is-active' : ''} aria-current={activeSection === 'overview' ? 'page' : undefined} onClick={() => openProfileSection('overview')}><FiUser size={15} />Overview</button>
+        <button type="button" className={activeSection === 'teaching-experience' ? 'is-active' : ''} aria-current={activeSection === 'teaching-experience' ? 'page' : undefined} onClick={() => openProfileSection('teaching-experience')}><FiBriefcase size={15} />Experience</button>
+        <button type="button" className={activeSection === 'education' ? 'is-active' : ''} aria-current={activeSection === 'education' ? 'page' : undefined} onClick={() => openProfileSection('education')}><FiAward size={15} />Education &amp; Certifications</button>
+        <button type="button" className={activeSection === 'professional-info' ? 'is-active' : ''} aria-current={activeSection === 'professional-info' ? 'page' : undefined} onClick={() => openProfileSection('professional-info')}><FiZap size={15} />Skills</button>
+        <button type="button" className={moreSections.includes(activeSection) ? 'is-active' : ''} aria-current={activeSection === 'more' ? 'page' : undefined} onClick={() => openProfileSection('more')}><FiMoreHorizontal size={16} />More</button>
+      </nav>
+    );
+  };
+
+  const renderProfileSectionOverview = (activeSection) => (
+    <>
+      {profileCompletionNotice && (
+        <div
+          role="status"
+          style={{
+            width: '100%',
+            margin: '0 0 14px',
+            padding: '12px 16px',
+            border: '1px solid #86efac',
+            borderRadius: 12,
+            background: '#f0fdf4',
+            color: '#166534',
+            boxShadow: '0 8px 24px rgba(22, 101, 52, 0.14)',
+            fontSize: 14,
+            fontWeight: 600,
+            textAlign: 'center',
+          }}
+        >
+          {profileCompletionNotice}
+        </div>
+      )}
+      <div className="td-profile-page-heading">
+        <div>
+          <h1 className="td-profile-main-title">My Profile</h1>
+          <p>Manage your professional profile so schools can learn more about you.</p>
+        </div>
+        <button type="button" className="td-profile-btn-preview" onClick={() => setProfileSubTab('profile-preview')}>
+          <FiEye size={15} />
+          <span>Preview Profile</span>
+        </button>
+      </div>
+      <div className="td-profile-overview-shell">
+        <div className="td-profile-overview-top">
+          <div className="td-profile-header-card">
+            <div className="td-profile-header-left">
+              <div className="td-profile-avatar-container">
+                {profileState?.avatar_url || profileState?.profile_photo || profileState?.photo_url ? (
+                  <img src={toTeacherAssetUrl(profileState.avatar_url || profileState.profile_photo || profileState.photo_url)} alt="" />
+                ) : (
+                  <div className="td-profile-avatar-initials" aria-label={profileFullName}>{getInitials(profileFullName)}</div>
+                )}
+              </div>
+              <div className="td-profile-info-block">
+                <div className="td-profile-name-row">
+                  <h2>{profileFullName}</h2>
+                  <svg className="td-profile-verified-badge" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" fill="none" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M8.5 12L11 14.5L16 9.5" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </div>
+                <p className="td-profile-subject-title">{profSubjects.length ? profSubjects.slice(0, 2).join(', ') : profileRoleTitle}</p>
+                <p className="td-profile-role-title">{profileRoleTitle}</p>
+                <div className="td-profile-meta-row">
+                  <div className="td-profile-meta-item"><FiMapPin size={15} className="td-profile-meta-icon" /><span>{profileLocation}</span></div>
+                  {profTeachingLevels.length > 0 && <div className="td-profile-meta-item"><FiAward size={15} className="td-profile-meta-icon" /><span>{profTeachingLevels.slice(0, 2).join(', ')}</span></div>}
+                  {profSubjects.length > 0 && <div className="td-profile-meta-item"><FiBook size={15} className="td-profile-meta-icon" /><span>{profSubjects.slice(0, 2).join(', ')}</span></div>}
+                </div>
+                <div className="td-profile-header-actions">
+                  <button type="button" className="td-profile-btn-edit" onClick={openBasicProfileModal}>
+                    <FiEdit2 size={14} />
+                    <span>Edit basic info</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <section className={`td-profile-readiness ${nextProfileStep ? 'is-incomplete' : 'is-complete'}`} aria-label="Profile completion status">
+            <div className="td-readiness-heading">
+              <span className="td-readiness-icon">{nextProfileStep ? <FiEdit2 size={18} /> : <FiCheckCircle size={20} />}</span>
+              <div>
+                <strong>{nextProfileStep ? 'Keep building your profile' : "You're ready to apply!"}</strong>
+                <p>{nextProfileStep ? 'Complete the key sections below to help schools review your applications.' : 'Your profile contains the information schools need to review your applications.'}</p>
+              </div>
+            </div>
+            <div className="td-readiness-progress" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={profileCompletionPercent}>
+              <span style={{ width: `${profileCompletionPercent}%` }} />
+            </div>
+            <div className="td-readiness-checklist">
+              {[
+                { key: 'professional-info', label: 'Basic & Professional Information' },
+                { key: 'education', label: 'Education & Certifications' },
+                { key: 'teaching-experience', label: 'Teaching Experience' },
+              ].map((item) => {
+                const completed = Boolean(profileCompletionSteps.find((step) => step.key === item.key)?.completed);
+                return <span key={item.key} className={completed ? 'is-complete' : ''}><FiCheckCircle size={14} />{item.label}</span>;
+              })}
+            </div>
+          </section>
+        </div>
+        {renderProfileNavigation(activeSection)}
+      </div>
+    </>
+  );
+
   return (
     <Motion.div
       className="td-layout"
@@ -2532,6 +3309,86 @@ export default function TeacherDashboard() {
 
         <div className="td-content" ref={contentRef}>
 
+          {showProfileCompletionModal && activeTab === 'dashboard' && profileCompletionModalItems.length > 0 && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.42)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '16px' }}>
+              <div style={{ width: 'min(560px, 100%)', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto', background: '#fff', borderRadius: '16px', boxShadow: '0 18px 60px rgba(15, 23, 42, 0.18)', padding: '20px 22px 18px', border: '1px solid #e5e7eb', position: 'relative' }}>
+                <button type="button" onClick={dismissProfileCompletionModal} aria-label="Close profile completion modal" style={{ position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px', border: 'none', background: 'transparent', borderRadius: '999px', color: '#4b5563', fontSize: '24px', lineHeight: 1, cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+                  <FiX size={22} />
+                </button>
+
+                <h2 style={{ margin: '0 30px 0 0', fontSize: 'clamp(1.25rem, 3vw, 1.55rem)', fontWeight: 700, letterSpacing: '-0.03em', color: '#1f2937', lineHeight: 1.2 }}>
+                  Complete a few profile details to apply
+                </h2>
+
+                <p style={{ margin: '8px 0 0', color: '#4b5563', fontSize: '0.84rem', lineHeight: 1.45 }}>
+                  To apply for this job, please complete the following information on your profile. This helps schools understand your background and ensure a better match.
+                </p>
+
+                <div style={{ marginTop: '12px', background: '#effbf4', border: '1px solid #c7efd7', borderRadius: '12px', padding: '11px 13px', display: 'flex', alignItems: 'center', gap: '11px' }}>
+                  <div style={{ width: '40px', height: '40px', flexShrink: 0, borderRadius: '50%', background: '#18a957', display: 'grid', placeItems: 'center', color: '#fff', boxShadow: '0 8px 18px rgba(24, 169, 87, 0.2)' }}>
+                    <FiLock size={18} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.72rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: '#0f766e' }}>Almost there</div>
+                    <div style={{ marginTop: '3px', fontSize: '0.82rem', color: '#1f2937', lineHeight: 1.4 }}>
+                      <strong style={{ fontSize: '0.9rem', display: 'block', marginBottom: '2px' }}>You&apos;re {profileCompletionModalItems.length} steps away from applying</strong>
+                      Complete the missing information below. It only takes a few minutes.
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '16px' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 700, color: '#1f2937', letterSpacing: '-0.02em' }}>Missing information</h3>
+                  <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: '0.82rem', lineHeight: 1.4 }}>
+                    You&apos;ve already completed some parts of your profile. Add the items below to continue.
+                  </p>
+                </div>
+
+                <div style={{ display: 'grid', gap: '8px', marginTop: '10px' }}>
+                  {profileCompletionModalItems.map((item) => (
+                    <div key={item.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', border: '1px solid #e2e8f0', borderRadius: '10px', background: '#fff', padding: '9px 10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '9px', flex: 1, minWidth: 0 }}>
+                        <div style={{ width: '34px', height: '34px', flexShrink: 0, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#edf6ff', border: '1px solid #dceafc' }}>
+                          {item.icon}
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: '0.86rem', color: '#1f2937' }}>{item.label}</div>
+                          <div style={{ marginTop: '2px', color: '#4b5563', fontSize: '0.75rem', lineHeight: 1.35 }}>{item.description}</div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('profile');
+                          setProfileSubTab(item.key === 'professional-info' ? 'overview' : item.key);
+                          setShowProfileCompletionModal(false);
+                        }}
+                        style={{ border: '1px solid #cbd5e1', background: '#fff', color: '#111827', borderRadius: '8px', padding: '7px 9px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        {item.button} <span aria-hidden="true">→</span>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: '10px', background: '#eff6ff', border: '1px solid #d3e6ff', borderRadius: '9px', padding: '9px 11px', color: '#4b5563', fontSize: '0.74rem', lineHeight: 1.4 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '18px', height: '18px', borderRadius: '50%', background: '#0ea5e9', color: '#fff', fontSize: '12px', fontWeight: 700, marginRight: '8px' }}>i</span>
+                  Skills, job preferences, availability and additional documents are optional. You can add them later to improve your visibility to schools.
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '14px' }}>
+                  <button type="button" onClick={dismissProfileCompletionModal} style={{ minWidth: '82px', border: '1px solid #cbd5e1', background: '#fff', color: '#111827', borderRadius: '8px', padding: '8px 12px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer' }}>
+                    Cancel
+                  </button>
+                  <button type="button" onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); setShowProfileCompletionModal(false); }} style={{ minWidth: '140px', border: 'none', background: '#22c55e', color: '#fff', borderRadius: '8px', padding: '8px 14px', fontWeight: 700, fontSize: '0.82rem', boxShadow: '0 6px 16px rgba(34, 197, 94, 0.2)', cursor: 'pointer' }}>
+                    Go to My Profile
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {activeTab === 'dashboard' && (
             <>
               {/* ── Welcome Area ── */}
@@ -2559,10 +3416,9 @@ export default function TeacherDashboard() {
                   {/* ── Stats Overview ── */}
                   <div className="td-stats-row">
                     {/* Profile Strength Card */}
-                    {!profileCompletionCardDismissed && (
+                    {nextProfileStep && (
                     <Motion.div
                       variants={cardVariants}
-                      animate={profileCompletionCardFading ? { opacity: 0, y: -8, transition: { duration: 0.7 } } : undefined}
                       className="td-stat-card td-profile-card"
                     >
                       <div className="td-card-header">
@@ -4284,13 +5140,27 @@ export default function TeacherDashboard() {
                       {profileCompletionNotice}
                     </div>
                   )}
-                  <h1 className="td-profile-main-title">Profile</h1>
+                  <div className="td-profile-page-heading">
+                    <div>
+                      <h1 className="td-profile-main-title">My Profile</h1>
+                      <p>Manage your professional profile so schools can learn more about you.</p>
+                    </div>
+                    <button type="button" className="td-profile-btn-preview" onClick={() => setProfileSubTab('profile-preview')}>
+                      <FiEye size={15} />
+                      <span>Preview Profile</span>
+                    </button>
+                  </div>
 
-                  {/* Top Profile Summary Card */}
+                  <div className="td-profile-overview-shell">
+                  <div className="td-profile-overview-top">
                   <div className="td-profile-header-card">
                     <div className="td-profile-header-left">
                       <div className="td-profile-avatar-container">
-                        <div className="td-profile-avatar-initials" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
+                        {profileState?.avatar_url || profileState?.profile_photo || profileState?.photo_url ? (
+                          <img src={toTeacherAssetUrl(profileState.avatar_url || profileState.profile_photo || profileState.photo_url)} alt="" />
+                        ) : (
+                          <div className="td-profile-avatar-initials" aria-label={profileFullName}>{getInitials(profileFullName)}</div>
+                        )}
                       </div>
                       <div className="td-profile-info-block">
                         <div className="td-profile-name-row">
@@ -4300,148 +5170,337 @@ export default function TeacherDashboard() {
                             <path d="M8.5 12L11 14.5L16 9.5" stroke="#10B981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
                           </svg>
                         </div>
+                        <p className="td-profile-subject-title">{profSubjects.length ? profSubjects.slice(0, 2).join(', ') : profileRoleTitle}</p>
                         <p className="td-profile-role-title">{profileRoleTitle}</p>
                         <div className="td-profile-meta-row">
-                          <div className="td-profile-meta-item">
-                            <FiMapPin size={15} className="td-profile-meta-icon" />
-                            <span>{profileLocation}</span>
-                          </div>
-                          <div className="td-profile-meta-item">
-                            <svg className="td-profile-meta-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                              <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
-                            </svg>
-                            <span>{profYearsExp}</span>
-                          </div>
-                          <div
-                            className="td-profile-trcn-pill"
-                            onClick={() => setProfileSubTab('trcn-certification')}
-                            style={{
-                              cursor: 'pointer',
-                              background: isTrcnVerified ? '#ecfdf5' : '#f8fafc',
-                              color: isTrcnVerified ? '#166534' : '#475569',
-                              borderColor: isTrcnVerified ? '#bbf7d0' : '#dfe7f1'
-                            }}
-                          >
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M12 2L14.4 3.7L17.3 3.3L18.8 5.8L21.5 6.9L21.7 9.8L23.4 12.1L21.7 14.4L21.5 17.3L18.8 18.4L17.3 20.9L14.4 20.5L12 22.2L9.6 20.5L6.7 20.9L5.2 18.4L2.5 17.3L2.3 14.4L0.6 12.1L2.3 9.8L2.5 6.9L5.2 5.8L6.7 3.3L9.6 3.7L12 2Z" />
-                              <path d="M9 12l2 2 4-4" />
-                            </svg>
-                            <span>{trcnStatusLabel}</span>
-                          </div>
+                        <div className="td-profile-meta-item"><FiMapPin size={15} className="td-profile-meta-icon" /><span>{profileLocation}</span></div>
+                        {profTeachingLevels.length > 0 && <div className="td-profile-meta-item"><FiAward size={15} className="td-profile-meta-icon" /><span>{profTeachingLevels.slice(0, 2).join(', ')}</span></div>}
+                        {profSubjects.length > 0 && <div className="td-profile-meta-item"><FiBook size={15} className="td-profile-meta-icon" /><span>{profSubjects.slice(0, 2).join(', ')}</span></div>}
+                        </div>
+                        <div className="td-profile-header-actions">
+                        <button type="button" className="td-profile-btn-edit" onClick={openBasicProfileModal}>
+                          <FiEdit2 size={14} />
+                          <span>Edit basic info</span>
+                        </button>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="td-profile-header-actions">
-                      <button type="button" className="td-profile-btn-preview" onClick={() => setProfileSubTab('profile-preview')}>
-                        <FiEye size={15} />
-                        <span>Preview Profile</span>
-                      </button>
-                      <button className="td-profile-btn-edit" onClick={() => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); }}>
-                        <FiEdit2 size={14} />
-                        <span>Edit Profile</span>
-                      </button>
+                  <section className={`td-profile-readiness ${nextProfileStep ? 'is-incomplete' : 'is-complete'}`} aria-label="Profile completion status">
+                    <div className="td-readiness-heading">
+                      <span className="td-readiness-icon">{nextProfileStep ? <FiEdit2 size={18} /> : <FiCheckCircle size={20} />}</span>
+                      <div>
+                        <strong>{nextProfileStep ? 'Keep building your profile' : "You're ready to apply!"}</strong>
+                        <p>{nextProfileStep ? 'Complete the key sections below to help schools review your applications.' : 'Your profile contains the information schools need to review your applications.'}</p>
+                      </div>
                     </div>
+                    <div className="td-readiness-progress" role="progressbar" aria-label="Profile completion" aria-valuemin={0} aria-valuemax={100} aria-valuenow={profileCompletionPercent}>
+                      <span style={{ width: `${profileCompletionPercent}%` }} />
+                    </div>
+                    <div className="td-readiness-checklist">
+                      {[
+                        { key: 'professional-info', label: 'Basic & Professional Information' },
+                        { key: 'education', label: 'Education & Certifications' },
+                        { key: 'teaching-experience', label: 'Teaching Experience' },
+                      ].map((item) => {
+                        const completed = Boolean(profileCompletionSteps.find((step) => step.key === item.key)?.completed);
+                        return <span key={item.key} className={completed ? 'is-complete' : ''}><FiCheckCircle size={14} />{item.label}</span>;
+                      })}
+                    </div>
+                  </section>
                   </div>
 
-                  {/* Profile sections */}
-                  <div className="td-profile-grid">
-                    {[
-                      {
-                        key: 'personal-info',
-                        title: 'Personal Info',
-                        icon: <FiUser size={18} />,
-                        onClick: () => { setPersonalInfoOrigin('profile'); setProfileSubTab('personal-info'); },
-                      },
-                      {
-                        key: 'professional-info',
-                        title: 'Professional Info',
-                        icon: <FiBriefcase size={18} />,
-                        onClick: () => setProfileSubTab('professional-info'),
-                      },
-                      {
-                        key: 'education',
-                        title: 'Education',
-                        icon: (
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                            <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
-                          </svg>
-                        ),
-                        onClick: () => setProfileSubTab('education'),
-                      },
-                      {
-                        key: 'teaching-experience',
-                        title: 'Teaching Experience',
-                        icon: <FiClock size={18} />,
-                        onClick: () => setProfileSubTab('teaching-experience'),
-                      },
-                      {
-                        key: 'trcn-certification',
-                        title: 'TRCN Certification',
-                        icon: <FiAward size={18} />,
-                        onClick: () => setProfileSubTab('trcn-certification'),
-                      },
-                      {
-                        key: 'cv-resume',
-                        title: 'CV / Resume',
-                        icon: <FiFileText size={18} />,
-                        onClick: () => setProfileSubTab('cv-resume'),
-                      },
-                      {
-                        key: 'availability',
-                        title: 'Availability',
-                        icon: <FiCheckCircle size={18} />,
-                        onClick: () => setProfileSubTab('availability'),
-                      },
-                    ].map(({ key, title, icon, onClick }) => {
-                      const isComplete = profileCompletionSteps.find((step) => step.key === key)?.completed ?? false;
-                      const status = isComplete ? 'Completed' : 'Incomplete';
-
-                      return (
-                        <Motion.button
-                          key={key}
-                          type="button"
-                          whileHover={{ y: -2 }}
-                          className="td-profile-section-card"
-                          onClick={onClick}
-                          aria-label={`${title}: ${status}`}
-                        >
-                          <div className="td-psc-top">
-                            <div className="td-psc-icon-box">{icon}</div>
-                            <span className={`td-psc-status ${isComplete ? 'is-complete' : 'is-incomplete'}`}>{status}</span>
-                          </div>
-                          <div className="td-psc-bottom">
-                            <h3 className="td-psc-title">{title}</h3>
-                            <FiArrowRight size={18} className="td-psc-arrow" aria-hidden="true" />
-                          </div>
-                        </Motion.button>
-                      );
-                    })}
+                  {renderProfileNavigation('overview')}
                   </div>
+
+                  <section className="td-profile-overview-panel">
+                    <div className="td-profile-overview-panel-heading">
+                      <div className="td-overview-icon"><FiUser size={20} /></div>
+                      <div>
+                        <h2>Basic &amp; Professional Information</h2>
+                        <p>This information appears on your profile and helps schools understand your background.</p>
+                      </div>
+                      <button type="button" onClick={openBasicProfileModal}><FiEdit2 size={14} />Edit</button>
+                    </div>
+                    <div className="td-profile-overview-details">
+                      <div className="td-overview-detail-list">
+                        <div><FiBriefcase size={16} /><span><strong>{profileRoleTitle || 'Not provided'}</strong><small>Professional title</small></span></div>
+                        <div><FiMapPin size={16} /><span><strong>{profileLocation || 'Not provided'}</strong><small>Location</small></span></div>
+                        <div><FiBook size={16} /><span><strong>{profSubjects.length ? profSubjects.join(', ') : 'Not provided'}</strong><small>Subjects</small></span></div>
+                        <div><FiAward size={16} /><span><strong>{profTeachingLevels.length ? profTeachingLevels.join(', ') : 'Not provided'}</strong><small>Teaching levels</small></span></div>
+                      </div>
+                      <div className="td-overview-summary">
+                        <h3><FiFileText size={16} />Professional summary</h3>
+                        <p>{profSummary || 'Add a short professional summary to introduce your teaching experience and approach.'}</p>
+                      </div>
+                    </div>
+                  </section>
+                  {showBasicProfileModal && (
+                    <div className="td-basic-profile-modal-backdrop" onMouseDown={(event) => {
+                      if (event.target === event.currentTarget && !savingProfessionalInfo) setShowBasicProfileModal(false);
+                    }}>
+                      <form className="td-basic-profile-modal" role="dialog" aria-modal="true" aria-labelledby="td-basic-profile-title" onSubmit={handleSaveBasicProfile}>
+                        <header className="td-basic-profile-modal-header">
+                          <div>
+                            <h2 id="td-basic-profile-title">Edit Basic &amp; Professional Information</h2>
+                            <p>This information appears on your profile and helps schools understand your background and expertise.</p>
+                          </div>
+                          <button type="button" aria-label="Close edit profile dialog" onClick={() => setShowBasicProfileModal(false)} disabled={savingProfessionalInfo}><FiX size={20} /></button>
+                        </header>
+
+                        <div className="td-basic-profile-modal-body">
+                          <section className="td-basic-profile-photo">
+                            <h3>Profile photo</h3>
+                            <div className="td-basic-profile-photo-row">
+                              <div className="td-basic-profile-avatar">
+                                {profileState?.avatar_url || profileState?.profile_photo || profileState?.photo_url
+                                  ? <img src={toTeacherAssetUrl(profileState.avatar_url || profileState.profile_photo || profileState.photo_url)} alt="" />
+                                  : getInitials(profileFullName)}
+                              </div>
+                              <div className="td-basic-profile-photo-controls">
+                                <button type="button" onClick={() => profilePhotoInputRef.current?.click()} disabled={profilePhotoUploading}>
+                                  <FiUpload size={13} />{profilePhotoUploading ? 'Uploading...' : 'Change photo'}
+                                </button>
+                                <input ref={profilePhotoInputRef} type="file" accept="image/jpeg,image/png,image/webp" onChange={handleProfilePhotoSelection} hidden />
+                                <p>JPG, PNG or WebP. Max size 2 MB.</p>
+                                {profilePhotoError && <small role="alert">{profilePhotoError}</small>}
+                              </div>
+                            </div>
+                          </section>
+
+                          <section>
+                            <h3 className="td-basic-profile-section-title">Professional details</h3>
+                            <div className="td-basic-profile-fields">
+                              <label>
+                                <span className="td-basic-profile-label-text">Professional title <span aria-hidden="true">*</span></span>
+                                <input required value={basicProfileDraft.title} onChange={(event) => setBasicProfileDraft((draft) => ({ ...draft, title: event.target.value }))} placeholder="e.g. Mathematics Teacher" />
+                                <small>Use a clear title that describes your teaching role.</small>
+                              </label>
+                              <label>
+                                <span className="td-basic-profile-label-text">Location <span aria-hidden="true">*</span></span>
+                                <input required value={basicProfileDraft.location} onChange={(event) => setBasicProfileDraft((draft) => ({ ...draft, location: event.target.value }))} placeholder="City, State or Region" />
+                                <small>City, State or Region</small>
+                              </label>
+
+                              <div className="td-basic-profile-field">
+                                <label className="td-basic-profile-label-text" htmlFor="td-basic-profile-subject-input">Primary subjects <span aria-hidden="true">*</span></label>
+                                <div className="td-basic-profile-chipbox">
+                                  {basicProfileDraft.subjects.map((subject) => (
+                                    <button key={subject} type="button" onClick={() => setBasicProfileDraft((draft) => ({ ...draft, subjects: draft.subjects.filter((entry) => entry !== subject) }))} aria-label={`Remove ${subject}`}>
+                                      {subject}<FiX size={12} />
+                                    </button>
+                                  ))}
+                                  <input
+                                    id="td-basic-profile-subject-input"
+                                    value={basicProfileSubjectInput}
+                                    onChange={(event) => setBasicProfileSubjectInput(event.target.value)}
+                                    onKeyDown={(event) => {
+                                      if (event.key === 'Enter' && basicProfileSubjectInput.trim()) {
+                                        event.preventDefault();
+                                        const subject = basicProfileSubjectInput.trim();
+                                        setBasicProfileDraft((draft) => draft.subjects.includes(subject) ? draft : ({ ...draft, subjects: [...draft.subjects, subject] }));
+                                        setBasicProfileSubjectInput('');
+                                      }
+                                    }}
+                                    placeholder="Type a subject and press Enter"
+                                  />
+                                </div>
+                                <small>Add each subject and press Enter. Select a subject chip to remove it.</small>
+                              </div>
+
+                              <fieldset className="td-basic-profile-levels">
+                                <legend>Teaching levels <span aria-hidden="true">*</span></legend>
+                                <div>
+                                  {teacherLevelOptions.map((level) => (
+                                    <label key={level}>
+                                      <input
+                                        type="checkbox"
+                                        checked={basicProfileDraft.teachingLevels.includes(level)}
+                                        onChange={() => setBasicProfileDraft((draft) => ({
+                                          ...draft,
+                                          teachingLevels: draft.teachingLevels.includes(level)
+                                            ? draft.teachingLevels.filter((entry) => entry !== level)
+                                            : [...draft.teachingLevels, level],
+                                        }))}
+                                      />
+                                      {level}
+                                    </label>
+                                  ))}
+                                </div>
+                                <small>Select the teaching levels you are qualified or experienced to teach.</small>
+                              </fieldset>
+
+                              <label className="td-basic-profile-summary">
+                                <span className="td-basic-profile-label-text">Professional summary <span aria-hidden="true">*</span></span>
+                                <textarea required maxLength={500} value={basicProfileDraft.summary} onChange={(event) => setBasicProfileDraft((draft) => ({ ...draft, summary: event.target.value }))} placeholder="Share your teaching background, experience and what you bring to a school." />
+                                <small>Write a short introduction for schools. <span>{basicProfileDraft.summary.length}/500 characters</span></small>
+                              </label>
+                            </div>
+                          </section>
+                          {basicProfileError && <p className="td-basic-profile-error" role="alert">{basicProfileError}</p>}
+                        </div>
+
+                        <footer className="td-basic-profile-modal-footer">
+                          <button type="button" onClick={() => setShowBasicProfileModal(false)} disabled={savingProfessionalInfo}>Cancel</button>
+                          <button type="submit" disabled={savingProfessionalInfo}>{savingProfessionalInfo ? 'Saving...' : 'Save changes'}</button>
+                        </footer>
+                      </form>
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="td-subtab-view">
+                  {renderProfileSectionOverview(profileSubTab)}
+                  {profileSubTab === 'more' && (
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-more-page">
+                      <section className="td-more-card">
+                        <header className="td-more-heading">
+                          <h1>More</h1>
+                          <p>Add optional information to personalise your job search and give schools a more complete view of you.</p>
+                        </header>
+                        {!hasPopulatedMoreContent ? (
+                          <>
+                            <div className="td-more-empty-state">
+                              <div className="td-more-illustration" aria-hidden="true">
+                                <span className="td-more-illustration-backdrop" />
+                                <div className="td-more-illustration-document">
+                                  <span className="td-more-illustration-avatar"><FiUser size={17} /></span>
+                                  <i /><i /><i /><i />
+                                </div>
+                                <span className="td-more-illustration-plus"><FiPlus size={22} /></span>
+                              </div>
+                              <h2>Add more information (optional)</h2>
+                              <p>Job preferences, availability and supporting documents can help schools find the right opportunities for you.</p>
+                              <button type="button" onClick={() => setShowMoreInformationModal(true)}>
+                                <FiPlus size={16} />Add Information
+                              </button>
+                            </div>
+                            <div className="td-more-shortcuts">
+                              <button type="button" className="td-more-shortcut" onClick={openAvailabilityPreferencesModal}>
+                                <span className="td-more-shortcut-icon td-more-shortcut-icon--green"><FiBriefcase size={18} /></span>
+                                <span><strong>Job preferences</strong><small>{moreJobPreferenceSummary}</small></span>
+                              </button>
+                              <button type="button" className="td-more-shortcut" onClick={openAvailabilityPreferencesModal}>
+                                <span className="td-more-shortcut-icon td-more-shortcut-icon--blue"><FiCalendar size={18} /></span>
+                                <span><strong>Availability</strong><small>{moreAvailabilitySummary}</small></span>
+                              </button>
+                              <button type="button" className="td-more-shortcut" onClick={() => openProfileSection('cv-resume')}>
+                                <span className="td-more-shortcut-icon td-more-shortcut-icon--purple"><FiFileText size={18} /></span>
+                                <span><strong>Documents</strong><small>{moreDocumentsSummary}</small></span>
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="td-more-populated">
+                            {hasPopulatedPreferences && (
+                              <section className="td-more-populated-card">
+                                <header className="td-more-populated-header">
+                                  <span className="td-more-populated-icon td-more-populated-icon--green"><FiSliders size={17} /></span>
+                                  <div><h2>Job Preferences &amp; Availability</h2><p>Let schools know your job preferences and availability. This helps us show you more relevant opportunities.</p></div>
+                                  <button type="button" onClick={openAvailabilityPreferencesModal}><FiEdit2 size={13} />Edit</button>
+                                </header>
+                                <div className="td-more-populated-details">
+                                  {moreAvailabilityDisplay && <div><FiCalendar size={15} /><span><small>Availability</small><strong>{moreAvailabilityDisplay}</strong></span></div>}
+                                  {moreEmploymentDisplay && <div><FiFileText size={15} /><span><small>Employment type</small><strong>{moreEmploymentDisplay}</strong></span></div>}
+                                  {moreLocationDisplay && <div><FiMapPin size={15} /><span><small>Preferred locations</small><strong>{moreLocationDisplay}</strong></span></div>}
+                                  {moreRelocationDisplay && <div><FiArrowRight size={15} /><span><small>Relocation preference</small><strong>{moreRelocationDisplay}</strong></span></div>}
+                                </div>
+                              </section>
+                            )}
+                            <section className="td-more-populated-card td-more-documents-card">
+                                <header className="td-more-populated-header">
+                                  <span className="td-more-populated-icon td-more-populated-icon--blue"><FiFileText size={17} /></span>
+                                  <div><h2>Documents</h2><p>Upload your CV and other supporting documents. These are optional but can help schools learn more about you.</p></div>
+                                  <button type="button" onClick={() => openProfileSection('cv-resume')}><FiFileText size={13} />Manage Documents</button>
+                                </header>
+                                {hasPopulatedDocuments ? (
+                                  <div className="td-more-document-list">
+                                  {teacherCvUrl && (
+                                    <div className="td-more-document-row">
+                                      <button type="button" className="td-more-document-main" onClick={() => openDocumentPreview({ name: cvDocumentName, uri: teacherCvUrl })}>
+                                        <span className={`td-more-document-icon ${getDocumentMimeType(cvDocumentName) === 'application/pdf' ? 'is-pdf' : 'is-doc'}`}><FiFileText size={15} /></span>
+                                        <span className="td-more-document-info"><strong>{cvDocumentName}</strong><small>Uploaded {activeResume?.uploadDate || 'Date unavailable'} · {activeResume?.size && activeResume.size !== 'Uploaded' ? activeResume.size : 'Size unavailable'}</small></span>
+                                      </button>
+                                      <span className="td-more-document-status"><FiCheck size={11} />Uploaded</span>
+                                      <details className="td-more-document-menu">
+                                        <summary aria-label={`Options for ${cvDocumentName}`}><FiMoreVertical size={16} /></summary>
+                                        <div><button type="button" onClick={() => openDocumentPreview({ name: cvDocumentName, uri: teacherCvUrl })}>Preview document</button></div>
+                                      </details>
+                                    </div>
+                                  )}
+                                  {supportingDocuments.map((document) => {
+                                    const mimeType = getDocumentMimeType(document.name);
+                                    const iconClass = mimeType === 'application/pdf'
+                                      ? 'is-pdf'
+                                      : mimeType.startsWith('image/')
+                                        ? 'is-image'
+                                        : 'is-doc';
+                                    return (
+                                      <div className="td-more-document-row" key={document.id}>
+                                        <button type="button" className="td-more-document-main" onClick={() => openDocumentPreview({ name: document.name, uri: document.previewUrl })}>
+                                          <span className={`td-more-document-icon ${iconClass}`}><FiFileText size={15} /></span>
+                                          <span className="td-more-document-info"><strong>{document.name}</strong><small>Added {document.addedAt} · {formatFileSize(document.size)}</small></span>
+                                        </button>
+                                        <span className="td-more-document-status"><FiCheck size={11} />Added</span>
+                                        <details className="td-more-document-menu">
+                                          <summary aria-label={`Options for ${document.name}`}><FiMoreVertical size={16} /></summary>
+                                          <div><button type="button" onClick={() => openDocumentPreview({ name: document.name, uri: document.previewUrl })}>Preview document</button></div>
+                                        </details>
+                                      </div>
+                                    );
+                                  })}
+                                  </div>
+                                ) : (
+                                  <div className="td-more-documents-empty">
+                                    <span><FiFileText size={17} /></span>
+                                    <strong>No documents added yet</strong>
+                                    <p>Upload your CV or supporting documents to help schools learn more about you.</p>
+                                    <button type="button" onClick={() => openProfileSection('cv-resume')}><FiPlus size={13} />Add documents</button>
+                                  </div>
+                                )}
+                              </section>
+                          </div>
+                        )}
+                      </section>
+                      {showMoreInformationModal && (
+                        <div
+                          className="td-modal-overlay td-more-modal-overlay"
+                          onMouseDown={(event) => {
+                            if (event.target === event.currentTarget) setShowMoreInformationModal(false);
+                          }}
+                        >
+                          <section className="td-more-modal" role="dialog" aria-modal="true" aria-labelledby="td-more-modal-title">
+                            <header>
+                              <div><h2 id="td-more-modal-title">Add more information</h2><p>Choose an area to update. Your changes use the existing profile forms.</p></div>
+                              <button type="button" aria-label="Close add information dialog" onClick={() => setShowMoreInformationModal(false)}><FiX size={19} /></button>
+                            </header>
+                            <div className="td-more-modal-options">
+                              <button type="button" onClick={() => { setShowMoreInformationModal(false); openProfileSection('personal-info'); }}>
+                                <FiUser size={17} /><span><strong>Personal information</strong><small>Update your identity and contact details.</small></span><FiArrowRight size={16} />
+                              </button>
+                              <button type="button" onClick={() => { setShowMoreInformationModal(false); openProfileSection('trcn-certification'); }}>
+                                <FiAward size={17} /><span><strong>TRCN certification</strong><small>Review your registration and verification details.</small></span><FiArrowRight size={16} />
+                              </button>
+                              <button type="button" onClick={() => { setShowMoreInformationModal(false); openAvailabilityPreferencesModal(); }}>
+                                <FiBriefcase size={17} /><span><strong>Job preferences</strong><small>Choose employment type and preferred location.</small></span><FiArrowRight size={16} />
+                              </button>
+                              <button type="button" onClick={() => { setShowMoreInformationModal(false); openAvailabilityPreferencesModal(); }}>
+                                <FiCalendar size={17} /><span><strong>Availability</strong><small>Set when you can start a new position.</small></span><FiArrowRight size={16} />
+                              </button>
+                              <button type="button" onClick={() => { setShowMoreInformationModal(false); openProfileSection('cv-resume'); }}>
+                                <FiFileText size={17} /><span><strong>CV / Resume</strong><small>Upload or replace your supporting document.</small></span><FiArrowRight size={16} />
+                              </button>
+                            </div>
+                          </section>
+                        </div>
+                      )}
+                      {renderDocumentPreviewModal()}
+                    </Motion.div>
+                  )}
                   {/* 1. Personal Info Tab */}
                   {profileSubTab === 'personal-info' && (
                     <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-pers-info-page">
-                      {/* Top Breadcrumb Header */}
-                      <div
-                        className="td-pers-breadcrumb"
-                        onClick={() => {
-                          if (personalInfoOrigin === 'settings') {
-                            setActiveTab('settings');
-                            setSettingsSubTab('overview');
-                          } else {
-                            setProfileSubTab('overview');
-                          }
-                        }}
-                      >
-                        <FiArrowLeft size={16} className="td-pers-back-icon" />
-                        <span>{personalInfoOrigin === 'settings' ? 'Settings/ ...Personal information' : 'Profile/ ...Personal information'}</span>
-                      </div>
-
                       {/* Main Title & Description */}
                       <div className="td-pers-header-section">
                         <h1 className="td-pers-page-title">Personal Information</h1>
@@ -4697,67 +5756,103 @@ export default function TeacherDashboard() {
                   {/* 2. Professional Info Tab */}
                   {profileSubTab === 'professional-info' && (
                     <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-edit-page">
-                      <button type="button" className="td-prof-edit-breadcrumb" onClick={() => setProfileSubTab('overview')}><FiArrowLeft size={18} /><span>Profile / Professional information</span></button>
-                      <header className="td-prof-edit-header"><h1>Professional Information</h1><p>Define your professional identity. This information will be visible to schools and administrators viewing your profile.</p></header>
-                      {appError && <p className="td-prof-edit-error">{appError}</p>}
-                      <div className="td-prof-edit-grid">
-                        <section className="td-prof-edit-card td-prof-edit-card--primary">
-                          <h2><FiBriefcase /> Identity &amp; Experience</h2>
-                          <label>Professional Title <span className="td-pers-required-marker" aria-hidden="true">*</span><input type="text" value={profTitle} onChange={(event) => setProfTitle(event.target.value)} /></label>
-                          <label>
-                            Professional Summary <span className="td-pers-required-marker" aria-hidden="true">*</span>
-                            <textarea
-                              value={profSummary}
-                              maxLength={1000}
-                              aria-describedby="td-prof-summary-count"
-                              onChange={(event) => {
-                                profSummaryEditedRef.current = true;
-                                setProfSummary(event.target.value.slice(0, 1000));
-                              }}
-                            />
-                            <span id="td-prof-summary-count" className="td-prof-summary-count" aria-live="polite">
-                              {profSummary.length}/1000 characters
-                            </span>
-                          </label>
-                          <label>Years of Experience <span className="td-pers-required-marker" aria-hidden="true">*</span><select value={profYearsExp} onChange={(event) => setProfYearsExp(event.target.value)}><option value="Not provided">Not provided</option><option value="0+ years">0+ years</option><option value="1+ years">1+ years</option><option value="2+ years">2+ years</option><option value="3+ years">3+ years</option><option value="5+ years">5+ years</option><option value="8+ years">8+ years</option><option value="10+ years">10+ years</option></select></label>
-                          <div className="td-prof-preferences">
-                            <h2><FiFilter /> Preferences</h2>
-                            <label>Preferred Employment Type <span className="td-pers-required-marker" aria-hidden="true">*</span><select value={profEmpPref} onChange={(event) => setProfEmpPref(event.target.value)}><option value="Full Time">Full Time</option><option value="Part Time">Part Time</option><option value="Contract">Contract</option></select></label>
-                            <label>Teaching Mode<select value={profTeachingMode} onChange={(event) => setProfTeachingMode(event.target.value)}><option value="In Person">In Person</option><option value="Hybrid">Hybrid</option><option value="Remote">Remote</option></select></label>
+                      <section className="td-prof-skills-card">
+                        <header className="td-prof-skills-heading">
+                          <span className="td-prof-skills-heading-icon"><FiBarChart2 size={22} /></span>
+                          <div>
+                            <h1>Skills &amp; Expertise</h1>
+                            <p>Showcase your teaching expertise, curriculum experience and professional capabilities.</p>
                           </div>
-                        </section>
-                        <aside className="td-prof-edit-aside">
-                          <section className="td-prof-edit-card">
-                            <h2><FiAward /> Expertise</h2><span className="td-prof-edit-label">Subjects <span className="td-pers-required-marker" aria-hidden="true">*</span></span>
-                            <div className="td-prof-edit-subjects">
-                              {profSubjects.map((subject) => <button type="button" key={subject} onClick={() => setProfSubjects((items) => items.filter((item) => item !== subject))}>{subject} x</button>)}
-                              {showAddSubject ? <input autoFocus value={newSubjectInput} onChange={(event) => setNewSubjectInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && newSubjectInput.trim()) { event.preventDefault(); setProfSubjects((items) => [...items, newSubjectInput.trim()]); setNewSubjectInput(''); setShowAddSubject(false); } }} onBlur={() => setShowAddSubject(false)} aria-label="New subject" /> : <button type="button" className="td-prof-add-subject" onClick={() => setShowAddSubject(true)}>+ Add Subject</button>}
+                        </header>
+                        <div className="td-prof-skills-list">
+                          {TEACHER_EXPERTISE_CATEGORIES.map((category, index) => {
+                            const CategoryIcon = [FiUsers, FiBook, FiMonitor, FiGlobe][index];
+                            const iconColor = ['green', 'blue', 'purple', 'orange'][index];
+                            return (
+                              <article className="td-prof-skills-item" key={category.key}>
+                                <span className={`td-prof-skills-item-icon td-prof-skills-item-icon--${iconColor}`}><CategoryIcon size={20} /></span>
+                                <div className="td-prof-skills-item-content">
+                                  <div className="td-prof-skills-item-title">
+                                    <div><h2>{category.title}</h2><p>{category.description}</p></div>
+                                    <button type="button" onClick={() => openExpertiseModal(category.key)}><FiEdit2 size={13} />Edit</button>
+                                  </div>
+                                  <div className="td-prof-skills-tags">
+                                    {skillExpertise[category.key].map((item) => <span key={item}>{item}</span>)}
+                                  </div>
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+                      {editingExpertiseCategory && (
+                        <div
+                          className="td-modal-overlay td-prof-skills-modal-overlay"
+                          onMouseDown={(event) => {
+                            if (event.target === event.currentTarget) closeExpertiseModal();
+                          }}
+                        >
+                          <form
+                            className="td-prof-skills-modal"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="td-prof-skills-modal-title"
+                            onSubmit={saveExpertiseTags}
+                          >
+                            <header className="td-prof-skills-modal-header">
+                              <div>
+                                <h2 id="td-prof-skills-modal-title">Edit {activeExpertiseCategory?.title}</h2>
+                                <p>Manage the items shown in this section of your profile.</p>
+                              </div>
+                              <button type="button" aria-label="Close skills editor" onClick={closeExpertiseModal}><FiX size={19} /></button>
+                            </header>
+                            <div className="td-prof-skills-modal-body">
+                              <label htmlFor="td-prof-skills-tag-input">Add an item</label>
+                              <div className="td-prof-skills-input-row">
+                                <input
+                                  id="td-prof-skills-tag-input"
+                                  value={expertiseTagInput}
+                                  onChange={(event) => setExpertiseTagInput(event.target.value)}
+                                  onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                      event.preventDefault();
+                                      addExpertiseTag();
+                                    }
+                                  }}
+                                  placeholder={editingExpertiseCategory === 'languages' ? 'e.g. Yoruba — Fluent' : 'Enter a skill or area of expertise'}
+                                />
+                                <button type="button" onClick={addExpertiseTag} disabled={!expertiseTagInput.trim()}><FiPlus size={15} />Add</button>
+                              </div>
+                              <div className="td-prof-skills-modal-tags" aria-label={`${editingExpertiseCategory} items`}>
+                                {expertiseDraftTags.map((tag) => (
+                                  <span key={tag}>
+                                    {tag}
+                                    <button
+                                      type="button"
+                                      aria-label={`Remove ${tag}`}
+                                      onClick={() => setExpertiseDraftTags((tags) => tags.filter((item) => item !== tag))}
+                                    >
+                                      <FiX size={13} />
+                                    </button>
+                                  </span>
+                                ))}
+                                {expertiseDraftTags.length === 0 && <p>No items added. Add one above.</p>}
+                              </div>
+                              <p className="td-prof-skills-session-note">Changes are kept for this browser session and are not saved to your profile.</p>
                             </div>
-                            <div className="td-prof-edit-levels"><span className="td-prof-edit-label">Teaching Levels <span className="td-pers-required-marker" aria-hidden="true">*</span></span>{teacherLevelOptions.map((level) => <label key={level}><input type="checkbox" checked={profTeachingLevels.includes(level)} onChange={() => setProfTeachingLevels((levels) => levels.includes(level) ? levels.filter((item) => item !== level) : [...levels, level])} />{level}</label>)}</div>
-                          </section>
-                          <button type="button" className="td-prof-save-btn" disabled={savingProfessionalInfo} onClick={handleSaveProfessionalInfo}>{savingProfessionalInfo ? 'Saving...' : 'Save Changes'}</button>
-                        </aside>
-                      </div>
+                            <footer className="td-prof-skills-modal-footer">
+                              <button type="button" onClick={closeExpertiseModal}>Cancel</button>
+                              <button type="submit">Save Changes</button>
+                            </footer>
+                          </form>
+                        </div>
+                      )}
                     </Motion.div>
                   )}
                   {profileSubTab === 'professional-info-legacy' && (
                     <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-prof-info-page">
-                      {/* Top Breadcrumb */}
-                      <div className="td-prof-breadcrumb" onClick={() => setProfileSubTab('overview')}>
-                        <FiArrowLeft size={16} className="td-prof-back-icon" />
-                        <span>Settings/ ...Professional information</span>
-                      </div>
-
-                      {/* Back to Profile & Edit Profile Row */}
+                      {/* Edit Profile Row */}
                       <div className="td-prof-nav-bar">
-                        <button
-                          type="button"
-                          className="td-prof-back-btn"
-                          onClick={() => setProfileSubTab('overview')}
-                        >
-                          <FiArrowLeft size={16} />
-                          <span>Back to Profile</span>
-                        </button>
                         <button
                           type="button"
                           className="td-prof-edit-profile-btn"
@@ -4960,239 +6055,495 @@ export default function TeacherDashboard() {
                   {/* 3. Education Tab */}
                   {profileSubTab === 'education' && (
                     <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-edu-info-page">
-                      {/* Top Breadcrumb Header */}
-                      <div className="td-edu-breadcrumb" onClick={() => setProfileSubTab('overview')}>
-                        <FiArrowLeft size={16} className="td-edu-back-icon" />
-                        <span>Settings/ ...Education</span>
-                      </div>
-
-                      {/* Header Row */}
-                      <div className="td-edu-header-row">
-                        <div className="td-edu-header-left">
-                          <h1 className="td-edu-page-title">Education</h1>
-                          <p className="td-edu-page-desc">
-                            Manage your academic history and qualifications.
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          className="td-edu-add-btn"
-                          onClick={() => {
-                            setEditingEducationId(null);
-                            setEducationError('');
-                            setNewEduForm({ degree: '', degreeOther: '', institution: '', fieldOfStudy: '', classOfDegree: '', startYear: '2015', endYear: '2019', status: 'Completed' });
-                            setShowAddEduModal(true);
-                          }}
-                        >
-                          + Add Education
-                        </button>
-                      </div>
-
-                      {/* Education Cards Grid */}
-                      <div className={`td-edu-grid ${educationList.length === 0 ? 'td-edu-grid--empty' : ''}`}>
-                        {educationList.map((edu) => (
-                          <div key={edu.id} className="td-edu-card">
-                            {/* Decorative background circle */}
-                            <div className="td-edu-card-decor" />
-
-                            {/* Degree Icon */}
-                            <div className="td-edu-icon-badge">
-                              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-                                <path d="M6 12v5c0 2 3 3 6 3s6-1 6-3v-5" />
-                              </svg>
+                      <div className="td-edu-panels">
+                        <section className="td-edu-panel">
+                          <header className="td-edu-panel-heading">
+                            <span className="td-edu-panel-icon td-edu-panel-icon--education"><FiBook size={17} /></span>
+                            <div>
+                              <h1>Education</h1>
+                              <p>Add your academic qualifications to show your educational background.</p>
                             </div>
-
-                            {/* Details */}
-                            <div className="td-edu-details">
-                              <h2 className="td-edu-degree">{edu.degree}</h2>
-                              <div className="td-edu-inst-row">
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#64748B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M3 21h18M3 10h18M5 10v11M9 10v11M15 10v11M19 10v11M12 3l9 5H3l9-5z" />
-                                </svg>
-                                <span>{edu.institution}</span>
-                              </div>
-                            </div>
-
-                            <div className="td-edu-divider" />
-
-                            {/* Footer info: Period + Status */}
-                            <div className="td-edu-card-footer">
-                              <span className="td-edu-period-pill">{edu.period}</span>
-                              <span className="td-edu-status-badge">
-                                <FiCheckCircle size={14} color="#15803D" />
-                                <span>{edu.status}</span>
-                              </span>
-                            </div>
-                            <div className="td-exp-actions">
+                            {educationList.length > 0 && (
                               <button
                                 type="button"
-                                className="td-exp-action-btn td-exp-action-edit"
+                                className="td-edu-add-btn"
                                 onClick={() => {
-                                  setEditingEducationId(edu.education_id);
-                                  setNewEduForm({
-                                    degree: degreeOptions.includes(edu.degree) ? edu.degree : 'Others',
-                                    degreeOther: degreeOptions.includes(edu.degree) ? '' : edu.degree,
-                                    institution: edu.institution,
-                                    fieldOfStudy: edu.field_of_study || '',
-                                    classOfDegree: edu.class_of_degree || '',
-                                    startYear: String(edu.start_year || ''),
-                                    endYear: String(edu.end_year || ''),
-                                    status: edu.status || 'Completed',
-                                  });
+                                  setEditingEducationId(null);
                                   setEducationError('');
+                                  setNewEduForm(createEducationForm());
+                                  setEducationDocumentFile(null);
+                                  setEducationDocumentError('');
                                   setShowAddEduModal(true);
                                 }}
                               >
-                                <FiEdit2 size={13} />
-                                <span>Edit</span>
+                                <FiPlus size={14} />Add Education
                               </button>
+                            )}
+                          </header>
+
+                          {educationList.length ? (
+                            <div className="td-edu-grid">
+                              {educationList.map((edu) => (
+                                <article key={edu.id} className="td-edu-card">
+                                  <div className="td-edu-card-icon" aria-hidden="true">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M3 21h18M4 10h16M6 21V10m4 11V10m4 11V10m4 11V10M2 10l10-7 10 7" />
+                                    </svg>
+                                  </div>
+                                  <div className="td-edu-card-details">
+                                    <h2>{edu.degree || 'Qualification not provided'}</h2>
+                                    <p>{edu.institution || 'Institution not provided'}</p>
+                                    <div className="td-edu-card-meta">
+                                      <span><FiCalendar size={12} />{edu.period || 'Dates not provided'}</span>
+                                      {edu.class_of_degree && (
+                                        <>
+                                          <i aria-hidden="true" />
+                                          <span>{edu.class_of_degree}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="td-edu-card-actions">
+                                    <button
+                                      type="button"
+                                      className="td-edu-card-edit"
+                                      aria-label={`Edit ${edu.degree || 'education'}`}
+                                      onClick={() => {
+                                        setEditingEducationId(edu.education_id);
+                                        setNewEduForm({
+                                          ...createEducationForm(),
+                                          degree: edu.degree || '',
+                                          institution: edu.institution,
+                                          fieldOfStudy: educationFieldOptions.includes(edu.field_of_study) ? edu.field_of_study : (edu.field_of_study ? 'Other' : ''),
+                                          fieldOfStudyOther: educationFieldOptions.includes(edu.field_of_study) ? '' : (edu.field_of_study || ''),
+                                          classOfDegree: edu.class_of_degree || '',
+                                          startYear: String(edu.start_year || ''),
+                                          endYear: String(edu.end_year || ''),
+                                          currentlyStudying: edu.status === 'In Progress',
+                                        });
+                                        setEducationDocumentFile(null);
+                                        setEducationDocumentError('');
+                                        setEducationError('');
+                                        setShowAddEduModal(true);
+                                      }}
+                                    >
+                                      <FiEdit2 size={13} />
+                                      <span>Edit</span>
+                                    </button>
+                                    <details className="td-edu-card-more">
+                                      <summary aria-label={`More actions for ${edu.degree || 'education'}`}><FiMoreVertical size={17} /></summary>
+                                      <button type="button" onClick={() => handleDeleteEducation(edu)}>
+                                        <FiTrash2 size={14} />
+                                        <span>Delete</span>
+                                      </button>
+                                    </details>
+                                  </div>
+                                </article>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="td-edu-empty-content">
+                              <div className="td-edu-empty-illustration td-edu-empty-illustration--education" aria-hidden="true">
+                                <div className="td-edu-empty-document"><FiBook size={19} /></div>
+                                <i />
+                                <b />
+                              </div>
+                              <h2>No educational qualifications added yet</h2>
                               <button
                                 type="button"
-                                className="td-exp-action-btn td-exp-action-delete"
-                                onClick={() => handleDeleteEducation(edu)}
+                                className="td-edu-add-btn"
+                                onClick={() => {
+                                  setEditingEducationId(null);
+                                  setEducationError('');
+                                  setNewEduForm(createEducationForm());
+                                  setEducationDocumentFile(null);
+                                  setEducationDocumentError('');
+                                  setShowAddEduModal(true);
+                                }}
                               >
-                                <FiTrash2 size={13} />
-                                <span>Delete</span>
+                                <FiPlus size={14} />Add Education
                               </button>
                             </div>
-                          </div>
-                        ))}
+                          )}
+                        </section>
 
-                        {educationList.length === 0 && (
-                          <div className="td-profile-empty-state td-edu-empty-state">
-                            <FiBook size={34} />
-                            <h3>No educational qualification added</h3>
-                            <p>Add your degrees, diplomas, or relevant certificates to complete your academic profile.</p>
-                          </div>
-                        )}
+                        <section className="td-edu-panel">
+                          <header className="td-edu-panel-heading">
+                            <span className="td-edu-panel-icon td-edu-panel-icon--certification"><FiAward size={17} /></span>
+                            <div>
+                              <h2>Professional Certifications</h2>
+                              <p>Add your professional certifications, such as TRCN and other relevant credentials.</p>
+                            </div>
+                            {(profileState?.trcn_number || profileState?.trcn_certificate_url || sessionCertifications.length > 0) && (
+                              <button type="button" className="td-edu-add-btn" onClick={() => { resetCertificationForm(); setShowAddCertificationModal(true); }}>
+                                <FiPlus size={14} />Add Certification
+                              </button>
+                            )}
+                          </header>
+
+                          {profileState?.trcn_number || profileState?.trcn_certificate_url || sessionCertifications.length > 0 ? (
+                            <>
+                              {sessionCertifications.map((certification) => (
+                                <div key={certification.id} className="td-edu-certification-record">
+                                  <div className="td-edu-certification-icon"><FiAward size={17} /></div>
+                                  <div className="td-edu-certification-details">
+                                    <h3>{certification.name}</h3>
+                                    <p>{certification.organisation}{certification.number ? ` · ${certification.number}` : ''}</p>
+                                    <div className="td-edu-certification-meta">
+                                      <span><FiCalendar size={12} />Issued {educationMonths.find(([month]) => month === certification.issueMonth)?.[1]} {certification.issueYear}</span>
+                                      {certification.doesNotExpire
+                                        ? <span>Does not expire</span>
+                                        : certification.expiryMonth && certification.expiryYear
+                                          ? <span>Expires {educationMonths.find(([month]) => month === certification.expiryMonth)?.[1]} {certification.expiryYear}</span>
+                                          : null}
+                                      {certification.notes && <span>{certification.notes}</span>}
+                                    </div>
+                                    <span className="td-edu-session-only-badge">Session only · not saved to profile</span>
+                                  </div>
+                                  <div className="td-edu-certification-actions">
+                                    <button
+                                      type="button"
+                                      className="td-edu-certification-edit"
+                                      onClick={() => {
+                                        setEditingCertificationId(certification.id);
+                                        setCertificationForm({
+                                          name: certification.name,
+                                          organisation: certification.organisation,
+                                          number: certification.number,
+                                          issueMonth: certification.issueMonth,
+                                          issueYear: certification.issueYear,
+                                          expiryMonth: certification.expiryMonth,
+                                          expiryYear: certification.expiryYear,
+                                          doesNotExpire: certification.doesNotExpire,
+                                          notes: certification.notes,
+                                        });
+                                        setCertificationFile(null);
+                                        setCertificationError('');
+                                        setCertificationFileError('');
+                                        setShowAddCertificationModal(true);
+                                      }}
+                                    >
+                                      <FiEdit2 size={13} />Edit
+                                    </button>
+                                    <details className="td-edu-certification-more">
+                                      <summary aria-label={`More actions for ${certification.name}`}><FiMoreVertical size={17} /></summary>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSessionCertifications((items) => items.filter((item) => item.id !== certification.id))}
+                                      >
+                                        <FiTrash2 size={13} />Delete
+                                      </button>
+                                    </details>
+                                  </div>
+                                </div>
+                              ))}
+                              {(profileState?.trcn_number || profileState?.trcn_certificate_url) && (
+                                <div className="td-edu-certification-record">
+                                  <div className="td-edu-certification-icon td-edu-certification-icon--trcn">TRCN</div>
+                                  <div className="td-edu-certification-details">
+                                    <h3>Teachers Registration Council of Nigeria (TRCN)</h3>
+                                    <p>Registered Teacher{profileState?.trcn_number ? ` · ${profileState.trcn_number}` : ''}</p>
+                                    <div className="td-edu-certification-meta">
+                                      {profileState?.trcn_issued_at && <span><FiCalendar size={12} />Registered: {new Date(profileState.trcn_issued_at).getFullYear()}</span>}
+                                      {profileState?.trcn_valid_until && <span>Expires: {new Date(profileState.trcn_valid_until).getFullYear()}</span>}
+                                    </div>
+                                  </div>
+                                  <span className={`td-edu-certification-status${isTrcnVerified ? ' is-verified' : ''}`}>
+                                    {isTrcnVerified && <FiCheckCircle size={12} />}
+                                    {isTrcnVerified ? 'Verified' : trcnStatusBadge}
+                                  </span>
+                                  <div className="td-edu-certification-actions">
+                                    <button type="button" className="td-edu-certification-edit" onClick={() => setProfileSubTab('trcn-certification')}>
+                                      <FiEdit2 size={13} />Edit
+                                    </button>
+                                    <details className="td-edu-certification-more">
+                                      <summary aria-label="More TRCN certification actions"><FiMoreVertical size={17} /></summary>
+                                      <button type="button" onClick={() => setProfileSubTab('trcn-certification')}>
+                                        <FiEye size={13} />View details
+                                      </button>
+                                    </details>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="td-edu-empty-content">
+                              <div className="td-edu-empty-illustration td-edu-empty-illustration--certification" aria-hidden="true">
+                                <div className="td-edu-empty-document"><FiAward size={19} /></div>
+                                <i />
+                                <b />
+                              </div>
+                              <h2>No professional certifications added yet</h2>
+                              <button type="button" className="td-edu-add-btn" onClick={() => { resetCertificationForm(); setShowAddCertificationModal(true); }}>
+                                <FiPlus size={14} />Add Certification
+                              </button>
+                            </div>
+                          )}
+                        </section>
                       </div>
+
+                      {showAddCertificationModal && (
+                        <div className="td-modal-overlay td-certification-form-overlay" onMouseDown={(event) => {
+                          if (event.target === event.currentTarget) closeCertificationModal();
+                        }}>
+                          <form className="td-modal-content td-certification-modal" role="dialog" aria-modal="true" aria-labelledby="td-certification-modal-title" onSubmit={handleSaveCertification}>
+                            <header className="td-certification-modal-header">
+                              <div>
+                                <h2 id="td-certification-modal-title">{editingCertificationId ? 'Edit Professional Certification' : 'Add Professional Certification'}</h2>
+                                <p>Add a professional certification such as TRCN or other relevant credentials.</p>
+                              </div>
+                              <button type="button" className="td-certification-modal-close" aria-label="Close certification form" onClick={closeCertificationModal}><FiX size={19} /></button>
+                            </header>
+
+                            <div className="td-certification-modal-body">
+                              <div className="td-certification-form-grid">
+                                <label className="td-certification-field td-certification-field--full">
+                                  <span>Certification name <b aria-hidden="true">*</b></span>
+                                  <input required value={certificationForm.name} onChange={(event) => setCertificationForm({ ...certificationForm, name: event.target.value })} placeholder="e.g. TRCN, ICAN, Cambridge International Certificate" />
+                                  <small>Enter the official name of the certification.</small>
+                                </label>
+
+                                <label className="td-certification-field">
+                                  <span>Issuing organisation <b aria-hidden="true">*</b></span>
+                                  <input required value={certificationForm.organisation} onChange={(event) => setCertificationForm({ ...certificationForm, organisation: event.target.value })} placeholder="e.g. Teachers Registration Council of Nigeria" />
+                                  <small>Name of the organisation that issued the certification.</small>
+                                </label>
+
+                                <label className="td-certification-field">
+                                  <span>Certificate number <em>(optional)</em></span>
+                                  <input value={certificationForm.number} onChange={(event) => setCertificationForm({ ...certificationForm, number: event.target.value })} placeholder="e.g. TRCN/123456" />
+                                  <small>Enter the certificate number if available.</small>
+                                </label>
+
+                                <div className="td-certification-field">
+                                  <span className="td-certification-label">Issue date <b aria-hidden="true">*</b></span>
+                                  <div className="td-certification-date-fields">
+                                    <select aria-label="Issue month" required value={certificationForm.issueMonth} onChange={(event) => setCertificationForm({ ...certificationForm, issueMonth: event.target.value })}>
+                                      <option value="">Month</option>
+                                      {educationMonths.map(([value, month]) => <option key={value} value={value}>{month}</option>)}
+                                    </select>
+                                    <select aria-label="Issue year" required value={certificationForm.issueYear} onChange={(event) => setCertificationForm({ ...certificationForm, issueYear: event.target.value })}>
+                                      <option value="">Year</option>
+                                      {Array.from({ length: 127 }, (_, index) => new Date().getFullYear() - index).map((year) => <option key={year} value={String(year)}>{year}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="td-certification-field">
+                                  <span className="td-certification-label">Expiry date <em>(optional)</em></span>
+                                  <div className="td-certification-date-fields">
+                                    <select aria-label="Expiry month" disabled={certificationForm.doesNotExpire} value={certificationForm.expiryMonth} onChange={(event) => setCertificationForm({ ...certificationForm, expiryMonth: event.target.value })}>
+                                      <option value="">Month</option>
+                                      {educationMonths.map(([value, month]) => <option key={value} value={value}>{month}</option>)}
+                                    </select>
+                                    <select aria-label="Expiry year" disabled={certificationForm.doesNotExpire} value={certificationForm.expiryYear} onChange={(event) => setCertificationForm({ ...certificationForm, expiryYear: event.target.value })}>
+                                      <option value="">Year</option>
+                                      {Array.from({ length: 127 }, (_, index) => new Date().getFullYear() - index).map((year) => <option key={year} value={String(year)}>{year}</option>)}
+                                    </select>
+                                  </div>
+                                  <label className="td-certification-no-expiry">
+                                    <input type="checkbox" checked={certificationForm.doesNotExpire} onChange={(event) => setCertificationForm({ ...certificationForm, doesNotExpire: event.target.checked, expiryMonth: '', expiryYear: '' })} />
+                                    <span>This certification does not expire</span>
+                                  </label>
+                                </div>
+
+                                <div className="td-certification-field td-certification-field--full">
+                                  <span className="td-certification-label">Certificate / Document <em>(optional)</em></span>
+                                  <input
+                                    ref={certificationFileInputRef}
+                                    className="td-certification-file-input"
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0] || null;
+                                      const extension = file?.name.split('.').pop()?.toLowerCase();
+                                      if (file && file.size > 5 * 1024 * 1024) {
+                                        setCertificationFileError('The selected file exceeds the 5 MB limit.');
+                                        setCertificationFile(null);
+                                        event.target.value = '';
+                                        return;
+                                      }
+                                      if (file && !['pdf', 'jpg', 'jpeg', 'png'].includes(extension)) {
+                                        setCertificationFileError('Choose a PDF, JPG, or PNG file.');
+                                        setCertificationFile(null);
+                                        event.target.value = '';
+                                        return;
+                                      }
+                                      setCertificationFileError('');
+                                      setCertificationFile(file);
+                                    }}
+                                  />
+                                  <button type="button" className={`td-certification-document-upload ${certificationFile ? 'has-file' : ''}`} onClick={() => certificationFileInputRef.current?.click()}>
+                                    <span className="td-certification-upload-icon"><FiFileText size={17} /></span>
+                                    <span><strong>{certificationFile?.name || 'Upload certificate (PDF, JPG or PNG)'}</strong><small>Max 5 MB</small></span>
+                                  </button>
+                                  {certificationFileError && <small className="td-certification-file-error" role="alert">{certificationFileError}</small>}
+                                </div>
+
+                                <label className="td-certification-field td-certification-field--full">
+                                  <span>Additional notes <em>(optional)</em></span>
+                                  <textarea maxLength={300} value={certificationForm.notes} onChange={(event) => setCertificationForm({ ...certificationForm, notes: event.target.value })} placeholder="e.g. Any relevant details about this certification" />
+                                  <small className="td-certification-notes-count">{certificationForm.notes.length}/300</small>
+                                </label>
+                              </div>
+
+                              <p className="td-certification-modal-notice">Certification details and documents are kept in this browser session only and are not saved to your profile.</p>
+                              {certificationError && <p className="td-certification-form-error" role="alert">{certificationError}</p>}
+                            </div>
+
+                            <footer className="td-certification-modal-footer">
+                              <button type="button" className="td-certification-cancel" onClick={closeCertificationModal}>Cancel</button>
+                              <button type="submit" className="td-certification-save">Save Certification</button>
+                            </footer>
+                          </form>
+                        </div>
+                      )}
 
                       {/* Modal for adding education */}
                       {showAddEduModal && (
-                        <div className="td-modal-overlay" onClick={() => setShowAddEduModal(false)}>
-                          <div className="td-modal-content td-edu-modal-content" onClick={(e) => e.stopPropagation()}>
-                            <div className="td-modal-header">
-                              <h2>{editingEducationId ? 'Edit Qualification' : 'Add Qualification'}</h2>
-                              <button className="td-modal-close" onClick={() => setShowAddEduModal(false)}>✕</button>
+                        <div className="td-modal-overlay td-education-form-overlay" onClick={(event) => {
+                          if (event.target === event.currentTarget) closeEducationModal();
+                        }}>
+                          <form className="td-modal-content td-edu-modal-content" role="dialog" aria-modal="true" aria-labelledby="td-edu-modal-title" onSubmit={(event) => { event.preventDefault(); handleSaveEducation(); }}>
+                            <header className="td-edu-modal-header">
+                              <div>
+                                <h2 id="td-edu-modal-title">{editingEducationId ? 'Edit Education' : 'Add Education'}</h2>
+                                <p>Add an academic qualification to your profile.</p>
+                              </div>
+                              <button type="button" className="td-edu-modal-close" aria-label="Close education form" onClick={closeEducationModal} disabled={savingEducation}><FiX size={19} /></button>
+                            </header>
+
+                            <div className="td-edu-modal-body">
+                              <div className="td-edu-form-grid">
+                                <label className="td-edu-form-field td-edu-form-field--full">
+                                  <span>Qualification title <b aria-hidden="true">*</b></span>
+                                  <input className="td-pers-input" required type="text" placeholder="e.g. Bachelor of Education (B.Ed)" value={newEduForm.degree} onChange={(event) => setNewEduForm({ ...newEduForm, degree: event.target.value })} />
+                                  <small>The name of your qualification (e.g. B.Ed, B.Sc, M.Ed).</small>
+                                </label>
+
+                                <label className="td-edu-form-field">
+                                  <span>Institution <b aria-hidden="true">*</b></span>
+                                  <input className="td-pers-input" required type="text" placeholder="e.g. University of Benin" value={newEduForm.institution} onChange={(event) => setNewEduForm({ ...newEduForm, institution: event.target.value })} />
+                                  <small>Name of the institution where you studied.</small>
+                                </label>
+
+                                <label className="td-edu-form-field">
+                                  <span>Field of study <b aria-hidden="true">*</b></span>
+                                  <select className="td-pers-input" required value={newEduForm.fieldOfStudy} onChange={(event) => setNewEduForm({ ...newEduForm, fieldOfStudy: event.target.value, fieldOfStudyOther: '' })}>
+                                    <option value="">Select field of study</option>
+                                    {educationFieldOptions.map((field) => <option key={field} value={field}>{field}</option>)}
+                                  </select>
+                                  <small>e.g. Mathematics, English, Biology</small>
+                                </label>
+
+                                {newEduForm.fieldOfStudy === 'Other' && (
+                                  <label className="td-edu-form-field td-edu-form-field--full">
+                                    <span>Enter field of study <b aria-hidden="true">*</b></span>
+                                    <input className="td-pers-input" required type="text" placeholder="Your field of study" value={newEduForm.fieldOfStudyOther} onChange={(event) => setNewEduForm({ ...newEduForm, fieldOfStudyOther: event.target.value })} />
+                                  </label>
+                                )}
+
+                                <label className="td-edu-form-field">
+                                  <span>Education level <b aria-hidden="true">*</b></span>
+                                  <select className="td-pers-input" required value={newEduForm.educationLevel} onChange={(event) => setNewEduForm({ ...newEduForm, educationLevel: event.target.value })}>
+                                    <option value="">Select education level</option>
+                                    {educationLevelOptions.map((level) => <option key={level} value={level}>{level}</option>)}
+                                  </select>
+                                  <small>e.g. OND, NCE, B.Sc, B.Ed, M.Ed, PhD</small>
+                                </label>
+
+                                <label className="td-edu-form-field">
+                                  <span>Grade / Classification <em>(optional)</em></span>
+                                  <input className="td-pers-input" type="text" placeholder="e.g. Second Class Upper" value={newEduForm.classOfDegree} onChange={(event) => setNewEduForm({ ...newEduForm, classOfDegree: event.target.value })} />
+                                  <small>e.g. First Class, Second Class Upper, Distinction</small>
+                                </label>
+
+                                <div className="td-edu-form-field">
+                                  <span className="td-edu-form-label">Start date <b aria-hidden="true">*</b></span>
+                                  <div className="td-edu-date-fields">
+                                    <select aria-label="Start month" required value={newEduForm.startMonth} onChange={(event) => setNewEduForm({ ...newEduForm, startMonth: event.target.value })}>
+                                      <option value="">Month</option>
+                                      {educationMonths.map(([value, month]) => <option key={value} value={value}>{month}</option>)}
+                                    </select>
+                                    <select aria-label="Start year" required value={newEduForm.startYear} onChange={(event) => setNewEduForm({ ...newEduForm, startYear: event.target.value })}>
+                                      <option value="">Year</option>
+                                      {Array.from({ length: 127 }, (_, index) => new Date().getFullYear() - index).map((year) => <option key={year} value={String(year)}>{year}</option>)}
+                                    </select>
+                                  </div>
+                                </div>
+
+                                <div className="td-edu-form-field">
+                                  <span className="td-edu-form-label">End date {!newEduForm.currentlyStudying && <b aria-hidden="true">*</b>}</span>
+                                  <div className="td-edu-date-fields">
+                                    <select aria-label="End month" required={!newEduForm.currentlyStudying} disabled={newEduForm.currentlyStudying} value={newEduForm.endMonth} onChange={(event) => setNewEduForm({ ...newEduForm, endMonth: event.target.value })}>
+                                      <option value="">Month</option>
+                                      {educationMonths.map(([value, month]) => <option key={value} value={value}>{month}</option>)}
+                                    </select>
+                                    <select aria-label="End year" required={!newEduForm.currentlyStudying} disabled={newEduForm.currentlyStudying} value={newEduForm.endYear} onChange={(event) => setNewEduForm({ ...newEduForm, endYear: event.target.value })}>
+                                      <option value="">Year</option>
+                                      {Array.from({ length: 127 }, (_, index) => new Date().getFullYear() - index).map((year) => <option key={year} value={String(year)}>{year}</option>)}
+                                    </select>
+                                  </div>
+                                  <label className="td-edu-currently-studying">
+                                    <input
+                                      type="checkbox"
+                                      checked={newEduForm.currentlyStudying}
+                                      onChange={(event) => setNewEduForm({
+                                        ...newEduForm,
+                                        currentlyStudying: event.target.checked,
+                                        endMonth: '',
+                                        endYear: '',
+                                      })}
+                                    />
+                                    <span>I am currently studying here</span>
+                                  </label>
+                                </div>
+
+                                <div className="td-edu-form-field td-edu-form-field--full">
+                                  <span className="td-edu-form-label">Certificate / Document <em>(optional)</em></span>
+                                  <input
+                                    ref={educationDocumentInputRef}
+                                    className="td-edu-document-input"
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                                    onChange={(event) => {
+                                      const file = event.target.files?.[0] || null;
+                                      const extension = file?.name.split('.').pop()?.toLowerCase();
+                                      if (file && file.size > 5 * 1024 * 1024) {
+                                        setEducationDocumentError('The selected file exceeds the 5 MB limit.');
+                                        setEducationDocumentFile(null);
+                                        event.target.value = '';
+                                        return;
+                                      }
+                                      if (file && !['pdf', 'jpg', 'jpeg', 'png'].includes(extension)) {
+                                        setEducationDocumentError('Choose a PDF, JPG, or PNG file.');
+                                        setEducationDocumentFile(null);
+                                        event.target.value = '';
+                                        return;
+                                      }
+                                      setEducationDocumentError('');
+                                      setEducationDocumentFile(file);
+                                    }}
+                                  />
+                                  <button type="button" className={`td-edu-document-upload ${educationDocumentFile ? 'has-file' : ''}`} onClick={() => educationDocumentInputRef.current?.click()}>
+                                    <span className="td-edu-upload-icon"><FiUpload size={16} /></span>
+                                    <span>{educationDocumentFile ? <><strong>{educationDocumentFile.name}</strong><small>Selected file · Max 5 MB</small></> : <><strong>Upload certificate (PDF, JPG or PNG)</strong><small>Max 5 MB</small></>}</span>
+                                  </button>
+                                  {educationDocumentError && <small className="td-edu-document-error" role="alert">{educationDocumentError}</small>}
+                                </div>
+                              </div>
+
+                              <p className="td-edu-modal-notice">Your qualification, institution, field of study, grade, years, and study status will be saved. Education level, months, and the selected document are not saved yet.</p>
+                              {educationError && <p className="td-exp-modal-error" role="alert">{educationError}</p>}
                             </div>
-                            <div className="td-modal-body">
-                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                <label className="td-pers-label">Degree / Certificate <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
-                                <select
-                                  className="td-pers-input"
-                                  value={newEduForm.degree}
-                                  onChange={(e) => setNewEduForm({ ...newEduForm, degree: e.target.value, degreeOther: e.target.value === 'Others' ? newEduForm.degreeOther : '' })}
-                                >
-                                  <option value="" disabled>Select a degree or certificate</option>
-                                  {degreeOptions.map((degreeOption) => <option key={degreeOption} value={degreeOption}>{degreeOption}</option>)}
-                                </select>
-                              </div>
-                              {newEduForm.degree === 'Others' && (
-                                <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                  <label className="td-pers-label">Other Degree / Certificate <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
-                                  <input
-                                    type="text"
-                                    placeholder="Enter your degree or certificate"
-                                    className="td-pers-input"
-                                    value={newEduForm.degreeOther}
-                                    onChange={(e) => setNewEduForm({ ...newEduForm, degreeOther: e.target.value })}
-                                  />
-                                </div>
-                              )}
-                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                <label className="td-pers-label">Institution / University <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. University of Benin"
-                                  className="td-pers-input"
-                                  value={newEduForm.institution}
-                                  onChange={(e) => setNewEduForm({ ...newEduForm, institution: e.target.value })}
-                                />
-                              </div>
-                              <div className="td-pers-field-group" style={{ marginBottom: '16px' }}>
-                                <label className="td-pers-label">Field of Study</label>
-                                <input
-                                  type="text"
-                                  placeholder="e.g. Mathematics Education"
-                                  className="td-pers-input"
-                                  value={newEduForm.fieldOfStudy}
-                                  onChange={(e) => setNewEduForm({ ...newEduForm, fieldOfStudy: e.target.value })}
-                                />
-                              </div>
-                              <div className="td-pers-grid td-edu-years-grid" style={{ marginBottom: '16px' }}>
-                                <div className="td-pers-field-group">
-                                  <label className="td-pers-label">Start Year <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
-                                  <input
-                                    type="number"
-                                    placeholder="2015"
-                                    className="td-pers-input"
-                                    min="1000"
-                                    max="9999"
-                                    step="1"
-                                    inputMode="numeric"
-                                    value={newEduForm.startYear}
-                                    onChange={(e) => setNewEduForm({ ...newEduForm, startYear: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                                  />
-                                </div>
-                                <div className="td-pers-field-group">
-                                  <label className="td-pers-label">End Year</label>
-                                  <input
-                                    type="number"
-                                    placeholder="2019"
-                                    className="td-pers-input"
-                                    min="1000"
-                                    max="9999"
-                                    step="1"
-                                    inputMode="numeric"
-                                    value={newEduForm.endYear}
-                                    onChange={(e) => setNewEduForm({ ...newEduForm, endYear: e.target.value.replace(/\D/g, '').slice(0, 4) })}
-                                  />
-                                </div>
-                              </div>
-                              <div className="td-pers-field-group">
-                                <label className="td-pers-label">Status <span className="td-pers-required-marker" aria-hidden="true">*</span></label>
-                                <select
-                                  className="td-pers-input"
-                                  value={newEduForm.status}
-                                  onChange={(e) => setNewEduForm({ ...newEduForm, status: e.target.value })}
-                                >
-                                  <option value="Completed">Completed</option>
-                                  <option value="In Progress">In Progress</option>
-                                  <option value="Pending">Pending</option>
-                                </select>
-                              </div>
-                              <div className="td-pers-field-group" style={{ marginTop: '16px' }}>
-                                <label className="td-pers-label">Class of Degree</label>
-                                <select
-                                  className="td-pers-input"
-                                  value={newEduForm.classOfDegree}
-                                  onChange={(e) => setNewEduForm({ ...newEduForm, classOfDegree: e.target.value })}
-                                >
-                                  <option value="" disabled>Select class of degree</option>
-                                  {degreeClassOptions.map((degreeClass) => <option key={degreeClass} value={degreeClass}>{degreeClass}</option>)}
-                                </select>
-                              </div>
-                            </div>
-                            {educationError && <p className="td-exp-modal-error">{educationError}</p>}
-                            <div className="td-modal-footer">
-                              <button
-                                type="button"
-                                className="td-pers-cancel-btn"
-                                onClick={() => setShowAddEduModal(false)}
-                              >
-                                Cancel
+
+                            <footer className="td-edu-modal-footer">
+                              <button type="button" className="td-edu-modal-cancel" onClick={closeEducationModal} disabled={savingEducation}>Cancel</button>
+                              <button type="submit" className="td-edu-modal-save" disabled={savingEducation}>
+                                {savingEducation ? 'Saving...' : 'Save Education'}
                               </button>
-                              <button
-                                type="button"
-                                className="td-pers-save-btn"
-                                disabled={savingEducation}
-                                onClick={handleSaveEducation}
-                              >
-                                {savingEducation ? 'Saving...' : editingEducationId ? 'Save Changes' : 'Add Education'}
-                              </button>
-                            </div>
-                          </div>
+                            </footer>
+                          </form>
                         </div>
                       )}
 
@@ -5228,7 +6579,9 @@ export default function TeacherDashboard() {
                                   setShowPostEducationModal(false);
                                   setEditingEducationId(null);
                                   setEducationError('');
-                                  setNewEduForm({ degree: '', degreeOther: '', institution: '', fieldOfStudy: '', classOfDegree: '', startYear: '2015', endYear: '2019', status: 'Completed' });
+                                  setNewEduForm(createEducationForm());
+                                  setEducationDocumentFile(null);
+                                  setEducationDocumentError('');
                                   setShowAddEduModal(true);
                                 }}
                               >
@@ -5259,19 +6612,16 @@ export default function TeacherDashboard() {
                   {/* 4. Teaching Experience Tab */}
                   {profileSubTab === 'teaching-experience' && (
                     <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-exp-info-page">
-                      {/* Top Breadcrumb Header */}
-                      <div className="td-exp-breadcrumb" onClick={() => setProfileSubTab('overview')}>
-                        <FiArrowLeft size={16} className="td-exp-back-icon" />
-                        <span>Settings/ ...Teaching Experience</span>
-                      </div>
-
                       {/* Header Row */}
                       <div className="td-exp-header-row">
                         <div className="td-exp-header-left">
-                          <h1 className="td-exp-page-title">Teaching Experience</h1>
-                          <p className="td-exp-page-desc">
-                            Document your work history and pedagogical achievements to build a strong professional profile.
-                          </p>
+                          <span className="td-exp-section-icon" aria-hidden="true"><FiBriefcase size={17} /></span>
+                          <div>
+                            <h1 className="td-exp-page-title">Teaching Experience</h1>
+                            <p className="td-exp-page-desc">
+                              Add your teaching and relevant work experience. At least one current or recent experience is required to apply for jobs.
+                            </p>
+                          </div>
                         </div>
                         <button
                           type="button"
@@ -5290,7 +6640,8 @@ export default function TeacherDashboard() {
                             setShowAddExpModal(true);
                           }}
                         >
-                          + Add Experience
+                          <FiPlus size={15} />
+                          <span>Add Experience</span>
                         </button>
                       </div>
 
@@ -5302,75 +6653,63 @@ export default function TeacherDashboard() {
                             <h3>No teaching experience added</h3>
                             <p>Add your teaching roles and work history to build a stronger professional profile.</p>
                           </div>
-                        ) : experienceList.map((exp, index) => (
-                          <div key={exp.id} className="td-exp-timeline-item">
-                            {/* Left Timeline Marker Column */}
-                            <div className="td-exp-timeline-marker-col">
-                              <div className="td-exp-node-active">
-                                <div className="td-exp-node-inner-dot" />
-                              </div>
-                              <div className="td-exp-timeline-line" />
-                              {index === experienceList.length - 1 && (
-                                <div className="td-exp-node-empty" />
-                              )}
-                            </div>
+                        ) : experienceList.map((exp) => {
+                          const isCurrentRole = !exp.end_date || exp.is_current || exp.currently_working;
+                          const startLabel = formatMonthYear(exp.start_date);
+                          const endLabel = isCurrentRole ? 'Present' : formatMonthYear(exp.end_date);
+                          const experiencePeriod = startLabel
+                            ? `${startLabel} – ${endLabel || 'Present'}`
+                            : (exp.period || 'Dates not provided');
 
-                            {/* Right Experience Card */}
-                            <div className="td-exp-card">
-                              <div className="td-exp-card-header">
-                                <div>
-                                  <h2 className="td-exp-role">{exp.role}</h2>
-                                  <div className="td-exp-school-location">
-                                    <span>{exp.school}</span>
-                                    <span className="td-exp-dot-sep">•</span>
-                                    <span>{exp.location}</span>
+                          return (
+                            <article key={exp.id} className="td-exp-card">
+                              <div className="td-exp-card-icon" aria-hidden="true"><FiHome size={17} /></div>
+                              <div className="td-exp-card-content">
+                                <div className="td-exp-card-header">
+                                  <div className="td-exp-card-heading">
+                                    <h2 className="td-exp-role">{exp.role || 'Teaching role'}</h2>
+                                    <p className="td-exp-school">{exp.school || 'School not provided'}</p>
+                                  </div>
+                                  <div className="td-exp-actions">
+                                    <button
+                                      type="button"
+                                      className="td-exp-action-btn td-exp-action-edit"
+                                      onClick={() => {
+                                        setEditingExpId(exp.experience_id);
+                                        setExpForm({
+                                          role: exp.role,
+                                          school: exp.school,
+                                          location: exp.location,
+                                          start_date: exp.start_date || '',
+                                          end_date: exp.end_date || '',
+                                          description: exp.description
+                                        });
+                                        setExperienceError('');
+                                        setShowAddExpModal(true);
+                                      }}
+                                    >
+                                      <FiEdit2 size={13} />
+                                      <span>Edit</span>
+                                    </button>
+                                    <details className="td-exp-more">
+                                      <summary aria-label={`More actions for ${exp.role || 'teaching experience'}`}><FiMoreVertical size={17} /></summary>
+                                      <button type="button" onClick={() => handleDeleteExperience(exp)}>
+                                        <FiTrash2 size={14} />
+                                        <span>Delete</span>
+                                      </button>
+                                    </details>
                                   </div>
                                 </div>
-                                <div className="td-exp-badge">
-                                  <FiCalendar size={13} className="td-exp-badge-icon" />
-                                  <span>{exp.period}</span>
+                                <div className="td-exp-meta-row">
+                                  {exp.location && <span><FiMapPin size={12} />{exp.location}</span>}
+                                  <span><FiCalendar size={12} />{experiencePeriod}</span>
+                                  {isCurrentRole && <span className="td-exp-current-badge">Current</span>}
                                 </div>
+                                {exp.description && <p className="td-exp-desc">{exp.description}</p>}
                               </div>
-
-                              <p className="td-exp-desc">{exp.description}</p>
-
-                              <div className="td-exp-divider" />
-
-                              <div className="td-exp-actions">
-                                <button
-                                  type="button"
-                                  className="td-exp-action-btn td-exp-action-edit"
-                                  onClick={() => {
-                                    setEditingExpId(exp.experience_id);
-                                    setExpForm({
-                                      role: exp.role,
-                                      school: exp.school,
-                                      location: exp.location,
-                                      start_date: exp.start_date || '',
-                                      end_date: exp.end_date || '',
-                                      description: exp.description
-                                    });
-                                    setExperienceError('');
-                                    setShowAddExpModal(true);
-                                  }}
-                                >
-                                  <FiEdit2 size={13} />
-                                  <span>Edit</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className="td-exp-action-btn td-exp-action-delete"
-                                  onClick={() => {
-                                    handleDeleteExperience(exp);
-                                  }}
-                                >
-                                  <FiTrash2 size={13} />
-                                  <span>Delete</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
+                            </article>
+                          );
+                        })}
                       </div>
 
                       {/* Modal for adding/editing experience */}
@@ -5520,12 +6859,6 @@ export default function TeacherDashboard() {
                   {/* 5. TRCN Certification Tab */}
                   {profileSubTab === 'trcn-certification' && (
                     <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-trcn-info-page">
-                      {/* Top Breadcrumb Header */}
-                      <div className="td-trcn-breadcrumb" onClick={() => setProfileSubTab('overview')}>
-                        <FiArrowLeft size={16} className="td-trcn-back-icon" />
-                        <span>Settings/ ...TRCN Certification</span>
-                      </div>
-
                       {/* Header Row */}
                       <div className="td-trcn-header-row">
                         <h1 className="td-trcn-page-title">TRCN Certification</h1>
@@ -5690,13 +7023,133 @@ export default function TeacherDashboard() {
 
                   {/* 6. CV / Resume Tab */}
                   {profileSubTab === 'cv-resume' && (
-                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-cv-info-page">
-                      {/* Top Breadcrumb Header */}
-                      <div className="td-cv-breadcrumb" onClick={() => setProfileSubTab('overview')}>
-                        <FiArrowLeft size={16} className="td-cv-back-icon" />
-                        <span>Settings/ ...CV/ Resume</span>
-                      </div>
+                    <div className="td-modal-overlay td-manage-docs-overlay" onMouseDown={(event) => {
+                      if (event.target === event.currentTarget) closeCvDocumentsModal();
+                    }}>
+                      <form className="td-manage-docs-modal" role="dialog" aria-modal="true" aria-labelledby="td-manage-docs-title" onSubmit={handleSaveDocuments}>
+                        <header className="td-manage-docs-header">
+                          <div>
+                            <h1 id="td-manage-docs-title">Manage Documents</h1>
+                            <p>Upload your CV and other relevant documents. Supported formats: PDF, DOC, DOCX, JPG, PNG.</p>
+                          </div>
+                          <button type="button" aria-label="Close document manager" onClick={closeCvDocumentsModal} disabled={savingDocuments}><FiX size={18} /></button>
+                        </header>
 
+                        <div className="td-manage-docs-body">
+                          <section className="td-manage-docs-section">
+                            <div className="td-manage-docs-section-heading">
+                              <span className="td-manage-docs-heading-icon td-manage-docs-heading-icon--blue"><FiFileText size={17} /></span>
+                              <div><h2>CV <small>(Required)</small></h2><p>Upload your most recent CV. This is the primary document schools will view.</p></div>
+                            </div>
+                            <div
+                              className={`td-manage-docs-dropzone${cvDropActive ? ' is-active' : ''}`}
+                              onDragEnter={(event) => { event.preventDefault(); setCvDropActive(true); }}
+                              onDragOver={(event) => { event.preventDefault(); setCvDropActive(true); }}
+                              onDragLeave={(event) => { event.preventDefault(); setCvDropActive(false); }}
+                              onDrop={(event) => {
+                                event.preventDefault();
+                                setCvDropActive(false);
+                                handleCvSelection({ target: { files: event.dataTransfer.files, value: '' } });
+                              }}
+                            >
+                              <input ref={cvFileInputRef} type="file" accept=".pdf,.doc,.docx" onChange={handleCvSelection} hidden />
+                              <span className="td-manage-docs-cloud"><FiUpload size={19} /></span>
+                              <strong>{pendingCvFile ? pendingCvFile.name : 'Drag and drop your CV here'}</strong>
+                              <span>{pendingCvFile ? 'Selected file · Save changes to upload' : 'or'}</span>
+                              <button type="button" onClick={() => cvFileInputRef.current?.click()} disabled={savingDocuments}>
+                                {pendingCvFile ? 'Choose another file' : 'Select file'}
+                              </button>
+                              <small>PDF, DOC, DOCX (Max 5 MB)</small>
+                            </div>
+
+                            {hasCvDocument && (
+                              <div className="td-manage-docs-row">
+                                <span className={`td-manage-docs-file-icon ${getFileNameFromUrl(displayedCvName).toLowerCase().endsWith('.pdf') ? 'is-pdf' : 'is-doc'}`}><FiFileText size={18} /></span>
+                                <span className="td-manage-docs-file-info">
+                                  <strong>{pendingCvFile ? pendingCvFile.name : cvDocumentName}</strong>
+                                  <small>{pendingCvFile
+                                    ? `Selected · ${formatFileSize(pendingCvFile.size)}`
+                                    : `Uploaded ${activeResume?.uploadDate || 'Date unavailable'} · ${activeResume?.size && activeResume.size !== 'Uploaded' ? activeResume.size : 'Size unavailable'}`}</small>
+                                </span>
+                                <button type="button" className="td-manage-docs-view" onClick={() => openDocumentPreview({ name: cvDocumentName, uri: teacherCvUrl })} disabled={Boolean(pendingCvFile) || !teacherCvUrl}>
+                                  <FiEye size={14} />View
+                                </button>
+                                <details className="td-manage-docs-menu">
+                                  <summary aria-label="CV document options"><FiMoreVertical size={17} /></summary>
+                                  <div>
+                                    <button type="button" onClick={() => cvFileInputRef.current?.click()}>Replace CV</button>
+                                    {pendingCvFile && <button type="button" onClick={() => setPendingCvFile(null)}>Discard selection</button>}
+                                  </div>
+                                </details>
+                              </div>
+                            )}
+                          </section>
+
+                          <section className="td-manage-docs-section td-manage-docs-supporting">
+                            <div className="td-manage-docs-section-heading">
+                              <span className="td-manage-docs-heading-icon td-manage-docs-heading-icon--purple"><FiCopy size={17} /></span>
+                              <div><h2>Supporting Documents <small>(Optional)</small></h2><p>Upload any other documents that may support your application (e.g. certificates, testimonials).</p></div>
+                              <button type="button" className="td-manage-docs-add" onClick={() => supportingDocumentFileInputRef.current?.click()} disabled={savingDocuments}>
+                                <FiPlus size={14} />Add document
+                              </button>
+                              <input
+                                ref={supportingDocumentFileInputRef}
+                                type="file"
+                                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                multiple
+                                onChange={(event) => {
+                                  handleSupportingDocumentSelection(event.target.files);
+                                  event.target.value = '';
+                                }}
+                                hidden
+                              />
+                            </div>
+                            <div className="td-manage-docs-support-list">
+                              {(supportingDocumentsDraft || supportingDocuments).map((document) => {
+                                const extension = document.name.split('.').pop()?.toLowerCase();
+                                const iconClass = extension === 'pdf'
+                                  ? 'is-pdf'
+                                  : ['jpg', 'jpeg', 'png'].includes(extension)
+                                    ? 'is-image'
+                                    : 'is-doc';
+                                return (
+                                  <div className="td-manage-docs-row" key={document.id}>
+                                    <span className={`td-manage-docs-file-icon ${iconClass}`}><FiFileText size={18} /></span>
+                                    <span className="td-manage-docs-file-info">
+                                      <strong>{document.name}</strong>
+                                      <small>Added this session · {formatFileSize(document.size)}</small>
+                                    </span>
+                                    <button type="button" className="td-manage-docs-view" onClick={() => openDocumentPreview({ name: document.name, uri: document.previewUrl })}>
+                                      <FiEye size={14} />View
+                                    </button>
+                                    <details className="td-manage-docs-menu">
+                                      <summary aria-label={`Options for ${document.name}`}><FiMoreVertical size={17} /></summary>
+                                      <div><button type="button" onClick={() => setSupportingDocumentsDraft((currentDocuments) => (currentDocuments || supportingDocuments).filter((item) => item.id !== document.id))}>Remove document</button></div>
+                                    </details>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </section>
+
+                          <div className="td-manage-docs-info">
+                            <FiInfo size={15} />
+                            <span>Keep your documents clear and up to date. Make sure they are readable and show the correct information.</span>
+                          </div>
+                          <p className="td-manage-docs-api-note">Your CV is uploaded to your profile. Supporting documents are kept in this page session only because the current API does not provide a supporting-document upload endpoint.</p>
+                          {manageDocumentsError && <p className="td-manage-docs-error" role="alert">{manageDocumentsError}</p>}
+                        </div>
+
+                        <footer className="td-manage-docs-footer">
+                          <button type="button" onClick={closeCvDocumentsModal} disabled={savingDocuments}>Cancel</button>
+                          <button type="submit" disabled={savingDocuments}>{savingDocuments ? 'Saving...' : 'Save changes'}</button>
+                        </footer>
+                      </form>
+                    </div>
+                  )}
+                  {profileSubTab === 'cv-resume' && renderDocumentPreviewModal()}
+                  {profileSubTab === 'cv-resume-legacy' && (
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-cv-info-page">
                       {/* Header Row */}
                       <div className="td-cv-header-row">
                         <h1 className="td-cv-page-title">CV / Resume</h1>
@@ -5896,15 +7349,141 @@ export default function TeacherDashboard() {
                     </Motion.div>
                   )}
 
-                  {/* 7. Availability Tab */}
-                  {profileSubTab === 'availability' && (
-                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-avail-info-page">
-                      {/* Top Breadcrumb Header */}
-                      <div className="td-avail-breadcrumb" onClick={() => setProfileSubTab('overview')}>
-                        <FiArrowLeft size={16} className="td-avail-back-icon" />
-                        <span>Settings/ ...Availability</span>
-                      </div>
+                  {profileSubTab === 'availability' && availabilityDraft && (
+                    <div className="td-modal-overlay td-avail-preferences-overlay" onMouseDown={(event) => {
+                      if (event.target === event.currentTarget) closeAvailabilityPreferencesModal();
+                    }}>
+                      <form className="td-avail-preferences-modal" role="dialog" aria-modal="true" aria-labelledby="td-avail-preferences-title" onSubmit={handleSaveAvailabilityPreferences}>
+                        <header className="td-avail-preferences-header">
+                          <div>
+                            <h1 id="td-avail-preferences-title">Job Preferences &amp; Availability</h1>
+                            <p>Tell us what kind of opportunities you're interested in and when you're available.</p>
+                          </div>
+                          <button type="button" aria-label="Close preferences" onClick={closeAvailabilityPreferencesModal} disabled={savingAvailability}><FiX size={18} /></button>
+                        </header>
 
+                        <div className="td-avail-preferences-body">
+                          <section className="td-avail-preferences-section">
+                            <div className="td-avail-preferences-section-heading">
+                              <span className="td-avail-preferences-icon td-avail-preferences-icon--green"><FiBriefcase size={17} /></span>
+                              <div><h2>Job Preferences</h2><p>Select the roles, locations and employment types you are interested in.</p></div>
+                            </div>
+                            <div className="td-avail-preferences-grid">
+                              <div className="td-avail-pref-field">
+                                <label htmlFor="td-avail-role-input">Preferred roles / subjects</label>
+                                <div className="td-avail-pref-input-wrap"><FiSearch size={14} /><input id="td-avail-role-input" value={availabilityTagInput} onChange={(event) => setAvailabilityTagInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addAvailabilityDraftTag(); } }} placeholder="Search or select roles or subjects" /></div>
+                                <div className="td-avail-pref-tags">
+                                  {availabilityDraft.roles.map((role) => <span key={role}>{role}<button type="button" aria-label={`Remove ${role}`} onClick={() => setAvailabilityDraft((draft) => ({ ...draft, roles: draft.roles.filter((item) => item !== role) }))}><FiX size={12} /></button></span>)}
+                                </div>
+                              </div>
+                              <div className="td-avail-pref-field">
+                                <label htmlFor="td-avail-location-input">Preferred locations</label>
+                                <div className="td-avail-pref-input-wrap"><FiSearch size={14} /><input id="td-avail-location-input" value={availabilityLocationInput} onChange={(event) => setAvailabilityLocationInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); addAvailabilityDraftLocation(); } }} placeholder="Search or select locations" /></div>
+                                <div className="td-avail-pref-tags">
+                                  {availabilityDraft.locations.map((location) => <span key={location}>{location}<button type="button" aria-label={`Remove ${location}`} onClick={() => setAvailabilityDraft((draft) => ({ ...draft, locations: draft.locations.filter((item) => item !== location) }))}><FiX size={12} /></button></span>)}
+                                </div>
+                              </div>
+                              <fieldset className="td-avail-pref-fieldset">
+                                <legend>Employment type</legend>
+                                <div className="td-avail-pref-checkboxes td-avail-pref-checkboxes--inline">
+                                  {[['full-time', 'Full-time'], ['part-time', 'Part-time'], ['contract', 'Contract']].map(([value, label]) => (
+                                    <label key={value}><input type="checkbox" checked={availabilityDraft.employmentTypes.includes(value)} onChange={() => setAvailabilityDraft((draft) => ({ ...draft, employmentTypes: draft.employmentTypes.includes(value) ? draft.employmentTypes.filter((item) => item !== value) : [...draft.employmentTypes, value] }))} /><span>{label}</span></label>
+                                  ))}
+                                </div>
+                              </fieldset>
+                              <fieldset className="td-avail-pref-fieldset">
+                                <legend>Preferred teaching level</legend>
+                                <div className="td-avail-pref-checkboxes">
+                                  {['Early Years', 'Primary', 'Secondary', 'Post-Secondary'].map((level) => (
+                                    <label key={level}><input type="checkbox" checked={availabilityDraft.teachingLevels.includes(level)} onChange={() => setAvailabilityDraft((draft) => ({ ...draft, teachingLevels: draft.teachingLevels.includes(level) ? draft.teachingLevels.filter((item) => item !== level) : [...draft.teachingLevels, level] }))} /><span>{level}</span></label>
+                                  ))}
+                                </div>
+                              </fieldset>
+                            </div>
+                          </section>
+
+                          <section className="td-avail-preferences-section">
+                            <div className="td-avail-preferences-section-heading">
+                              <span className="td-avail-preferences-icon td-avail-preferences-icon--blue"><FiCalendar size={17} /></span>
+                              <div><h2>Availability</h2><p>Let schools know when you are available to start and your work arrangement preferences.</p></div>
+                            </div>
+                            <div className="td-avail-preferences-grid">
+                              <label className="td-avail-pref-field" htmlFor="td-avail-start-select">
+                                <span>Available to start</span>
+                                <select id="td-avail-start-select" value={availabilityDraft.availableStart} onChange={(event) => setAvailabilityDraft((draft) => ({ ...draft, availableStart: event.target.value }))}>
+                                  <option value="immediately">Immediately</option>
+                                  <option value="2-weeks">Within 2 weeks</option>
+                                  <option value="within-month">Within 1 month</option>
+                                  <option value="specific-date">Select a date</option>
+                                </select>
+                                {availabilityDraft.availableStart === 'specific-date' && <input aria-label="Available start date" type="date" min={new Date().toISOString().slice(0, 10)} value={availabilityDraft.specificDate} onChange={(event) => setAvailabilityDraft((draft) => ({ ...draft, specificDate: event.target.value }))} />}
+                              </label>
+                              <fieldset className="td-avail-pref-fieldset">
+                                <legend>Work arrangement</legend>
+                                <div className="td-avail-pref-checkboxes td-avail-pref-checkboxes--inline">
+                                  {['On-site', 'Hybrid', 'Remote'].map((arrangement) => (
+                                    <label key={arrangement}><input type="checkbox" checked={availabilityDraft.workArrangements.includes(arrangement)} onChange={() => setAvailabilityDraft((draft) => ({ ...draft, workArrangements: draft.workArrangements.includes(arrangement) ? draft.workArrangements.filter((item) => item !== arrangement) : [...draft.workArrangements, arrangement] }))} /><span>{arrangement}</span></label>
+                                  ))}
+                                </div>
+                              </fieldset>
+                            </div>
+                          </section>
+
+                          <section className="td-avail-preferences-section">
+                            <div className="td-avail-preferences-section-heading">
+                              <span className="td-avail-preferences-icon td-avail-preferences-icon--purple"><FiFileText size={17} /></span>
+                              <div><h2>Additional preferences <small>(optional)</small></h2><p>These details help schools find better opportunities for you.</p></div>
+                            </div>
+                            <div className="td-avail-preferences-grid">
+                              <label className="td-avail-pref-field" htmlFor="td-avail-salary">
+                                <span>Expected salary <small>(optional)</small></span>
+                                <select id="td-avail-salary" value={availabilityDraft.salaryRange} onChange={(event) => setAvailabilityDraft((draft) => ({ ...draft, salaryRange: event.target.value }))}>
+                                  <option value="">Select a salary range</option>
+                                  <option value="Below NGN 100,000">Below NGN 100,000</option>
+                                  <option value="NGN 100,000–200,000">NGN 100,000–200,000</option>
+                                  <option value="NGN 200,000–300,000">NGN 200,000–300,000</option>
+                                  <option value="NGN 300,000–500,000">NGN 300,000–500,000</option>
+                                  <option value="NGN 500,000–750,000">NGN 500,000–750,000</option>
+                                  <option value="Above NGN 750,000">Above NGN 750,000</option>
+                                </select>
+                              </label>
+                              <label className="td-avail-pref-field" htmlFor="td-avail-relocation">
+                                <span>Willing to relocate <small>(optional)</small></span>
+                                <select id="td-avail-relocation" value={availabilityDraft.relocationPreference} onChange={(event) => setAvailabilityDraft((draft) => ({ ...draft, relocationPreference: event.target.value }))}>
+                                  <option value="">Select a preference</option>
+                                  <option value="Open to relocation">Open to relocation</option>
+                                  <option value="Within my state">Within my state</option>
+                                  <option value="Not willing to relocate">Not willing to relocate</option>
+                                </select>
+                              </label>
+                            </div>
+                          </section>
+
+                          <section className="td-avail-preferences-section td-avail-preferences-section--notes">
+                            <div className="td-avail-preferences-section-heading">
+                              <span className="td-avail-preferences-icon td-avail-preferences-icon--orange"><FiInfo size={17} /></span>
+                              <div><h2>Additional notes <small>(optional)</small></h2><p>Add any other information that may be relevant to your job search.</p></div>
+                            </div>
+                            <label className="td-avail-pref-notes">
+                              <textarea aria-label="Additional notes" maxLength={500} value={availabilityDraft.notes} onChange={(event) => setAvailabilityDraft((draft) => ({ ...draft, notes: event.target.value }))} placeholder="e.g. Preferred curriculum, special requirements, or other relevant information." />
+                              <small>{availabilityDraft.notes.length}/500</small>
+                            </label>
+                          </section>
+                          <p className="td-avail-pref-session-note">Multiple employment selections, work arrangement, salary, relocation, and notes are kept in memory while this dashboard remains open. The profile endpoint supports only one employment type and does not support the other listed fields.</p>
+                          {availabilityModalError && <p className="td-avail-pref-error" role="alert">{availabilityModalError}</p>}
+                        </div>
+
+                        <footer className="td-avail-preferences-footer">
+                          <button type="button" onClick={closeAvailabilityPreferencesModal} disabled={savingAvailability}>Cancel</button>
+                          <button type="submit" disabled={savingAvailability}>{savingAvailability ? 'Saving...' : 'Save changes'}</button>
+                        </footer>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Legacy availability form is retained for existing in-flight navigation history. */}
+                  {profileSubTab === 'availability-legacy' && (
+                    <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-avail-info-page">
                       {/* Header Row */}
                       <div className="td-avail-header-row">
                         <h1 className="td-avail-page-title">Availability</h1>
@@ -10570,54 +12149,244 @@ export default function TeacherDashboard() {
           box-shadow: 0 18px 48px rgba(15, 23, 42, 0.28);
         }
         .td-edu-modal-content {
-          width: min(520px, 100%);
-          max-height: calc(100vh - 32px);
+          width: min(690px, 100%);
+          max-height: min(728px, calc(100vh - 32px));
           display: flex;
           flex-direction: column;
+          border-radius: 16px;
         }
-        .td-edu-modal-content .td-modal-header {
-          align-items: center;
-          margin: 0;
-          padding: 20px 22px 16px;
-          border-bottom: 1px solid #edf1f4;
+        .td-edu-modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 25px 30px 12px;
         }
-        .td-edu-modal-content .td-modal-header h2 {
-          margin: 0;
+        .td-edu-modal-header h2 {
+          margin: 0 0 4px;
           color: #1e293b;
-          font-size: 18px;
+          font-size: 19px;
           font-weight: 700;
+          letter-spacing: -.3px;
         }
-        .td-edu-modal-content .td-modal-close {
+        .td-edu-modal-header p {
+          margin: 0;
+          color: #64748b;
+          font-size: 11px;
+        }
+        .td-edu-modal-close {
           display: grid;
           place-items: center;
-          width: 30px;
-          height: 30px;
-          padding: 0;
-          border-radius: 50%;
-          color: #64748b;
-          font-size: 18px;
+          width: 28px;
+          height: 28px;
+          margin: -2px -5px 0 0;
+          border-radius: 6px;
+          background: transparent;
+          color: #94a3b8;
+          cursor: pointer;
         }
-        .td-edu-modal-content .td-modal-close:hover { background: #f1f5f9; color: #1e293b; }
-        .td-edu-modal-content .td-modal-body {
-          padding: 18px 22px 4px;
+        .td-edu-modal-close:hover {
+          background: #f1f5f9;
+          color: #334155;
+        }
+        .td-edu-modal-body {
+          min-height: 0;
+          padding: 13px 30px 10px;
           overflow-y: auto;
         }
-        .td-edu-modal-content .td-pers-field-group { margin-bottom: 12px !important; }
-        .td-edu-modal-content .td-pers-label { color: #475569; font-size: 11px; font-weight: 700; }
-        .td-edu-modal-content .td-pers-input { min-height: 40px; border-color: #d9e0e7; background: #fff; }
-        .td-edu-modal-content .td-pers-input:focus { border-color: #15946e; box-shadow: 0 0 0 3px rgba(21, 148, 110, .12); }
-        .td-edu-modal-content .td-modal-footer {
+        .td-edu-form-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 16px;
+        }
+        .td-edu-form-field {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 5px;
+          color: #1e293b;
+          font-size: 11px;
+          font-weight: 650;
+        }
+        .td-edu-form-field--full {
+          grid-column: 1 / -1;
+        }
+        .td-edu-form-field > span:not(.td-edu-form-label) {
+          line-height: 1.25;
+        }
+        .td-edu-form-field b {
+          color: #ef4444;
+          font-weight: 700;
+        }
+        .td-edu-form-field em {
+          color: #64748b;
+          font-style: normal;
+          font-weight: 400;
+        }
+        .td-edu-form-field .td-pers-input,
+        .td-edu-date-fields select {
+          width: 100%;
+          min-width: 0;
+          height: 44px;
+          padding: 0 13px;
+          border: 1px solid #dce4ed;
+          border-radius: 8px;
+          outline: none;
+          background: #fff;
+          color: #475569;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 400;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+        }
+        .td-edu-form-field .td-pers-input:focus,
+        .td-edu-date-fields select:focus {
+          border-color: #86efac;
+          box-shadow: 0 0 0 3px rgba(34, 197, 94, .1);
+        }
+        .td-edu-form-field .td-pers-input::placeholder {
+          color: #64748b;
+          opacity: 1;
+        }
+        .td-edu-form-field > small {
+          min-height: 13px;
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 400;
+          line-height: 1.35;
+        }
+        .td-edu-form-label {
+          line-height: 1.25;
+        }
+        .td-edu-date-fields {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 8px;
+        }
+        .td-edu-date-fields select {
+          height: 39px;
+          padding: 0 10px;
+        }
+        .td-edu-date-fields select:disabled {
+          background: #f8fafc;
+          color: #94a3b8;
+          cursor: not-allowed;
+        }
+        .td-edu-currently-studying {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          margin-top: 8px;
+          color: #64748b;
+          font-size: 10px;
+          font-weight: 400;
+          cursor: pointer;
+        }
+        .td-edu-currently-studying input {
+          width: 15px;
+          height: 15px;
+          margin: 0;
+          accent-color: #16a34a;
+        }
+        .td-edu-document-input {
+          display: none;
+        }
+        .td-edu-document-upload {
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          width: 100%;
+          min-height: 76px;
+          padding: 12px 16px;
+          border: 1px dashed #86efac;
+          border-radius: 10px;
+          background: #fff;
+          color: #64748b;
+          text-align: left;
+          cursor: pointer;
+        }
+        .td-edu-document-upload:hover {
+          background: #f7fef9;
+          border-color: #22c55e;
+        }
+        .td-edu-upload-icon {
+          display: grid;
+          place-items: center;
+          width: 42px;
+          height: 42px;
+          flex: 0 0 42px;
+          border-radius: 9px;
+          background: #ecfdf5;
+          color: #059669;
+        }
+        .td-edu-document-upload > span:last-child {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .td-edu-document-upload strong {
+          overflow: hidden;
+          color: #64748b;
+          font-size: 10px;
+          font-weight: 500;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .td-edu-document-upload small {
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 400;
+        }
+        .td-edu-document-error {
+          color: #b42318;
+          font-size: 10px;
+        }
+        .td-edu-modal-notice {
+          margin: 11px 0 0;
+          padding: 8px 10px;
+          border-radius: 6px;
+          background: #f8fafc;
+          color: #64748b;
+          font-size: 9px;
+          line-height: 1.4;
+        }
+        .td-edu-modal-body .td-exp-modal-error {
+          margin: 10px 0 0;
+          color: #b42318;
+          font-size: 10px;
+        }
+        .td-edu-modal-footer {
           display: flex;
           justify-content: flex-end;
           gap: 10px;
-          padding: 16px 22px 20px;
-          border-top: 1px solid #edf1f4;
-          background: #fbfcfd;
-          flex-shrink: 0;
+          padding: 12px 30px 20px;
         }
-        .td-edu-modal-content .td-pers-cancel-btn, .td-edu-modal-content .td-pers-save-btn { min-height: 38px; padding: 0 17px; border-radius: 7px; font-size: 12px; }
-        .td-edu-modal-content .td-pers-save-btn { background: #0d7c57; }
-        .td-edu-modal-content .td-pers-save-btn:hover { background: #096846; }
+        .td-edu-modal-footer button {
+          min-height: 39px;
+          padding: 0 18px;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          background: #fff;
+          color: #1e293b;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .td-edu-modal-footer .td-edu-modal-save {
+          border-color: #20d653;
+          background: #20d653;
+          color: #064e24;
+        }
+        .td-edu-modal-footer .td-edu-modal-save:hover {
+          border-color: #16c34a;
+          background: #16c34a;
+        }
+        .td-edu-modal-footer button:disabled {
+          cursor: wait;
+          opacity: .7;
+        }
         .td-edu-next-step-overlay { z-index: 1010; }
         .td-edu-next-step-modal {
           position: relative;
@@ -10707,10 +12476,55 @@ export default function TeacherDashboard() {
         .td-exp-modal-content .td-pers-save-btn:disabled { cursor: wait; opacity: .7; }
         @media (max-width: 480px) {
           .td-modal-overlay { padding: 16px; }
-          .td-edu-modal-content .td-modal-header { padding: 18px 18px 14px; }
-          .td-edu-modal-content { width: min(100%, 520px); max-height: calc(100vh - 24px); }
-          .td-edu-modal-content .td-modal-body { padding: 16px 18px 2px; }
-          .td-edu-modal-content .td-modal-footer { padding: 14px 18px 18px; }
+          .td-edu-panel .td-edu-card {
+            grid-template-columns: 36px minmax(0, 1fr) auto;
+            gap: 9px;
+            padding: 10px;
+          }
+          .td-edu-card-icon {
+            width: 36px;
+            height: 36px;
+          }
+          .td-edu-card-actions {
+            gap: 4px;
+          }
+          .td-edu-panel > .td-edu-certification-record {
+            display: grid;
+            grid-template-columns: 43px minmax(0, 1fr) auto;
+            gap: 10px;
+            padding: 10px;
+          }
+          .td-edu-certification-icon {
+            grid-column: 1;
+            grid-row: 1;
+          }
+          .td-edu-certification-details {
+            grid-column: 2 / 4;
+            grid-row: 1;
+          }
+          .td-edu-certification-status {
+            grid-column: 2;
+            grid-row: 2;
+            justify-self: start;
+          }
+          .td-edu-certification-actions {
+            grid-column: 3;
+            grid-row: 2;
+          }
+          .td-edu-modal-content { max-height: calc(100vh - 24px); }
+          .td-edu-modal-header { padding: 20px 18px 10px; }
+          .td-edu-modal-body { padding: 12px 18px 8px; }
+          .td-edu-form-grid { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+          .td-edu-form-field--full { grid-column: auto; }
+          .td-edu-modal-footer { padding: 10px 18px 16px; }
+          .td-edu-modal-footer button { flex: 1; }
+          .td-certification-modal { max-height: calc(100vh - 24px); }
+          .td-certification-modal-header { padding: 20px 18px 14px; }
+          .td-certification-modal-body { padding: 14px 18px 10px; }
+          .td-certification-form-grid { grid-template-columns: minmax(0, 1fr); gap: 13px; }
+          .td-certification-field--full { grid-column: auto; }
+          .td-certification-modal-footer { padding: 12px 18px 16px; }
+          .td-certification-modal-footer button { flex: 1; }
           .td-exp-modal-content .td-modal-header { padding: 18px 18px 14px; }
           .td-exp-modal-content .td-modal-body { padding: 18px 18px 2px; }
           .td-exp-modal-content .td-modal-footer { padding: 14px 18px 18px; }
@@ -13427,6 +15241,345 @@ export default function TeacherDashboard() {
           width: 100%;
         }
 
+        .td-profile-page-heading {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 18px;
+          margin-bottom: 18px;
+        }
+
+        .td-profile-page-heading .td-profile-main-title { margin: 0; }
+        .td-profile-page-heading p { margin-top: 3px; color: #64748b; font-size: 13px; }
+        .td-profile-overview-shell { display: flex; flex-direction: column; align-items: stretch; gap: 0; width: 100%; }
+        .td-profile-overview-top { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(0, 1fr); align-items: stretch; align-content: start; gap: 20px; margin: 0 0 18px; }
+        .td-profile-overview-shell > .td-profile-tabs { position: relative; z-index: 5; flex: 0 0 auto; width: 100%; margin: 0 0 18px; }
+        .td-profile-overview-top .td-profile-header-card { min-width: 0; min-height: 202px; margin: 0; padding: 22px 24px; border-radius: 18px; box-shadow: 0 2px 10px rgba(15, 23, 42, .035); }
+        .td-profile-overview-top .td-profile-header-left { min-width: 0; align-items: flex-start; gap: 22px; }
+        .td-profile-overview-top .td-profile-info-block { min-width: 0; }
+        .td-profile-overview-top .td-profile-avatar-container { width: clamp(86px, 10vw, 112px); height: clamp(86px, 10vw, 112px); }
+        .td-profile-overview-top .td-profile-name-row h2 { font-size: clamp(20px, 2.1vw, 26px); line-height: 1.15; }
+        .td-profile-overview-top .td-profile-verified-badge { width: 18px; height: auto; }
+        .td-profile-subject-title { margin: 2px 0 0; color: #64748b; font-size: clamp(14px, 1.5vw, 17px); line-height: 1.25; font-weight: 500; }
+        .td-profile-overview-top .td-profile-role-title { margin: 1px 0 0; color: #64748b; font-size: clamp(13px, 1.4vw, 16px); line-height: 1.25; }
+        .td-profile-overview-top .td-profile-meta-row { gap: 7px 12px; margin-top: 12px; }
+        .td-profile-overview-top .td-profile-meta-item { position: relative; gap: 6px; font-size: clamp(11px, 1.2vw, 13px); color: #64748b; }
+        .td-profile-overview-top .td-profile-meta-item svg { width: 15px; height: auto; color: #94a3b8; }
+        .td-profile-overview-top .td-profile-meta-item + .td-profile-meta-item::before { width: 1px; height: 1.2em; margin-right: 8px; background: #e2e8f0; content: ''; }
+        .td-profile-overview-top .td-profile-header-actions { margin-top: 14px; }
+        .td-profile-avatar-container img { width: 100%; height: 100%; object-fit: cover; }
+        .td-profile-overview-top .td-profile-btn-edit { padding: 7px 10px; border-radius: 8px; background: #f8fafc; color: #1f2937; border: 1px solid #dbe2ea; font-size: 11px; white-space: nowrap; }
+        .td-profile-overview-top .td-profile-btn-edit:hover { background: #f8fafc; }
+        .td-profile-readiness { min-width: 0; padding: 18px 20px; border: 1px solid #d1fae5; border-radius: 14px; background: #f0fdf7; color: #166534; }
+        .td-profile-readiness.is-incomplete { border-color: #dbeafe; background: #f5f9ff; color: #1e3a5f; }
+        .td-readiness-heading { display: flex; align-items: flex-start; gap: 12px; }
+        .td-readiness-icon { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border-radius: 50%; background: #059669; color: #fff; }
+        .td-profile-readiness.is-incomplete .td-readiness-icon { background: #2563eb; }
+        .td-readiness-heading strong { display: block; padding-top: 2px; font-size: 15px; }
+        .td-readiness-heading p { margin-top: 3px; color: #4b5563; font-size: 11px; line-height: 1.5; }
+        .td-readiness-progress { height: 5px; overflow: hidden; margin-top: 14px; border-radius: 99px; background: rgba(148, 163, 184, .24); }
+        .td-readiness-progress span { display: block; height: 100%; border-radius: inherit; background: #10b981; transition: width .3s ease; }
+        .td-profile-readiness.is-incomplete .td-readiness-progress span { background: #3b82f6; }
+        .td-readiness-checklist { display: grid; gap: 7px; margin-top: 12px; }
+        .td-readiness-checklist span { display: flex; align-items: center; gap: 7px; color: #64748b; font-size: 11px; }
+        .td-readiness-checklist span.is-complete { color: #15803d; }
+
+        .td-profile-tabs { position: relative; z-index: 5; display: flex; flex-wrap: wrap; align-items: stretch; gap: 4px; min-height: 48px; margin-bottom: 18px; padding: 0 8px; overflow: visible; border: 1px solid #e8edf2; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(15, 23, 42, .035); }
+        .td-profile-tabs > button, .td-profile-more > summary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; flex: 0 0 auto; padding: 0 13px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #475569; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        .td-profile-tabs > button:hover, .td-profile-more > summary:hover { color: #15803d; }
+        .td-profile-tabs > button.is-active { border-bottom-color: #16a34a; color: #15803d; }
+        .td-profile-tabs > button:focus-visible { outline: 2px solid #16a34a; outline-offset: -3px; }
+        .td-profile-tabs button svg, .td-profile-more summary svg { color: #94a3b8; }
+        .td-profile-tabs > button.is-active svg { color: #15803d; }
+        .td-profile-more { position: relative; z-index: 6; display: flex; flex: 0 0 auto; }
+        .td-profile-more > summary { list-style: none; }
+        .td-profile-more > summary::-webkit-details-marker { display: none; }
+        .td-profile-more[open] > summary { color: #15803d; }
+        .td-profile-more > summary.is-active { border-bottom-color: #16a34a; color: #15803d; }
+        .td-profile-more-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 10; display: grid; min-width: 220px; padding: 6px; border: 1px solid #e2e8f0; border-radius: 10px; background: #fff; box-shadow: 0 12px 28px rgba(15, 23, 42, .16); }
+        .td-profile-more-menu button { display: flex; align-items: center; gap: 9px; padding: 9px 10px; border: 0; border-radius: 7px; background: transparent; color: #334155; text-align: left; font: inherit; font-size: 12px; cursor: pointer; }
+        .td-profile-more-menu button:hover { background: #f0fdf4; color: #15803d; }
+        .td-more-page { width: 100%; }
+        .td-more-card { min-height: 610px; padding: 26px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, .025); }
+        .td-more-heading h1 { margin: 0; color: #252525; font-size: 17px; font-weight: 700; }
+        .td-more-heading p { margin: 4px 0 0; color: #6b7280; font-size: 11px; line-height: 1.5; }
+        .td-more-empty-state { display: flex; min-height: 376px; flex-direction: column; align-items: center; justify-content: center; padding: 22px 16px 27px; text-align: center; }
+        .td-more-illustration { position: relative; display: grid; width: 150px; height: 139px; place-items: center; margin-bottom: 12px; }
+        .td-more-illustration-backdrop { position: absolute; width: 137px; height: 127px; border-radius: 32px; background: #eefaf7; transform: rotate(3deg); }
+        .td-more-illustration-document { position: relative; display: flex; width: 92px; height: 119px; flex-direction: column; gap: 7px; padding: 13px 10px; border-radius: 11px; background: #fff; box-shadow: 0 5px 14px rgba(15, 23, 42, .12); }
+        .td-more-illustration-avatar { display: grid; width: 21px; height: 21px; place-items: center; margin-bottom: 3px; border: 1px solid #7dd3fc; border-radius: 50%; color: #0ea5e9; }
+        .td-more-illustration-document i { display: block; width: 100%; height: 5px; border-radius: 5px; background: #e2e8f0; }
+        .td-more-illustration-document i:nth-of-type(2) { width: 90%; }
+        .td-more-illustration-document i:nth-of-type(3) { width: 75%; }
+        .td-more-illustration-document i:nth-of-type(4) { width: 55%; }
+        .td-more-illustration-plus { position: absolute; right: 15px; bottom: 5px; display: grid; width: 37px; height: 37px; place-items: center; border: 3px solid #fff; border-radius: 50%; background: #10b981; color: #fff; }
+        .td-more-empty-state h2 { margin: 0; color: #252525; font-size: 15px; font-weight: 700; }
+        .td-more-empty-state > p { max-width: 330px; margin: 8px 0 18px; color: #6b7280; font-size: 11px; line-height: 1.6; }
+        .td-more-empty-state > button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 7px; padding: 0 17px; border: 0; border-radius: 7px; background: #20d653; color: #064e24; font: inherit; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .td-more-empty-state > button:hover { background: #16c34a; }
+        .td-more-shortcuts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; padding: 28px 10px 4px; border-top: 1px solid #edf1f5; }
+        .td-more-shortcut { display: flex; min-width: 0; align-items: flex-start; gap: 12px; padding: 4px 0; border: 0; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+        .td-more-shortcut:hover strong { color: #15803d; }
+        .td-more-shortcut-icon { display: grid; width: 39px; height: 39px; flex: 0 0 39px; place-items: center; border-radius: 50%; }
+        .td-more-shortcut-icon--green { background: #ecfdf5; color: #059669; }
+        .td-more-shortcut-icon--blue { background: #eff8ff; color: #0ea5e9; }
+        .td-more-shortcut-icon--purple { background: #faf5ff; color: #a855f7; }
+        .td-more-shortcut > span:last-child { display: grid; gap: 4px; min-width: 0; }
+        .td-more-shortcut strong { color: #252525; font-size: 11px; font-weight: 700; transition: color .15s ease; }
+        .td-more-shortcut small { color: #6b7280; font-size: 10px; line-height: 1.5; }
+        .td-more-populated { display: grid; gap: 12px; margin-top: 18px; }
+        .td-more-populated-card { padding: 18px; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, .025); }
+        .td-more-populated-header { display: flex; min-width: 0; align-items: center; gap: 11px; padding-bottom: 15px; border-bottom: 1px solid #edf1f5; }
+        .td-more-populated-icon { display: grid; width: 31px; height: 31px; flex: 0 0 31px; place-items: center; border-radius: 50%; }
+        .td-more-populated-icon--green { background: #e8fbf2; color: #059669; }
+        .td-more-populated-icon--blue { background: #eff6ff; color: #3b82f6; }
+        .td-more-populated-header > div { min-width: 0; flex: 1 1 auto; }
+        .td-more-populated-header h2 { margin: 0; color: #252525; font-size: 12px; font-weight: 700; line-height: 1.35; }
+        .td-more-populated-header p { margin: 2px 0 0; color: #717783; font-size: 9px; line-height: 1.45; }
+        .td-more-populated-header > button { display: inline-flex; min-height: 27px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 5px; padding: 0 9px; border: 1px solid #e2e8f0; border-radius: 6px; background: #fff; color: #334155; font: inherit; font-size: 9px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        .td-more-populated-header > button:hover { border-color: #b7dfc4; color: #15803d; }
+        .td-more-populated-details { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 18px; padding-top: 16px; }
+        .td-more-populated-details > div { display: flex; min-width: 0; align-items: flex-start; gap: 8px; color: #8ca0bc; }
+        .td-more-populated-details > div > svg { flex: 0 0 auto; margin-top: 2px; }
+        .td-more-populated-details > div > span { display: grid; min-width: 0; gap: 2px; }
+        .td-more-populated-details small { color: #737b86; font-size: 9px; line-height: 1.35; }
+        .td-more-populated-details strong { overflow-wrap: anywhere; color: #303943; font-size: 10px; font-weight: 650; line-height: 1.4; }
+        .td-more-documents-card { padding-bottom: 13px; }
+        .td-more-document-list { display: grid; gap: 0; padding-top: 8px; }
+        .td-more-documents-empty { display: flex; min-height: 120px; flex-direction: column; align-items: center; justify-content: center; padding: 18px 14px 12px; text-align: center; }
+        .td-more-documents-empty > span { display: grid; width: 35px; height: 35px; place-items: center; margin-bottom: 7px; border-radius: 50%; background: #eff6ff; color: #3b82f6; }
+        .td-more-documents-empty > strong { color: #334155; font-size: 10px; font-weight: 650; }
+        .td-more-documents-empty > p { max-width: 330px; margin: 3px 0 9px; color: #737b86; font-size: 9px; line-height: 1.45; }
+        .td-more-documents-empty > button { display: inline-flex; min-height: 27px; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid #dbe3ec; border-radius: 6px; background: #fff; color: #334155; font: inherit; font-size: 9px; font-weight: 600; cursor: pointer; }
+        .td-more-documents-empty > button:hover { border-color: #b7dfc4; color: #15803d; }
+        .td-more-document-row { display: flex; min-width: 0; min-height: 47px; align-items: center; gap: 9px; padding: 5px 3px; border-bottom: 1px solid #f1f3f6; }
+        .td-more-document-row:last-child { border-bottom: 0; }
+        .td-more-document-main { display: flex; min-width: 0; flex: 1 1 auto; align-items: center; gap: 10px; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+        .td-more-document-main:hover .td-more-document-info strong { color: #15803d; }
+        .td-more-document-icon { display: grid; width: 26px; height: 26px; flex: 0 0 26px; place-items: center; border: 1px solid transparent; border-radius: 7px; }
+        .td-more-document-icon.is-pdf { border-color: #fee2e2; background: #fff1f2; color: #ef4444; }
+        .td-more-document-icon.is-doc { border-color: #e2e8f0; background: #f1f5f9; color: #64748b; }
+        .td-more-document-icon.is-image { border-color: #d1fae5; background: #ecfdf5; color: #059669; }
+        .td-more-document-info { display: grid; min-width: 0; gap: 2px; }
+        .td-more-document-info strong { overflow: hidden; color: #303943; font-size: 9px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+        .td-more-document-info small { color: #737b86; font-size: 8px; line-height: 1.35; }
+        .td-more-document-status { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 999px; background: #ecfdf5; color: #15803d; font-size: 8px; font-weight: 600; white-space: nowrap; }
+        .td-more-document-menu { position: relative; flex: 0 0 auto; }
+        .td-more-document-menu > summary { display: grid; width: 24px; height: 27px; place-items: center; border-radius: 5px; color: #94a3b8; list-style: none; cursor: pointer; }
+        .td-more-document-menu > summary::-webkit-details-marker { display: none; }
+        .td-more-document-menu > summary:hover, .td-more-document-menu[open] > summary { background: #f1f5f9; color: #475569; }
+        .td-more-document-menu > div { position: absolute; top: calc(100% + 3px); right: 0; z-index: 8; display: grid; min-width: 132px; padding: 5px; border: 1px solid #e2e8f0; border-radius: 7px; background: #fff; box-shadow: 0 8px 20px rgba(15, 23, 42, .14); }
+        .td-more-document-menu > div button { padding: 7px; border-radius: 5px; color: #475569; text-align: left; font: inherit; font-size: 9px; cursor: pointer; }
+        .td-more-document-menu > div button:hover { background: #f1f5f9; color: #15803d; }
+        .td-more-modal-overlay { z-index: 1100; background: rgba(15, 23, 42, .48); }
+        .td-more-modal { width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: auto; border: 1px solid #e6edf3; border-radius: 14px; background: #fff; box-shadow: 0 20px 60px rgba(15, 23, 42, .2); }
+        .td-more-modal > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid #edf1f4; }
+        .td-more-modal > header h2 { margin: 0; color: #1f2937; font-size: 17px; font-weight: 700; }
+        .td-more-modal > header p { margin: 5px 0 0; color: #64748b; font-size: 12px; line-height: 1.45; }
+        .td-more-modal > header > button { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border-radius: 7px; color: #64748b; cursor: pointer; }
+        .td-more-modal > header > button:hover { background: #f1f5f9; color: #1f2937; }
+        .td-more-modal-options { display: grid; gap: 8px; padding: 16px; }
+        .td-more-modal-options > button { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 12px; border: 1px solid #e7edf3; border-radius: 9px; background: #fff; color: #64748b; text-align: left; cursor: pointer; }
+        .td-more-modal-options > button:hover { border-color: #b7dfc4; background: #f8fdf9; color: #15803d; }
+        .td-more-modal-options > button > span { display: grid; flex: 1; gap: 3px; }
+        .td-document-preview-overlay { z-index: 2200; padding: 18px; background: rgba(15, 23, 42, .68); }
+        .td-document-preview-modal { display: flex; width: min(940px, 100%); max-height: min(96vh, 1000px); flex-direction: column; overflow: hidden; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .32); }
+        .td-document-preview-modal > header { display: flex; min-width: 0; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 15px 20px; border-bottom: 1px solid #e9eef4; }
+        .td-document-preview-modal > header > div { min-width: 0; }
+        .td-document-preview-modal > header h2 { overflow: hidden; margin: 0; color: #1f2937; font-size: 13px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+        .td-document-preview-modal > header p { margin: 3px 0 0; color: #64748b; font-size: 10px; }
+        .td-document-preview-modal > header > button { display: grid; width: 29px; height: 29px; flex: 0 0 29px; place-items: center; border-radius: 6px; color: #64748b; cursor: pointer; }
+        .td-document-preview-modal > header > button:hover { background: #f1f5f9; color: #1f2937; }
+        .td-document-preview-viewer { display: flex; min-height: 240px; height: min(84vh, 820px); overflow: auto; background: #eef2f6; }
+        .td-document-preview-viewer > div,
+        .td-document-preview-viewer #react-doc-viewer,
+        .td-document-preview-viewer #proxy-renderer { display: flex; width: 100%; height: 100%; min-height: 0; flex: 1 1 auto; flex-direction: column; }
+        .td-document-preview-frame { display: block; width: 100%; height: 100%; min-height: 0; flex: 1 1 auto; border: 0; background: #fff; }
+        .td-document-preview-image { display: block; width: auto; max-width: 100%; height: auto; max-height: 100%; margin: 0 auto; object-fit: contain; }
+        .td-document-preview-unsupported { display: flex; min-height: 240px; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 24px; color: #64748b; text-align: center; }
+        .td-document-preview-unsupported > svg { color: #3b82f6; }
+        .td-document-preview-unsupported > strong { color: #334155; font-size: 13px; }
+        .td-document-preview-unsupported > span { max-width: 420px; font-size: 11px; line-height: 1.5; }
+        .td-more-modal-options strong { color: #273449; font-size: 12px; font-weight: 650; }
+        .td-more-modal-options small { color: #64748b; font-size: 11px; line-height: 1.4; }
+        .td-avail-preferences-overlay { z-index: 1150; padding: 22px; background: rgba(15, 23, 42, .62); }
+        .td-avail-preferences-modal { display: flex; width: min(710px, 100%); max-height: min(90vh, 760px); flex-direction: column; overflow: hidden; border: 1px solid #e6edf3; border-radius: 12px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .3); }
+        .td-avail-preferences-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 22px 14px; border-bottom: 1px solid #eef2f6; }
+        .td-avail-preferences-header h1 { margin: 0; color: #252525; font-size: 16px; font-weight: 700; line-height: 1.35; }
+        .td-avail-preferences-header p { margin: 4px 0 0; color: #6b7280; font-size: 10px; line-height: 1.45; }
+        .td-avail-preferences-header > button { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 6px; color: #94a3b8; cursor: pointer; }
+        .td-avail-preferences-header > button:hover { background: #f1f5f9; color: #334155; }
+        .td-avail-preferences-body { min-height: 0; overflow-y: auto; padding: 0 22px; }
+        .td-avail-preferences-section { padding: 15px 0 17px; border-bottom: 1px solid #edf1f5; }
+        .td-avail-preferences-section-heading { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .td-avail-preferences-icon { display: grid; width: 29px; height: 29px; flex: 0 0 29px; place-items: center; border-radius: 50%; }
+        .td-avail-preferences-icon--green { background: #ecfdf5; color: #059669; }
+        .td-avail-preferences-icon--blue { background: #eff6ff; color: #2563eb; }
+        .td-avail-preferences-icon--purple { background: #faf5ff; color: #a855f7; }
+        .td-avail-preferences-icon--orange { background: #fffbeb; color: #d97706; }
+        .td-avail-preferences-section-heading h2 { margin: 0; color: #252525; font-size: 12px; font-weight: 700; line-height: 1.35; }
+        .td-avail-preferences-section-heading h2 small { color: #6b7280; font-size: 10px; font-weight: 500; }
+        .td-avail-preferences-section-heading p { margin: 2px 0 0; color: #6b7280; font-size: 9px; line-height: 1.4; }
+        .td-avail-preferences-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; padding-left: 38px; }
+        .td-avail-pref-field { display: flex; min-width: 0; flex-direction: column; gap: 5px; color: #303943; font-size: 9px; font-weight: 650; }
+        .td-avail-pref-field small { color: #6b7280; font-size: 9px; font-weight: 400; }
+        .td-avail-pref-input-wrap { display: flex; min-height: 29px; align-items: center; gap: 7px; padding: 0 9px; border: 1px solid #dbe3ec; border-radius: 6px; background: #fff; color: #94a3b8; }
+        .td-avail-pref-input-wrap:focus-within { border-color: #60a5fa; box-shadow: 0 0 0 2px rgba(59, 130, 246, .1); }
+        .td-avail-pref-input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #334155; font: inherit; font-size: 9px; font-weight: 400; }
+        .td-avail-pref-tags { display: flex; flex-wrap: wrap; gap: 5px; min-height: 21px; }
+        .td-avail-pref-tags > span { display: inline-flex; min-height: 21px; align-items: center; gap: 3px; padding: 2px 5px 2px 7px; border: 1px solid #dce7f8; border-radius: 5px; background: #eff6ff; color: #334155; font-size: 8px; font-weight: 500; }
+        .td-avail-pref-tags > span button { display: grid; width: 14px; height: 14px; place-items: center; border-radius: 3px; color: #64748b; cursor: pointer; }
+        .td-avail-pref-tags > span button:hover { background: #dbeafe; color: #b42318; }
+        .td-avail-pref-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+        .td-avail-pref-fieldset legend { margin-bottom: 6px; color: #303943; font-size: 9px; font-weight: 650; }
+        .td-avail-pref-checkboxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; }
+        .td-avail-pref-checkboxes--inline { display: flex; flex-wrap: wrap; gap: 12px; }
+        .td-avail-pref-checkboxes label { display: inline-flex; min-width: 0; align-items: center; gap: 5px; color: #475569; font-size: 9px; font-weight: 400; cursor: pointer; }
+        .td-avail-pref-checkboxes input { width: 13px; height: 13px; flex: 0 0 13px; margin: 0; accent-color: #059669; }
+        .td-avail-pref-field select,
+        .td-avail-pref-field > input[type='date'] { width: 100%; min-height: 29px; padding: 0 9px; border: 1px solid #dbe3ec; border-radius: 6px; background: #fff; color: #334155; font: inherit; font-size: 9px; font-weight: 400; }
+        .td-avail-pref-field select:focus,
+        .td-avail-pref-field > input[type='date']:focus,
+        .td-avail-pref-notes textarea:focus { border-color: #60a5fa; outline: 0; box-shadow: 0 0 0 2px rgba(59, 130, 246, .1); }
+        .td-avail-preferences-section--notes { padding-bottom: 12px; border-bottom: 0; }
+        .td-avail-pref-notes { display: block; padding-left: 38px; }
+        .td-avail-pref-notes textarea { display: block; width: 100%; min-height: 56px; padding: 8px 10px; border: 1px solid #dbe3ec; border-radius: 6px; color: #334155; font: inherit; font-size: 9px; line-height: 1.45; resize: vertical; }
+        .td-avail-pref-notes > small { display: block; margin-top: 4px; color: #6b7280; font-size: 8px; text-align: right; }
+        .td-avail-pref-session-note { margin: 0 0 12px 38px; padding: 7px 9px; border-radius: 5px; background: #fffbeb; color: #92400e; font-size: 8px; line-height: 1.45; }
+        .td-avail-pref-error { margin: 0 0 12px 38px; color: #b42318; font-size: 10px; }
+        .td-avail-preferences-footer { display: flex; justify-content: flex-end; gap: 8px; padding: 11px 22px; border-top: 1px solid #eef2f6; background: #fff; }
+        .td-avail-preferences-footer > button { min-width: 67px; min-height: 30px; padding: 0 12px; border: 1px solid #dbe3ec; border-radius: 6px; background: #fff; color: #334155; font: inherit; font-size: 9px; font-weight: 600; cursor: pointer; }
+        .td-avail-preferences-footer > button[type='submit'] { min-width: 94px; border-color: #20d653; background: #20d653; color: #064e24; }
+        .td-avail-preferences-footer > button[type='submit']:hover:not(:disabled) { background: #16c34a; }
+        .td-avail-preferences-footer > button:disabled { cursor: wait; opacity: .65; }
+        .td-manage-docs-overlay { z-index: 1160; padding: 18px; background: rgba(15, 23, 42, .62); }
+        .td-manage-docs-modal { display: flex; width: min(700px, 100%); max-height: min(92vh, 840px); flex-direction: column; overflow: hidden; border: 1px solid #e6edf3; border-radius: 12px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .3); }
+        .td-manage-docs-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 20px 28px 15px; border-bottom: 1px solid #eef2f6; }
+        .td-manage-docs-header h1 { margin: 0; color: #252525; font-size: 19px; font-weight: 700; line-height: 1.3; }
+        .td-manage-docs-header p { margin: 5px 0 0; color: #717783; font-size: 11px; line-height: 1.45; }
+        .td-manage-docs-header > button { display: grid; width: 28px; height: 28px; flex: 0 0 28px; place-items: center; border-radius: 6px; color: #94a3b8; cursor: pointer; }
+        .td-manage-docs-header > button:hover { background: #f1f5f9; color: #334155; }
+        .td-manage-docs-header > button:disabled { cursor: wait; opacity: .6; }
+        .td-manage-docs-body { min-height: 0; overflow-y: auto; padding: 0 28px 16px; }
+        .td-manage-docs-section { padding: 16px 0 14px; border-bottom: 1px solid #edf1f5; }
+        .td-manage-docs-section-heading { display: flex; min-width: 0; align-items: center; gap: 12px; margin-bottom: 12px; }
+        .td-manage-docs-heading-icon { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border-radius: 50%; }
+        .td-manage-docs-heading-icon--blue { background: #eff8ff; color: #0ea5e9; }
+        .td-manage-docs-heading-icon--purple { background: #faf5ff; color: #a855f7; }
+        .td-manage-docs-section-heading > div { min-width: 0; flex: 1 1 auto; }
+        .td-manage-docs-section-heading h2 { margin: 0; color: #252525; font-size: 13px; font-weight: 700; line-height: 1.4; }
+        .td-manage-docs-section-heading h2 small { color: #737b86; font-size: 10px; font-weight: 400; }
+        .td-manage-docs-section-heading p { margin: 2px 0 0; color: #717783; font-size: 10px; line-height: 1.4; }
+        .td-manage-docs-dropzone { display: flex; min-height: 158px; flex-direction: column; align-items: center; justify-content: center; padding: 14px; border: 2px dashed #cbd9ff; border-radius: 14px; background: #fbfcff; text-align: center; transition: border-color .15s ease, background .15s ease; }
+        .td-manage-docs-dropzone.is-active, .td-manage-docs-dropzone:hover { border-color: #60a5fa; background: #f5f9ff; }
+        .td-manage-docs-cloud { display: grid; width: 42px; height: 42px; place-items: center; margin-bottom: 8px; border-radius: 50%; background: #f1f5ff; color: #818cf8; }
+        .td-manage-docs-dropzone > strong { max-width: 100%; overflow-wrap: anywhere; color: #4b5563; font-size: 12px; font-weight: 600; }
+        .td-manage-docs-dropzone > span:not(.td-manage-docs-cloud) { margin-top: 2px; color: #717783; font-size: 10px; }
+        .td-manage-docs-dropzone > button { min-height: 30px; margin-top: 7px; padding: 0 18px; border: 1px solid #22a66a; border-radius: 7px; background: #fff; color: #15803d; font: inherit; font-size: 10px; font-weight: 600; cursor: pointer; }
+        .td-manage-docs-dropzone > button:hover:not(:disabled) { background: #f0fdf4; }
+        .td-manage-docs-dropzone > button:disabled { cursor: wait; opacity: .6; }
+        .td-manage-docs-dropzone > small { margin-top: 8px; color: #717783; font-size: 9px; }
+        .td-manage-docs-row { position: relative; display: flex; min-width: 0; min-height: 64px; align-items: center; gap: 12px; margin-top: 12px; padding: 9px 13px; border: 1px solid #e2e8f0; border-radius: 11px; background: #fff; box-shadow: 0 1px 3px rgba(15, 23, 42, .035); }
+        .td-manage-docs-file-icon { display: grid; width: 36px; height: 36px; flex: 0 0 36px; place-items: center; border: 1px solid transparent; border-radius: 8px; }
+        .td-manage-docs-file-icon.is-pdf { border-color: #fee2e2; background: #fff1f2; color: #e11d48; }
+        .td-manage-docs-file-icon.is-doc { border-color: #dbeafe; background: #eff6ff; color: #2563eb; }
+        .td-manage-docs-file-icon.is-image { border-color: #d1fae5; background: #ecfdf5; color: #059669; }
+        .td-manage-docs-file-info { display: grid; min-width: 0; flex: 1 1 auto; gap: 3px; }
+        .td-manage-docs-file-info strong { overflow: hidden; color: #303943; font-size: 11px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+        .td-manage-docs-file-info small { color: #737b86; font-size: 9px; line-height: 1.4; }
+        .td-manage-docs-view { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; padding: 6px 5px; color: #596575; font: inherit; font-size: 10px; font-weight: 600; cursor: pointer; }
+        .td-manage-docs-view:hover:not(:disabled) { color: #15803d; }
+        .td-manage-docs-view:disabled { cursor: default; opacity: .45; }
+        .td-manage-docs-menu { position: relative; flex: 0 0 auto; }
+        .td-manage-docs-menu > summary { display: grid; width: 25px; height: 30px; place-items: center; border-radius: 5px; color: #94a3b8; list-style: none; cursor: pointer; }
+        .td-manage-docs-menu > summary::-webkit-details-marker { display: none; }
+        .td-manage-docs-menu > summary:hover, .td-manage-docs-menu[open] > summary { background: #f1f5f9; color: #475569; }
+        .td-manage-docs-menu > div { position: absolute; top: calc(100% + 3px); right: 0; z-index: 5; display: grid; min-width: 142px; padding: 5px; border: 1px solid #e2e8f0; border-radius: 7px; background: #fff; box-shadow: 0 8px 20px rgba(15, 23, 42, .14); }
+        .td-manage-docs-menu > div button { padding: 8px; border-radius: 5px; color: #475569; text-align: left; font: inherit; font-size: 10px; cursor: pointer; }
+        .td-manage-docs-menu > div button:hover { background: #f1f5f9; color: #15803d; }
+        .td-manage-docs-supporting { padding-top: 16px; }
+        .td-manage-docs-supporting .td-manage-docs-section-heading { margin-bottom: 12px; }
+        .td-manage-docs-add { display: inline-flex; min-height: 29px; flex: 0 0 auto; align-items: center; justify-content: center; gap: 5px; padding: 0 10px; border: 1px solid #22a66a; border-radius: 7px; background: #fff; color: #15803d; font: inherit; font-size: 10px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+        .td-manage-docs-add:hover:not(:disabled) { background: #f0fdf4; }
+        .td-manage-docs-add:disabled { cursor: wait; opacity: .6; }
+        .td-manage-docs-support-list { display: grid; gap: 0; }
+        .td-manage-docs-support-list .td-manage-docs-row { margin-top: 0; }
+        .td-manage-docs-support-list .td-manage-docs-row + .td-manage-docs-row { margin-top: 12px; }
+        .td-manage-docs-info { display: flex; align-items: center; gap: 9px; margin-top: 13px; padding: 11px 12px; border: 1px solid #dbeafe; border-radius: 9px; background: #eff6ff; color: #4b5563; font-size: 10px; line-height: 1.5; }
+        .td-manage-docs-info svg { flex: 0 0 auto; color: #3b82f6; fill: #3b82f6; stroke: #fff; }
+        .td-manage-docs-api-note { margin: 8px 0 0; color: #64748b; font-size: 9px; line-height: 1.45; }
+        .td-manage-docs-error { margin: 10px 0 0; color: #b42318; font-size: 10px; line-height: 1.45; }
+        .td-manage-docs-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 12px 28px; border-top: 1px solid #eef2f6; background: #fbfcfd; }
+        .td-manage-docs-footer > button { min-width: 80px; min-height: 33px; padding: 0 15px; border: 1px solid #dbe3ec; border-radius: 7px; background: #fff; color: #334155; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .td-manage-docs-footer > button[type='submit'] { min-width: 112px; border-color: #20d653; background: #20d653; color: #064e24; }
+        .td-manage-docs-footer > button[type='submit']:hover:not(:disabled) { background: #16c34a; }
+        .td-manage-docs-footer > button:disabled { cursor: wait; opacity: .65; }
+        .td-profile-overview-panel { padding: 20px 22px; border: 1px solid #e5eaf0; border-radius: 14px; background: #fff; box-shadow: 0 2px 10px rgba(15, 23, 42, .035); }
+        .td-profile-overview-panel-heading { display: flex; align-items: center; gap: 12px; padding-bottom: 16px; border-bottom: 1px solid #edf1f5; }
+        .td-overview-icon { display: grid; width: 38px; height: 38px; flex: 0 0 38px; place-items: center; border-radius: 50%; background: #eff6ff; color: #3b82f6; }
+        .td-profile-overview-panel-heading h2 { color: #1e293b; font-size: 16px; font-weight: 700; }
+        .td-profile-overview-panel-heading p { margin-top: 3px; color: #64748b; font-size: 11px; }
+        .td-profile-overview-panel-heading > button { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 7px 12px; border: 1px solid #dbe2ea; border-radius: 8px; background: #fff; color: #334155; font: inherit; font-size: 11px; font-weight: 600; cursor: pointer; }
+        .td-profile-overview-panel-heading > button:hover { border-color: #86c99b; color: #15803d; }
+        .td-profile-overview-details { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding-top: 18px; }
+        .td-overview-detail-list { display: grid; gap: 16px; }
+        .td-overview-detail-list > div { display: flex; align-items: flex-start; gap: 10px; color: #94a3b8; }
+        .td-overview-detail-list > div > svg { flex: 0 0 auto; margin-top: 2px; }
+        .td-overview-detail-list span { display: grid; gap: 2px; min-width: 0; }
+        .td-overview-detail-list strong { overflow-wrap: anywhere; color: #334155; font-size: 12px; font-weight: 650; }
+        .td-overview-detail-list small { color: #94a3b8; font-size: 10px; }
+        .td-overview-summary { padding-left: 22px; border-left: 1px solid #edf1f5; }
+        .td-overview-summary h3 { display: flex; align-items: center; gap: 8px; color: #334155; font-size: 12px; font-weight: 700; }
+        .td-overview-summary h3 svg { color: #94a3b8; }
+        .td-overview-summary p { margin-top: 8px; color: #64748b; font-size: 12px; line-height: 1.7; white-space: pre-wrap; }
+
+        .td-basic-profile-modal-backdrop { position: fixed; inset: 0; z-index: 2500; display: grid; place-items: center; padding: 18px; background: rgba(15, 23, 42, .52); }
+        .td-basic-profile-modal { display: flex; flex-direction: column; width: min(690px, 100%); max-height: min(860px, calc(100dvh - 36px)); overflow: hidden; border: 1px solid #e6ebf0; border-radius: 16px; background: #fff; box-shadow: 0 24px 70px rgba(15, 23, 42, .25); }
+        .td-basic-profile-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 20px 24px 16px; border-bottom: 1px solid #edf1f5; }
+        .td-basic-profile-modal-header h2 { color: #1f2937; font-size: 19px; line-height: 1.3; font-weight: 700; }
+        .td-basic-profile-modal-header p { max-width: 560px; margin-top: 4px; color: #64748b; font-size: 12px; line-height: 1.5; }
+        .td-basic-profile-modal-header > button { display: grid; width: 30px; height: 30px; flex: 0 0 30px; place-items: center; border: 0; border-radius: 7px; background: transparent; color: #64748b; cursor: pointer; }
+        .td-basic-profile-modal-header > button:hover { background: #f1f5f9; color: #1f2937; }
+        .td-basic-profile-modal-body { overflow-y: auto; padding: 18px 24px; }
+        .td-basic-profile-modal-body h3 { margin: 0; color: #1f2937; font-size: 13px; font-weight: 700; }
+        .td-basic-profile-photo { margin-bottom: 18px; }
+        .td-basic-profile-photo-row { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
+        .td-basic-profile-avatar { display: grid; width: 68px; height: 68px; flex: 0 0 68px; place-items: center; overflow: hidden; border-radius: 50%; background: #e8eef6; color: #334155; font-size: 20px; font-weight: 700; }
+        .td-basic-profile-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .td-basic-profile-photo-controls { display: grid; justify-items: start; gap: 5px; }
+        .td-basic-profile-photo-controls > button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #334155; font: inherit; font-size: 10px; font-weight: 650; cursor: pointer; }
+        .td-basic-profile-photo-controls > button:hover:not(:disabled) { border-color: #94a3b8; background: #f8fafc; }
+        .td-basic-profile-photo-controls > button:disabled { opacity: .6; cursor: wait; }
+        .td-basic-profile-photo-controls p, .td-basic-profile-photo-controls small { color: #64748b; font-size: 10px; }
+        .td-basic-profile-photo-controls small { color: #b42318; }
+        .td-basic-profile-section-title { margin-bottom: 12px !important; }
+        .td-basic-profile-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+        .td-basic-profile-fields > label, .td-basic-profile-field > label:not(.td-basic-profile-label-text) { display: grid; gap: 6px; color: #334155; font-size: 11px; font-weight: 650; }
+        .td-basic-profile-label-text { display: inline-flex; align-items: center; gap: 3px; }
+        .td-basic-profile-label-text > span, .td-basic-profile-levels legend > span { color: #dc2626; }
+        .td-basic-profile-fields input:not([type='checkbox']), .td-basic-profile-fields textarea { width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #1f2937; font: inherit; font-size: 12px; outline: none; }
+        .td-basic-profile-fields input:not([type='checkbox']) { height: 38px; padding: 0 11px; }
+        .td-basic-profile-fields textarea { min-height: 96px; padding: 10px 11px; resize: vertical; line-height: 1.55; }
+        .td-basic-profile-fields input:focus, .td-basic-profile-fields textarea:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .12); }
+        .td-basic-profile-fields small { display: flex; justify-content: space-between; gap: 8px; color: #64748b; font-size: 10px; font-weight: 400; line-height: 1.45; }
+        .td-basic-profile-field { min-width: 0; }
+        .td-basic-profile-chipbox { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 42px; padding: 5px 7px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        .td-basic-profile-chipbox:focus-within { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, .12); }
+        .td-basic-profile-chipbox button { display: inline-flex; align-items: center; gap: 5px; padding: 5px 7px; border: 0; border-radius: 6px; background: #f1f5f9; color: #334155; font: inherit; font-size: 10px; cursor: pointer; }
+        .td-basic-profile-chipbox input:not([type='checkbox']) { flex: 1 1 160px; height: 26px; padding: 0 4px; border: 0; outline: none; box-shadow: none; }
+        .td-basic-profile-levels { min-width: 0; margin: 0; padding: 0; border: 0; }
+        .td-basic-profile-levels legend { margin-bottom: 7px; color: #334155; font-size: 11px; font-weight: 650; }
+        .td-basic-profile-levels > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+        .td-basic-profile-levels label { display: flex; align-items: center; gap: 7px; color: #475569; font-size: 10px; cursor: pointer; }
+        .td-basic-profile-levels input { width: 14px; height: 14px; accent-color: #16a34a; }
+        .td-basic-profile-summary { grid-column: 1 / -1; }
+        .td-basic-profile-error { margin-top: 12px; color: #b42318; font-size: 11px; }
+        .td-basic-profile-modal-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 24px; border-top: 1px solid #edf1f5; }
+        .td-basic-profile-modal-footer button { min-width: 88px; padding: 9px 14px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #1f2937; font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
+        .td-basic-profile-modal-footer button[type='submit'] { min-width: 112px; border-color: #22c55e; background: #22c55e; color: #fff; }
+        .td-basic-profile-modal-footer button[type='submit']:hover:not(:disabled) { background: #16a34a; }
+        .td-basic-profile-modal-footer button:disabled { opacity: .6; cursor: wait; }
+
         .td-profile-main-title {
           font-size: 32px;
           font-weight: 800;
@@ -13572,36 +15725,151 @@ export default function TeacherDashboard() {
           background: #F8FAFC;
         }
 
-        .td-prof-edit-page { max-width: 1100px; padding-bottom: 40px; }
-        .td-prof-edit-breadcrumb { display: inline-flex; align-items: center; gap: 11px; margin-bottom: 27px; color: #263447; font-size: 12px; font-weight: 600; cursor: pointer; }
-        .td-prof-edit-header { margin-bottom: 22px; }
-        .td-prof-edit-header h1 { color: #202d41; font-size: 22px; font-weight: 700; }
-        .td-prof-edit-header p { max-width: 540px; margin-top: 5px; color: #687587; font-size: 12px; line-height: 1.5; }
-        .td-prof-edit-error { margin: 0 0 14px; color: #b42318; font-size: 12px; }
-        .td-prof-edit-grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr); gap: 16px; align-items: start; }
-        .td-prof-edit-card { padding: 18px 20px; border: 1px solid #edf0ec; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .04); }
-        .td-prof-edit-card h2 { display: flex; align-items: center; gap: 7px; padding-bottom: 11px; border-bottom: 1px solid #e6f2e8; color: #344054; font-size: 16px; font-weight: 700; }
-        .td-prof-edit-card h2 svg { color: #08755d; }
-        .td-prof-edit-card > label, .td-prof-preferences > label { display: grid; gap: 6px; margin-top: 15px; color: #475467; font-size: 11px; font-weight: 600; }
-        .td-prof-edit-card input[type='text'], .td-prof-edit-card textarea, .td-prof-edit-card select { width: 100%; border: 1px solid #d9dee7; border-radius: 5px; background: #f9fafb; color: #344054; font: inherit; font-size: 12px; outline: none; }
-        .td-prof-edit-card input[type='text'], .td-prof-edit-card select { height: 31px; padding: 0 10px; }
-        .td-prof-edit-card textarea { min-height: 78px; padding: 10px; resize: vertical; line-height: 1.5; }
-        .td-prof-edit-card input:focus, .td-prof-edit-card textarea:focus, .td-prof-edit-card select:focus { border-color: #0b8b66; box-shadow: 0 0 0 2px rgba(11, 139, 102, .12); }
-        .td-prof-preferences { width: 100%; margin-top: 15px; padding: 17px 14px; border-radius: 8px; background: #fff; box-shadow: 0 3px 12px rgba(15, 23, 42, .06); }
-        .td-prof-preferences h2 { margin: -1px -14px 0; padding: 0 14px 10px; }
-        .td-prof-edit-label { display: block; margin-top: 15px; color: #475467; font-size: 11px; font-weight: 600; }
-        .td-prof-edit-subjects { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
-        .td-prof-edit-subjects button { padding: 3px 8px; border-radius: 999px; background: #e7f5e8; color: #58725e; font-size: 9px; cursor: pointer; }
-        .td-prof-edit-subjects .td-prof-add-subject { border: 1px dashed #52a56f; background: transparent; color: #08755d; font-weight: 700; }
-        .td-prof-edit-subjects input { width: 100px; border: 1px solid #8ac9a2; border-radius: 4px; padding: 3px 5px; font-size: 10px; outline: none; }
-        .td-prof-edit-levels { display: grid; gap: 8px; margin-top: 16px; }
-        .td-prof-edit-levels .td-prof-edit-label { margin: 0 0 2px; }
-        .td-prof-edit-levels label { display: flex; align-items: center; gap: 7px; color: #475467; font-size: 11px; cursor: pointer; }
-        .td-prof-edit-levels input { width: 14px; height: 14px; accent-color: #08755d; }
-        .td-prof-save-btn { width: 100%; min-height: 35px; margin-top: 14px; border-radius: 999px; background: #25d84d; color: #075b2b; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .td-prof-save-btn:hover:not(:disabled) { background: #18c641; }
-        .td-prof-save-btn:disabled { cursor: wait; opacity: .7; }
-        @media (max-width: 720px) { .td-prof-edit-page { padding-bottom: 88px; } .td-prof-edit-grid { grid-template-columns: 1fr; } .td-prof-edit-header h1 { font-size: 20px; } }
+        .td-prof-edit-page { width: 100%; max-width: none; padding-bottom: 40px; }
+        .td-prof-skills-card { padding: 28px; border: 1px solid #e6edf3; border-radius: 14px; background: #fff; }
+        .td-prof-skills-heading { display: flex; align-items: center; gap: 18px; margin-bottom: 28px; }
+        .td-prof-skills-heading-icon { display: grid; place-items: center; width: 46px; height: 46px; flex: 0 0 46px; border-radius: 50%; background: #eff6ff; color: #2563eb; }
+        .td-prof-skills-heading h1 { margin: 0; color: #252525; font-size: 20px; font-weight: 700; line-height: 1.3; }
+        .td-prof-skills-heading p { margin: 4px 0 0; color: #6b7280; font-size: 15px; line-height: 1.4; }
+        .td-prof-skills-list { display: flex; flex-direction: column; gap: 28px; }
+        .td-prof-skills-item { display: grid; grid-template-columns: 42px minmax(0, 1fr); align-items: start; gap: 15px; min-height: 136px; padding: 23px; border: 1px solid #edf2f7; border-radius: 14px; background: #f8fafc; }
+        .td-prof-skills-item-icon { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 50%; }
+        .td-prof-skills-item-icon--green { background: #ecfdf5; color: #059669; }
+        .td-prof-skills-item-icon--blue { background: #eff6ff; color: #2563eb; }
+        .td-prof-skills-item-icon--purple { background: #faf5ff; color: #9333ea; }
+        .td-prof-skills-item-icon--orange { background: #fffbeb; color: #d97706; }
+        .td-prof-skills-item-content { min-width: 0; }
+        .td-prof-skills-item-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+        .td-prof-skills-item-title h2 { margin: 0; color: #252525; font-size: 15px; font-weight: 700; line-height: 1.35; }
+        .td-prof-skills-item-title p { margin: 3px 0 0; color: #6b7280; font-size: 13px; line-height: 1.4; }
+        .td-prof-skills-item-title button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 76px; min-height: 34px; margin-top: 0; padding: 0 12px; border: 1px solid #dbe3ec; border-radius: 8px; background: #fff; color: #303943; font: inherit; font-size: 12px; font-weight: 600; white-space: nowrap; }
+        .td-prof-skills-item-title button:disabled { cursor: default; opacity: 1; }
+        .td-prof-skills-tags { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 17px; }
+        .td-prof-skills-tags span { display: inline-flex; align-items: center; min-height: 30px; padding: 4px 13px; border: 1px solid #dce5ef; border-radius: 999px; background: #f1f5f9; color: #252525; font-size: 12px; line-height: 1.3; }
+        .td-prof-skills-modal-overlay { z-index: 1100; background: rgba(15, 23, 42, .48); }
+        .td-prof-skills-modal { display: flex; flex-direction: column; width: min(520px, 100%); max-height: calc(100vh - 40px); overflow: hidden; border: 1px solid #e6edf3; border-radius: 14px; background: #fff; box-shadow: 0 20px 60px rgba(15, 23, 42, .2); }
+        .td-prof-skills-modal-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 24px 18px; border-bottom: 1px solid #edf1f4; }
+        .td-prof-skills-modal-header h2 { margin: 0; color: #1f2937; font-size: 17px; font-weight: 700; }
+        .td-prof-skills-modal-header p { margin: 5px 0 0; color: #64748b; font-size: 12px; line-height: 1.45; }
+        .td-prof-skills-modal-header > button { display: grid; place-items: center; width: 30px; height: 30px; flex: 0 0 30px; border-radius: 7px; color: #64748b; cursor: pointer; }
+        .td-prof-skills-modal-header > button:hover { background: #f1f5f9; color: #1f2937; }
+        .td-prof-skills-modal-body { overflow-y: auto; padding: 20px 24px; }
+        .td-prof-skills-modal-body > label { display: block; margin-bottom: 7px; color: #344054; font-size: 12px; font-weight: 650; }
+        .td-prof-skills-input-row { display: flex; gap: 8px; }
+        .td-prof-skills-input-row input { min-width: 0; min-height: 40px; flex: 1; padding: 0 11px; border: 1px solid #d9e0e7; border-radius: 7px; background: #fff; color: #1f2937; font: inherit; font-size: 12px; outline: none; }
+        .td-prof-skills-input-row input:focus { border-color: #15946e; box-shadow: 0 0 0 3px rgba(21, 148, 110, .1); }
+        .td-prof-skills-input-row > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 74px; padding: 0 12px; border: 1px solid #cbd5e1; border-radius: 7px; background: #fff; color: #334155; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .td-prof-skills-input-row > button:disabled { cursor: not-allowed; opacity: .55; }
+        .td-prof-skills-modal-tags { display: flex; flex-wrap: wrap; gap: 8px; min-height: 44px; margin-top: 17px; }
+        .td-prof-skills-modal-tags > span { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 3px 6px 3px 11px; border: 1px solid #dce5ef; border-radius: 999px; background: #f1f5f9; color: #334155; font-size: 11px; }
+        .td-prof-skills-modal-tags > span > button { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #64748b; cursor: pointer; }
+        .td-prof-skills-modal-tags > span > button:hover { background: #e2e8f0; color: #b42318; }
+        .td-prof-skills-modal-tags > p { align-self: center; margin: 0; color: #64748b; font-size: 12px; }
+        .td-prof-skills-session-note { margin: 18px 0 0; padding: 10px 12px; border-radius: 7px; background: #fffbeb; color: #92400e; font-size: 11px; line-height: 1.45; }
+        .td-prof-skills-modal-footer { display: flex; justify-content: flex-end; gap: 9px; padding: 14px 24px 18px; border-top: 1px solid #edf1f4; background: #fbfcfd; }
+        .td-prof-skills-modal-footer > button { min-height: 36px; padding: 0 14px; border: 1px solid #dbe3ec; border-radius: 7px; background: #fff; color: #334155; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+        .td-prof-skills-modal-footer > button[type='submit'] { border-color: #15803d; background: #15803d; color: #fff; }
+        .td-prof-skills-modal-footer > button[type='submit']:hover { background: #166534; }
+        @media (max-width: 720px) {
+          .td-prof-edit-page { padding-bottom: 88px; }
+          .td-more-card { min-height: 0; padding: 20px; }
+          .td-more-empty-state { min-height: 340px; }
+          .td-more-populated { margin-top: 16px; }
+          .td-more-populated-card { padding: 15px; }
+          .td-more-populated-details { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+          .td-more-populated-header { align-items: flex-start; }
+          .td-document-preview-overlay { padding: 10px; }
+          .td-document-preview-modal { max-height: calc(100vh - 20px); }
+          .td-document-preview-viewer { height: calc(100vh - 100px); }
+          .td-more-shortcuts { grid-template-columns: 1fr; gap: 16px; padding: 20px 4px 2px; }
+          .td-more-shortcut { align-items: center; }
+          .td-more-modal { max-height: calc(100vh - 32px); }
+          .td-avail-preferences-overlay { padding: 14px; }
+          .td-avail-preferences-modal { max-height: calc(100vh - 28px); }
+          .td-manage-docs-overlay { padding: 12px; }
+          .td-manage-docs-modal { max-height: calc(100vh - 24px); }
+          .td-manage-docs-header { padding: 18px 20px 13px; }
+          .td-manage-docs-body { padding: 0 20px 14px; }
+          .td-manage-docs-footer { padding-right: 20px; padding-left: 20px; }
+          .td-avail-preferences-grid { padding-left: 0; }
+          .td-avail-pref-notes { padding-left: 0; }
+          .td-avail-pref-session-note,
+          .td-avail-pref-error { margin-left: 0; }
+          .td-prof-skills-card { padding: 20px; }
+          .td-prof-skills-heading { align-items: flex-start; gap: 12px; margin-bottom: 20px; }
+          .td-prof-skills-heading h1 { font-size: 18px; }
+          .td-prof-skills-heading p { font-size: 13px; }
+          .td-prof-skills-list { gap: 16px; }
+          .td-prof-skills-item { min-height: 0; padding: 16px; gap: 12px; }
+          .td-prof-skills-modal { max-height: calc(100vh - 32px); }
+        }
+        @media (max-width: 480px) {
+          .td-more-card { padding: 16px; }
+          .td-more-heading p { max-width: 34ch; }
+          .td-more-empty-state { min-height: 320px; padding: 18px 4px 22px; }
+          .td-more-populated-card { padding: 12px; }
+          .td-more-populated-header { flex-wrap: wrap; gap: 8px; }
+          .td-more-populated-header > div { flex-basis: calc(100% - 42px); }
+          .td-more-populated-header > button { margin-left: 39px; }
+          .td-more-populated-details { grid-template-columns: minmax(0, 1fr); gap: 10px; padding-top: 12px; }
+          .td-more-document-row { gap: 6px; }
+          .td-more-document-status { padding: 3px 5px; font-size: 7px; }
+          .td-more-document-info strong { font-size: 8px; }
+          .td-document-preview-overlay { padding: 6px; }
+          .td-document-preview-modal { max-height: calc(100vh - 12px); border-radius: 9px; }
+          .td-document-preview-modal > header { padding: 12px; }
+          .td-document-preview-viewer { height: calc(100vh - 76px); }
+          .td-more-illustration { transform: scale(.9); margin-top: -6px; margin-bottom: 5px; }
+          .td-more-empty-state h2 { font-size: 14px; }
+          .td-more-empty-state > p { font-size: 10px; }
+          .td-more-modal-overlay { padding: 12px; }
+          .td-more-modal > header { padding: 18px 16px 14px; }
+          .td-more-modal-options { padding: 12px; }
+          .td-more-modal-options > button { gap: 9px; padding: 10px; }
+          .td-avail-preferences-overlay { padding: 8px; }
+          .td-avail-preferences-modal { max-height: calc(100vh - 16px); border-radius: 9px; }
+          .td-manage-docs-overlay { padding: 8px; }
+          .td-manage-docs-modal { max-height: calc(100vh - 16px); border-radius: 9px; }
+          .td-manage-docs-header { padding: 15px 14px 11px; }
+          .td-manage-docs-header h1 { font-size: 17px; }
+          .td-manage-docs-header p { max-width: 46ch; font-size: 10px; }
+          .td-manage-docs-body { padding: 0 14px 12px; }
+          .td-manage-docs-section-heading { gap: 9px; }
+          .td-manage-docs-section-heading p { font-size: 9px; }
+          .td-manage-docs-dropzone { min-height: 145px; }
+          .td-manage-docs-row { gap: 8px; padding: 8px; }
+          .td-manage-docs-file-icon { width: 32px; height: 32px; flex-basis: 32px; }
+          .td-manage-docs-file-info strong { font-size: 10px; }
+          .td-manage-docs-view { gap: 3px; font-size: 9px; }
+          .td-manage-docs-add { min-height: 27px; padding: 0 7px; font-size: 9px; }
+          .td-manage-docs-footer { padding: 10px 14px; }
+          .td-manage-docs-footer > button { flex: 1; }
+          .td-avail-preferences-header { padding: 15px 14px 11px; }
+          .td-avail-preferences-header h1 { font-size: 14px; }
+          .td-avail-preferences-body { padding: 0 14px; }
+          .td-avail-preferences-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+          .td-avail-preferences-section { padding: 12px 0; }
+          .td-avail-pref-checkboxes--inline { gap: 10px; }
+          .td-avail-preferences-footer { padding: 10px 14px; }
+          .td-prof-skills-card { padding: 14px; }
+          .td-prof-skills-heading-icon { width: 40px; height: 40px; flex-basis: 40px; }
+          .td-prof-skills-heading { gap: 10px; margin-bottom: 16px; }
+          .td-prof-skills-heading h1 { font-size: 16px; }
+          .td-prof-skills-heading p { font-size: 12px; }
+          .td-prof-skills-item { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; padding: 13px; }
+          .td-prof-skills-item-icon { width: 34px; height: 34px; }
+          .td-prof-skills-item-title { flex-wrap: wrap; }
+          .td-prof-skills-item-title h2 { font-size: 13px; }
+          .td-prof-skills-item-title p { font-size: 11px; }
+          .td-prof-skills-item-title button { min-height: 32px; }
+          .td-prof-skills-tags { gap: 7px; margin-top: 12px; }
+          .td-prof-skills-tags span { min-height: 27px; padding: 4px 10px; font-size: 11px; }
+          .td-prof-skills-modal-overlay { padding: 12px; }
+          .td-prof-skills-modal-header { padding: 18px 16px 14px; }
+          .td-prof-skills-modal-body { padding: 16px; }
+          .td-prof-skills-modal-footer { padding: 12px 16px 16px; }
+          .td-prof-skills-modal-footer > button { flex: 1; }
+        }
 
         .td-profile-preview-page { max-width: 1180px; margin: 0 auto; padding: 8px 0 42px; }
         .td-preview-back-btn { display: inline-flex; align-items: center; gap: 12px; margin: 0 0 28px; color: #1e293b; font-size: 13px; font-weight: 600; cursor: pointer; }
@@ -13774,6 +16042,44 @@ export default function TeacherDashboard() {
           .td-profile-grid {
             grid-template-columns: repeat(2, 1fr);
           }
+        }
+
+        @media (max-width: 768px) {
+          .td-profile-page-heading { align-items: flex-start; }
+          .td-profile-overview-top { grid-template-columns: 1fr; }
+          .td-profile-overview-top .td-profile-header-card { min-height: 0; padding: 22px; }
+          .td-profile-overview-top .td-profile-header-left { flex-direction: row; align-items: flex-start; gap: 18px; }
+          .td-profile-overview-top .td-profile-avatar-container { width: clamp(76px, 18vw, 120px); height: clamp(76px, 18vw, 120px); }
+          .td-profile-overview-top .td-profile-header-actions { width: auto; margin: 0 0 0 auto; }
+          .td-profile-overview-top .td-profile-meta-row { align-items: flex-start; }
+          .td-profile-overview-top .td-profile-header-actions { margin: 16px 0 0; }
+          .td-profile-overview-top .td-profile-btn-edit { padding: 9px 12px; font-size: 12px; }
+          .td-profile-tabs { margin-right: -4px; border-radius: 10px; }
+          .td-profile-overview-panel { padding: 16px; }
+          .td-profile-overview-details { grid-template-columns: 1fr; gap: 16px; }
+          .td-overview-summary { padding: 14px 0 0; border-top: 1px solid #edf1f5; border-left: 0; }
+        }
+
+        @media (max-width: 480px) {
+          .td-basic-profile-modal-backdrop { padding: 10px; }
+          .td-basic-profile-modal { max-height: calc(100dvh - 20px); border-radius: 12px; }
+          .td-basic-profile-modal-header, .td-basic-profile-modal-body { padding-right: 16px; padding-left: 16px; }
+          .td-basic-profile-modal-header h2 { font-size: 16px; }
+          .td-basic-profile-fields { grid-template-columns: 1fr; gap: 12px; }
+          .td-basic-profile-summary { grid-column: auto; }
+          .td-basic-profile-levels > div { grid-template-columns: 1fr; }
+          .td-basic-profile-modal-footer { padding: 12px 16px; }
+          .td-profile-page-heading { align-items: center; }
+          .td-profile-page-heading p { max-width: 230px; font-size: 11px; }
+          .td-profile-page-heading > .td-profile-btn-preview { gap: 5px; padding: 7px 9px; font-size: 10px; }
+          .td-profile-overview-top .td-profile-header-card { align-items: stretch; }
+          .td-profile-overview-top .td-profile-header-left { align-items: flex-start; }
+          .td-profile-overview-top .td-profile-name-row h2 { font-size: 18px; }
+          .td-profile-overview-top .td-profile-header-actions { margin: 14px 0 0; }
+          .td-profile-readiness { padding: 15px; }
+          .td-readiness-checklist { grid-template-columns: 1fr; }
+          .td-profile-overview-panel-heading { align-items: flex-start; }
+          .td-profile-overview-panel-heading p { max-width: 220px; }
         }
 
         @media (max-width: 768px) {
@@ -15249,10 +17555,652 @@ export default function TeacherDashboard() {
            EXACT EDUCATION TAB DESIGN
         ═══════════════════════════════════════ */
         .td-edu-info-page {
-          max-width: 1050px;
+          max-width: none;
           margin: 0 auto;
           width: 100%;
-          padding: 8px 16px 60px;
+          padding: 8px 0 60px;
+        }
+
+        .td-edu-panels {
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+
+        .td-edu-panel {
+          display: flex;
+          flex-direction: column;
+          min-height: 292px;
+          padding: 18px;
+          border: 1px solid #e6edf3;
+          border-radius: 10px;
+          background: #fff;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, .025);
+        }
+
+        .td-edu-panel-heading {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          min-height: 32px;
+        }
+
+        .td-edu-panel-heading > div {
+          min-width: 0;
+          flex: 1;
+        }
+
+        .td-edu-panel-heading h1,
+        .td-edu-panel-heading h2 {
+          margin: 0 0 2px;
+          color: #1e293b;
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 1.3;
+        }
+
+        .td-edu-panel-heading p {
+          margin: 0;
+          color: #64748b;
+          font-size: 10px;
+          line-height: 1.4;
+        }
+
+        .td-edu-panel-icon {
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 30px;
+          flex: 0 0 30px;
+          border-radius: 50%;
+        }
+
+        .td-edu-panel-icon--education {
+          background: #ecfdf5;
+          color: #22c55e;
+        }
+
+        .td-edu-panel-icon--certification {
+          background: #eff8ff;
+          color: #2da8e8;
+        }
+
+        .td-edu-empty-content {
+          display: flex;
+          flex: 1;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          min-height: 220px;
+          padding: 10px 0 2px;
+          text-align: center;
+        }
+
+        .td-edu-empty-illustration {
+          position: relative;
+          display: grid;
+          place-items: center;
+          width: 128px;
+          height: 94px;
+          margin-bottom: 10px;
+          border-radius: 999px;
+        }
+
+        .td-edu-empty-illustration--education {
+          background: #f0fdf7;
+          color: #64748b;
+        }
+
+        .td-edu-empty-illustration--certification {
+          background: #f2faff;
+          color: #38bdf8;
+        }
+
+        .td-edu-empty-document {
+          display: grid;
+          place-items: start center;
+          width: 54px;
+          height: 72px;
+          padding-top: 10px;
+          border: 1px solid #d9e8f3;
+          border-radius: 8px;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, .03);
+        }
+
+        .td-edu-empty-document::after {
+          width: 30px;
+          height: 3px;
+          margin-top: 4px;
+          border-radius: 3px;
+          background: #e2e8f0;
+          box-shadow: 0 6px 0 #e2e8f0, 0 12px 0 #e2e8f0;
+          content: '';
+        }
+
+        .td-edu-empty-illustration--education .td-edu-empty-document svg {
+          color: #64748b;
+          padding: 4px;
+          border-radius: 50%;
+          background: #f1f5f9;
+        }
+
+        .td-edu-empty-illustration--certification .td-edu-empty-document svg {
+          color: #38bdf8;
+          padding: 4px;
+          border-radius: 50%;
+          background: #eff8ff;
+        }
+
+        .td-edu-empty-illustration > i,
+        .td-edu-empty-illustration > b {
+          position: absolute;
+          width: 5px;
+          height: 5px;
+          border-radius: 50%;
+          background: #6ee7b7;
+        }
+
+        .td-edu-empty-illustration > i {
+          top: 13px;
+          left: 21px;
+          transform: rotate(45deg);
+        }
+
+        .td-edu-empty-illustration > b {
+          top: 30px;
+          right: 18px;
+        }
+
+        .td-edu-empty-illustration--certification > i,
+        .td-edu-empty-illustration--certification > b {
+          background: #7dd3fc;
+        }
+
+        .td-edu-empty-content > h2 {
+          margin: 0 0 12px;
+          color: #1e293b;
+          font-size: 12px;
+          font-weight: 700;
+          line-height: 1.4;
+        }
+
+        .td-edu-panel .td-edu-add-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          min-height: 28px;
+          padding: 0 13px;
+          border: 0;
+          border-radius: 7px;
+          background: #20d653;
+          box-shadow: none;
+          color: #064e24;
+          font: inherit;
+          font-size: 10px;
+          font-weight: 700;
+          white-space: nowrap;
+          cursor: pointer;
+        }
+
+        .td-edu-panel-heading > .td-edu-add-btn {
+          flex: 0 0 auto;
+          margin-left: auto;
+        }
+
+        .td-edu-panel .td-edu-add-btn:hover {
+          background: #16c34a;
+          box-shadow: 0 2px 6px rgba(22, 163, 74, .16);
+        }
+
+        .td-edu-certification-record {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          width: 100%;
+          max-width: none;
+          margin: auto;
+          padding: 15px 16px;
+          border: 1px solid #edf0f3;
+          border-radius: 12px;
+          background: #fff;
+        }
+        .td-edu-panel > .td-edu-certification-record {
+          max-width: none;
+          margin: 14px 0 0;
+        }
+
+        .td-edu-certification-icon {
+          display: grid;
+          place-items: center;
+          width: 43px;
+          height: 43px;
+          flex: 0 0 43px;
+          border: 1px solid #e3e7ec;
+          border-radius: 9px;
+          background: #f8fafc;
+          color: #374151;
+          font-size: 11px;
+          font-weight: 700;
+        }
+
+        .td-edu-certification-icon--trcn {
+          letter-spacing: -.3px;
+        }
+
+        .td-edu-certification-details {
+          min-width: 0;
+          flex: 1;
+          align-self: center;
+        }
+
+        .td-edu-certification-details h3 {
+          margin: 0 0 3px;
+          color: #252525;
+          font-size: 13px;
+          font-weight: 700;
+          line-height: 1.35;
+        }
+
+        .td-edu-certification-details p {
+          margin: 0 0 6px;
+          color: #6b7280;
+          font-size: 11px;
+          line-height: 1.35;
+        }
+
+        .td-edu-certification-meta {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 8px;
+          color: #717780;
+          font-size: 10px;
+          line-height: 1.4;
+        }
+
+        .td-edu-certification-meta > span {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .td-edu-certification-meta > span + span::before {
+          width: 1px;
+          height: 12px;
+          margin-right: 1px;
+          background: #e2e5e9;
+          content: '';
+        }
+
+        .td-edu-certification-status {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          min-height: 25px;
+          padding: 0 10px;
+          border-radius: 999px;
+          background: #f1f5f9;
+          color: #64748b;
+          font-size: 10px;
+          font-weight: 700;
+          white-space: nowrap;
+        }
+
+        .td-edu-certification-status.is-verified {
+          background: #e3fbef;
+          color: #15803d;
+        }
+
+        .td-edu-certification-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-left: 1px;
+        }
+
+        .td-edu-certification-edit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          min-width: 67px;
+          min-height: 31px;
+          padding: 0 10px;
+          border: 1px solid #e3e7ec;
+          border-radius: 7px;
+          background: #fff;
+          color: #303943;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 600;
+          cursor: pointer;
+        }
+
+        .td-edu-certification-edit:hover {
+          background: #f8fafc;
+          color: #15803d;
+        }
+
+        .td-edu-certification-more {
+          position: relative;
+        }
+
+        .td-edu-certification-more > summary {
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 31px;
+          border-radius: 6px;
+          color: #9aa2ad;
+          cursor: pointer;
+          list-style: none;
+        }
+
+        .td-edu-certification-more > summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .td-edu-certification-more > summary:hover,
+        .td-edu-certification-more[open] > summary {
+          background: #f1f5f9;
+          color: #475569;
+        }
+
+        .td-edu-certification-more > button {
+          position: absolute;
+          top: calc(100% + 4px);
+          right: 0;
+          z-index: 8;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          width: max-content;
+          min-width: 105px;
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid #e5ebf1;
+          border-radius: 7px;
+          background: #fff;
+          box-shadow: 0 6px 18px rgba(15, 23, 42, .12);
+          color: #b42318;
+          font: inherit;
+          font-size: 10px;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .td-edu-certification-more > button:hover {
+          background: #fef2f2;
+        }
+
+        .td-edu-session-only-badge {
+          display: inline-block;
+          margin-top: 6px;
+          color: #b45309;
+          font-size: 10px;
+          font-weight: 700;
+        }
+        .td-edu-certification-file {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          max-width: 150px;
+          overflow: hidden;
+          color: #64748b;
+          font-size: 9px;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .td-certification-modal {
+          width: min(690px, 100%);
+          max-height: min(90vh, 840px);
+          display: flex;
+          flex-direction: column;
+          border-radius: 16px;
+        }
+        .td-certification-modal-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: 16px;
+          padding: 25px 30px 17px;
+          border-bottom: 1px solid #edf1f4;
+        }
+        .td-certification-modal-header h2 {
+          margin: 0 0 4px;
+          color: #1e293b;
+          font-size: 19px;
+          font-weight: 700;
+          letter-spacing: -.3px;
+        }
+        .td-certification-modal-header p {
+          margin: 0;
+          color: #64748b;
+          font-size: 11px;
+        }
+        .td-certification-modal-close {
+          display: grid;
+          place-items: center;
+          width: 28px;
+          height: 28px;
+          margin: -2px -5px 0 0;
+          border-radius: 6px;
+          background: transparent;
+          color: #94a3b8;
+          cursor: pointer;
+        }
+        .td-certification-modal-close:hover {
+          background: #f1f5f9;
+          color: #334155;
+        }
+        .td-certification-modal-body {
+          min-height: 0;
+          padding: 17px 30px 11px;
+          overflow-y: auto;
+        }
+        .td-certification-form-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 17px 16px;
+        }
+        .td-certification-field {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 5px;
+          color: #1e293b;
+          font-size: 11px;
+          font-weight: 650;
+        }
+        .td-certification-field--full {
+          grid-column: 1 / -1;
+        }
+        .td-certification-field b {
+          color: #ef4444;
+          font-weight: 700;
+        }
+        .td-certification-field em {
+          color: #64748b;
+          font-style: normal;
+          font-weight: 400;
+        }
+        .td-certification-field input:not([type='checkbox']),
+        .td-certification-field select,
+        .td-certification-field textarea {
+          width: 100%;
+          min-width: 0;
+          min-height: 44px;
+          padding: 0 13px;
+          border: 1px solid #dce4ed;
+          border-radius: 8px;
+          outline: none;
+          background: #fff;
+          color: #475569;
+          font: inherit;
+          font-size: 12px;
+          font-weight: 400;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, .04);
+        }
+        .td-certification-field input::placeholder,
+        .td-certification-field textarea::placeholder {
+          color: #64748b;
+          opacity: 1;
+        }
+        .td-certification-field input:focus,
+        .td-certification-field select:focus,
+        .td-certification-field textarea:focus {
+          border-color: #bfdbfe;
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, .08);
+        }
+        .td-certification-field select:disabled {
+          background: #f8fafc;
+          color: #94a3b8;
+          cursor: not-allowed;
+        }
+        .td-certification-field > small {
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 400;
+          line-height: 1.35;
+        }
+        .td-certification-label {
+          line-height: 1.25;
+        }
+        .td-certification-date-fields {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 8px;
+        }
+        .td-certification-date-fields select {
+          min-height: 40px;
+          padding: 0 10px;
+        }
+        .td-certification-no-expiry {
+          display: inline-flex;
+          align-items: center;
+          gap: 7px;
+          margin-top: 8px;
+          color: #334155;
+          font-size: 10px;
+          font-weight: 400;
+          cursor: pointer;
+        }
+        .td-certification-no-expiry input {
+          width: 15px;
+          height: 15px;
+          margin: 0;
+          accent-color: #16a34a;
+        }
+        .td-certification-file-input {
+          display: none;
+        }
+        .td-certification-document-upload {
+          display: flex;
+          align-items: center;
+          gap: 13px;
+          width: 100%;
+          min-height: 76px;
+          padding: 12px 16px;
+          border: 1px dashed #cbd5e1;
+          border-radius: 10px;
+          background: #fff;
+          color: #64748b;
+          text-align: left;
+          cursor: pointer;
+        }
+        .td-certification-document-upload:hover {
+          background: #f8fafc;
+          border-color: #94a3b8;
+        }
+        .td-certification-upload-icon {
+          display: grid;
+          place-items: center;
+          width: 42px;
+          height: 42px;
+          flex: 0 0 42px;
+          border: 1px solid #e2e8f0;
+          border-radius: 9px;
+          background: #f8fafc;
+          color: #7890a8;
+        }
+        .td-certification-document-upload > span:last-child {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 3px;
+        }
+        .td-certification-document-upload strong {
+          overflow: hidden;
+          color: #334155;
+          font-size: 10px;
+          font-weight: 500;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        .td-certification-document-upload small {
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 400;
+        }
+        .td-certification-file-error,
+        .td-certification-form-error {
+          color: #b42318 !important;
+          font-size: 10px !important;
+        }
+        .td-certification-field textarea {
+          min-height: 76px;
+          padding: 11px 13px;
+          line-height: 1.45;
+          resize: vertical;
+        }
+        .td-certification-field .td-certification-notes-count {
+          align-self: flex-end;
+          margin-top: 2px;
+          color: #64748b;
+        }
+        .td-certification-modal-notice {
+          margin: 10px 0 0;
+          color: #9a6700;
+          font-size: 9px;
+          line-height: 1.4;
+        }
+        .td-certification-form-error {
+          margin: 8px 0 0;
+        }
+        .td-certification-modal-footer {
+          display: flex;
+          justify-content: flex-end;
+          gap: 10px;
+          padding: 13px 30px 22px;
+          border-top: 1px solid #edf1f4;
+        }
+        .td-certification-modal-footer button {
+          min-height: 39px;
+          padding: 0 18px;
+          border: 1px solid #cbd5e1;
+          border-radius: 8px;
+          background: #fff;
+          color: #1e293b;
+          font: inherit;
+          font-size: 11px;
+          font-weight: 650;
+          cursor: pointer;
+        }
+        .td-certification-modal-footer .td-certification-save {
+          border-color: #20d653;
+          background: #20d653;
+          color: #064e24;
+        }
+        .td-certification-modal-footer .td-certification-save:hover {
+          border-color: #16c34a;
+          background: #16c34a;
+        }
+        .td-certification-modal-footer button:disabled {
+          cursor: wait;
+          opacity: .7;
         }
 
         .td-edu-breadcrumb {
@@ -15486,6 +18434,188 @@ export default function TeacherDashboard() {
           transform: scale(1.08);
         }
 
+        .td-edu-panel .td-edu-grid {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 9px;
+          margin-top: 14px;
+        }
+
+        .td-edu-panel .td-edu-card {
+          display: grid;
+          grid-template-columns: 42px minmax(0, 1fr) auto;
+          align-items: center;
+          gap: 14px;
+          min-height: 76px;
+          padding: 13px 15px;
+          overflow: visible;
+          border: 1px solid #e8eef4;
+          border-radius: 9px;
+          box-shadow: none;
+        }
+
+        .td-edu-card-icon {
+          display: grid;
+          place-items: center;
+          width: 42px;
+          height: 42px;
+          border: 1px solid #e7eef5;
+          border-radius: 8px;
+          background: #f8fafc;
+          color: #64748b;
+        }
+
+        .td-edu-card-details {
+          display: flex;
+          min-width: 0;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .td-edu-card-details h2 {
+          overflow: hidden;
+          margin: 0;
+          color: #1e293b;
+          font-size: 12px;
+          font-weight: 700;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .td-edu-card-details p,
+        .td-edu-card-details small {
+          overflow: hidden;
+          margin: 0;
+          color: #64748b;
+          font-size: 10px;
+          font-weight: 500;
+          line-height: 1.4;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .td-edu-card-meta {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          min-width: 0;
+          margin-top: 3px;
+          color: #64748b;
+          font-size: 10px;
+          line-height: 1.3;
+        }
+
+        .td-edu-card-meta > span {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .td-edu-card-meta svg {
+          flex: 0 0 auto;
+          color: #94a3b8;
+        }
+
+        .td-edu-card-meta > i {
+          width: 1px;
+          height: 12px;
+          flex: 0 0 1px;
+          background: #e2e8f0;
+        }
+
+        .td-edu-card-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+
+        .td-edu-card-actions button {
+          display: grid;
+          place-items: center;
+          width: 30px;
+          height: 29px;
+          border: 1px solid #e1e7ee;
+          border-radius: 6px;
+          background: #fff;
+          color: #64748b;
+          cursor: pointer;
+        }
+
+        .td-edu-card-actions .td-edu-card-edit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          width: auto;
+          min-width: 68px;
+          padding: 0 10px;
+          color: #334155;
+          font: inherit;
+          font-size: 10px;
+          font-weight: 600;
+          white-space: nowrap;
+        }
+
+        .td-edu-card-actions button:hover {
+          background: #f8fafc;
+          color: #15803d;
+        }
+
+        .td-edu-card-more {
+          position: relative;
+        }
+
+        .td-edu-card-more > summary {
+          display: grid;
+          place-items: center;
+          width: 24px;
+          height: 29px;
+          border-radius: 6px;
+          color: #94a3b8;
+          cursor: pointer;
+          list-style: none;
+        }
+
+        .td-edu-card-more > summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .td-edu-card-more > summary:hover,
+        .td-edu-card-more[open] > summary {
+          background: #f1f5f9;
+          color: #475569;
+        }
+
+        .td-edu-card-more > button {
+          position: absolute;
+          top: calc(100% + 4px);
+          right: 0;
+          z-index: 8;
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          gap: 7px;
+          width: 104px;
+          height: 34px;
+          padding: 0 10px;
+          border: 1px solid #e5ebf1;
+          border-radius: 7px;
+          background: #fff;
+          box-shadow: 0 6px 18px rgba(15, 23, 42, .12);
+          color: #b42318;
+          font: inherit;
+          font-size: 10px;
+          text-align: left;
+        }
+
+        .td-edu-card-more > button:hover {
+          background: #fef2f2;
+          color: #b42318;
+        }
+
         .td-edu-add-title {
           font-size: 14px;
           font-weight: 700;
@@ -15535,206 +18665,190 @@ export default function TeacherDashboard() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          margin-bottom: 36px;
-          gap: 20px;
-          flex-wrap: wrap;
+          margin-bottom: 18px;
+          gap: 16px;
         }
 
         .td-exp-header-left {
           display: flex;
-          flex-direction: column;
-          gap: 4px;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .td-exp-section-icon {
+          display: grid;
+          place-items: center;
+          width: 36px;
+          height: 36px;
+          flex: 0 0 36px;
+          border: 1px solid #dceefc;
+          border-radius: 50%;
+          background: #f0f9ff;
+          color: #475569;
         }
 
         .td-exp-page-title {
-          font-size: 28px;
-          font-weight: 800;
+          font-size: 15px;
+          font-weight: 700;
           color: #0F172A;
-          margin: 0;
-          letter-spacing: -0.5px;
+          margin: 0 0 2px;
+          letter-spacing: -0.2px;
         }
 
         .td-exp-page-desc {
-          font-size: 14px;
+          font-size: 11px;
           color: #64748B;
-          line-height: 1.5;
+          line-height: 1.45;
           margin: 0;
-          max-width: 620px;
+          max-width: 520px;
         }
 
         .td-exp-add-btn {
-          background: #15803D;
+          background: #16c653;
           color: #FFFFFF;
           border: none;
-          border-radius: 9999px;
-          padding: 10px 22px;
-          font-size: 13.5px;
-          font-weight: 600;
+          border-radius: 7px;
+          padding: 8px 13px;
+          font-size: 11px;
+          font-weight: 700;
           cursor: pointer;
           transition: all 0.2s ease;
           font-family: inherit;
-          box-shadow: 0 2px 8px rgba(21, 128, 61, 0.25);
+          box-shadow: 0 2px 5px rgba(22, 163, 74, 0.16);
           display: inline-flex;
           align-items: center;
-          gap: 6px;
+          justify-content: center;
+          gap: 7px;
+          flex: 0 0 auto;
         }
 
         .td-exp-add-btn:hover {
-          background: #166534;
-          box-shadow: 0 4px 12px rgba(21, 128, 61, 0.35);
+          background: #12ae49;
+          box-shadow: 0 3px 8px rgba(22, 163, 74, 0.22);
         }
 
         .td-exp-timeline-container {
           display: flex;
           flex-direction: column;
-          gap: 0;
-          position: relative;
+          gap: 12px;
         }
 
         .td-exp-empty-state { width: 100%; }
 
-        .td-exp-timeline-item {
-          display: flex;
-          gap: 24px;
-          position: relative;
-        }
-
-        .td-exp-timeline-marker-col {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          width: 32px;
-          flex-shrink: 0;
-          position: relative;
-          padding-top: 18px;
-        }
-
-        .td-exp-node-active {
-          width: 22px;
-          height: 22px;
-          border-radius: 50%;
-          border: 2px solid #15803D;
-          background: #FFFFFF;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          z-index: 2;
-          flex-shrink: 0;
-        }
-
-        .td-exp-node-inner-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background: #15803D;
-        }
-
-        .td-exp-timeline-line {
-          width: 2px;
-          background: #E2E8F0;
-          flex: 1;
-          margin: 4px 0;
-          min-height: 120px;
-        }
-
-        .td-exp-node-empty {
-          width: 14px;
-          height: 14px;
-          border-radius: 50%;
-          border: 2px solid #CBD5E1;
-          background: #FFFFFF;
-          margin-bottom: 8px;
-          z-index: 2;
-          flex-shrink: 0;
-        }
-
         .td-exp-card {
-          flex: 1;
+          display: flex;
+          align-items: flex-start;
+          gap: 12px;
+          width: 100%;
           background: #FFFFFF;
-          border-radius: 16px;
-          border: 1px solid #E2E8F0;
-          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
-          padding: 26px 30px;
-          margin-bottom: 24px;
+          border-radius: 10px;
+          border: 1px solid #e6edf3;
+          box-shadow: 0 1px 3px rgba(15, 23, 42, 0.025);
+          padding: 15px 16px;
+        }
+
+        .td-exp-card-icon {
+          display: grid;
+          place-items: center;
+          width: 32px;
+          height: 32px;
+          flex: 0 0 32px;
+          border: 1px solid #edf2f7;
+          border-radius: 7px;
+          background: #f8fafc;
+          color: #64748b;
+        }
+
+        .td-exp-card-content {
+          min-width: 0;
+          flex: 1;
         }
 
         .td-exp-card-header {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 16px;
-          flex-wrap: wrap;
+          gap: 12px;
+        }
+
+        .td-exp-card-heading {
+          min-width: 0;
         }
 
         .td-exp-role {
-          font-size: 20px;
+          font-size: 12px;
           font-weight: 700;
           color: #0F172A;
-          margin: 0 0 4px;
-          letter-spacing: -0.3px;
+          margin: 0 0 2px;
+          letter-spacing: 0;
         }
 
-        .td-exp-school-location {
-          font-size: 13.5px;
+        .td-exp-school {
+          font-size: 10.5px;
           color: #475569;
-          font-weight: 500;
+          font-weight: 600;
+          margin: 0;
+        }
+
+        .td-exp-meta-row {
           display: flex;
           align-items: center;
-          gap: 8px;
+          flex-wrap: wrap;
+          gap: 8px 12px;
+          margin-top: 7px;
+          color: #64748b;
+          font-size: 9px;
+          line-height: 1.3;
         }
 
-        .td-exp-dot-sep {
-          color: #94A3B8;
-        }
-
-        .td-exp-badge {
+        .td-exp-meta-row > span:not(.td-exp-current-badge) {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          background: #F0FDF4;
-          border: 1px solid #DCFCE7;
-          color: #15803D;
-          font-size: 11px;
-          font-weight: 700;
-          padding: 5px 12px;
-          border-radius: 9999px;
-          letter-spacing: 0.4px;
+          gap: 5px;
         }
 
-        .td-exp-badge-icon {
-          color: #15803D;
+        .td-exp-meta-row svg {
+          flex: 0 0 auto;
+          color: #7890a8;
+        }
+
+        .td-exp-current-badge {
+          padding: 3px 8px;
+          border-radius: 999px;
+          background: #dcfce7;
+          color: #15803d;
+          font-size: 9px;
+          font-weight: 700;
         }
 
         .td-exp-desc {
-          font-size: 13.5px;
+          font-size: 9px;
           color: #475569;
-          line-height: 1.6;
-          margin: 16px 0 20px;
-        }
-
-        .td-exp-divider {
-          height: 1px;
-          background: #F1F5F9;
-          margin-bottom: 16px;
-          width: 100%;
+          line-height: 1.5;
+          margin: 8px 0 0;
         }
 
         .td-exp-actions {
           display: flex;
-          align-items: center;
-          gap: 20px;
+          align-items: flex-start;
+          gap: 8px;
+          flex: 0 0 auto;
         }
 
         .td-exp-action-btn {
           display: inline-flex;
           align-items: center;
-          gap: 6px;
-          background: none;
-          border: none;
-          font-size: 13px;
+          justify-content: center;
+          gap: 5px;
+          min-height: 25px;
+          padding: 0 8px;
+          border: 1px solid #e6edf3;
+          border-radius: 6px;
+          background: #fff;
+          font-size: 9px;
           font-weight: 600;
           cursor: pointer;
-          padding: 0;
           font-family: inherit;
           transition: opacity 0.15s ease;
         }
@@ -15747,8 +18861,53 @@ export default function TeacherDashboard() {
           color: #334155;
         }
 
-        .td-exp-action-delete {
-          color: #DC2626;
+        .td-exp-more {
+          position: relative;
+        }
+
+        .td-exp-more > summary {
+          display: grid;
+          place-items: center;
+          width: 25px;
+          height: 25px;
+          border-radius: 6px;
+          color: #64748b;
+          cursor: pointer;
+          list-style: none;
+        }
+
+        .td-exp-more > summary::-webkit-details-marker {
+          display: none;
+        }
+
+        .td-exp-more > summary:hover,
+        .td-exp-more[open] > summary {
+          background: #f1f5f9;
+        }
+
+        .td-exp-more > button {
+          position: absolute;
+          top: calc(100% + 4px);
+          right: 0;
+          z-index: 6;
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          min-width: 100px;
+          padding: 8px 10px;
+          border: 1px solid #e6edf3;
+          border-radius: 7px;
+          background: #fff;
+          box-shadow: 0 6px 18px rgba(15, 23, 42, 0.12);
+          color: #b42318;
+          font: inherit;
+          font-size: 10px;
+          text-align: left;
+          cursor: pointer;
+        }
+
+        .td-exp-more > button:hover {
+          background: #fef2f2;
         }
 
         /* ═══════════════════════════════════════
@@ -17049,13 +20208,12 @@ export default function TeacherDashboard() {
           .td-edu-grid {
             grid-template-columns: 1fr;
           }
-          .td-edu-header-row {
-            flex-direction: column;
-            align-items: flex-start;
+          .td-edu-panel {
+            min-height: 270px;
+            padding: 14px;
           }
           .td-edu-add-btn {
-            width: 100%;
-            justify-content: center;
+            width: auto;
           }
           .td-exp-header-row {
             flex-direction: column;
@@ -17069,10 +20227,11 @@ export default function TeacherDashboard() {
             gap: 14px;
           }
           .td-exp-card {
-            padding: 20px 16px;
+            gap: 9px;
+            padding: 12px;
           }
           .td-exp-role {
-            font-size: 17px;
+            font-size: 12px;
           }
           .td-trcn-subcards-grid {
             grid-template-columns: 1fr;
@@ -17129,6 +20288,151 @@ export default function TeacherDashboard() {
             width: calc(100% - 56px);
             margin-left: 56px;
             text-align: left;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .td-edu-panel > .td-edu-certification-record {
+            display: grid;
+            grid-template-columns: 43px minmax(0, 1fr) auto;
+            gap: 10px 12px;
+            padding: 12px;
+          }
+
+          .td-edu-certification-icon {
+            grid-column: 1;
+            grid-row: 1;
+          }
+
+          .td-edu-certification-details {
+            grid-column: 2 / 4;
+            grid-row: 1;
+          }
+
+          .td-edu-certification-status {
+            grid-column: 2;
+            grid-row: 2;
+            justify-self: start;
+          }
+
+          .td-edu-certification-actions {
+            grid-column: 3;
+            grid-row: 2;
+          }
+
+          .td-edu-card-more > button {
+            right: 0;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .td-edu-panel-heading {
+            flex-wrap: wrap;
+          }
+
+          .td-edu-panel-heading > div {
+            flex-basis: calc(100% - 42px);
+          }
+
+          .td-edu-panel-heading > .td-edu-add-btn {
+            margin-left: 40px;
+          }
+
+          .td-edu-panel .td-edu-card {
+            grid-template-columns: 36px minmax(0, 1fr);
+            align-items: start;
+            gap: 9px 10px;
+            padding: 11px;
+          }
+
+          .td-edu-card-icon {
+            grid-column: 1;
+            grid-row: 1;
+          }
+
+          .td-edu-card-details {
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+          }
+
+          .td-edu-card-details h2,
+          .td-edu-card-details p,
+          .td-edu-card-details small {
+            white-space: normal;
+            overflow-wrap: anywhere;
+          }
+
+          .td-edu-card-meta {
+            flex-wrap: wrap;
+            row-gap: 5px;
+          }
+
+          .td-edu-card-meta > span {
+            white-space: normal;
+          }
+
+          .td-edu-card-actions {
+            grid-column: 2;
+            grid-row: 2;
+            justify-self: end;
+          }
+
+          .td-edu-card-more > summary,
+          .td-edu-certification-more > summary {
+            width: 36px;
+            height: 36px;
+          }
+
+          .td-edu-panel > .td-edu-certification-record {
+            grid-template-columns: 36px minmax(0, 1fr);
+            gap: 10px;
+            padding: 11px;
+          }
+
+          .td-edu-certification-icon {
+            grid-column: 1;
+            grid-row: 1;
+            width: 36px;
+            height: 36px;
+            flex-basis: 36px;
+          }
+
+          .td-edu-certification-details {
+            grid-column: 2;
+            grid-row: 1;
+            min-width: 0;
+          }
+
+          .td-edu-certification-details h3,
+          .td-edu-certification-details p {
+            overflow-wrap: anywhere;
+          }
+
+          .td-edu-certification-meta {
+            align-items: flex-start;
+            flex-direction: column;
+            gap: 4px;
+          }
+
+          .td-edu-certification-meta > span + span::before {
+            display: none;
+          }
+
+          .td-edu-certification-status {
+            grid-column: 2;
+            grid-row: 2;
+            justify-self: start;
+          }
+
+          .td-edu-certification-actions {
+            grid-column: 2;
+            grid-row: 3;
+            justify-self: end;
+          }
+
+          .td-edu-certification-more > button {
+            right: 0;
           }
         }
       `}</style>
