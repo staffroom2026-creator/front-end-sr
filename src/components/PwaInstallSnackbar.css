@@ -1,0 +1,127 @@
+.pwa-install-snackbar {
+  position: fixed;
+  z-index: 45;
+  right: max(20px, env(safe-area-inset-right, 0px));
+  bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(460px, calc(100vw - 32px));
+  padding: 14px;
+  border: 1px solid #dce8e0;
+  border-radius: 16px;
+  background: #fff;
+  color: #183328;
+  box-shadow: 0 12px 36px rgba(9, 34, 22, 0.2);
+  animation: pwa-install-snackbar-enter 220ms ease-out both;
+}
+
+.pwa-install-snackbar__icon {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  background: #e8f9eb;
+  color: #176b45;
+}
+
+.pwa-install-snackbar__content {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.pwa-install-snackbar__content strong {
+  display: block;
+  font-weight: 700;
+}
+
+.pwa-install-snackbar__content p {
+  margin: 5px 0 0;
+  color: #53645a;
+}
+
+.pwa-install-snackbar__action,
+.pwa-install-snackbar__close {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.pwa-install-snackbar__action {
+  padding: 0 12px;
+  background: #176b45;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pwa-install-snackbar__action:hover {
+  background: #105638;
+}
+
+.pwa-install-snackbar__close {
+  width: 36px;
+  min-height: 36px;
+  background: transparent;
+  color: #53645a;
+}
+
+.pwa-install-snackbar__close:hover {
+  background: #f1f5f2;
+}
+
+.pwa-install-snackbar__action:focus-visible,
+.pwa-install-snackbar__close:focus-visible {
+  outline: 3px solid #81c9a5;
+  outline-offset: 2px;
+}
+
+@keyframes pwa-install-snackbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 480px) {
+  .pwa-install-snackbar {
+    right: max(12px, env(safe-area-inset-right, 0px));
+    bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    gap: 9px;
+    width: calc(100vw - 24px);
+    padding: 11px;
+  }
+
+  .pwa-install-snackbar__icon {
+    flex-basis: 34px;
+    width: 34px;
+    height: 34px;
+  }
+
+  .pwa-install-snackbar__action {
+    padding: 0 9px;
+    font-size: 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwa-install-snackbar {
+    animation: none;
+  }
+}

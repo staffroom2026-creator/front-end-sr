@@ -10,6 +10,7 @@ import FooterCTA from './components/FooterCTA';
 import SiteFooter from './components/SiteFooter';
 import ScrollReveal from './components/ScrollReveal';
 import ScrollToTop from './components/ScrollToTop';
+import PwaInstallSnackbar from './components/PwaInstallSnackbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import SignIn from './pages/SignIn';
@@ -48,6 +49,7 @@ function LandingPage() {
       <ScrollReveal><FAQs /></ScrollReveal>
       <ScrollReveal><FooterCTA /></ScrollReveal>
       <SiteFooter />
+      <PwaInstallSnackbar />
     </div>
   );
 }
