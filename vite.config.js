@@ -28,6 +28,11 @@ export default defineConfig({
         changeOrigin: true,
         secure: true,
       },
+      '/uploads': {
+        target: 'https://api.staffroomng.com',
+        changeOrigin: true,
+        secure: true,
+      },
     },
   },
 })

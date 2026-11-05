@@ -9,6 +9,10 @@
       "destination": "https://api.staffroomng.com/teachers/:path*"
     },
     {
+      "source": "/uploads/:path*",
+      "destination": "https://api.staffroomng.com/uploads/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

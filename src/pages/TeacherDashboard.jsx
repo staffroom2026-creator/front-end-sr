@@ -11,8 +11,6 @@ import { profileService } from '../services/profileService';
 import { accountService } from '../services/accountService';
 import { TEACHER_EXPERTISE_CATEGORIES, normalizeTeacherExpertise, toTeacherExpertisePayload } from '../services/teacherExpertiseService';
 import { apiErrorMessage, API_ORIGIN } from '../services/api';
-import DocumentViewer from '@cyntler/react-doc-viewer';
-import '@cyntler/react-doc-viewer/dist/index.css';
 import {
   FiSearch, FiBell, FiMail, FiGrid, FiBriefcase,
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
@@ -23,21 +21,6 @@ import {
 } from 'react-icons/fi';
 
 const COVER_LETTER_MAX_LENGTH = 3000;
-const DocumentPreviewRenderer = ({ mainState }) => {
-  const document = mainState.currentDocument;
-  if (!document?.uri) return null;
-
-  const mimeType = getDocumentMimeType(document.fileName);
-  return mimeType.startsWith('image/')
-    ? <img className="td-document-preview-image" src={document.uri} alt={document.fileName || 'Document preview'} />
-    : <iframe className="td-document-preview-frame" src={document.uri} title={document.fileName || 'PDF document preview'} />;
-};
-
-DocumentPreviewRenderer.fileTypes = ['pdf', 'application/pdf', 'png', 'image/png', 'jpg', 'jpeg', 'image/jpeg'];
-DocumentPreviewRenderer.weight = 1;
-DocumentPreviewRenderer.fileLoader = ({ fileLoaderComplete }) => fileLoaderComplete();
-
-const DOCUMENT_PREVIEW_RENDERERS = [DocumentPreviewRenderer];
 const MAX_CV_FILE_SIZE = 5 * 1024 * 1024;
 const CV_FILE_EXTENSIONS = ['pdf', 'doc', 'docx'];
 const SUPPORTING_DOCUMENT_EXTENSIONS = [...CV_FILE_EXTENSIONS, 'jpg', 'jpeg', 'png'];
@@ -352,6 +335,13 @@ const toTeacherAssetUrl = (assetPath) => {
   if (!assetPath) return '';
   if (/^(data:|https?:\/\/)/i.test(assetPath)) return assetPath;
   return `${API_ORIGIN}/${String(assetPath).replace(/^\/+/, '')}`;
+};
+
+const toTeacherAssetDownloadUrl = (assetUrl) => {
+  const url = new URL(assetUrl, API_ORIGIN);
+  return url.origin === API_ORIGIN && url.pathname.startsWith('/uploads/')
+    ? `${url.pathname}${url.search}`
+    : assetUrl;
 };
 
 const formatMonthYear = (value) => {
@@ -1366,14 +1356,23 @@ export default function TeacherDashboard() {
     }
 
     if (mode === 'view') {
-      window.open(profileCvUrl, '_blank', 'noopener,noreferrer');
+      openDocumentPreview({
+        name: activeResume?.url && activeResume.name ? activeResume.name : getFileNameFromUrl(profileCvUrl),
+        uri: profileCvUrl,
+      });
       return;
     }
 
+    const sourceFileName = getFileNameFromUrl(profileCvUrl);
+    const fileExtension = sourceFileName.match(/\.([^.]+)$/)?.[1];
+    const downloadName = activeResume?.name
+      ? fileExtension && !activeResume.name.toLowerCase().endsWith(`.${fileExtension.toLowerCase()}`)
+        ? `${activeResume.name}.${fileExtension}`
+        : activeResume.name
+      : sourceFileName;
     const link = document.createElement('a');
-    link.href = profileCvUrl;
-    link.download = activeResume.name || 'resume';
-    link.target = '_blank';
+    link.href = toTeacherAssetDownloadUrl(profileCvUrl);
+    link.download = downloadName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -1495,6 +1494,7 @@ export default function TeacherDashboard() {
     setDocumentPreview({
       name: document.name || getFileNameFromUrl(document.uri),
       uri: document.uri,
+      type: getDocumentMimeType(document.name) || getDocumentMimeType(getFileNameFromUrl(document.uri)),
     });
   };
 
@@ -1511,27 +1511,17 @@ export default function TeacherDashboard() {
           <button type="button" aria-label="Close document preview" onClick={() => setDocumentPreview(null)}><FiX size={19} /></button>
         </header>
         <div className="td-document-preview-viewer">
-          <DocumentViewer
-            documents={[{
-              uri: documentPreview.uri,
-              fileName: documentPreview.name,
-              fileType: getDocumentMimeType(documentPreview.name),
-            }]}
-            pluginRenderers={DOCUMENT_PREVIEW_RENDERERS}
-            prefetchMethod="GET"
-            config={{
-              header: { disableHeader: true },
-              noRenderer: {
-                overrideComponent: ({ fileName }) => (
-                  <div className="td-document-preview-unsupported">
-                    <FiInfo size={22} />
-                    <strong>Preview not available for this file type</strong>
-                    <span>{fileName || 'This document'} cannot be previewed in the browser. PDF, JPG and PNG previews are supported.</span>
-                  </div>
-                ),
-              },
-            }}
-          />
+          {documentPreview.type === 'application/pdf'
+            ? <iframe className="td-document-preview-frame" src={documentPreview.uri} title={`${documentPreview.name} preview`} />
+            : documentPreview.type?.startsWith('image/')
+              ? <img className="td-document-preview-image" src={documentPreview.uri} alt={documentPreview.name} />
+              : (
+                <div className="td-document-preview-unsupported">
+                  <FiInfo size={22} />
+                  <strong>Preview not available for this file type</strong>
+                  <span>{documentPreview.name} cannot be previewed in the browser. PDF, JPG and PNG previews are supported.</span>
+                </div>
+              )}
         </div>
       </section>
     </div>
@@ -3080,15 +3070,40 @@ export default function TeacherDashboard() {
     setProfileSubTab(section);
   };
 
+  const handleProfileNavigationClick = (section) => {
+    openProfileSection(section);
+    if (!window.matchMedia('(max-width: 768px)').matches) return;
+
+    const sectionSelectors = {
+      overview: '.td-profile-overview-panel',
+      'teaching-experience': '.td-exp-info-page',
+      education: '.td-edu-info-page',
+      'professional-info': '.td-prof-edit-page',
+      more: '.td-more-page',
+    };
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const target = document.querySelector(sectionSelectors[section]);
+        if (!target) return;
+
+        const nav = document.querySelector('.td-profile-tabs');
+        const stickyOffset = 68 + (nav?.getBoundingClientRect().height || 0) + 8;
+        const targetTop = window.scrollY + target.getBoundingClientRect().top - stickyOffset;
+        window.scrollTo({ top: Math.max(0, targetTop), left: 0, behavior: 'smooth' });
+      });
+    });
+  };
+
   const renderProfileNavigation = (activeSection) => {
     const moreSections = ['more', 'personal-info', 'trcn-certification', 'cv-resume', 'availability'];
     return (
       <nav className="td-profile-tabs" aria-label="Profile sections">
-        <button type="button" className={activeSection === 'overview' ? 'is-active' : ''} aria-current={activeSection === 'overview' ? 'page' : undefined} onClick={() => openProfileSection('overview')}><FiUser size={15} />Overview</button>
-        <button type="button" className={activeSection === 'teaching-experience' ? 'is-active' : ''} aria-current={activeSection === 'teaching-experience' ? 'page' : undefined} onClick={() => openProfileSection('teaching-experience')}><FiBriefcase size={15} />Experience</button>
-        <button type="button" className={activeSection === 'education' ? 'is-active' : ''} aria-current={activeSection === 'education' ? 'page' : undefined} onClick={() => openProfileSection('education')}><FiAward size={15} />Education &amp; Certifications</button>
-        <button type="button" className={activeSection === 'professional-info' ? 'is-active' : ''} aria-current={activeSection === 'professional-info' ? 'page' : undefined} onClick={() => openProfileSection('professional-info')}><FiZap size={15} />Skills</button>
-        <button type="button" className={moreSections.includes(activeSection) ? 'is-active' : ''} aria-current={activeSection === 'more' ? 'page' : undefined} onClick={() => openProfileSection('more')}><FiMoreHorizontal size={16} />More</button>
+        <button type="button" className={activeSection === 'overview' ? 'is-active' : ''} aria-current={activeSection === 'overview' ? 'page' : undefined} onClick={() => handleProfileNavigationClick('overview')}><FiUser size={15} />Overview</button>
+        <button type="button" className={activeSection === 'teaching-experience' ? 'is-active' : ''} aria-current={activeSection === 'teaching-experience' ? 'page' : undefined} onClick={() => handleProfileNavigationClick('teaching-experience')}><FiBriefcase size={15} />Experience</button>
+        <button type="button" className={activeSection === 'education' ? 'is-active' : ''} aria-current={activeSection === 'education' ? 'page' : undefined} onClick={() => handleProfileNavigationClick('education')}><FiAward size={15} />Education &amp; Certifications</button>
+        <button type="button" className={activeSection === 'professional-info' ? 'is-active' : ''} aria-current={activeSection === 'professional-info' ? 'page' : undefined} onClick={() => handleProfileNavigationClick('professional-info')}><FiZap size={15} />Skills</button>
+        <button type="button" className={moreSections.includes(activeSection) ? 'is-active' : ''} aria-current={activeSection === 'more' ? 'page' : undefined} onClick={() => handleProfileNavigationClick('more')}><FiMoreHorizontal size={16} />More</button>
       </nav>
     );
   };
@@ -3183,8 +3198,8 @@ export default function TeacherDashboard() {
             </div>
           </section>
         </div>
-        {renderProfileNavigation(activeSection)}
       </div>
+      {renderProfileNavigation(activeSection)}
     </>
   );
 
@@ -5207,6 +5222,7 @@ export default function TeacherDashboard() {
                       </footer>
                     )}
                   </section>
+                  {renderDocumentPreviewModal()}
                 </Motion.div>
               ) : profileSubTab === 'overview' || showBasicProfileModal ? (
                 <>
@@ -5300,9 +5316,8 @@ export default function TeacherDashboard() {
                     </div>
                   </section>
                   </div>
-
-                  {renderProfileNavigation('overview')}
                   </div>
+                  {renderProfileNavigation('overview')}
 
                   <section className="td-profile-overview-panel">
                     <div className="td-profile-overview-panel-heading">
@@ -15343,7 +15358,6 @@ export default function TeacherDashboard() {
         .td-profile-page-heading p { margin-top: 3px; color: #64748b; font-size: 13px; }
         .td-profile-overview-shell { display: flex; flex-direction: column; align-items: stretch; gap: 0; width: 100%; }
         .td-profile-overview-top { display: grid; grid-template-columns: minmax(0, 1.42fr) minmax(0, 1fr); align-items: stretch; align-content: start; gap: 20px; margin: 0 0 18px; }
-        .td-profile-overview-shell > .td-profile-tabs { position: relative; z-index: 5; flex: 0 0 auto; width: 100%; margin: 0 0 18px; }
         .td-profile-overview-top .td-profile-header-card { min-width: 0; min-height: 202px; margin: 0; padding: 22px 24px; border-radius: 18px; box-shadow: 0 2px 10px rgba(15, 23, 42, .035); }
         .td-profile-overview-top .td-profile-header-left { min-width: 0; align-items: flex-start; gap: 22px; }
         .td-profile-overview-top .td-profile-info-block { min-width: 0; }
@@ -20609,18 +20623,34 @@ export default function TeacherDashboard() {
           }
 
           .td-profile-tabs {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 0;
-            margin-right: 0;
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 4px;
+            overflow-x: auto;
+            overflow-y: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
             padding: 4px;
+            position: sticky;
+            top: 68px;
+            z-index: 99;
+            width: calc(100% + 64px);
+            margin-left: -32px;
+            border-radius: 0;
+            background: #fff;
+            box-shadow: 0 3px 12px rgba(15, 23, 42, .1);
+          }
+
+          .td-profile-tabs::-webkit-scrollbar {
+            display: none;
           }
 
           .td-profile-tabs > button {
-            min-width: 0;
+            flex: 0 0 auto;
             min-height: 44px;
-            padding: 7px 8px;
-            white-space: normal;
+            padding: 7px 12px;
+            white-space: nowrap;
             line-height: 1.3;
             text-align: center;
           }
@@ -20802,8 +20832,8 @@ export default function TeacherDashboard() {
           }
 
           .td-profile-tabs {
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            border-radius: 10px;
+            width: calc(100% + 60px);
+            margin-left: -30px;
           }
 
           .td-profile-tabs > button {
@@ -20885,6 +20915,13 @@ export default function TeacherDashboard() {
 
           .td-prof-skills-input-row > button {
             min-height: 40px;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .td-profile-tabs {
+            width: calc(100% + 52px);
+            margin-left: -26px;
           }
         }
       `}</style>
