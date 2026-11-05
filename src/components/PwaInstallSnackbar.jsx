@@ -20,6 +20,7 @@ export default function PwaInstallSnackbar() {
   const [installPrompt, setInstallPrompt] = useState(null);
   const [isVisible, setIsVisible] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
+  const [installError, setInstallError] = useState('');
 
   useEffect(() => {
     if (isAppInstalled() || window.sessionStorage.getItem(DISMISSED_KEY)) {
@@ -57,12 +58,19 @@ export default function PwaInstallSnackbar() {
       return;
     }
 
-    await installPrompt.prompt();
-    const { outcome } = await installPrompt.userChoice;
-    setInstallPrompt(null);
+    setInstallError('');
 
-    if (outcome === 'accepted') {
-      setIsVisible(false);
+    try {
+      await installPrompt.prompt();
+      const { outcome } = await installPrompt.userChoice;
+      setInstallPrompt(null);
+
+      if (outcome === 'accepted') {
+        setIsVisible(false);
+      }
+    } catch {
+      setInstallError('Installation could not be started. Use your browser menu to install Staffroom.');
+      setShowInstructions(true);
     }
   };
 
@@ -77,6 +85,7 @@ export default function PwaInstallSnackbar() {
       </div>
       <div className="pwa-install-snackbar__content">
         <strong>Add Staffroom to your home screen</strong>
+        {installError && <p role="alert">{installError}</p>}
         {showInstructions && (
           <p role="status">{getInstallInstructions()}</p>
         )}
@@ -87,7 +96,7 @@ export default function PwaInstallSnackbar() {
         onClick={handleInstall}
         aria-expanded={showInstructions}
       >
-        {installPrompt ? 'Install' : showInstructions ? 'Got it' : 'How to install'}
+        {installPrompt ? 'Install app' : showInstructions ? 'Got it' : 'Install app'}
       </button>
       <button
         className="pwa-install-snackbar__close"
