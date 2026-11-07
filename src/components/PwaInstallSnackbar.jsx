@@ -1,8 +1,39 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { FiDownload, FiX } from 'react-icons/fi';
 import './PwaInstallSnackbar.css';
 
 const DISMISSED_KEY = 'staffroom-pwa-install-dismissed';
+
+let deferredInstallPrompt = null;
+const installPromptSubscribers = new Set();
+
+function subscribeToInstallPrompt(callback) {
+  installPromptSubscribers.add(callback);
+  return () => installPromptSubscribers.delete(callback);
+}
+
+function getDeferredInstallPrompt() {
+  return deferredInstallPrompt;
+}
+
+function setDeferredInstallPrompt(prompt) {
+  deferredInstallPrompt = prompt;
+  installPromptSubscribers.forEach((callback) => callback());
+}
+
+const handleBeforeInstallPrompt = (event) => {
+  setDeferredInstallPrompt(event);
+};
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+}
+
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => {
+    window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+  });
+}
 
 function isAppInstalled() {
   return window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -17,7 +48,11 @@ function getInstallInstructions() {
 }
 
 export default function PwaInstallSnackbar() {
-  const [installPrompt, setInstallPrompt] = useState(null);
+  const installPrompt = useSyncExternalStore(
+    subscribeToInstallPrompt,
+    getDeferredInstallPrompt,
+    () => null,
+  );
   const [isVisible, setIsVisible] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [installError, setInstallError] = useState('');
@@ -28,21 +63,15 @@ export default function PwaInstallSnackbar() {
     }
 
     const showSnackbar = window.setTimeout(() => setIsVisible(true), 1200);
-    const handleBeforeInstallPrompt = (event) => {
-      event.preventDefault();
-      setInstallPrompt(event);
-    };
     const handleAppInstalled = () => {
       setIsVisible(false);
-      setInstallPrompt(null);
+      setDeferredInstallPrompt(null);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.clearTimeout(showSnackbar);
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
@@ -63,7 +92,7 @@ export default function PwaInstallSnackbar() {
     try {
       await installPrompt.prompt();
       const { outcome } = await installPrompt.userChoice;
-      setInstallPrompt(null);
+      setDeferredInstallPrompt(null);
 
       if (outcome === 'accepted') {
         setIsVisible(false);
@@ -96,7 +125,7 @@ export default function PwaInstallSnackbar() {
         onClick={handleInstall}
         aria-expanded={showInstructions}
       >
-        {installPrompt ? 'Install app' : showInstructions ? 'Got it' : 'Install app'}
+        {installPrompt ? 'Install app' : showInstructions ? 'Got it' : 'How to install'}
       </button>
       <button
         className="pwa-install-snackbar__close"

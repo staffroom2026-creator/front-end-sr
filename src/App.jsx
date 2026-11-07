@@ -49,7 +49,6 @@ function LandingPage() {
       <ScrollReveal><FAQs /></ScrollReveal>
       <ScrollReveal><FooterCTA /></ScrollReveal>
       <SiteFooter />
-      <PwaInstallSnackbar />
     </div>
   );
 }
@@ -130,6 +129,7 @@ function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+      <PwaInstallSnackbar />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/signin" element={<PublicRoute><SignIn /></PublicRoute>} />
