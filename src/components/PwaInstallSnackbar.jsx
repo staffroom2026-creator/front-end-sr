@@ -1,5 +1,5 @@
-import { useEffect, useState, useSyncExternalStore } from 'react';
-import { FiDownload, FiX } from 'react-icons/fi';
+import { createElement, useEffect, useState, useSyncExternalStore } from 'react';
+import { FiDownload, FiPlus, FiShare, FiX } from 'react-icons/fi';
 import './PwaInstallSnackbar.css';
 
 const DISMISSED_KEY = 'staffroom-pwa-install-dismissed';
@@ -22,6 +22,7 @@ function setDeferredInstallPrompt(prompt) {
 }
 
 const handleBeforeInstallPrompt = (event) => {
+  event.preventDefault();
   setDeferredInstallPrompt(event);
 };
 
@@ -40,11 +41,22 @@ function isAppInstalled() {
 }
 
 function getInstallInstructions() {
-  const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isAppleMobile = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-  return isAppleMobile
-    ? 'Tap Share, then choose “Add to Home Screen”.'
-    : 'Open your browser menu and choose “Install Staffroom” or “Add to Home screen”.';
+  return {
+    isAppleMobile,
+    steps: isAppleMobile
+      ? [
+        { icon: FiShare, text: 'Tap the Share button in Safari.' },
+        { icon: FiPlus, text: 'Scroll down and tap “Add to Home Screen”.' },
+        { icon: FiPlus, text: 'Tap “Add” to finish.' },
+      ]
+      : [
+        { icon: FiDownload, text: 'Open your browser menu.' },
+        { icon: FiPlus, text: 'Choose “Install Staffroom” or “Add to Home screen”.' },
+      ],
+  };
 }
 
 export default function PwaInstallSnackbar() {
@@ -56,6 +68,7 @@ export default function PwaInstallSnackbar() {
   const [isVisible, setIsVisible] = useState(false);
   const [showInstructions, setShowInstructions] = useState(false);
   const [installError, setInstallError] = useState('');
+  const instructions = getInstallInstructions();
 
   useEffect(() => {
     if (isAppInstalled() || window.sessionStorage.getItem(DISMISSED_KEY)) {
@@ -83,7 +96,7 @@ export default function PwaInstallSnackbar() {
 
   const handleInstall = async () => {
     if (!installPrompt) {
-      setShowInstructions((visible) => !visible);
+      setShowInstructions(true);
       return;
     }
 
@@ -108,33 +121,83 @@ export default function PwaInstallSnackbar() {
   }
 
   return (
-    <aside className="pwa-install-snackbar" aria-label="Install Staffroom">
-      <div className="pwa-install-snackbar__icon" aria-hidden="true">
-        <FiDownload size={19} />
-      </div>
-      <div className="pwa-install-snackbar__content">
-        <strong>Add Staffroom to your home screen</strong>
-        {installError && <p role="alert">{installError}</p>}
-        {showInstructions && (
-          <p role="status">{getInstallInstructions()}</p>
-        )}
-      </div>
-      <button
-        className="pwa-install-snackbar__action"
-        type="button"
-        onClick={handleInstall}
-        aria-expanded={showInstructions}
-      >
-        {installPrompt ? 'Install app' : showInstructions ? 'Got it' : 'How to install'}
-      </button>
-      <button
-        className="pwa-install-snackbar__close"
-        type="button"
-        onClick={dismissSnackbar}
-        aria-label="Dismiss install message"
-      >
-        <FiX size={18} />
-      </button>
-    </aside>
+    <>
+      <aside className="pwa-install-snackbar" aria-label="Install Staffroom">
+        <div className="pwa-install-snackbar__icon" aria-hidden="true">
+          <FiDownload size={19} />
+        </div>
+        <div className="pwa-install-snackbar__content">
+          <strong>Add Staffroom to your home screen</strong>
+          {installError && <p role="alert">{installError}</p>}
+        </div>
+        <button
+          className="pwa-install-snackbar__action"
+          type="button"
+          onClick={handleInstall}
+          aria-haspopup="dialog"
+        >
+          Install app
+        </button>
+        <button
+          className="pwa-install-snackbar__close"
+          type="button"
+          onClick={dismissSnackbar}
+          aria-label="Dismiss install message"
+        >
+          <FiX size={18} />
+        </button>
+      </aside>
+      {showInstructions && (
+        <div
+          className="pwa-install-guide-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowInstructions(false);
+          }}
+        >
+          <section
+            className="pwa-install-guide"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="pwa-install-guide-title"
+          >
+            <header className="pwa-install-guide__header">
+              <div className="pwa-install-guide__app-icon" aria-hidden="true">
+                <FiDownload size={20} />
+              </div>
+              <button
+                className="pwa-install-guide__close"
+                type="button"
+                onClick={() => setShowInstructions(false)}
+                aria-label="Close install instructions"
+              >
+                <FiX size={20} />
+              </button>
+            </header>
+            <h2 id="pwa-install-guide-title">Add Staffroom to your Home Screen</h2>
+            <p className="pwa-install-guide__intro">
+              {instructions.isAppleMobile
+                ? 'Follow these steps in Safari to install Staffroom on your device.'
+                : 'Follow these steps in your browser to install Staffroom on your device.'}
+            </p>
+            <ol className="pwa-install-guide__steps">
+              {instructions.steps.map((step, index) => (
+                <li key={step.text}>
+                  <span className="pwa-install-guide__step-number">{index + 1}</span>
+                  {createElement(step.icon, { size: 18, 'aria-hidden': true })}
+                  <span>{step.text}</span>
+                </li>
+              ))}
+            </ol>
+            <button
+              className="pwa-install-guide__done"
+              type="button"
+              onClick={() => setShowInstructions(false)}
+            >
+              Got it
+            </button>
+          </section>
+        </div>
+      )}
+    </>
   );
 }
