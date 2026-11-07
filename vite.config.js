@@ -20,7 +20,7 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'portrait',
         scope: '/',
-        start_url: '/',
+        start_url: '/signin',
         id: '/',
         icons: [
           {
@@ -44,6 +44,9 @@ export default defineConfig({
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,jpg,jpeg,webp}'],
         maximumFileSizeToCacheInBytes: 15 * 1024 * 1024,
+      },
+      devOptions: {
+        enabled: true,
       },
     }),
   ],
