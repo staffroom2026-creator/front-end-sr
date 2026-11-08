@@ -85,9 +85,11 @@ export default function TeacherInfo() {
   const navigate = useNavigate();
   const { user, setUser } = useAuth();
   const [form, setForm] = useState({
-    country: '',
+    title: 'Teacher',
+    country: 'Nigeria',
     state: '',
-    level: '',
+    level: [],
+    levelOpen: false,
     subjects: [],
   });
   const [subjectInput, setSubjectInput] = useState('');
@@ -182,9 +184,31 @@ export default function TeacherInfo() {
     }));
   };
 
+  const teachingLevels = ['Pre KG', 'KG', 'Primary', 'Junior Secondary', 'Senior Secondary'];
+  const subjectSuggestions = [
+    'Agricultural Science', 'Arabic', 'Biology', 'Business Studies', 'Chemistry',
+    'Christian Religious Studies', 'Civic Education', 'Computer Science', 'Creative Arts',
+    'Economics', 'English Language', 'English Literature', 'French', 'Geography', 'Government',
+    'History', 'Home Economics', 'Islamic Studies', 'Literature in English', 'Mathematics',
+    'Music', 'Physical Education', 'Physics', 'Social Studies', 'Technical Drawing', 'Further Mathematics',
+    'Accounting', 'Basic Science', 'Fine Arts', 'Marketing', 'Psychology', 'Sociology',
+    'Art', 'Commerce', 'Drama', 'Spelling', 'Reading', 'Writing', 'Phonics', 'Health Education',
+    'Basic Technology', 'Electrical Installation', 'Auto Mechanics', 'Food and Nutrition',
+    'Catering', 'Computer Appreciation', 'Data Processing', 'Office Practice', 'Photography'
+  ];
+
+  const toggleTeachingLevel = (level) => {
+    setForm((current) => ({
+      ...current,
+      level: current.level.includes(level)
+        ? current.level.filter((item) => item !== level)
+        : [...current.level, level],
+    }));
+  };
+
   const handleNext = async () => {
     const subjectList = form.subjects.filter(Boolean);
-    if (!form.country || !form.state || !form.level || subjectList.length === 0) {
+    if (!form.title || !form.country || form.level.length === 0 || subjectList.length === 0) {
       setError('Please complete all teacher profile fields before continuing.');
       return;
     }
@@ -196,11 +220,11 @@ export default function TeacherInfo() {
       const payload = {
         subjects: subjectList,
         skills: subjectList,
-        teaching_levels: [form.level],
-        location: `${form.state}, ${form.country}`.trim(),
-        preferred_location: `${form.state}, ${form.country}`.trim(),
-        preferred_employment_type: form.level === 'primary' ? 'full-time' : 'part-time',
-        role_title: 'Teacher',
+        teaching_levels: form.level,
+        location: [form.state, form.country].filter(Boolean).join(', '),
+        preferred_location: [form.state, form.country].filter(Boolean).join(', '),
+        preferred_employment_type: form.level.includes('Primary') ? 'full-time' : 'part-time',
+        role_title: form.title,
         bio: '',
         experience_years: 0,
         availability: 'Open',
@@ -226,7 +250,7 @@ export default function TeacherInfo() {
       if (nextUser) {
         sessionStorage.setItem('staffroom_user', JSON.stringify(nextUser));
       }
-      navigate('/teacher-dashboard', { replace: true });
+      navigate('/1st-success-step', { replace: true });
     } catch (err) {
       const backendErrors = err?.response?.data?.errors;
       const fieldDetails = backendErrors && typeof backendErrors === 'object'
@@ -245,184 +269,413 @@ export default function TeacherInfo() {
       initial="hidden"
       animate="visible"
     >
-      {/* ── Header ── */}
       <header className="ti-header">
-        <Link to="/" className="ti-logo">
+        <Link to="/" className="ti-logo" aria-label="Staffroom home">
           <BrandLogo />
         </Link>
       </header>
 
-      {/* ── Main Content ── */}
       <main className="ti-main">
         <div className="ti-container">
-          <div className="ti-grid ti-grid--single">
-            {/* ── Left Column ── */}
-            <div className="ti-col">
-              <Motion.section variants={itemVariants} className="ti-section">
-                <label className="ti-label">Location</label>
-                <div className="ti-select-wrapper">
-                  <SearchableSelect
-                    value={form.country}
-                    placeholder={loadingLocations ? 'Loading countries...' : 'Search country...'}
-                    disabled={loadingLocations}
-                    options={countries.map((country) => ({ value: country.name, label: country.name }))}
-                    onChange={(country) => setForm((current) => ({ ...current, country, state: '' }))}
-                  />
-                </div>
-                <div className="ti-select-wrapper" style={{ marginTop: '12px' }}>
-                  <SearchableSelect
-                    value={form.state}
-                    placeholder={!form.country ? 'Choose country first' : 'Search state...'}
-                    disabled={!form.country || states.length === 0}
-                    options={states.map((state) => ({ value: state.name, label: state.name }))}
-                    onChange={(state) => setForm((current) => ({ ...current, state }))}
-                  />
-                </div>
-              </Motion.section>
+          <div className="ti-header-copy">
+            <h1 className="ti-title">Let’s set up your professional<br />profile</h1>
+            <p className="ti-subtitle">
+              Tell us a few details to get you started.<br />
+              You can add more information later.
+            </p>
+          </div>
 
-              <Motion.section variants={itemVariants} className="ti-section">
-                <label className="ti-label">Teaching Level</label>
-                <div className="ti-select-wrapper">
-                  <select 
-                    className="ti-select"
-                    value={form.level}
-                    onChange={(e) => setForm({...form, level: e.target.value})}
-                  >
-                    <option value="" disabled hidden>Select</option>
-                    <option value="Pre KG">Pre KG</option>
-                    <option value="KG">KG</option>
-                    <option value="Primary">Primary</option>
-                    <option value="Junior Secondary">Junior Secondary</option>
-                    <option value="Senior Secondary">Senior Secondary</option>
-                    {/* <option value="Tertiary">Tertiary</option> */}
-                  </select>
-                  <span className="ti-chevron">
+          <div className="ti-form">
+            <Motion.section variants={itemVariants} className="ti-section">
+              <label className="ti-label">Professional title</label>
+              <div className="ti-helper">What best describes your current role?</div>
+              <div className="ti-select-wrapper">
+                <select
+                  className="ti-select"
+                  value={form.title}
+                  onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
+                >
+                  <option value="Teacher">Teacher</option>
+                  <option value="Head Teacher">Head Teacher</option>
+                  <option value="Lecturer">Lecturer</option>
+                  <option value="Tutor">Tutor</option>
+                </select>
+                <span className="ti-chevron" aria-hidden="true">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </span>
+              </div>
+            </Motion.section>
+
+            <Motion.section variants={itemVariants} className="ti-section">
+              <label className="ti-label">Location</label>
+              <div className="ti-helper">Where are you based?</div>
+              <div className="ti-select-wrapper">
+                <SearchableSelect
+                  value={form.country}
+                  placeholder={loadingLocations ? 'Loading countries...' : 'Nigeria'}
+                  disabled={loadingLocations}
+                  options={countries.map((country) => ({ value: country.name, label: country.name }))}
+                  onChange={(country) => setForm((current) => ({ ...current, country, state: '' }))}
+                />
+              </div>
+              <div className="ti-select-wrapper ti-state-wrap">
+                <SearchableSelect
+                  value={form.state}
+                  placeholder={!form.country ? 'Choose country first' : 'Select state (optional)'}
+                  disabled={!form.country || states.length === 0}
+                  options={states.map((state) => ({ value: state.name, label: state.name }))}
+                  onChange={(state) => setForm((current) => ({ ...current, state }))}
+                />
+              </div>
+            </Motion.section>
+
+            <Motion.section variants={itemVariants} className="ti-section">
+              <label className="ti-label">Teaching level</label>
+              <div className="ti-helper">Which level(s) do you teach?</div>
+              <div className="ti-multiselect">
+                <button
+                  type="button"
+                  className="ti-multiselect-trigger"
+                  onClick={() => setForm((current) => ({ ...current, levelOpen: !current.levelOpen }))}
+                >
+                  <span className="ti-multiselect-value">
+                    {form.level.length > 0 ? form.level.join(', ') : 'Select teaching level(s)'}
+                  </span>
+                  <span className="ti-chevron" aria-hidden="true">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M6 9l6 6 6-6" />
                     </svg>
                   </span>
-                </div>
-              </Motion.section>
+                </button>
 
-              <Motion.section variants={itemVariants} className="ti-section">
-                <label className="ti-label">Subjects</label>
-                <div className="ti-subjects-input">
-                  {form.subjects.length > 0 && (
-                    <div className="ti-subject-tags">
-                      {form.subjects.map((subject) => (
-                        <span key={subject} className="ti-subject-tag">
-                          {subject}
-                          <button type="button" aria-label={`Remove ${subject}`} onClick={() => removeSubject(subject)}>×</button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <input
-                    type="text"
-                    className="ti-subject-input"
-                    value={subjectInput}
-                    placeholder="Type to add a subject..."
-                    onChange={(event) => setSubjectInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter' || event.key === ',') {
-                        event.preventDefault();
-                        addSubject(subjectInput);
-                      }
-                    }}
-                    onBlur={() => {
+                {form.levelOpen && (
+                  <div className="ti-multiselect-menu" role="listbox" aria-multiselectable="true">
+                    {teachingLevels.map((level) => {
+                      const selected = form.level.includes(level);
+                      return (
+                        <button
+                          key={level}
+                          type="button"
+                          className={`ti-multiselect-option ${selected ? 'selected' : ''}`}
+                          onClick={() => toggleTeachingLevel(level)}
+                          aria-pressed={selected}
+                        >
+                          <span className="ti-checkmark" aria-hidden="true">{selected ? '✓' : ''}</span>
+                          <span>{level}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </Motion.section>
+
+            <Motion.section variants={itemVariants} className="ti-section">
+              <label className="ti-label">Subjects</label>
+              <div className="ti-helper">Which subjects do you teach?</div>
+              <div className="ti-subjects-input">
+                {form.subjects.length > 0 && (
+                  <div className="ti-subject-tags">
+                    {form.subjects.map((subject) => (
+                      <span key={subject} className="ti-subject-tag">
+                        {subject}
+                        <button type="button" aria-label={`Remove ${subject}`} onClick={() => removeSubject(subject)}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+              <div className="ti-subject-combobox">
+                <input
+                  type="text"
+                  className="ti-subject-input"
+                  value={subjectInput}
+                  placeholder="Type to search and add subjects..."
+                  onChange={(event) => setSubjectInput(event.target.value)}
+                  onFocus={() => setSubjectInput((current) => current)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ',') {
+                      event.preventDefault();
+                      addSubject(subjectInput);
+                    }
+                    if (event.key === 'Escape') {
+                      setSubjectInput('');
+                    }
+                  }}
+                  onBlur={() => {
+                    window.setTimeout(() => {
                       if (subjectInput.trim()) {
                         addSubject(subjectInput);
                       }
-                    }}
-                  />
-                </div>
-              </Motion.section>
-            </div>
+                    }, 130);
+                  }}
+                />
 
+                {subjectInput.trim() && (
+                  <div className="ti-subject-dropdown" role="listbox">
+                    {subjectSuggestions
+                      .filter((subject) => {
+                        const query = subjectInput.toLowerCase();
+                        return subject.toLowerCase().includes(query)
+                          && !form.subjects.some((selected) => selected.toLowerCase() === subject.toLowerCase());
+                      })
+                      .slice(0, 8)
+                      .map((subject) => (
+                        <button
+                          key={subject}
+                          type="button"
+                          className="ti-subject-option"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => addSubject(subject)}
+                        >
+                          {subject}
+                        </button>
+                      ))}
+
+                    {subjectInput.trim() && !subjectSuggestions.some((subject) => subject.toLowerCase() === subjectInput.trim().toLowerCase()) && (
+                      <button
+                        type="button"
+                        className="ti-subject-option ti-subject-option--custom"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => addSubject(subjectInput)}
+                      >
+                        Add &ldquo;{subjectInput.trim()}&rdquo;
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            </Motion.section>
           </div>
 
           {error && (
-            <div style={{ marginTop: '16px', color: '#b91c1c', fontSize: '14px', textAlign: 'center' }}>{error}</div>
+            <div className="ti-error">{error}</div>
           )}
 
-          {/* ── Submit Button ── */}
           <Motion.div variants={itemVariants} className="ti-footer">
             <button className="ti-next-btn" onClick={handleNext} disabled={saving}>
-              {saving ? 'Saving…' : 'Save'}
+              {saving ? 'Saving…' : 'Next'}
             </button>
           </Motion.div>
         </div>
       </main>
 
       <style>{`
+        :root {
+          --ti-bg: #f3f3f2;
+          --ti-panel: #f1f2f1;
+          --ti-field: #f4f5f4;
+          --ti-border: #dfe3df;
+          --ti-border-strong: #d0d5d0;
+          --ti-text: #111827;
+          --ti-muted: #7a7d80;
+          --ti-primary: #1fbe48;
+          --ti-primary-dark: #1a9d40;
+        }
+
         .ti-page {
           min-height: 100vh;
-          background-color: #F0F0EE;
-          font-family: 'DM Sans', sans-serif;
+          background: var(--ti-bg);
+          color: var(--ti-text);
+          font-family: 'DM Sans', 'Segoe UI', sans-serif;
           display: flex;
           flex-direction: column;
-          color: #2D3748;
         }
+
+        .ti-header {
+          padding: 32px 0 0 56px;
+        }
+
         .ti-logo {
           display: inline-flex;
           align-items: center;
-          gap: 8px;
           text-decoration: none;
-          color: #111;
-          font-weight: 700;
-          font-size: 18px;
-          letter-spacing: -0.4px;
+          line-height: 1;
+        }
+
+        .ti-logo img {
+          width: 158px;
+          height: auto;
+          display: block;
         }
 
         .ti-main {
-          flex: 1;
           display: flex;
           justify-content: center;
-          align-items: center;
-          padding: 20px;
+          align-items: flex-start;
+          flex: 1;
+          padding: 12px 20px 48px;
         }
 
         .ti-container {
           width: 100%;
-          max-width: 900px;
+          max-width: 480px;
+        }
+
+        .ti-header-copy {
+          text-align: center;
+          margin-bottom: 22px;
+        }
+
+        .ti-title {
+          margin: 0;
+          font-size: clamp(2.1rem, 3vw, 3.05rem);
+          line-height: 1.08;
+          letter-spacing: -0.06em;
+          font-weight: 700;
+          color: #1e1e1f;
+        }
+
+        .ti-subtitle {
+          margin: 14px 0 0;
+          color: #6d7179;
+          font-size: 14px;
+          line-height: 1.55;
+          font-weight: 500;
+        }
+
+        .ti-form {
           display: flex;
           flex-direction: column;
-          gap: 40px;
-        }
-
-        .ti-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 48px;
-        }
-
-        .ti-grid--single {
-          grid-template-columns: minmax(0, 1fr);
-          max-width: 520px;
-          margin: 0 auto;
-          width: 100%;
-        }
-
-        .ti-col {
-          display: flex;
-          flex-direction: column;
-          gap: 24px;
+          gap: 18px;
         }
 
         .ti-section {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
 
         .ti-label {
+          margin: 0;
+          font-size: 15px;
+          line-height: 1.3;
           font-weight: 600;
-          font-size: 16px;
-          color: #2D3748;
+          color: #1f2937;
+        }
+
+        .ti-helper {
+          margin: 0;
+          font-size: 12px;
+          line-height: 1.4;
+          color: #7d8289;
         }
 
         .ti-select-wrapper {
           position: relative;
+        }
+
+        .ti-state-wrap {
+          margin-top: 8px;
+        }
+
+        .ti-select,
+        .ti-search-select > input,
+        .ti-subjects-input,
+        .ti-multiselect-trigger {
+          width: 100%;
+          border-radius: 10px;
+          border: 1px solid var(--ti-border);
+          background: var(--ti-field);
+          color: #1e2530;
+          font-size: 14px;
+          box-sizing: border-box;
+        }
+
+        .ti-select {
+          appearance: none;
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          height: 46px;
+          padding: 0 42px 0 14px;
+          outline: none;
+          cursor: pointer;
+          color: #1f2937;
+        }
+
+        .ti-multiselect {
+          position: relative;
+        }
+
+        .ti-multiselect-trigger {
+          position: relative;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          min-height: 46px;
+          padding: 0 42px 0 14px;
+          background: var(--ti-field);
+          color: #1f2937;
+          cursor: pointer;
+          text-align: left;
+          font: inherit;
+          outline: none;
+        }
+
+        .ti-multiselect-value {
+          color: #1f2937;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .ti-multiselect-menu {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: calc(100% + 8px);
+          background: #ffffff;
+          border: 1px solid var(--ti-border);
+          border-radius: 10px;
+          box-shadow: 0 14px 28px rgba(17, 24, 39, 0.08);
+          z-index: 20;
+          overflow: hidden;
+        }
+
+        .ti-multiselect-option {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          border: 0;
+          background: transparent;
+          padding: 10px 12px;
+          text-align: left;
+          font: inherit;
+          color: #1f2937;
+          cursor: pointer;
+        }
+
+        .ti-multiselect-option:hover {
+          background: #f3f5f5;
+        }
+
+        .ti-multiselect-option.selected {
+          background: #edf7f0;
+        }
+
+        .ti-checkmark {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 16px;
+          height: 16px;
+          border-radius: 4px;
+          border: 1px solid #7d8289;
+          font-size: 12px;
+          font-weight: 700;
+          color: #1a9d40;
+          background: #fff;
+        }
+
+        .ti-select:focus,
+        .ti-search-select > input:focus,
+        .ti-subject-input:focus {
+          outline: none;
+          border-color: var(--ti-border-strong);
         }
 
         .ti-search-select {
@@ -430,94 +683,116 @@ export default function TeacherInfo() {
         }
 
         .ti-search-select > input {
-          width: 100%;
-          padding: 14px 40px 14px 16px;
-          border-radius: 12px;
-          border: 1px solid #E2E8F0;
-          background-color: #E2E8F0;
-          font-size: 14px;
-          color: #2D3748;
+          height: 46px;
+          padding: 0 42px 0 14px;
           outline: none;
-          box-sizing: border-box;
-        }
-
-        .ti-search-select > input:focus {
-          border-color: #CBD5E0;
-          background-color: #FAFAFA;
         }
 
         .ti-search-select::after {
-          content: '⌄';
+          content: '';
           position: absolute;
-          top: 11px;
-          right: 16px;
-          color: #718096;
-          font-size: 18px;
+          top: 50%;
+          right: 14px;
+          width: 9px;
+          height: 9px;
+          border-right: 1.5px solid #6d7179;
+          border-bottom: 1.5px solid #6d7179;
+          transform: translateY(-65%) rotate(45deg);
           pointer-events: none;
         }
 
         .ti-search-options {
           position: absolute;
-          z-index: 10;
-          top: calc(100% + 4px);
+          top: calc(100% + 6px);
           left: 0;
           right: 0;
+          background: #fff;
+          border: 1px solid var(--ti-border);
+          border-radius: 8px;
+          box-shadow: 0 14px 28px rgba(17, 24, 39, 0.08);
           max-height: 220px;
           overflow-y: auto;
-          padding: 4px;
-          border: 1px solid #CBD5E0;
-          border-radius: 10px;
-          background: #FFFFFF;
-          box-shadow: 0 10px 24px rgba(45, 55, 72, 0.14);
+          z-index: 20;
         }
 
         .ti-search-option {
-          display: block;
           width: 100%;
           padding: 10px 12px;
-          border: none;
-          border-radius: 7px;
+          border: 0;
           background: transparent;
-          color: #2D3748;
-          font-size: 14px;
           text-align: left;
           cursor: pointer;
+          font-size: 14px;
+          color: #1f2937;
         }
 
         .ti-search-option:hover {
-          background: #F0FDF4;
-          color: #166534;
+          background: #f3f5f5;
         }
 
         .ti-search-empty {
           display: block;
           padding: 10px 12px;
-          color: #718096;
+          color: var(--ti-muted);
           font-size: 13px;
         }
 
-        .ti-select {
-          width: 100%;
-          padding: 14px 16px;
-          border-radius: 12px;
-          border: 1px solid #E2E8F0;
-          background-color: #E2E8F0;
-          font-size: 14px;
-          color: #718096;
-          appearance: none;
-          outline: none;
-          cursor: pointer;
+        .ti-chevron {
+          position: absolute;
+          right: 14px;
+          top: 50%;
+          transform: translateY(-50%);
+          pointer-events: none;
+          color: #61656d;
         }
 
         .ti-subjects-input {
+          position: relative;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 8px;
+          min-height: 46px;
+          padding: 8px 10px 10px;
+        }
+
+        .ti-subject-combobox {
+          position: relative;
+        }
+
+        .ti-subject-dropdown {
+          position: absolute;
+          left: 0;
+          right: 0;
+          top: calc(100% + 6px);
+          display: flex;
+          flex-direction: column;
+          background: #fff;
+          border: 1px solid var(--ti-border);
+          border-radius: 8px;
+          box-shadow: 0 14px 28px rgba(17, 24, 39, 0.08);
+          z-index: 25;
+          max-height: 240px;
+          overflow-y: auto;
+        }
+
+        .ti-subject-option {
           width: 100%;
-          padding: 12px 12px 10px;
-          border-radius: 12px;
-          border: 1px solid #E2E8F0;
-          background-color: #F8FAFC;
+          border: none;
+          background: transparent;
+          text-align: left;
+          padding: 10px 12px;
+          color: #1f2937;
+          cursor: pointer;
+          font: inherit;
+        }
+
+        .ti-subject-option:hover {
+          background: #f3f5f5;
+        }
+
+        .ti-subject-option--custom {
+          color: #1a9d40;
+          font-weight: 600;
         }
 
         .ti-subject-tags {
@@ -530,231 +805,90 @@ export default function TeacherInfo() {
           display: inline-flex;
           align-items: center;
           gap: 8px;
-          padding: 7px 10px;
+          padding: 4px 8px;
           border-radius: 999px;
-          background: #DCFCE7;
-          color: #166534;
-          font-size: 13px;
+          background: #eafaf0;
+          color: #1b8a3f;
+          font-size: 12px;
           font-weight: 600;
         }
 
         .ti-subject-tag button {
-          border: none;
+          border: 0;
           background: transparent;
-          color: #166534;
-          font-size: 16px;
-          line-height: 1;
+          color: inherit;
           cursor: pointer;
           padding: 0;
+          font-size: 14px;
+          line-height: 1;
         }
 
         .ti-subject-input {
           width: 100%;
+          min-height: 24px;
           border: none;
           background: transparent;
-          color: #2D3748;
+          color: #1f2937;
           font-size: 14px;
+          padding: 0;
           outline: none;
-          min-height: 28px;
         }
 
         .ti-subject-input::placeholder {
-          color: #94A3B8;
+          color: #9aa0a6;
         }
 
-        /* First input in Location section has a white background/border in image */
-        .ti-col .ti-section:first-child .ti-select-wrapper:first-of-type .ti-select {
-          background-color: #FAFAFA;
-          border: 1px solid #CBD5E0;
-        }
-
-        .ti-chevron {
-          position: absolute;
-          right: 16px;
-          top: 50%;
-          transform: translateY(-50%);
-          pointer-events: none;
-          color: #718096;
-        }
-
-        .ti-textarea {
-          width: 100%;
-          padding: 16px;
-          border-radius: 12px;
-          border: none;
-          background-color: #EBEBEB;
-          font-size: 14px;
-          color: #2D3748;
-          resize: none;
-          outline: none;
-          font-family: inherit;
-        }
-
-        .ti-textarea::placeholder {
-          color: #A0AEC0;
-        }
-
-        .ti-upload-box {
-          position: relative;
-          width: 100%;
-          height: 180px;
-          border-radius: 12px;
-          background-color: #EBEBEB;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          cursor: pointer;
-          overflow: hidden;
-        }
-
-        .ti-upload-text {
-          font-size: 14px;
-          color: #A0AEC0;
-        }
-
-        .ti-upload-preview {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-        }
-
-        .ti-file-input {
-          position: absolute;
-          inset: 0;
-          opacity: 0;
-          cursor: pointer;
+        .ti-error {
+          margin-top: 12px;
+          text-align: center;
+          font-size: 13px;
+          color: #c81d33;
         }
 
         .ti-footer {
+          margin-top: 18px;
           display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 20px;
-          margin-top: 20px;
+          justify-content: center;
         }
 
         .ti-next-btn {
           width: 100%;
-          max-width: 320px;
-          padding: 16px;
-          background-color: #1CCB43;
-          color: #111;
-          font-weight: 700;
-          font-size: 15px;
+          max-width: 100%;
+          height: 48px;
           border: none;
-          border-radius: 50px;
+          border-radius: 12px;
+          background: linear-gradient(180deg, #2fda59 0%, #1fcb48 100%);
+          color: #0f172a;
+          font-size: 16px;
+          font-weight: 700;
           cursor: pointer;
-          transition: background-color 0.2s;
+          transition: transform 0.15s ease, filter 0.15s ease;
+          box-shadow: 0 8px 16px rgba(31, 203, 72, 0.28);
         }
 
         .ti-next-btn:hover {
-          background-color: #17B83B;
+          filter: brightness(0.98);
         }
 
-        .ti-dots {
-          display: flex;
-          gap: 8px;
+        .ti-next-btn:active {
+          transform: translateY(1px);
         }
 
-        .ti-dot {
-          width: 8px;
-          height: 8px;
-          border-radius: 50%;
-          background-color: #CBD5E0;
-        }
-
-        .ti-dot--active {
-          background-color: #2D3748;
-        }
-
-        @media (max-width: 768px) {
-          .ti-grid {
-            grid-template-columns: 1fr;
-            gap: 24px;
-          }
-          .ti-container {
-            max-width: 100%;
-            gap: 24px;
-          }
+        @media (max-width: 640px) {
           .ti-header {
-            padding: 20px;
-          }
-          .ti-main {
-            align-items: flex-start;
-            padding: 16px;
-          }
-        }
-
-        @media (min-width: 769px) {
-          .ti-page {
-            background-color: #f7f7f6;
-            font-family: 'Sora', sans-serif;
+            padding: 24px 0 0 24px;
           }
 
-          .ti-header {
-            padding: 46px 88px;
+          .ti-logo img {
+            width: 136px;
           }
 
           .ti-main {
-            align-items: flex-start;
-            padding: 28px 32px 44px;
+            padding: 8px 18px 36px;
           }
 
-          .ti-container {
-            max-width: 760px;
-            gap: 24px;
-          }
-
-          .ti-grid {
-            grid-template-columns: 1fr;
-            gap: 20px;
-          }
-
-          .ti-grid--single {
-            max-width: 620px;
-          }
-
-          .ti-col {
-            gap: 18px;
-          }
-
-          .ti-label {
-            font-size: 14px;
-            color: #293047;
-          }
-
-          .ti-select,
-          .ti-textarea,
-          .ti-upload-box {
-            border-radius: 13px;
-          }
-
-          .ti-select {
-            padding: 13px 16px;
-            font-family: 'Sora', sans-serif;
-            font-size: 12px;
-          }
-
-          .ti-search-select > input {
-            padding: 13px 40px 13px 16px;
-            border-radius: 13px;
-            font-family: 'Sora', sans-serif;
-            font-size: 12px;
-          }
-
-          .ti-textarea {
-            font-family: 'Sora', sans-serif;
-          }
-
-          .ti-footer {
-            margin-top: 2px;
-            gap: 18px;
-          }
-
-          .ti-next-btn {
-            max-width: 343px;
-            border-radius: 13px;
-            font-family: 'Sora', sans-serif;
+          .ti-title {
+            font-size: 2rem;
           }
         }
       `}</style>

@@ -23,6 +23,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import AddPhoneNumber from './pages/AddPhoneNumber';
 import VerifyPhone from './pages/VerifyPhone';
 import TeacherInfo from './pages/TeacherInfo';
+import FirstSuccessStep from './pages/FirstSuccessStep';
 import SchoolInfo from './pages/SchoolInfo';
 const TeacherDashboard = lazy(() => import('./pages/TeacherDashboard'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
@@ -142,6 +143,7 @@ function App() {
         <Route path="/add-phone-number" element={<PublicRoute><AddPhoneNumber /></PublicRoute>} />
         <Route path="/verify-phone" element={<PublicRoute><VerifyPhone /></PublicRoute>} />
         <Route path="/teacher-info" element={<ProtectedRoute allowedRoles={['teacher']}><TeacherInfo /></ProtectedRoute>} />
+        <Route path="/1st-success-step" element={<PublicRoute><FirstSuccessStep /></PublicRoute>} />
         <Route path="/sch-info" element={<PublicRoute><SchoolInfo /></PublicRoute>} />
         <Route
           path="/teacher-dashboard"
