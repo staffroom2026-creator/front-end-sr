@@ -9,6 +9,7 @@ import { applicationService } from '../services/applicationService';
 import { featureService } from '../services/featureService';
 import { profileService } from '../services/profileService';
 import { accountService } from '../services/accountService';
+import schoolCampusImage from '../assets/school campus.webp';
 import { TEACHER_EXPERTISE_CATEGORIES, normalizeTeacherExpertise, toTeacherExpertisePayload } from '../services/teacherExpertiseService';
 import { apiErrorMessage, API_ORIGIN } from '../services/api';
 import {
@@ -16,7 +17,7 @@ import {
   FiFileText, FiMessageSquare, FiSettings, FiPlus,
   FiMapPin, FiEye, FiZap, FiHome, FiCpu, FiBookmark, FiMap, FiFilter, FiCheck, FiChevronDown, FiClock,
   FiBook, FiShare2, FiLink, FiArrowLeft, FiArrowRight, FiCheckCircle, FiDollarSign, FiCreditCard, FiSend, FiCalendar, FiAlertTriangle,
-  FiUser, FiEdit2, FiTrash2, FiX, FiRotateCw, FiShield, FiAward, FiDownload, FiUpload, FiLock,
+  FiUser, FiEdit2, FiTrash2, FiX, FiRotateCw, FiShield, FiAward, FiDownload, FiUpload, FiLock, FiVideo,
   FiGlobe, FiEyeOff, FiInfo, FiKey, FiMonitor, FiSmartphone, FiLogOut, FiMoreHorizontal, FiMoreVertical, FiBarChart2, FiUsers, FiCopy, FiSliders
 } from 'react-icons/fi';
 
@@ -522,11 +523,17 @@ export default function TeacherDashboard() {
   const [isLoadingMoreJobs, setIsLoadingMoreJobs] = useState(false);
   const isLoadingMoreJobsRef = useRef(false);
   const [applications, setApplications] = useState([]);
+  const [selectedTeacherInvitation, setSelectedTeacherInvitation] = useState(null);
+  const [invitationResponseMessage, setInvitationResponseMessage] = useState('');
+  const [showRescheduleInterviewForm, setShowRescheduleInterviewForm] = useState(false);
+  const [rescheduleInterviewDraft, setRescheduleInterviewDraft] = useState({ date: '', time: '', message: '' });
+  const [preparedInterviewResponse, setPreparedInterviewResponse] = useState(null);
   const [, setCurrentTime] = useState(() => Date.now());
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
   const [applicationSearch, setApplicationSearch] = useState('');
   const [applicationSort, setApplicationSort] = useState('newest');
   const [notifications, setNotifications] = useState([]);
+  const [showInvitationHistory, setShowInvitationHistory] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
   const [notificationActionLoading, setNotificationActionLoading] = useState({});
@@ -1089,6 +1096,500 @@ export default function TeacherDashboard() {
       return secondDate - firstDate;
     })
     .slice(0, 3);
+  const invitationItems = (() => {
+    const records = notifications.flatMap((notification, index) => {
+      let payload = notification.data || notification.metadata || notification.payload || {};
+      if (typeof payload === 'string') {
+        try {
+          payload = JSON.parse(payload);
+        } catch {
+          payload = {};
+        }
+      }
+      if (!payload || typeof payload !== 'object' || Array.isArray(payload)) payload = {};
+
+      const searchableText = [
+        notification.type,
+        notification.title,
+        notification.description,
+        payload.type,
+        payload.title,
+      ].filter(Boolean).join(' ').toLowerCase();
+      const isInvitation = /\binvit(?:e|ed|ation|ations)\b/.test(searchableText);
+      if (!isInvitation) return [];
+
+      const isInterview = searchableText.includes('interview');
+      const job = payload.job && typeof payload.job === 'object' ? payload.job : {};
+      const applicationId = payload.application_id || notification.application_id;
+      const jobId = normalizeJobId(payload.job_id || payload.jobId || job.job_id || job.id || notification.job_id);
+      const application = applications.find((item) => (
+        (applicationId && String(item.application_id || item.id) === String(applicationId)) ||
+        (jobId && String(item.jobId) === jobId)
+      ));
+      const jobRecord = jobs.find((item) => normalizeJobId(item.job_id || item.id) === jobId) || null;
+      const receivedAt = notification.created_at || notification.sent_at || payload.created_at || '';
+      const expiresAt = payload.expires_at || payload.expiration_date || payload.deadline || notification.expires_at || '';
+      const expiryDate = expiresAt ? new Date(expiresAt) : null;
+      const expired = expiryDate && !Number.isNaN(expiryDate.getTime()) && expiryDate.getTime() < Date.now();
+      const invitationStatus = String(payload.invitation_status || notification.invitation_status || payload.status || '').toLowerCase();
+      const isApplied = Boolean(application && !isInterview);
+      const isHistory = Boolean(
+        expired ||
+        isApplied ||
+        /expired|cancelled|canceled|declined|rejected|accepted|applied|completed|withdrawn|closed/.test(invitationStatus)
+      );
+      const receivedDate = receivedAt ? new Date(receivedAt) : null;
+      const daysRemaining = expiryDate && !Number.isNaN(expiryDate.getTime())
+        ? Math.ceil((expiryDate.getTime() - Date.now()) / 86400000)
+        : null;
+
+      return [{
+        key: `notification-${notification.id || index}`,
+        invitationId: payload.invitation_id || notification.invitation_id || notification.id || '',
+        kind: isInterview ? 'interview' : 'apply',
+        school: payload.school_name || payload.school?.name || notification.school_name || notification.school || notification.sender_name || 'School invitation',
+        schoolLocation: payload.school?.location || payload.school_location || notification.school_location || jobRecord?.location || '',
+        schoolDetails: payload.school && typeof payload.school === 'object' ? payload.school : {},
+        role: job.title || payload.job_title || payload.position_title || payload.role_title || application?.title || 'Teaching opportunity',
+        receivedAt: receivedDate && !Number.isNaN(receivedDate.getTime())
+          ? receivedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+          : notification.time || 'Recently',
+        receivedTimestamp: receivedDate && !Number.isNaN(receivedDate.getTime()) ? receivedDate.getTime() : 0,
+        expiresAt: expiryDate && !Number.isNaN(expiryDate.getTime()) ? expiryDate : null,
+        daysRemaining,
+        details: notification.description || payload.message || '',
+        status: isApplied ? 'Applied' : expired ? 'Expired' : invitationStatus || '',
+        isHistory,
+        jobId,
+        jobRecord,
+        jobPayload: job,
+        payload,
+        application,
+        notification,
+      }];
+    });
+
+    const notifiedInterviewKeys = new Set(records
+      .filter((record) => record.kind === 'interview')
+      .flatMap((record) => [
+        record.application ? `application-${record.application.id}` : '',
+        record.jobId ? `job-${record.jobId}` : '',
+      ])
+      .filter(Boolean));
+    const interviewRecords = applications
+      .filter((application) => {
+        const status = String(application.status || '').toLowerCase();
+        const interview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || null;
+        if (!interview || !/shortlisted|interviewing/.test(status)) return false;
+        const start = getInterviewStart(interview);
+        if (!start) return false;
+        return !notifiedInterviewKeys.has(`application-${application.id}`)
+          && !notifiedInterviewKeys.has(`job-${application.jobId}`);
+      })
+      .map((application) => {
+        const interview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || {};
+        const start = getInterviewStart(interview);
+        const isHistory = Boolean(start && start.getTime() < Date.now());
+        return {
+          key: `interview-${application.id}`,
+          kind: 'interview',
+          school: application.school || 'School',
+          role: application.title || 'Teaching opportunity',
+          receivedAt: application.appliedDate || 'Recently',
+          receivedTimestamp: new Date(application.appliedAt || 0).getTime() || 0,
+          expiresAt: start,
+          daysRemaining: null,
+          details: `${interview.interview_date || ''}${interview.interview_time ? ` at ${interview.interview_time}` : ''}${interview.venue ? ` · ${interview.venue}` : interview.meeting_link ? ` · ${interview.meeting_link}` : ''}`,
+          status: isHistory ? 'Completed' : 'Invited to Interview',
+          isHistory,
+          jobId: normalizeJobId(application.jobId),
+          application,
+          notification: null,
+        };
+      });
+
+    return [...records, ...interviewRecords].sort((first, second) => second.receivedTimestamp - first.receivedTimestamp);
+  })();
+  const activeInvitations = invitationItems
+    .filter((invitation) => !invitation.isHistory)
+    .sort((first, second) => {
+      if (first.daysRemaining !== null && second.daysRemaining !== null) return first.daysRemaining - second.daysRemaining;
+      if (first.daysRemaining !== null) return -1;
+      if (second.daysRemaining !== null) return 1;
+      return first.receivedTimestamp - second.receivedTimestamp;
+    });
+  const previousInvitations = invitationItems.filter((invitation) => invitation.isHistory);
+
+  const openTeacherInvitation = (invitation) => {
+    setInvitationResponseMessage('');
+    setShowRescheduleInterviewForm(false);
+    setRescheduleInterviewDraft({ date: '', time: '', message: '' });
+    setPreparedInterviewResponse(null);
+    setSelectedTeacherInvitation(invitation);
+    if (invitation?.notification && !invitation.notification.read) {
+      handleMarkNotificationAsRead(invitation.notification.id);
+    }
+  };
+  const renderTeacherInvitationDetails = () => {
+    const invitation = selectedTeacherInvitation;
+    if (!invitation) return null;
+
+    const payload = invitation.payload || {};
+    const job = invitation.jobPayload || invitation.jobRecord || {};
+    const school = invitation.schoolDetails || {};
+    const role = job.title || payload.job_title || payload.position_title || payload.role_title || invitation.role;
+    const location = invitation.schoolLocation || school.location || [school.city, school.state, payload.city, payload.state].filter(Boolean).join(', ');
+    const employmentType = job.employment_type || job.type || job.job_type || payload.employment_type || '';
+    const teachingLevel = job.education || job.education_level || job.teaching_level || payload.teaching_level || '';
+    const subject = job.subject || payload.subject || '';
+    const salary = job.salaryStr || job.salary || job.salary_range || payload.salary_range || '';
+    const about = job.about || job.description || payload.opportunity_description || payload.job_description || '';
+    const personalNote = payload.personal_note || payload.invitation_message || payload.message || invitation.details || '';
+    const contactEmail = payload.contact_email || school.contact_email || school.email || '';
+    const schoolId = school.id || school.school_id || payload.school_id || '';
+    const invitationId = invitation.invitationId || '';
+    const isActive = !invitation.isHistory;
+    const interview = normalizeInterviewData(
+      payload.interview || payload.interview_details || invitation.application?.interview || payload,
+    ) || {};
+    const interviewDateValue = interview.interview_date || payload.proposed_interview_date || payload.interview_date || '';
+    const interviewTimeValue = interview.interview_time || payload.proposed_interview_time || payload.interview_time || '';
+    const interviewDate = interviewDateValue ? new Date(`${String(interviewDateValue).slice(0, 10)}T00:00:00`) : null;
+    const interviewDateLabel = interviewDate && !Number.isNaN(interviewDate.getTime())
+      ? new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(interviewDate)
+      : 'Date to be confirmed';
+    const interviewTimeDate = interviewTimeValue && !/am|pm/i.test(interviewTimeValue)
+      ? new Date(`2000-01-01T${interviewTimeValue}`)
+      : null;
+    const interviewTimeLabel = interviewTimeValue
+      ? interviewTimeDate && !Number.isNaN(interviewTimeDate.getTime())
+        ? interviewTimeDate.toLocaleTimeString('en', { hour: 'numeric', minute: '2-digit' })
+        : interviewTimeValue
+      : 'Time to be confirmed';
+    const interviewDuration = Number(interview.duration_minutes || interview.duration || payload.duration_minutes || 30);
+    const interviewVenue = interview.venue || payload.venue || payload.interview_location || '';
+    const interviewLink = interview.meeting_link || interview.meeting_url || payload.meeting_link || payload.meeting_url || '';
+    const interviewMode = String(interview.mode || payload.interview_mode || (interviewLink ? 'online' : interviewVenue ? 'in-person' : '')).toLowerCase();
+    const schoolCampus = school.campus || school.campus_name || payload.campus || payload.campus_name || '';
+    const schoolDescription = school.description || payload.school_description || '';
+    const interviewMessage = payload.personal_note || payload.invitation_message || payload.message || invitation.details || '';
+    const mapLocation = interviewVenue || school.address || school.location || invitation.schoolLocation || '';
+    const checklistItems = Array.isArray(payload.interview_checklist) && payload.interview_checklist.length
+      ? payload.interview_checklist
+      : ['Review the role and school information', 'Test your webcam and microphone', 'Prepare examples of your teaching experience'];
+    const rawInvitationStatus = String(invitation.status || '').trim().toLowerCase();
+    const invitationStatusLabel = invitation.isHistory
+      ? rawInvitationStatus.replace(/\b\w/g, (letter) => letter.toUpperCase()) || 'Invitation Closed'
+      : 'Invited to Apply';
+    const dateLabel = invitation.expiresAt
+      ? invitation.expiresAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+      : '';
+    const schoolInitials = String(invitation.school).trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
+
+    return (
+      <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-invitations-page td-invitation-detail-page">
+        <div className="td-invitation-detail-topline">
+          <button type="button" className="td-invitation-back" onClick={() => {
+            setSelectedTeacherInvitation(null);
+            setInvitationResponseMessage('');
+          }}>
+            <FiArrowLeft size={14} /> Back to Invitations
+          </button>
+          <span className="td-invitation-id"><i /> {isActive ? 'Invitation Active' : invitation.status || 'Invitation Closed'}{invitationId ? ` · ID: ${invitationId}` : ''}</span>
+        </div>
+
+        <header className="td-invitation-detail-heading">
+          <span className="td-invitation-eyebrow"><FiShield size={12} /> {invitation.kind === 'interview' ? 'Interview invitation' : 'Direct academic invitation'}</span>
+          <h1>{invitation.kind === 'interview' ? 'Interview Invitation' : 'Invitation to Apply'}</h1>
+          <p>
+            {invitation.kind === 'interview'
+              ? `${invitation.school} would like to meet with you about this opportunity.`
+              : `${invitation.school} has reviewed your credentials and invited you to apply for this role.`}
+          </p>
+        </header>
+
+        {invitation.kind === 'interview' ? (
+          <>
+            <div className="td-interview-invitation-layout">
+              <div className="td-interview-invitation-primary-column">
+                <section className="td-interview-invitation-card">
+                  <div className="td-interview-invitation-school">
+                    <span className="td-interview-school-mark"><FiShield size={23} /></span>
+                    <div className="td-interview-school-copy">
+                      <h2>{invitation.school} <FiCheckCircle size={14} /></h2>
+                      <span><FiMapPin size={12} /> {location || 'Location not provided'}</span>
+                    </div>
+                    <div className="td-interview-school-dates">
+                      <span>Received {invitation.receivedAt}</span>
+                      {dateLabel && <small><FiClock size={10} /> Expires: {dateLabel}</small>}
+                    </div>
+                  </div>
+
+                  <section className="td-interview-role-panel">
+                    <span>Role offer</span>
+                    <h2>{role}</h2>
+                    <div className="td-invitation-detail-tags">
+                      {employmentType && <span><FiBriefcase size={12} /> {employmentType}</span>}
+                      {teachingLevel && <span><FiBook size={12} /> {teachingLevel}</span>}
+                      {subject && <span><FiAward size={12} /> {subject}</span>}
+                    </div>
+                  </section>
+
+                  <section className="td-interview-schedule-panel">
+                    <span className="td-interview-schedule-icon"><FiCalendar size={17} /></span>
+                    <div className="td-interview-schedule-content">
+                      <div className="td-interview-panel-title">
+                        <h3>Proposed Interview</h3>
+                        <span><i /> Action required</span>
+                      </div>
+                      <div className="td-interview-schedule-meta">
+                        <span><FiCalendar size={13} /> {interviewDateLabel}</span>
+                        <span><FiClock size={13} /> {interviewTimeLabel}{interviewDuration > 0 ? ` – ${interviewDuration} mins` : ''}</span>
+                      </div>
+                      <p>
+                        {interviewMode === 'online' || interviewLink
+                          ? <> <FiVideo size={12} /> Video interview via {interview.platform || payload.meeting_platform || 'Staffroom Meet'} <small>(Link will be shared upon acceptance)</small></>
+                          : <><FiMapPin size={12} /> {interviewVenue || 'Venue to be confirmed'}{schoolCampus ? ` · ${schoolCampus}` : ''}</>}
+                      </p>
+                    </div>
+                  </section>
+
+                  <section className="td-interview-message-panel">
+                    <span className="td-interview-message-icon"><FiMessageSquare size={16} /></span>
+                    <div className="td-interview-message-content">
+                      <h3>Message from the School</h3>
+                      <div>
+                        <strong>Dear Candidate,</strong>
+                        <p>{interviewMessage || `${invitation.school} would like to meet you to discuss the ${role} role and learn more about your teaching experience.`}</p>
+                        <strong className="td-interview-message-signoff">— {payload.contact_person || school.contact_person || `${invitation.school} Recruitment Board`}</strong>
+                      </div>
+                    </div>
+                  </section>
+
+                  {invitation.jobRecord ? (
+                    <button type="button" className="td-invitation-spec-link" onClick={() => {
+                      setSelectedJobOrigin('jobs');
+                      setSelectedJob(invitation.jobRecord);
+                      setActiveTab('jobs');
+                      setSelectedTeacherInvitation(null);
+                    }}>
+                      <span><FiFileText size={17} /></span>
+                      <span><strong>View full job specification &amp; curriculum scope</strong><small>See duties, requirements, and more details for this role.</small></span>
+                      <FiArrowRight size={15} />
+                    </button>
+                  ) : (
+                    <div className="td-invitation-spec-link td-interview-spec-unavailable">
+                      <span><FiFileText size={17} /></span>
+                      <span><strong>Full job specification &amp; curriculum scope</strong><small>Details will appear here when included in the interview invitation.</small></span>
+                    </div>
+                  )}
+                  {invitationResponseMessage && <p className="td-invitation-response-note" role="status">{invitationResponseMessage}</p>}
+                </section>
+
+                <section className="td-interview-response-card">
+                  <button type="button" className="td-interview-accept-button" disabled={!isActive} onClick={() => setInvitationResponseMessage('Accepting this interview will be available when the interview response endpoint is connected.')}>
+                    <FiCheckCircle size={14} /> Accept Interview
+                  </button>
+                  <button type="button" className="td-interview-reschedule-button" disabled={!isActive} onClick={() => {
+                    setInvitationResponseMessage('');
+                    setPreparedInterviewResponse(null);
+                    setShowRescheduleInterviewForm((visible) => !visible);
+                  }}>
+                    <FiRotateCw size={14} /> Request Another Time
+                  </button>
+                  <button type="button" className="td-interview-decline-button" disabled={!isActive} onClick={() => setInvitationResponseMessage('Declining this interview will be available when the interview response endpoint is connected.')}>
+                    <FiX size={14} /> Decline
+                  </button>
+                  {showRescheduleInterviewForm && (
+                    <form className="td-interview-reschedule-form" onSubmit={(event) => {
+                      event.preventDefault();
+                      if (!rescheduleInterviewDraft.date || !rescheduleInterviewDraft.time) {
+                        setInvitationResponseMessage('Choose a preferred date and time to prepare your request.');
+                        return;
+                      }
+                      setPreparedInterviewResponse({
+                        invitation_id: invitation.invitationId || null,
+                        action: 'request_another_time',
+                        proposed_date: rescheduleInterviewDraft.date,
+                        proposed_time: rescheduleInterviewDraft.time,
+                        message: rescheduleInterviewDraft.message.trim(),
+                      });
+                      setInvitationResponseMessage('Your preferred time is prepared below. It has not been sent because the interview response endpoint is not connected yet.');
+                    }}>
+                      <h3>Suggest another interview time</h3>
+                      <label>Preferred date<input type="date" value={rescheduleInterviewDraft.date} onChange={(event) => setRescheduleInterviewDraft((draft) => ({ ...draft, date: event.target.value }))} required /></label>
+                      <label>Preferred time<input type="time" value={rescheduleInterviewDraft.time} onChange={(event) => setRescheduleInterviewDraft((draft) => ({ ...draft, time: event.target.value }))} required /></label>
+                      <label>Message to the school<textarea rows="3" value={rescheduleInterviewDraft.message} onChange={(event) => setRescheduleInterviewDraft((draft) => ({ ...draft, message: event.target.value }))} placeholder="Add a note (optional)" /></label>
+                      <button type="submit">Prepare request</button>
+                      {preparedInterviewResponse && (
+                        <p className="td-interview-prepared-request">
+                          Prepared for {new Date(`${preparedInterviewResponse.proposed_date}T${preparedInterviewResponse.proposed_time}`).toLocaleString()}
+                        </p>
+                      )}
+                    </form>
+                  )}
+                </section>
+              </div>
+
+              <aside className="td-interview-invitation-aside">
+                <section className="td-interview-school-profile-card">
+                  <div className="td-interview-school-cover">
+                    <img src={school.profile_image || school.cover_image || schoolCampusImage} alt={`${invitation.school} campus`} />
+                    <span><FiMapPin size={10} /> {schoolCampus || 'Campus view'}</span>
+                  </div>
+                  <div className="td-interview-school-profile-body">
+                    <h2>About {invitation.school}</h2>
+                    <p>{schoolDescription || 'School profile details will be available when included with the invitation.'}</p>
+                    <div className="td-interview-school-stat-row">
+                      <span><small>Student Body</small><strong>{school.student_count || school.students || '—'}</strong></span>
+                      <span><small>Student : Teacher</small><strong>{school.student_teacher_ratio || school.teacher_student_ratio || '—'}</strong></span>
+                    </div>
+                    <button type="button" onClick={() => setInvitationResponseMessage('The full school profile will be available when school profile details are connected.')}>View full school profile <FiArrowRight size={13} /></button>
+                  </div>
+                </section>
+
+                <section className="td-interview-campus-card">
+                  <div className="td-interview-campus-title"><h2>Campus Location</h2><span>{school.area || school.district || ''}</span></div>
+                  <div className="td-interview-map" role="img" aria-label={`Map location: ${mapLocation || location || 'not provided'}`}>
+                    <span className="td-interview-map-road td-interview-map-road--one" />
+                    <span className="td-interview-map-road td-interview-map-road--two" />
+                    <span className="td-interview-map-road td-interview-map-road--three" />
+                    <span className="td-interview-map-water" />
+                    <span className="td-interview-map-label td-interview-map-label--one">Victoria Island</span>
+                    <span className="td-interview-map-label td-interview-map-label--two">Mainland</span>
+                    <span className="td-interview-map-pin"><FiMapPin size={15} /></span>
+                    <span className="td-interview-map-address"><FiMapPin size={10} /> {mapLocation || location || 'Location details not provided'}</span>
+                  </div>
+                </section>
+
+                <section className="td-interview-assistance-card">
+                  <span><FiInfo size={16} /></span>
+                  <div><h2>Need assistance?</h2><p>Have scheduling conflicts or questions before confirming? You can chat directly with the talent coordinator.</p>
+                    {contactEmail && <a href={`mailto:${contactEmail}`}>Contact {payload.contact_person || 'Academic HR'} <FiArrowRight size={11} /></a>}
+                  </div>
+                </section>
+
+                <section className="td-interview-checklist-card">
+                  <h2><FiCheckCircle size={13} /> Interview Checklist</h2>
+                  <ul>{checklistItems.map((item, index) => <li key={`${item}-${index}`}><FiCheck size={12} />{item}</li>)}</ul>
+                </section>
+              </aside>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="td-invitation-detail-grid">
+              <section className="td-invitation-detail-main-card">
+                <div className="td-invitation-detail-school">
+                  <span className="td-invitation-school-mark">{schoolInitials}</span>
+                  <div>
+                    <h2>{invitation.school} <FiCheckCircle size={14} /></h2>
+                    <span><FiMapPin size={12} /> {location || 'Location not provided'}</span>
+                    <span><FiCalendar size={12} /> Received {invitation.receivedAt}</span>
+                  </div>
+                  <div className="td-invitation-detail-badges">
+                    <span className="td-invitation-status">{invitationStatusLabel}</span>
+                    {dateLabel && <small><FiClock size={11} /> Expires: {dateLabel}</small>}
+                  </div>
+                </div>
+
+                <div className="td-invitation-position">
+                  <span>Offered position</span>
+                  <h2>{role}</h2>
+                  <div className="td-invitation-detail-tags">
+                    {employmentType && <span><FiBriefcase size={12} /> {employmentType}</span>}
+                    {teachingLevel && <span><FiBook size={12} /> {teachingLevel}</span>}
+                    {subject && <span><FiAward size={12} /> {subject}</span>}
+                    {salary && <span><FiDollarSign size={12} /> {salary}</span>}
+                  </div>
+                </div>
+
+                <section className="td-invitation-about">
+                  <h3>About the opportunity</h3>
+                  <p>{about || `${invitation.school} has invited you to apply for the ${role} position. Review the opportunity details with the school before applying.`}</p>
+                </section>
+
+                {invitation.jobRecord && (
+                  <button type="button" className="td-invitation-spec-link" onClick={() => {
+                    setSelectedJobOrigin('jobs');
+                    setSelectedJob(invitation.jobRecord);
+                    setActiveTab('jobs');
+                    setSelectedTeacherInvitation(null);
+                  }}>
+                    <span><FiFileText size={17} /></span>
+                    <span><strong>View full job specification &amp; curriculum requirements</strong><small>See duties, requirements, and more details for this role.</small></span>
+                    <FiArrowRight size={15} />
+                  </button>
+                )}
+
+                {personalNote && (
+                  <blockquote className="td-invitation-personal-note">
+                    <span><FiMessageSquare size={16} /></span>
+                    <div><strong>Personal note from the hiring team</strong><p>{personalNote}</p><small>— {invitation.school} hiring team</small></div>
+                  </blockquote>
+                )}
+
+                {invitationResponseMessage && <p className="td-invitation-response-note" role="status">{invitationResponseMessage}</p>}
+
+                <div className="td-invitation-response-actions">
+                  <button type="button" className="td-invitation-apply-button" onClick={() => {
+                    if (invitation.jobRecord) {
+                      openApplyModal(invitation.jobRecord, { review: true });
+                    } else {
+                      setInvitationResponseMessage('Applying from an invitation will be available when the invitation details endpoint provides the linked job.');
+                    }
+                  }} disabled={!isActive}>
+                    <FiCheckCircle size={15} /> Apply for this role <FiArrowRight size={15} />
+                  </button>
+                  <button type="button" className="td-invitation-decline-button" onClick={() => {
+                    setInvitationResponseMessage('Declining invitations will be available when the invitation response endpoint is connected.');
+                  }} disabled={!isActive}>
+                    <FiX size={15} /> Decline invitation
+                  </button>
+                </div>
+              </section>
+
+              <aside className="td-invitation-detail-aside">
+                <section className="td-invitation-school-about">
+                  <div className="td-invitation-school-cover">
+                    {school.campus || school.campus_name ? <span><FiMapPin size={11} /> {school.campus || school.campus_name}</span> : null}
+                  </div>
+                  <div className="td-invitation-school-about-body">
+                    <h2>About {invitation.school}</h2>
+                    <p>{school.description || payload.school_description || 'School profile details will be available when the invitation details endpoint is connected.'}</p>
+                    <div className="td-invitation-school-facts">
+                      {(school.student_count || school.students) && <span><FiUsers size={12} /> {school.student_count || school.students} Students</span>}
+                      {(school.established_year || school.year_established) && <span><FiCalendar size={12} /> Est. {school.established_year || school.year_established}</span>}
+                      {school.location_type && <span><FiMapPin size={12} /> {school.location_type}</span>}
+                      {school.school_type && <span><FiBook size={12} /> {school.school_type}</span>}
+                    </div>
+                    {schoolId && <button type="button" onClick={() => setInvitationResponseMessage('School profile details will be available when the invitation details endpoint is connected.')}>View school profile <FiArrowRight size={13} /></button>}
+                  </div>
+                </section>
+
+                <section className="td-invitation-help-card">
+                  <h2><FiInfo size={15} /> Need help?</h2>
+                  <p>If you have questions about the invitation, role, or schedule, contact the school directly.</p>
+                  {contactEmail && <a href={`mailto:${contactEmail}`}><FiMail size={13} /> {contactEmail} <FiArrowRight size={12} /></a>}
+                  <button type="button" onClick={() => setInvitationResponseMessage('Platform guidance will be available here.')}>
+                    <FiShield size={13} /> Platform FAQ &amp; Guidelines <FiArrowRight size={12} />
+                  </button>
+                </section>
+
+                <p className="td-invitation-protection"><FiShield size={13} /> Your contact information is protected until you formally apply.</p>
+              </aside>
+            </div>
+
+            <div className="td-invitation-benefits">
+              <div><span><FiZap size={15} /></span><strong>Priority review</strong><p>Your invitation lets the school know you are interested.</p></div>
+              <div><span><FiClock size={15} /></span><strong>School follow-up</strong><p>Schools will follow up through the contact details they provide.</p></div>
+              <div><span><FiShield size={15} /></span><strong>Staffroom verified</strong><p>Institution information is shown when supplied with the invitation.</p></div>
+            </div>
+          </>
+        )}
+      </Motion.div>
+    );
+  };
   const getProfileStrengthValue = () => {
     const rawServerStrength = profileState?.profile_strength;
     const serverStrength = Number(rawServerStrength);
@@ -1756,6 +2257,7 @@ export default function TeacherDashboard() {
         .filter(Boolean);
       const { firstName, lastName } = splitFullName(profileData?.user?.full_name || user?.full_name || 'Teacher');
       const nextNotifications = (notificationList || []).map((notification) => ({
+        ...notification,
         id: notification.notification_id || notification.id,
         type: notification.type || 'job',
         title: notification.title || 'Notification',
@@ -2882,6 +3384,7 @@ export default function TeacherDashboard() {
           const readValue = notification.is_read ?? notification.read;
           const read = readValue === true || readValue === 'true' || Number(readValue) === 1;
           return {
+            ...notification,
             id: notification.notification_id || notification.id,
             type: notification.type || 'job',
             title: notification.title || 'Notification',
@@ -3039,6 +3542,8 @@ export default function TeacherDashboard() {
 
   const handleNavTabChange = (nextTab) => {
     setActiveTab(nextTab);
+    setSelectedTeacherInvitation(null);
+    setInvitationResponseMessage('');
     setSelectedJob(null);
     setSelectedJobOrigin('jobs');
     setSelectedNotification(null);
@@ -3232,25 +3737,30 @@ export default function TeacherDashboard() {
             <span>Job Listing</span>
           </div>
 
-          <div className={`td-nav-item ${activeTab === 'applications' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('applications')}>
-            <FiFileText size={18} className="td-nav-icon" />
-            <span>Applications</span>
-          </div>
-
           <div className={`td-nav-item ${activeTab === 'notifications' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('notifications')}>
             <FiBell size={18} className="td-nav-icon" />
             <span>Notifications</span>
             {unreadNotificationCount > 0 && <i className="td-nav-notification-dot" aria-label="Unread notifications" />}
           </div>
 
-          <div className={`td-nav-item ${activeTab === 'profile' ? 'td-nav-item--active' : ''}`} onClick={() => { handleNavTabChange('profile'); setProfileSubTab('overview'); }}>
-            <FiUser size={18} className="td-nav-icon" />
-            <span>Profile</span>
+          <div className={`td-nav-item ${activeTab === 'applications' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('applications')}>
+            <FiFileText size={18} className="td-nav-icon" />
+            <span>Applications</span>
+          </div>
+
+          <div className={`td-nav-item ${activeTab === 'invitations' ? 'td-nav-item--active' : ''}`} onClick={() => handleNavTabChange('invitations')}>
+            <FiMail size={18} className="td-nav-icon" />
+            <span>Invitations</span>
           </div>
 
           <div className={`td-nav-item ${activeTab === 'settings' ? 'td-nav-item--active' : ''}`} onClick={() => { handleNavTabChange('settings'); setSettingsSubTab('overview'); }}>
             <FiSettings size={18} className="td-nav-icon" />
             <span>Settings</span>
+          </div>
+
+          <div className={`td-nav-item ${activeTab === 'profile' ? 'td-nav-item--active' : ''}`} onClick={() => { handleNavTabChange('profile'); setProfileSubTab('overview'); }}>
+            <FiUser size={18} className="td-nav-icon" />
+            <span>Profile</span>
           </div>
         </nav>
 
@@ -3280,6 +3790,21 @@ export default function TeacherDashboard() {
               <FiArrowLeft size={24} />
             </button>
             <span className="td-mobile-notif-title">Job Applications</span>
+            <div style={{ width: 24 }}></div>
+          </header>
+        ) : activeTab === 'invitations' ? (
+          <header className="td-mobile-notif-topbar">
+            <button className="td-mobile-back-btn" onClick={() => {
+              if (selectedTeacherInvitation) {
+                setSelectedTeacherInvitation(null);
+                setInvitationResponseMessage('');
+              } else {
+                setActiveTab('dashboard');
+              }
+            }}>
+              <FiArrowLeft size={24} />
+            </button>
+            <span className="td-mobile-notif-title">{selectedTeacherInvitation ? 'Invitation details' : 'Invitations'}</span>
             <div style={{ width: 24 }}></div>
           </header>
         ) : (
@@ -4300,6 +4825,194 @@ export default function TeacherDashboard() {
               )}
             </Motion.div>
           )}
+          {activeTab === 'invitations' && (
+            selectedTeacherInvitation ? renderTeacherInvitationDetails() : invitationItems.length > 0 ? (
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-invitations-page">
+              <header className="td-invitations-heading">
+                <div>
+                  <span className="td-invitations-eyebrow"><FiShield size={13} /> Teacher direct placement</span>
+                  <h1>Invitations</h1>
+                  <p>Review and respond to prioritized invitations, requests, and direct outreach from schools.</p>
+                </div>
+                <div className="td-invitations-summary">
+                  <span><FiCheckCircle size={15} /> Invitations</span>
+                  <strong>{invitationItems.length}</strong>
+                  <small>{activeInvitations.length} awaiting response</small>
+                </div>
+              </header>
+
+              {activeInvitations.length > 0 && (
+                <div className="td-invitations-alert">
+                  <span className="td-invitations-alert-icon"><FiClock size={17} /></span>
+                  <div>
+                    <strong>{activeInvitations.length} {activeInvitations.length === 1 ? 'invitation' : 'invitations'} awaiting your review</strong>
+                    <p>Review the details and follow up with the school when you are ready.</p>
+                  </div>
+                </div>
+              )}
+
+              <section className="td-invitation-section">
+                <div className="td-invitation-section-heading">
+                  <h2>Needs your response <span>{activeInvitations.length}</span></h2>
+                  <small>Sorted by urgency</small>
+                </div>
+                {activeInvitations.length > 0 ? (
+                  <div className="td-invitation-list">
+                    {activeInvitations.map((invitation) => (
+                      <article key={invitation.key} className="td-invitation-card">
+                        <div className="td-invitation-card-main">
+                          <div className="td-invitation-school-mark" aria-hidden="true">
+                            {String(invitation.school).trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
+                          </div>
+                          <div className="td-invitation-card-copy">
+                            <div className="td-invitation-school-line">
+                              <h3>{invitation.school}</h3>
+                              <span className="td-invitation-type"><FiCheckCircle size={11} /> {invitation.kind === 'interview' ? 'Interview invitation' : 'School invitation'}</span>
+                            </div>
+                            <p className="td-invitation-role">{invitation.role}</p>
+                            <div className="td-invitation-meta">
+                              <span><FiCalendar size={13} /> Received {invitation.receivedAt}</span>
+                              {invitation.daysRemaining !== null && (
+                                <span className={invitation.daysRemaining <= 5 ? 'is-urgent' : ''}>
+                                  <FiClock size={13} /> {invitation.daysRemaining < 0 ? 'Expired' : `Expires in ${invitation.daysRemaining} ${invitation.daysRemaining === 1 ? 'day' : 'days'}`}
+                                </span>
+                              )}
+                              {invitation.kind === 'interview' && invitation.details && <span><FiVideo size={13} /> {invitation.details}</span>}
+                            </div>
+                          </div>
+                          <div className="td-invitation-card-actions">
+                            <span className="td-invitation-status">{invitation.kind === 'interview' ? 'Invited to Interview' : 'Invited to Apply'}</span>
+                            <button type="button" onClick={() => openTeacherInvitation(invitation)}>
+                              {invitation.kind === 'interview' ? 'Review Invitation' : 'View Invitation'} <FiArrowRight size={14} />
+                            </button>
+                          </div>
+                        </div>
+                        {invitation.details && invitation.kind !== 'interview' && (
+                          <div className="td-invitation-note"><FiMessageSquare size={13} /><span>{invitation.details}</span></div>
+                        )}
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="td-invitation-history-empty">You’re all caught up. New invitations that need a response will appear here.</div>
+                )}
+              </section>
+
+              <section className="td-invitation-section td-invitation-history-section">
+                <div className="td-invitation-section-heading">
+                  <h2>Previous invitations <span className="is-muted">{previousInvitations.length}</span></h2>
+                  <button type="button" className="td-invitation-history-toggle" onClick={() => setShowInvitationHistory((visible) => !visible)}>
+                    <FiFilter size={13} /> {showInvitationHistory ? 'Hide history' : 'Show history'}
+                  </button>
+                </div>
+                {showInvitationHistory && (
+                  previousInvitations.length > 0 ? (
+                    <div className="td-invitation-list td-invitation-list--history">
+                      {previousInvitations.map((invitation) => (
+                        <article key={invitation.key} className="td-invitation-card td-invitation-card--history">
+                          <div className="td-invitation-card-main">
+                            <div className="td-invitation-school-mark" aria-hidden="true">
+                              {String(invitation.school).trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase()}
+                            </div>
+                            <div className="td-invitation-card-copy">
+                              <h3>{invitation.school}</h3>
+                              <p className="td-invitation-role">{invitation.role}</p>
+                              <div className="td-invitation-meta"><span><FiCalendar size={13} /> Received {invitation.receivedAt}</span></div>
+                            </div>
+                            <div className="td-invitation-card-actions">
+                              <span className={`td-invitation-status td-invitation-status--history ${String(invitation.status).toLowerCase().replace(/\s+/g, '-')}`}>
+                                {invitation.status || 'Closed'}
+                              </span>
+                              <button type="button" className="is-secondary" onClick={() => openTeacherInvitation(invitation)}>
+                                View Details <FiArrowRight size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="td-invitation-history-empty">Previous invitations will appear here after they are completed or expire.</div>
+                  )
+                )}
+              </section>
+
+              <aside className="td-invitation-privacy">
+                <span className="td-invitation-privacy-icon"><FiShield size={16} /></span>
+                <div>
+                  <strong>Not seeing an anticipated invitation?</strong>
+                  <p>Institutions verify teacher qualifications before sending invitations. You can also manage how schools discover your profile.</p>
+                </div>
+                <button type="button" onClick={() => { setActiveTab('settings'); setSettingsSubTab('privacy'); }}>
+                  Check Placement Privacy Settings <FiArrowRight size={14} />
+                </button>
+              </aside>
+            </Motion.div>
+            ) : (
+            <Motion.div variants={pageVariants} initial="hidden" animate="visible" style={{ display: 'flex', flexDirection: 'column', width: '100%', minHeight: '100%' }}>
+              <div style={{ padding: '4px 6px 0 0', marginBottom: '18px' }}>
+                <h1 style={{ fontSize: '2.3rem', fontWeight: 800, letterSpacing: '-0.04em', color: '#1a1a1a', margin: 0 }}>Invitations</h1>
+                <p style={{ marginTop: '8px', fontSize: '1.05rem', color: '#4b5563' }}>Review and respond to invitations from schools.</p>
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f3f4f6', border: '1px solid #e5e7eb', borderRadius: '20px', padding: '48px 24px 28px', minHeight: '640px' }}>
+                <div style={{ width: '100%', maxWidth: '640px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                  <div style={{ position: 'relative', width: '180px', height: '136px', marginBottom: '20px' }}>
+                    <div style={{ position: 'absolute', left: '18px', top: '28px', width: '144px', height: '92px', borderRadius: '14px', background: '#f8fafc', border: '1px solid #dfe7ec', boxShadow: '0 10px 18px rgba(15, 23, 42, 0.06)' }} />
+                    <div style={{ position: 'absolute', left: '42px', top: '22px', width: '96px', height: '64px', border: '1px solid #dfe7ec', borderRadius: '12px', background: '#ffffff', transform: 'skewY(-8deg)' }} />
+                    <div style={{ position: 'absolute', left: '12px', top: '62px', width: '64px', height: '18px', borderRadius: '999px', background: '#cfe7dc', transform: 'rotate(-18deg)' }} />
+                    <div style={{ position: 'absolute', left: '105px', top: '62px', width: '64px', height: '18px', borderRadius: '999px', background: '#dfe7ec', transform: 'rotate(18deg)' }} />
+                    <div style={{ position: 'absolute', left: '74px', top: '48px', width: '44px', height: '44px', borderRadius: '12px', background: '#e0f2e9', border: '2px solid #2d9d71', display: 'grid', placeItems: 'center' }}>
+                      <FiMail size={18} color="#0f766e" />
+                    </div>
+                    <div style={{ position: 'absolute', left: '34px', top: '10px', width: '28px', height: '28px', borderRadius: '50%', background: '#e0f2e9', border: '2px solid #2d9d71', display: 'grid', placeItems: 'center' }}>
+                      <FiMail size={12} color="#0f766e" />
+                    </div>
+                    <div style={{ position: 'absolute', right: '18px', top: '18px', width: '18px', height: '18px', borderRadius: '50%', background: '#f3f4f6', border: '2px solid #cbd5e1' }} />
+                    <div style={{ position: 'absolute', right: '24px', top: '74px', width: '12px', height: '12px', borderRadius: '50%', background: '#b7dcc6' }} />
+                    <div style={{ position: 'absolute', left: '132px', top: '82px', width: '22px', height: '22px', borderRadius: '50%', background: '#d1fae5', border: '2px solid #2d9d71', display: 'grid', placeItems: 'center' }}>
+                      <FiPlus size={12} color="#1d7a52" />
+                    </div>
+                  </div>
+
+                  <h2 style={{ margin: '8px 0 10px', fontSize: '2.2rem', lineHeight: 1.2, fontWeight: 800, color: '#111827', textAlign: 'center' }}>You don't have any invitations yet</h2>
+                  <p style={{ maxWidth: '520px', margin: 0, textAlign: 'center', color: '#4b5563', fontSize: '1.05rem', lineHeight: 1.7 }}>
+                    When a school is interested in your profile, they may invite you to apply for a role or to attend an interview. You'll see their invitations here.
+                  </p>
+
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '30px' }}>
+                    <button type="button" onClick={() => { setActiveTab('jobs'); setSelectedJob(null); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 18px', borderRadius: '12px', border: '1px solid #d1d5db', background: '#fff', color: '#1f2937', fontWeight: 600, cursor: 'pointer' }}>
+                      <FiSearch size={15} /> Browse Jobs
+                    </button>
+                    <button type="button" onClick={() => { setActiveTab('profile'); setProfileSubTab('professional-info'); }} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '12px 18px', borderRadius: '12px', border: '1px solid #d1d5db', background: '#fff', color: '#1f2937', fontWeight: 600, cursor: 'pointer' }}>
+                      <FiShield size={15} /> Optimize Candidate Profile
+                    </button>
+                  </div>
+
+                  <div style={{ width: '100%', marginTop: '36px', background: '#e5e7eb', borderRadius: '14px', padding: '18px 22px', display: 'flex', alignItems: 'center', gap: '14px', border: '1px solid #dfe3e8', color: '#1f2937' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#d1fae5', display: 'grid', placeItems: 'center', color: '#166534' }}>
+                      <FiSearch size={16} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'nowrap' }}>
+                      <p style={{ flex: '1 1 0%', minWidth: 0, margin: 0, fontSize: '0.98rem', lineHeight: 1.5 }}>
+                        <strong style={{ fontWeight: 700 }}>Want to be discovered faster?</strong><br />
+                        <span style={{ color: '#4b5563' }}>Proactively fill in the right details and update your profile so schools can find you.</span>
+                      </p>
+                      <button type="button" onClick={() => {
+                        setActiveTab('profile');
+                        setProfileSubTab('overview');
+                        openBasicProfileModal();
+                      }} style={{ flexShrink: 0, whiteSpace: 'nowrap', border: 'none', background: '#d1fae5', color: '#166534', fontWeight: 700, cursor: 'pointer', padding: '10px 16px', borderRadius: '10px' }}>
+                        Edit Credentials →
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Motion.div>
+            )
+          )}
+
           {(activeTab === 'applications' || activeTab === 'application') && (
             <Motion.div variants={pageVariants} initial="hidden" animate="visible" className="td-app-page">
               <div className="td-app-header">
@@ -13279,6 +13992,254 @@ export default function TeacherDashboard() {
             font-weight: 800;
           }
           }
+        }
+
+        .td-invitations-page { width: 100%; max-width: 1180px; margin: 0 auto; padding: 28px 18px 48px; color: #202b3d; }
+        .td-invitations-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+        .td-invitations-heading h1 { margin: 4px 0 2px; color: #202124; font-size: 30px; line-height: 1.2; font-weight: 800; }
+        .td-invitations-heading p { max-width: 580px; color: #6b7280; font-size: 14px; line-height: 1.5; }
+        .td-invitations-eyebrow { display: inline-flex; align-items: center; gap: 6px; color: #17813b; font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+        .td-invitations-summary { display: grid; grid-template-columns: auto auto; align-items: center; column-gap: 8px; min-width: 180px; padding: 10px 14px; border: 1px solid #e8ebea; border-radius: 12px; background: #f0f1f0; }
+        .td-invitations-summary > span { display: inline-flex; align-items: center; gap: 6px; color: #4b5563; font-size: 11px; }
+        .td-invitations-summary > span svg { color: #138536; }
+        .td-invitations-summary > strong { color: #138536; font-size: 15px; text-align: right; }
+        .td-invitations-summary > small { grid-column: 1 / -1; margin-top: 3px; color: #6b7280; font-size: 10px; }
+        .td-invitations-alert { display: flex; align-items: center; gap: 12px; margin-bottom: 25px; padding: 12px 15px; border: 1px solid #e8ebea; border-radius: 12px; background: #f0f1f0; }
+        .td-invitations-alert-icon { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid #c9e8d0; border-radius: 10px; background: #fff; color: #138536; }
+        .td-invitations-alert strong { display: block; color: #252a2d; font-size: 13px; font-weight: 750; }
+        .td-invitations-alert p { margin-top: 2px; color: #70777b; font-size: 11px; line-height: 1.4; }
+        .td-invitation-section { margin-top: 24px; }
+        .td-invitation-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+        .td-invitation-section-heading h2 { display: flex; align-items: center; gap: 8px; color: #24292c; font-size: 16px; font-weight: 750; }
+        .td-invitation-section-heading h2 span { display: grid; place-items: center; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; background: #138536; color: #fff; font-size: 10px; }
+        .td-invitation-section-heading h2 span.is-muted { background: #e8e9e9; color: #727779; }
+        .td-invitation-section-heading > small { color: #73797d; font-size: 10px; }
+        .td-invitation-history-toggle { display: inline-flex; align-items: center; gap: 5px; border: 0; background: transparent; color: #62696d; font-size: 11px; cursor: pointer; }
+        .td-invitation-list { display: flex; flex-direction: column; gap: 10px; }
+        .td-invitation-card { padding: 15px; border: 1px solid #e9ecef; border-radius: 12px; background: #fff; box-shadow: 0 2px 8px rgba(30, 40, 35, .025); }
+        .td-invitation-card-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .td-invitation-school-mark { display: grid; place-items: center; flex: 0 0 40px; width: 40px; height: 40px; border: 1px solid #e7e9e8; border-radius: 10px; background: #f0f1f0; color: #52705c; font-size: 12px; font-weight: 800; }
+        .td-invitation-card-copy { flex: 1; min-width: 0; }
+        .td-invitation-school-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+        .td-invitation-card-copy h3 { margin: 0; overflow: hidden; color: #262a2d; font-size: 13px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }
+        .td-invitation-type { display: inline-flex; align-items: center; gap: 3px; padding: 3px 7px; border-radius: 999px; background: #f0f1f0; color: #646c68; font-size: 9px; white-space: nowrap; }
+        .td-invitation-type svg { color: #16803c; }
+        .td-invitation-role { margin: 4px 0 5px; color: #545b5f; font-size: 11px; }
+        .td-invitation-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; color: #71787b; font-size: 10px; }
+        .td-invitation-meta span { display: inline-flex; align-items: center; gap: 4px; }
+        .td-invitation-meta span.is-urgent { color: #15803d; font-weight: 700; }
+        .td-invitation-card-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 10px; }
+        .td-invitation-status { max-width: 110px; padding: 5px 8px; border-radius: 999px; background: #e9f8e9; color: #247a38; font-size: 9px; font-weight: 700; text-align: center; }
+        .td-invitation-card-actions > button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 112px; padding: 9px 12px; border: 1px solid #16803c; border-radius: 7px; background: #16803c; color: #fff; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .td-invitation-card-actions > button:hover { background: #116b32; }
+        .td-invitation-card-actions > button.is-secondary { border-color: transparent; background: transparent; color: #16803c; }
+        .td-invitation-card-actions > button.is-secondary:hover { background: #f0f8f2; }
+        .td-invitation-note { display: flex; align-items: flex-start; gap: 7px; margin-top: 12px; padding: 9px 11px; border-radius: 7px; background: #f0f1f0; color: #50575a; font-size: 10px; line-height: 1.45; }
+        .td-invitation-note svg { flex: 0 0 auto; margin-top: 1px; color: #16803c; }
+        .td-invitation-status--history { background: #eceeed; color: #686e6b; }
+        .td-invitation-status--history.expired { background: #eceeed; color: #686e6b; }
+        .td-invitation-status--history.cancelled, .td-invitation-status--history.canceled, .td-invitation-status--history.rejected { background: #ffe4e1; color: #b6473d; }
+        .td-invitation-status--history.applied, .td-invitation-status--history.accepted, .td-invitation-status--history.completed { background: #e9f8e9; color: #247a38; }
+        .td-invitation-history-empty { padding: 15px; border: 1px dashed #dfe4e1; border-radius: 10px; color: #73797d; font-size: 11px; }
+        .td-invitation-privacy { display: flex; align-items: center; gap: 12px; margin-top: 30px; padding: 15px; border: 1px solid #e8ebea; border-radius: 12px; background: #f0f1f0; }
+        .td-invitation-privacy-icon { display: grid; place-items: center; flex: 0 0 32px; width: 32px; height: 32px; border-radius: 50%; background: #d7f5d9; color: #16803c; }
+        .td-invitation-privacy > div { flex: 1; }
+        .td-invitation-privacy strong { color: #252a2d; font-size: 11px; }
+        .td-invitation-privacy p { margin-top: 3px; color: #70777b; font-size: 10px; line-height: 1.4; }
+        .td-invitation-privacy > button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #16803c; font-size: 10px; font-weight: 700; text-align: left; cursor: pointer; }
+        .td-invitation-detail-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+        .td-invitation-back { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: #16803c; font-size: 11px; font-weight: 700; cursor: pointer; }
+        .td-invitation-id { display: inline-flex; align-items: center; gap: 6px; color: #73797d; font-size: 10px; }
+        .td-invitation-id i { width: 7px; height: 7px; border-radius: 50%; background: #16803c; }
+        .td-invitation-detail-heading { margin-bottom: 20px; }
+        .td-invitation-detail-heading h1 { margin: 4px 0; color: #202124; font-size: 27px; line-height: 1.2; font-weight: 800; }
+        .td-invitation-detail-heading p { color: #666e72; font-size: 12px; line-height: 1.55; }
+        .td-invitation-detail-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(210px, .9fr); align-items: start; gap: 16px; }
+        .td-invitation-detail-main-card, .td-invitation-school-about, .td-invitation-help-card { border: 1px solid #e8ebea; border-radius: 11px; background: #fff; }
+        .td-invitation-detail-main-card { padding: 17px; }
+        .td-invitation-detail-school { display: flex; align-items: flex-start; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid #edf0ef; }
+        .td-invitation-detail-school > div:nth-child(2) { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 4px; }
+        .td-invitation-detail-school h2 { display: flex; align-items: center; gap: 4px; margin: 0; color: #262a2d; font-size: 13px; font-weight: 750; }
+        .td-invitation-detail-school h2 svg { color: #16803c; }
+        .td-invitation-detail-school > div:nth-child(2) > span { display: flex; align-items: center; gap: 4px; color: #6d7478; font-size: 10px; }
+        .td-invitation-detail-badges { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+        .td-invitation-detail-badges small { display: inline-flex; align-items: center; gap: 4px; color: #16803c; font-size: 9px; white-space: nowrap; }
+        .td-invitation-position { padding: 15px 0 12px; }
+        .td-invitation-position > span { color: #697175; font-size: 9px; letter-spacing: .04em; text-transform: uppercase; }
+        .td-invitation-position h2 { margin: 3px 0 9px; color: #16803c; font-size: 17px; font-weight: 750; }
+        .td-invitation-detail-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+        .td-invitation-detail-tags span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 6px; background: #eef0ef; color: #4a5350; font-size: 9px; }
+        .td-invitation-detail-tags svg { color: #16803c; }
+        .td-invitation-about { margin: 10px 0 14px; }
+        .td-invitation-about h3 { margin-bottom: 5px; color: #292e30; font-size: 12px; font-weight: 750; }
+        .td-invitation-about p { color: #626a6e; font-size: 10px; line-height: 1.65; white-space: pre-line; }
+        .td-invitation-spec-link { display: flex; align-items: center; gap: 9px; width: 100%; padding: 10px; border: 0; border-radius: 8px; background: #f0f1f0; text-align: left; cursor: pointer; }
+        .td-invitation-spec-link > span:first-child { display: grid; place-items: center; flex: 0 0 28px; width: 28px; height: 28px; border-radius: 7px; background: #fff; color: #16803c; }
+        .td-invitation-spec-link > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; gap: 2px; }
+        .td-invitation-spec-link strong { color: #303638; font-size: 9px; }
+        .td-invitation-spec-link small { color: #71787b; font-size: 8px; }
+        .td-invitation-spec-link > svg { color: #59615e; }
+        .td-invitation-personal-note { display: flex; gap: 9px; margin: 8px 0 0; padding: 12px; border-radius: 9px; background: #f1faef; color: #275b34; }
+        .td-invitation-personal-note > span { display: grid; place-items: center; flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; background: #16803c; color: #fff; }
+        .td-invitation-personal-note > div { min-width: 0; }
+        .td-invitation-personal-note strong { font-size: 9px; }
+        .td-invitation-personal-note p { margin-top: 4px; color: #48584b; font-size: 9px; font-style: italic; line-height: 1.55; white-space: pre-line; }
+        .td-invitation-personal-note small { display: block; margin-top: 5px; color: #67736a; font-size: 8px; }
+        .td-invitation-response-note { margin-top: 10px; padding: 8px 10px; border-radius: 7px; background: #fff8e6; color: #765d1b; font-size: 10px; line-height: 1.45; }
+        .td-invitation-response-actions { display: flex; align-items: center; gap: 8px; margin-top: 16px; padding-top: 4px; }
+        .td-invitation-response-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; border-radius: 7px; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .td-invitation-apply-button { flex: 1; border: 1px solid #16803c; background: #16803c; color: #fff; }
+        .td-invitation-apply-button:hover:not(:disabled) { background: #116b32; }
+        .td-invitation-decline-button { padding: 0 10px; border: 1px solid transparent; background: transparent; color: #c62828; }
+        .td-invitation-response-actions button:disabled { opacity: .5; cursor: not-allowed; }
+        .td-invitation-detail-aside { display: flex; flex-direction: column; gap: 12px; }
+        .td-invitation-school-cover { position: relative; display: flex; align-items: flex-end; height: 78px; padding: 9px; border-radius: 11px 11px 0 0; background: linear-gradient(135deg, #e8ece9, #dce5df); }
+        .td-invitation-school-cover > span { display: inline-flex; align-items: center; gap: 4px; padding: 3px 6px; border-radius: 999px; background: rgba(67, 76, 70, .38); color: #fff; font-size: 8px; }
+        .td-invitation-school-about-body { padding: 12px; }
+        .td-invitation-school-about-body h2 { margin-bottom: 6px; color: #292e30; font-size: 11px; font-weight: 750; }
+        .td-invitation-school-about-body p, .td-invitation-help-card p { color: #687074; font-size: 9px; line-height: 1.55; }
+        .td-invitation-school-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 7px 5px; margin-top: 10px; }
+        .td-invitation-school-facts span { display: inline-flex; align-items: center; gap: 4px; color: #5c6560; font-size: 8px; }
+        .td-invitation-school-facts svg { color: #16803c; }
+        .td-invitation-school-about-body > button { display: inline-flex; align-items: center; gap: 4px; margin-top: 11px; padding: 0; border: 0; background: transparent; color: #16803c; font-size: 9px; font-weight: 700; cursor: pointer; }
+        .td-invitation-help-card { padding: 12px; }
+        .td-invitation-help-card h2 { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; color: #292e30; font-size: 11px; }
+        .td-invitation-help-card h2 svg { color: #16803c; }
+        .td-invitation-help-card a, .td-invitation-help-card > button { display: flex; align-items: center; gap: 6px; width: 100%; margin-top: 8px; padding: 7px; border: 1px solid #e8ebea; border-radius: 6px; background: #fff; color: #48504d; font-size: 8px; text-decoration: none; cursor: pointer; }
+        .td-invitation-help-card a svg:first-child, .td-invitation-help-card > button svg:first-child { color: #16803c; }
+        .td-invitation-help-card a svg:last-child, .td-invitation-help-card > button svg:last-child { margin-left: auto; }
+        .td-invitation-protection { display: flex; align-items: center; gap: 5px; padding: 9px; border-radius: 7px; background: #f0f1f0; color: #606966; font-size: 8px; }
+        .td-invitation-protection svg { flex: 0 0 auto; color: #16803c; }
+        .td-invitation-benefits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+        .td-invitation-benefits > div { display: grid; grid-template-columns: 24px minmax(0, 1fr); align-items: start; gap: 3px 7px; padding: 11px; border: 1px solid #e8ebea; border-radius: 9px; background: #fff; }
+        .td-invitation-benefits > div > span { display: grid; place-items: center; grid-row: span 2; width: 24px; height: 24px; border-radius: 6px; background: #e5f7e6; color: #16803c; }
+        .td-invitation-benefits strong { color: #313738; font-size: 9px; }
+        .td-invitation-benefits p { color: #71787b; font-size: 8px; line-height: 1.4; }
+        .td-interview-invitation-placeholder { display: flex; align-items: flex-start; gap: 12px; max-width: 680px; padding: 20px; border: 1px solid #e8ebea; border-radius: 11px; background: #fff; }
+        .td-interview-invitation-placeholder h2 { margin: 6px 0 3px; color: #292e30; font-size: 17px; }
+        .td-interview-invitation-placeholder p { color: #60696d; font-size: 11px; }
+        .td-interview-invitation-placeholder .td-interview-invitation-detail-copy { margin-top: 10px; }
+        .td-interview-invitation-placeholder small { display: block; margin-top: 14px; color: #71787b; font-size: 9px; line-height: 1.5; }
+        .td-interview-invitation-layout { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(220px, .9fr); align-items: start; gap: 16px; }
+        .td-interview-invitation-primary-column, .td-interview-invitation-aside { display: flex; min-width: 0; flex-direction: column; gap: 12px; }
+        .td-interview-invitation-card { display: flex; flex-direction: column; gap: 12px; padding: 17px; border: 1px solid #e8ebea; border-radius: 11px; background: #fff; }
+        .td-interview-invitation-school { display: flex; align-items: center; gap: 10px; }
+        .td-interview-school-mark { display: grid; place-items: center; flex: 0 0 42px; width: 42px; height: 42px; border-radius: 9px; background: #f0f1f0; color: #16803c; }
+        .td-interview-school-mark svg { filter: drop-shadow(0 1px 0 #fff); }
+        .td-interview-school-copy { display: flex; flex: 1; min-width: 0; flex-direction: column; gap: 3px; }
+        .td-interview-school-copy h2 { display: flex; align-items: center; gap: 4px; margin: 0; color: #262a2d; font-size: 13px; font-weight: 750; }
+        .td-interview-school-copy h2 svg { color: #16803c; fill: #16803c; }
+        .td-interview-school-copy > span { display: inline-flex; align-items: center; gap: 4px; color: #6d7478; font-size: 9px; }
+        .td-interview-school-dates { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; color: #6d7478; font-size: 9px; text-align: right; }
+        .td-interview-school-dates small { display: inline-flex; align-items: center; gap: 3px; padding: 3px 6px; border-radius: 999px; background: #e9f8e9; color: #427350; font-size: 8px; }
+        .td-interview-role-panel { padding: 13px; border-radius: 9px; background: #f0f1f0; }
+        .td-interview-role-panel > span { color: #697175; font-size: 8px; text-transform: uppercase; }
+        .td-interview-role-panel h2 { margin: 3px 0 8px; color: #24292c; font-size: 16px; font-weight: 750; }
+        .td-interview-role-panel .td-invitation-detail-tags span { background: #fff; }
+        .td-interview-schedule-panel { display: flex; align-items: flex-start; gap: 10px; padding: 13px; border: 1px solid #e8ebea; border-radius: 9px; background: #f0f1f0; }
+        .td-interview-schedule-icon { display: grid; place-items: center; flex: 0 0 30px; width: 30px; height: 30px; border-radius: 7px; background: #dce8ff; color: #16803c; }
+        .td-interview-schedule-content { flex: 1; min-width: 0; }
+        .td-interview-panel-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .td-interview-panel-title h3, .td-interview-message-content h3 { margin: 0; color: #303638; font-size: 11px; font-weight: 750; }
+        .td-interview-panel-title > span { display: inline-flex; align-items: center; gap: 4px; color: #16803c; font-size: 8px; }
+        .td-interview-panel-title > span i { width: 6px; height: 6px; border-radius: 50%; background: #16803c; }
+        .td-interview-schedule-meta { display: flex; flex-wrap: wrap; gap: 5px 13px; margin-top: 8px; }
+        .td-interview-schedule-meta > span, .td-interview-schedule-content > p { display: inline-flex; align-items: center; gap: 4px; color: #4f575a; font-size: 9px; }
+        .td-interview-schedule-content > p { flex-wrap: wrap; margin-top: 6px; }
+        .td-interview-schedule-content > p svg { flex: 0 0 auto; color: #4f575a; }
+        .td-interview-schedule-content > p small { color: #16803c; font-size: 8px; }
+        .td-interview-message-panel { display: flex; align-items: flex-start; gap: 10px; padding: 13px; border-radius: 9px; background: #f0f1f0; }
+        .td-interview-message-icon { display: grid; place-items: center; flex: 0 0 27px; width: 27px; height: 27px; border-radius: 7px; background: #e4e6e5; color: #65706b; }
+        .td-interview-message-content { flex: 1; min-width: 0; }
+        .td-interview-message-content > div { margin-top: 7px; padding: 10px; border-radius: 7px; background: #fff; }
+        .td-interview-message-content > div > strong:first-child { color: #353b3d; font-size: 9px; }
+        .td-interview-message-content p { margin: 5px 0; color: #60696d; font-size: 9px; line-height: 1.55; white-space: pre-line; }
+        .td-interview-message-content .td-interview-message-signoff { color: #16803c; font-size: 8px; }
+        .td-interview-spec-unavailable { cursor: default; }
+        .td-interview-response-card { display: grid; grid-template-columns: 1fr 1fr 0.6fr; gap: 8px; padding: 13px; border: 1px solid #e8ebea; border-radius: 10px; background: #fff; }
+        .td-interview-response-card > button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-height: 36px; padding: 7px 9px; border: 1px solid transparent; border-radius: 7px; font-size: 9px; font-weight: 700; cursor: pointer; }
+        .td-interview-response-card > button:disabled { opacity: .5; cursor: not-allowed; }
+        .td-interview-accept-button { background: #16803c; color: #fff; }
+        .td-interview-accept-button:hover:not(:disabled) { background: #116b32; }
+        .td-interview-reschedule-button { border-color: #e8ebea !important; background: #fff; color: #424a46; }
+        .td-interview-decline-button { background: #fff0ef; color: #c62828; }
+        .td-interview-reschedule-form { display: grid; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; gap: 9px; padding: 12px; border: 1px solid #e8ebea; border-radius: 8px; background: #fafbfa; }
+        .td-interview-reschedule-form h3 { grid-column: 1 / -1; color: #303638; font-size: 11px; }
+        .td-interview-reschedule-form label { display: flex; flex-direction: column; gap: 4px; color: #555e59; font-size: 9px; }
+        .td-interview-reschedule-form label:nth-of-type(3) { grid-column: 1 / -1; }
+        .td-interview-reschedule-form input, .td-interview-reschedule-form textarea { width: 100%; padding: 8px; border: 1px solid #dfe4e1; border-radius: 6px; background: #fff; color: #252a2d; font: inherit; font-size: 10px; }
+        .td-interview-reschedule-form > button { grid-column: 1 / -1; justify-self: end; padding: 8px 12px; border: 0; border-radius: 6px; background: #16803c; color: #fff; font-size: 9px; font-weight: 700; cursor: pointer; }
+        .td-interview-prepared-request { grid-column: 1 / -1; margin: 0; color: #765d1b; font-size: 9px; line-height: 1.45; }
+        .td-interview-school-profile-card, .td-interview-campus-card, .td-interview-checklist-card { overflow: hidden; border: 1px solid #e8ebea; border-radius: 10px; background: #fff; }
+        .td-interview-school-cover { position: relative; height: 118px; overflow: hidden; background: #e4ebe6; }
+        .td-interview-school-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .td-interview-school-cover > span { position: absolute; bottom: 8px; left: 8px; display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 999px; background: rgba(26, 34, 29, .55); color: #fff; font-size: 8px; }
+        .td-interview-school-profile-body { padding: 12px; }
+        .td-interview-school-profile-body h2, .td-interview-campus-title h2, .td-interview-assistance-card h2 { margin: 0; color: #292e30; font-size: 11px; font-weight: 750; }
+        .td-interview-school-profile-body > p { margin-top: 6px; color: #687074; font-size: 9px; line-height: 1.55; }
+        .td-interview-school-stat-row { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 9px; }
+        .td-interview-school-stat-row > span { display: flex; flex-direction: column; gap: 3px; padding: 7px; border-radius: 6px; background: #f0f1f0; }
+        .td-interview-school-stat-row small { color: #687074; font-size: 8px; }
+        .td-interview-school-stat-row strong { color: #303638; font-size: 11px; }
+        .td-interview-school-profile-body > button { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; padding: 0; border: 0; background: transparent; color: #16803c; font-size: 9px; font-weight: 700; cursor: pointer; }
+        .td-interview-campus-card { padding: 11px; }
+        .td-interview-campus-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+        .td-interview-campus-title > span { color: #687074; font-size: 8px; }
+        .td-interview-map { position: relative; height: 112px; overflow: hidden; border-radius: 7px; background: #dceae3; }
+        .td-interview-map::before, .td-interview-map::after { position: absolute; content: ''; background: #f1e7d2; }
+        .td-interview-map::before { top: 48%; left: -5%; width: 115%; height: 12px; transform: rotate(-20deg); }
+        .td-interview-map::after { top: -15%; left: 42%; width: 10px; height: 135%; transform: rotate(27deg); }
+        .td-interview-map-water { position: absolute; right: -25px; bottom: -34px; width: 105px; height: 75px; border-radius: 50%; background: #a7dce0; }
+        .td-interview-map-road { position: absolute; z-index: 1; height: 4px; border: 1px solid rgba(255,255,255,.9); border-radius: 50%; background: #f8f6e8; }
+        .td-interview-map-road--one { top: 34%; left: -5%; width: 65%; transform: rotate(21deg); }
+        .td-interview-map-road--two { top: 63%; left: 25%; width: 85%; transform: rotate(-10deg); }
+        .td-interview-map-road--three { top: 9%; left: 51%; width: 75%; transform: rotate(67deg); }
+        .td-interview-map-label { position: absolute; z-index: 2; color: #77928a; font-size: 7px; }
+        .td-interview-map-label--one { top: 16%; right: 8%; }
+        .td-interview-map-label--two { bottom: 19%; left: 12%; }
+        .td-interview-map-pin { position: absolute; z-index: 3; top: 36%; left: 49%; display: grid; place-items: center; width: 25px; height: 25px; border: 2px solid #fff; border-radius: 50% 50% 50% 0; background: #d94841; color: #fff; transform: rotate(-45deg); box-shadow: 0 2px 6px rgba(0,0,0,.2); }
+        .td-interview-map-pin svg { transform: rotate(45deg); }
+        .td-interview-map-address { position: absolute; z-index: 4; right: 5px; bottom: 5px; display: inline-flex; align-items: center; gap: 3px; max-width: 90%; padding: 4px 6px; border-radius: 4px; background: rgba(255,255,255,.92); color: #43514a; font-size: 7px; }
+        .td-interview-assistance-card { display: flex; align-items: flex-start; gap: 9px; padding: 13px; border-radius: 10px; background: #f0f1f0; }
+        .td-interview-assistance-card > span { display: grid; place-items: center; flex: 0 0 25px; width: 25px; height: 25px; border-radius: 50%; background: #fff; color: #16803c; }
+        .td-interview-assistance-card > div { flex: 1; }
+        .td-interview-assistance-card p { margin-top: 5px; color: #687074; font-size: 9px; line-height: 1.5; }
+        .td-interview-assistance-card a { display: inline-flex; align-items: center; gap: 4px; margin-top: 7px; color: #16803c; font-size: 8px; font-weight: 700; text-decoration: none; }
+        .td-interview-checklist-card { padding: 12px; }
+        .td-interview-checklist-card h2 { display: flex; align-items: center; gap: 5px; margin-bottom: 8px; color: #303638; font-size: 10px; }
+        .td-interview-checklist-card h2 svg, .td-interview-checklist-card li svg { color: #16803c; }
+        .td-interview-checklist-card ul { display: flex; flex-direction: column; gap: 5px; margin: 0; padding: 0; list-style: none; }
+        .td-interview-checklist-card li { display: flex; align-items: flex-start; gap: 5px; color: #687074; font-size: 8px; line-height: 1.4; }
+        .td-interview-checklist-card li svg { flex: 0 0 auto; }
+        @media (max-width: 768px) {
+          .td-invitations-page { padding: 18px 14px 90px; }
+          .td-invitations-heading { align-items: flex-start; flex-direction: column; gap: 12px; }
+          .td-invitations-heading h1 { font-size: 25px; }
+          .td-invitations-summary { width: 100%; }
+          .td-invitation-card-main { align-items: flex-start; flex-wrap: wrap; }
+          .td-invitation-card-copy { flex-basis: calc(100% - 54px); }
+          .td-invitation-card-actions { width: 100%; justify-content: space-between; padding-left: 52px; }
+          .td-invitation-card-actions > button { min-width: 125px; }
+          .td-invitation-privacy { align-items: flex-start; flex-wrap: wrap; }
+          .td-invitation-privacy > div { flex-basis: calc(100% - 48px); }
+          .td-invitation-privacy > button { margin-left: 44px; }
+          .td-invitation-detail-topline { align-items: flex-start; }
+          .td-invitation-id { max-width: 55%; text-align: right; }
+          .td-invitation-detail-heading h1 { font-size: 23px; }
+          .td-invitation-detail-grid { grid-template-columns: minmax(0, 1fr); }
+          .td-invitation-detail-main-card { padding: 14px; }
+          .td-invitation-detail-school { flex-wrap: wrap; }
+          .td-invitation-detail-badges { width: 100%; flex-direction: row; justify-content: flex-end; }
+          .td-invitation-benefits { grid-template-columns: minmax(0, 1fr); }
+          .td-invitation-benefits > div { grid-template-columns: 28px minmax(0, 1fr); }
+          .td-interview-invitation-layout { grid-template-columns: minmax(0, 1fr); }
+          .td-interview-invitation-card { padding: 13px; }
+          .td-interview-school-dates { font-size: 8px; }
+          .td-interview-response-card { grid-template-columns: minmax(0, 1fr); }
+          .td-interview-response-card > button { min-height: 40px; }
+          .td-interview-reschedule-form { grid-template-columns: minmax(0, 1fr); }
+          .td-interview-reschedule-form h3, .td-interview-reschedule-form label:nth-of-type(3) { grid-column: auto; }
+          .td-interview-reschedule-form > button { grid-column: auto; justify-self: stretch; }
         }
 
         /* ═══════════════════════════════════════
