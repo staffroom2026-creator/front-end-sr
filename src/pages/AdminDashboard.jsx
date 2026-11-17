@@ -3335,7 +3335,7 @@ export default function AdminDashboard() {
     );
 
     return (
-      <div className="school-applicant-summary-page">
+      <div className="school-applicant-summary-page school-teacher-profile-summary-page">
         <button
           type="button"
           className="school-summary-back-btn"
@@ -13602,6 +13602,12 @@ export default function AdminDashboard() {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.school-applicant-summary-page.school-teacher-profile-summary-page
+.school-summary-section--first
+.school-summary-actions {
+  display: none;
 }
 
 .school-applicant-summary-page

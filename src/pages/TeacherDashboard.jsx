@@ -944,6 +944,7 @@ export default function TeacherDashboard() {
   }, [activeTab, profileSubTab]);
 
   const profileFullName = (user?.full_name || [personalFirstName, personalLastName].filter(Boolean).join(' ') || 'Teacher').trim() || 'Teacher';
+  const profileAvatarUrl = toTeacherAssetUrl(profileState?.avatar_url || profileState?.profile_photo || profileState?.photo_url || '');
   const profileLocation = profileState?.location || [personalCity, personalState].filter(Boolean).join(', ') || 'Location not set';
   const profileRoleTitle = profileState?.role_title || profTitle || 'Teacher';
   const profilePreferredEmployment = String(profileState?.preferred_employment_type || '').replace(/[-_]/g, ' ');
@@ -1431,13 +1432,21 @@ export default function TeacherDashboard() {
         </div>
 
         <header className="td-invitation-detail-heading">
-          <span className="td-invitation-eyebrow"><FiShield size={12} /> {invitation.kind === 'interview' ? 'Interview invitation' : 'Direct academic invitation'}</span>
-          <h1>{invitation.kind === 'interview' ? 'Interview Invitation' : 'Invitation to Apply'}</h1>
-          <p>
-            {invitation.kind === 'interview'
-              ? `${invitation.school} would like to meet with you about this opportunity.`
-              : `${invitation.school} has reviewed your credentials and invited you to apply for this role.`}
-          </p>
+          <div className="td-invitation-heading-copy">
+            <span className="td-invitation-eyebrow"><FiShield size={12} /> {invitation.kind === 'interview' ? 'Interview invitation' : 'Direct academic invitation'}</span>
+            <h1>{invitation.kind === 'interview' ? 'Interview Invitation' : 'Invitation to Apply'}</h1>
+            <p>
+              {invitation.kind === 'interview'
+                ? `${invitation.school} would like to meet with you about this opportunity.`
+                : `${invitation.school} has reviewed your credentials and invited you to apply for this role.`}
+            </p>
+          </div>
+          {isActive && invitation.daysRemaining !== null && invitation.daysRemaining !== undefined && (
+            <div className="td-invitation-decision-window">
+              <span><FiClock size={12} /> Decision Window</span>
+              <strong>{invitation.daysRemaining} {invitation.daysRemaining === 1 ? 'Day' : 'Days'} Remaining</strong>
+            </div>
+          )}
         </header>
 
         {invitation.kind === 'interview' ? (
@@ -4224,7 +4233,9 @@ export default function TeacherDashboard() {
         ) : (
           <header className="td-mobile-topbar">
             <div className="td-mobile-avatar" onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); }} style={{ cursor: 'pointer' }}>
-              <div className="td-avatar-initials" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
+              {profileAvatarUrl
+                ? <img className="td-avatar-photo" src={profileAvatarUrl} alt={profileFullName} />
+                : <div className="td-avatar-initials" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>}
             </div>
             <div className="td-mobile-brand">
               <BrandLogo />
@@ -4257,7 +4268,9 @@ export default function TeacherDashboard() {
               )}
             </div>
             <div className="td-user-avatar" onClick={() => { setActiveTab('profile'); setProfileSubTab('overview'); }} style={{ cursor: 'pointer' }}>
-              <div className="td-avatar-initials td-avatar-initials--topbar" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>
+              {profileAvatarUrl
+                ? <img className="td-avatar-photo" src={profileAvatarUrl} alt={profileFullName} />
+                : <div className="td-avatar-initials td-avatar-initials--topbar" aria-label={profileFullName}>{profileFullName.split(' ').map(part => part[0]).join('').slice(0, 2).toUpperCase()}</div>}
             </div>
           </div>
         </header>
@@ -9813,6 +9826,13 @@ export default function TeacherDashboard() {
           width: 40px;
           height: 40px;
         }
+        .td-avatar-photo {
+          width: 40px;
+          height: 40px;
+          border: 2px solid #E8F9ED;
+          border-radius: 50%;
+          object-fit: cover;
+        }
 
         /* ═══════════════════════════════════════
            MOBILE TOPBAR
@@ -9838,6 +9858,10 @@ export default function TeacherDashboard() {
           height: 38px;
           border: 2px solid #E8F9ED;
           font-size: 12px;
+        }
+        .td-mobile-avatar .td-avatar-photo {
+          width: 38px;
+          height: 38px;
         }
         .td-mobile-brand {
           display: flex;
@@ -14484,13 +14508,19 @@ export default function TeacherDashboard() {
         .td-invitation-privacy strong { color: #252a2d; font-size: 11px; }
         .td-invitation-privacy p { margin-top: 3px; color: #70777b; font-size: 10px; line-height: 1.4; }
         .td-invitation-privacy > button { display: inline-flex; align-items: center; gap: 6px; border: 0; background: transparent; color: #16803c; font-size: 10px; font-weight: 700; text-align: left; cursor: pointer; }
-        .td-invitation-detail-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-        .td-invitation-back { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: #16803c; font-size: 11px; font-weight: 700; cursor: pointer; }
-        .td-invitation-id { display: inline-flex; align-items: center; gap: 6px; color: #73797d; font-size: 10px; }
-        .td-invitation-id i { width: 7px; height: 7px; border-radius: 50%; background: #16803c; }
-        .td-invitation-detail-heading { margin-bottom: 20px; }
-        .td-invitation-detail-heading h1 { margin: 4px 0; color: #202124; font-size: 27px; line-height: 1.2; font-weight: 800; }
-        .td-invitation-detail-heading p { color: #666e72; font-size: 12px; line-height: 1.55; }
+        .td-invitation-detail-topline { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        .td-invitation-back { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: #16803c; font-size: 10px; font-weight: 700; cursor: pointer; }
+        .td-invitation-id { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 60%; overflow: hidden; color: #73797d; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
+        .td-invitation-id i { flex: 0 0 6px; width: 6px; height: 6px; border-radius: 50%; background: #16803c; }
+        .td-invitation-detail-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+        .td-invitation-heading-copy { min-width: 0; }
+        .td-invitation-eyebrow { display: inline-flex; align-items: center; gap: 4px; padding: 2px 6px; border-radius: 999px; background: #dff4e2; color: #247a38; font-size: 8px; font-weight: 700; letter-spacing: .025em; line-height: 1.3; text-transform: uppercase; }
+        .td-invitation-detail-heading h1 { margin: 5px 0 2px; color: #202124; font-size: 22px; line-height: 1.2; font-weight: 800; }
+        .td-invitation-detail-heading p { color: #666e72; font-size: 11px; line-height: 1.45; }
+        .td-invitation-decision-window { display: flex; flex: 0 0 auto; flex-direction: column; gap: 2px; min-width: 116px; padding: 6px 9px; border-radius: 8px; background: #f0f1f0; color: #5e6462; }
+        .td-invitation-decision-window > span { display: inline-flex; align-items: center; gap: 5px; font-size: 8px; line-height: 1.3; }
+        .td-invitation-decision-window svg { color: #c94f43; }
+        .td-invitation-decision-window strong { padding-left: 17px; color: #303532; font-size: 9px; line-height: 1.3; }
         .td-invitation-detail-grid { display: grid; grid-template-columns: minmax(0, 1.9fr) minmax(210px, .9fr); align-items: start; gap: 16px; }
         .td-invitation-detail-main-card, .td-invitation-school-about, .td-invitation-help-card { border: 1px solid #e8ebea; border-radius: 11px; background: #fff; }
         .td-invitation-detail-main-card { padding: 17px; }
@@ -14662,6 +14692,8 @@ export default function TeacherDashboard() {
           .td-invitation-privacy > button { margin-left: 44px; }
           .td-invitation-detail-topline { align-items: flex-start; }
           .td-invitation-id { max-width: 55%; text-align: right; }
+          .td-invitation-detail-heading { align-items: flex-start; flex-direction: column; gap: 10px; }
+          .td-invitation-decision-window { align-self: flex-start; }
           .td-invitation-detail-heading h1 { font-size: 23px; }
           .td-invitation-detail-grid { grid-template-columns: minmax(0, 1fr); }
           .td-invitation-detail-main-card { padding: 14px; }
