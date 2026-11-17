@@ -437,6 +437,7 @@ export default function AdminDashboard() {
     if (/^(data:|https?:\/\/)/i.test(assetPath)) return assetPath;
     return `${API_ORIGIN}/${String(assetPath).replace(/^\/+/, "")}`;
   };
+  const getSchoolJobId = (job) => job?.job_id || job?.id || "";
   const normalizedUserRole = String(user?.role || user?.user_role || user?.role_name || "").toLowerCase();
   const isSchool = normalizedUserRole === "school" || normalizedUserRole === "school_admin";
 
@@ -3761,7 +3762,7 @@ export default function AdminDashboard() {
         && (job.id || job.job_id),
     );
     const selectedJobForInterview = openInviteJobs.find(
-      (job) => String(job.id || job.job_id) === teacherInviteJobId,
+      (job) => String(getSchoolJobId(job)) === teacherInviteJobId,
     );
     const teacherName = teacher.name || teacher.full_name || teacher.teacher_name || "Teacher";
     const subject = normalizeMultiValueList(
@@ -3844,7 +3845,7 @@ export default function AdminDashboard() {
             {openInviteJobs.length ? (
               <div className="school-interview-opportunity-list">
                 {openInviteJobs.map((job) => {
-                  const jobId = String(job.id || job.job_id);
+                  const jobId = String(getSchoolJobId(job));
                   const selected = teacherInviteJobId === jobId;
                   return (
                     <label
@@ -4587,7 +4588,7 @@ export default function AdminDashboard() {
   const handleSendTeacherInterviewInvite = async () => {
     const teacherId = selectedTeacherProfile?.user_id;
     const job = jobs.find(
-      (item) => String(item.id || item.job_id || "") === teacherInviteJobId,
+      (item) => String(getSchoolJobId(item)) === teacherInviteJobId,
     );
 
     if (!teacherId) {
@@ -4697,7 +4698,7 @@ export default function AdminDashboard() {
   };
 
   const selectTeacherInviteJob = (job) => {
-    const jobId = job?.id || job?.job_id;
+    const jobId = getSchoolJobId(job);
     if (!jobId) {
       showSnackbar("Unable to select position", "This open position is missing a valid ID.");
       return;
@@ -4742,11 +4743,11 @@ export default function AdminDashboard() {
       setTeacherInviteType("interview");
       const savedJobId = String(savedDraft?.jobId || "");
       const savedJobIsOpen = activeJobs.some(
-        (job) => String(job.id || job.job_id) === savedJobId,
+        (job) => String(getSchoolJobId(job)) === savedJobId,
       );
       const savedForm = savedDraft?.form || {};
       setTeacherInviteJobId(
-        savedJobIsOpen ? savedJobId : String(firstJob?.id || firstJob?.job_id || ""),
+        savedJobIsOpen ? savedJobId : String(getSchoolJobId(firstJob)),
       );
       setTeacherInterviewForm((current) => ({
         ...current,
@@ -4887,7 +4888,7 @@ export default function AdminDashboard() {
                 </p>
                 <div className="school-opportunity-list">
                   {openInviteJobs.map((job) => {
-                    const jobId = String(job.id || job.job_id);
+                    const jobId = String(getSchoolJobId(job));
                     return (
                       <button
                         type="button"
@@ -4942,7 +4943,7 @@ export default function AdminDashboard() {
     const teacherRole = selectedTeacherProfile?.role || selectedTeacherProfile?.subject || "Teacher";
     const teacherAvailability = selectedTeacherProfile?.experience || "Experience available";
     const selectedInviteJob = jobs.find(
-      (job) => String(job.id || job.job_id || "") === teacherInviteJobId,
+      (job) => String(getSchoolJobId(job)) === teacherInviteJobId,
     );
 
     return (
