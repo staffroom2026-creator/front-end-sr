@@ -471,11 +471,8 @@ const getInterviewStart = (interview = {}) => {
 };
 
 const getApplicationDisplayStatus = (application = {}) => {
-  const rawStatus = String(application.status || '').toLowerCase();
-  if (application.interview && (rawStatus === 'shortlisted' || rawStatus === 'interviewing')) {
-    return 'shortlisted';
-  }
-  return rawStatus;
+  const rawStatus = String(application.status || '').trim().toLowerCase().replace(/[_-]+/g, ' ');
+  return rawStatus === 'interviewing' ? 'shortlisted' : rawStatus;
 };
 
 const teacherLevelOptions = [
@@ -987,7 +984,11 @@ export default function TeacherDashboard() {
   const visibleApplications = applications
     .filter((application) => {
       const status = getApplicationDisplayStatus(application);
-      const matchesStatus = applicationStatusFilter === 'all' || status === applicationStatusFilter;
+      const matchesStatus = applicationStatusFilter === 'all' || (
+        applicationStatusFilter === 'pending'
+          ? ['pending', 'under review', 'reviewed'].includes(status)
+          : status === applicationStatusFilter
+      );
       const searchTerm = applicationSearch.trim().toLowerCase();
       const matchesSearch = !searchTerm || [application.title, application.school, application.location, application.status].join(' ').toLowerCase().includes(searchTerm);
       return matchesStatus && matchesSearch;
