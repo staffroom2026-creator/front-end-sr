@@ -9,6 +9,7 @@ import { profileService } from "../services/profileService";
 import { accountService } from "../services/accountService";
 import BrandLogo from "../components/BrandLogo";
 import FeedbackButton from "../components/FeedbackButton";
+import PushNotificationSettings from "../components/PushNotificationSettings";
 import { AnimatePresence, motion as Motion } from "framer-motion";
 import {
   FiAlertCircle,
@@ -7159,6 +7160,7 @@ export default function AdminDashboard() {
                           </button>
 
                         </section>
+                        <PushNotificationSettings />
                       </div>
                     )
                   )}

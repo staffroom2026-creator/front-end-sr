@@ -1863,3 +1863,37 @@ Authenticated liveness and health verification check for authorized clients and 
   "message": "Database connection failed"
 }
 ```
+
+---
+
+## Web Push Notifications
+
+The web app and installed PWA use the browser's standard Push API and the PHP API's VAPID sender. No Firebase SDK or push-provider account is used. Browser push delivery still requires the push service built into the user's browser.
+
+### Setup
+
+1. Apply `database/migrations/2026_11_17_web_push_subscriptions.sql` to the API database.
+2. From the API project root, run `php scripts/generate_vapid_keys.php`.
+   - On XAMPP/Windows, set OpenSSL's config before starting PHP, for example in PowerShell:
+     ```powershell
+     $env:OPENSSL_CONF = 'C:\xampp\php\extras\ssl\openssl.cnf'
+     $env:HOME = $env:USERPROFILE
+     php scripts\generate_vapid_keys.php
+     ```
+3. Store the generated values in the API server's untracked `.env` file:
+   - `WEB_PUSH_PUBLIC_KEY`
+   - `WEB_PUSH_PRIVATE_KEY_BASE64`
+   - `WEB_PUSH_SUBJECT` (a `mailto:` address or HTTPS contact URL)
+4. Ensure the API host has PHP OpenSSL and cURL extensions enabled, and serve the frontend over HTTPS.
+   - On Windows, configure `OPENSSL_CONF` for the PHP web server process too, before Apache starts.
+5. In Settings, each user can enable push notifications separately for that browser or installed PWA.
+
+Keep `WEB_PUSH_PRIVATE_KEY_BASE64` secret and do not commit it. The public key endpoint verifies that the configured public/private keys match.
+
+### Endpoints
+
+- `GET /api/push/vapid-key` — returns the public VAPID key to an authenticated user.
+- `POST /api/push/subscriptions` — saves the current browser's subscription (`endpoint`, `keys.p256dh`, and `keys.auth`).
+- `DELETE /api/push/subscriptions` — removes the current browser subscription using `{ "endpoint": "..." }`.
+
+The API sends a push after creating an in-app notification. Expired browser subscriptions (HTTP 404/410) are deleted automatically. Push delivery failures are logged and do not prevent the in-app notification from being stored.

@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { motion as Motion } from 'framer-motion';
 import BrandLogo from '../components/BrandLogo';
 import FeedbackButton from '../components/FeedbackButton';
+import PushNotificationSettings from '../components/PushNotificationSettings';
 import { useAuth } from '../context/authContext.js';
 import { jobService } from '../services/jobService';
 import { applicationService } from '../services/applicationService';
@@ -5547,6 +5548,7 @@ export default function TeacherDashboard() {
                     </Motion.div>
 
                   </div>
+                  <PushNotificationSettings />
                 </>
               )}
 
