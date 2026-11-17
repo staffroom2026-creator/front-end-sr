@@ -85,6 +85,87 @@ const emptyJobForm = {
   is_featured: false,
 };
 
+const getTeacherAvatarPath = (record = {}) => {
+  const photoFields = [
+    "avatar_url",
+    "profile_photo",
+    "profile_photo_url",
+    "profile_picture",
+    "profile_picture_url",
+    "photo_url",
+    "profile_image",
+    "profile_image_url",
+    "avatar",
+    "photo",
+    "picture",
+    "image_url",
+  ];
+  const records = [record];
+  const visited = new Set();
+
+  while (records.length) {
+    const current = records.shift();
+    if (!current || typeof current !== "object" || visited.has(current)) continue;
+    visited.add(current);
+
+    for (const field of photoFields) {
+      if (typeof current[field] === "string" && current[field].trim()) return current[field].trim();
+    }
+
+    records.push(
+      current.data,
+      current.teacher,
+      current.profile,
+      current.teacher_profile,
+      current.user,
+      current.account,
+    );
+  }
+
+  return "";
+};
+
+const SchoolTeacherAvatar = ({ teacher, toAssetUrl }) => {
+  const [avatarPath, setAvatarPath] = useState(() => getTeacherAvatarPath(teacher));
+
+  useEffect(() => {
+    if (avatarPath || !teacher?.user_id) return undefined;
+
+    let isCurrent = true;
+    adminService.getTeacherById(teacher.user_id)
+      .then((response) => {
+        const payload = response?.data?.data ?? response?.data ?? {};
+        const detail = Array.isArray(payload) ? payload[0] || {} : payload;
+        const photoPath = getTeacherAvatarPath(detail) || getTeacherAvatarPath(payload);
+        if (isCurrent && photoPath) setAvatarPath(photoPath);
+      })
+      .catch((error) => {
+        console.error(`Unable to load the profile photo for teacher ${teacher.user_id}.`, error);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [avatarPath, teacher?.user_id]);
+
+  return (
+    <div
+      className="school-teacher-avatar"
+      style={{ background: teacher.accent }}
+      aria-hidden="true"
+    >
+      {avatarPath
+        ? <img src={toAssetUrl(avatarPath)} alt="" />
+        : teacher.name
+          .split(" ")
+          .map((part) => part[0])
+          .join("")
+          .slice(0, 2)
+          .toUpperCase()}
+    </div>
+  );
+};
+
 const normalizeResponsibilityList = (value) => {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value !== "string") return [];
@@ -224,6 +305,7 @@ export default function AdminDashboard() {
   const [experienceMenuOpen, setExperienceMenuOpen] = useState(false);
   const [qualificationMenuOpen, setQualificationMenuOpen] = useState(false);
   const [selectedApplicant, setSelectedApplicant] = useState(null);
+  const applicantProfilePhotoRequestsRef = useRef(new Set());
   const [selectedCoverLetter, setSelectedCoverLetter] = useState("");
   const [selectedCvPreview, setSelectedCvPreview] = useState(null);
   const [selectedTeacherProfile, setSelectedTeacherProfile] = useState(null);
@@ -267,6 +349,16 @@ export default function AdminDashboard() {
   const [savedTeacherIds, setSavedTeacherIds] = useState([]);
   const [schoolLogoPreview, setSchoolLogoPreview] = useState("");
   const [schoolLogoFile, setSchoolLogoFile] = useState(null);
+  const selectedApplicantTeacherId = selectedApplicant?.teacher_id
+    || selectedApplicant?.user_id
+    || selectedApplicant?.teacher?.user_id
+    || selectedApplicant?.user?.user_id;
+  const selectedApplicantPhotoRequestKey = selectedApplicantTeacherId
+    ? `${selectedApplicantTeacherId}:${selectedApplicant?.application_id || selectedApplicant?.id || ""}`
+    : "";
+  const shouldLoadSelectedApplicantPhoto = Boolean(
+    selectedApplicantTeacherId && !getTeacherAvatarPath(selectedApplicant),
+  );
 
   useEffect(() => {
     if (!selectedCoverLetter) return undefined;
@@ -282,13 +374,49 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (!selectedCvPreview) return undefined;
 
+    const previousOverflow = document.body.style.overflow;
     const handleCvPreviewKeyDown = (event) => {
       if (event.key === "Escape") setSelectedCvPreview(null);
     };
 
+    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", handleCvPreviewKeyDown);
-    return () => window.removeEventListener("keydown", handleCvPreviewKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleCvPreviewKeyDown);
+    };
   }, [selectedCvPreview]);
+
+  useEffect(() => {
+    if (!shouldLoadSelectedApplicantPhoto || applicantProfilePhotoRequestsRef.current.has(selectedApplicantPhotoRequestKey)) {
+      return undefined;
+    }
+
+    applicantProfilePhotoRequestsRef.current.add(selectedApplicantPhotoRequestKey);
+    let isCurrent = true;
+    adminService.getTeacherById(selectedApplicantTeacherId)
+      .then((response) => {
+        const payload = response?.data?.data ?? response?.data ?? {};
+        const detail = Array.isArray(payload) ? payload[0] || {} : payload;
+        const avatarPath = getTeacherAvatarPath(detail);
+        if (!isCurrent || !avatarPath) return;
+
+        setSelectedApplicant((current) => {
+          const currentTeacherId = current?.teacher_id || current?.user_id || current?.teacher?.user_id || current?.user?.user_id;
+          if (!current || String(currentTeacherId) !== String(selectedApplicantTeacherId) || getTeacherAvatarPath(current)) {
+            return current;
+          }
+          return { ...current, profile_photo: avatarPath };
+        });
+      })
+      .catch((error) => {
+        if (isCurrent) console.error("Unable to load applicant profile photo.", error);
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [selectedApplicantPhotoRequestKey, selectedApplicantTeacherId, shouldLoadSelectedApplicantPhoto]);
   const [isSchoolNameEditing, setIsSchoolNameEditing] = useState(false);
   const [schoolNameValue, setSchoolNameValue] = useState("");
   const [isEmailEditing, setIsEmailEditing] = useState(false);
@@ -438,6 +566,84 @@ export default function AdminDashboard() {
     if (/^(data:|https?:\/\/)/i.test(assetPath)) return assetPath;
     return `${API_ORIGIN}/${String(assetPath).replace(/^\/+/, "")}`;
   };
+  const toAssetDownloadUrl = (assetUrl) => {
+    const url = new URL(assetUrl, API_ORIGIN);
+    return url.origin === API_ORIGIN && url.pathname.startsWith("/uploads/")
+      ? `${url.pathname}${url.search}`
+      : assetUrl;
+  };
+  const getAssetFileName = (assetUrl, fallback = "CV document") => (
+    String(assetUrl || "").split(/[?#]/)[0].split("/").pop() || fallback
+  );
+  const getAssetMimeType = (fileName) => {
+    const extension = String(fileName || "").split(".").pop()?.toLowerCase();
+    return ({
+      pdf: "application/pdf",
+      doc: "application/msword",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      jpg: "image/jpeg",
+      jpeg: "image/jpeg",
+      png: "image/png",
+    })[extension] || "";
+  };
+  const downloadAsset = (assetUrl, fileName) => {
+    const link = document.createElement("a");
+    link.href = toAssetDownloadUrl(assetUrl);
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+  const renderCvPreviewModal = (documentLabel, titleId) => (
+    <AnimatePresence>
+      {selectedCvPreview && (
+        <Motion.div
+          className="school-cv-preview-backdrop"
+          role="presentation"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          onClick={() => setSelectedCvPreview(null)}
+        >
+          <Motion.section
+            className="school-cv-preview-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={titleId}
+            initial={{ opacity: 0, y: 18, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="school-cover-letter-modal-header">
+              <div>
+                <span><FiFileText size={16} /> {documentLabel}</span>
+                <h2 id={titleId}>{selectedCvPreview.name}</h2>
+              </div>
+              <button type="button" aria-label="Close CV preview" onClick={() => setSelectedCvPreview(null)}>
+                <FiX size={19} />
+              </button>
+            </header>
+            <div className="school-cv-preview-viewer">
+              {getAssetMimeType(selectedCvPreview.name) === "application/pdf"
+                ? <iframe className="school-cv-preview-frame" src={selectedCvPreview.url} title={`${selectedCvPreview.name} preview`} />
+                : getAssetMimeType(selectedCvPreview.name).startsWith("image/")
+                  ? <img className="school-cv-preview-image" src={selectedCvPreview.url} alt={selectedCvPreview.name} />
+                  : (
+                    <div className="school-cv-preview-unsupported">
+                      <FiInfo size={22} />
+                      <strong>Preview not available for this file type</strong>
+                      <span>{selectedCvPreview.name} cannot be previewed in the browser. PDF, JPG and PNG previews are supported.</span>
+                    </div>
+                  )}
+            </div>
+          </Motion.section>
+        </Motion.div>
+      )}
+    </AnimatePresence>
+  );
   const getSchoolJobId = (job) => job?.job_id || job?.id || "";
   const normalizedUserRole = String(user?.role || user?.user_role || user?.role_name || "").toLowerCase();
   const isSchool = normalizedUserRole === "school" || normalizedUserRole === "school_admin";
@@ -3204,6 +3410,7 @@ export default function AdminDashboard() {
     const jobId = job.job_id || job.id;
     const applicantStatus = String(applicant.status || "").toLowerCase();
     const isShortlisted = applicantStatus === "shortlisted" || applicantStatus === "interviewing";
+    const isShortlistActionDisabled = /shortlisted|interviewing|rejected|hired|withdrawn|closed/.test(applicantStatus);
     const isRejected = applicantStatus === "rejected";
     const isHired = applicantStatus === "hired";
     const isWithdrawn = applicantStatus === "withdrawn";
@@ -3212,51 +3419,191 @@ export default function AdminDashboard() {
     const terminalStatusLabel = isRejected ? "Rejected" : isHired ? "Hired" : isWithdrawn ? "Withdrawn" : isClosed ? "Closed" : "";
     const summary = applicant.summary || applicant.bio || applicant.about || "No professional summary has been provided.";
     const cvUrl = toAssetUrl(applicant.cv_url || applicant.cv || "");
+    const cvFileName = cvUrl ? getAssetFileName(cvUrl, "Applicant_CV.pdf") : "";
+    const applicantName = applicant.teacher_name || applicant.full_name || applicant.name || applicant.teacher_email || "Applicant";
+    const applicantRole = applicant.role_title || job.role_type || "Teacher";
+    const applicantLocation = applicant.location || "Location not provided";
+    const experienceText = applicant.experience || (applicant.experience_years ? `${applicant.experience_years} years` : "");
+    const applicantTeacherId = applicant.teacher_id || applicant.user_id || applicant.teacher?.user_id || applicant.user?.user_id;
+    const applicantAccount = (allUsers || []).find((userEntry) => (
+      String(userEntry?.user_id || userEntry?.id || "") === String(applicantTeacherId || "")
+    ));
+    const avatarUrl = toAssetUrl(getTeacherAvatarPath(applicant) || getTeacherAvatarPath(applicantAccount));
+    const rawTrcnFlag = String(applicant.trcn_verified || "").trim();
+    const trcnStatus = String(
+      applicant.trcn_status
+      || applicant.trcnStatus
+      || (rawTrcnFlag && !/^(true|false|1|0)$/i.test(rawTrcnFlag) ? rawTrcnFlag : ""),
+    ).trim();
+    const isTrcnVerified = applicant.trcn_verified === true
+      || applicant.trcn_verified === 1
+      || applicant.verified === true
+      || /^(true|1)$/i.test(String(applicant.trcn_verified || applicant.verified || ""))
+      || (/verified|approved/i.test(trcnStatus) && !/not verified|unverified/i.test(trcnStatus));
+    const trcnStatusLabel = trcnStatus
+      ? `TRCN ${trcnStatus.replace(/^TRCN\s+/i, "")}`
+      : isTrcnVerified ? "TRCN Verified" : applicant.trcn ? "TRCN Registered" : "TRCN Not Verified";
     const coverLetter = String(applicant.cover_letter || "").trim();
     const additionalInfo = String(applicant.additional_info || applicant.additionalInfo || "").trim();
 
     if (applicant) return (
       <div className="school-applicant-summary-page school-applicant-summary-page--api">
         <button type="button" className="school-summary-back-btn" onClick={() => setSelectedApplicant(null)}><FiArrowLeft /> Back</button>
-        <div className="school-summary-container"><div className="school-summary-content">
-          <section className="school-summary-section school-summary-section--first">
-            {isTerminalStatus ? (
-              <div className="school-summary-actions">
-                <span className={`school-summary-status-pill ${isRejected ? 'school-summary-status-pill--rejected' : isHired ? 'school-summary-status-pill--hired' : isWithdrawn ? 'school-summary-status-pill--withdrawn' : 'school-summary-status-pill--closed'}`}>
-                  {terminalStatusLabel}
-                </span>
+          <section className="school-profile-preview-card">
+            <header className="school-profile-preview-hero">
+              <div className="school-profile-preview-avatar" aria-label={applicantName}>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt="" />
+                ) : (
+                  applicantName.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase()
+                )}
               </div>
-            ) : (
-              <div className="school-summary-actions">
-                <button
-                  type="button"
-                  className="school-summary-shortlist-btn"
-                  disabled={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus}
-                  onClick={() => handleShortlistApplicant(applicant)}
-                  style={Boolean(applicantStatus.match(/shortlisted|interviewing|rejected|hired|withdrawn|closed/)) || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed', background: '#10b981', color: '#fff' } : {}}
-                >
-                  {applicantStatus.match(/shortlisted|interviewing/) ? 'Shortlisted' : 'Shortlist Candidate'}
-                </button>
-                {!isShortlisted && <button
-                  type="button"
-                  className="school-summary-reject-btn"
-                  disabled={isRejected || isTerminalStatus}
-                  onClick={() => openRejectApplicantModal(jobId, applicantId)}
-                  style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
-                >
-                  Reject Applicant
-                </button>}
+              <div className="school-profile-preview-hero-copy">
+                <div className="school-profile-preview-name-row">
+                  <h2>{applicantName}</h2>
+                  <span className={`school-profile-preview-verified${isTrcnVerified ? "" : " is-muted"}`}>
+                    <FiCheckCircle size={12} /> {trcnStatusLabel}
+                  </span>
+                </div>
+                <p>{applicantRole}</p>
+                <div className="school-profile-preview-meta">
+                  <span><FiMapPin size={15} />{applicantLocation}</span>
+                  {experienceText && <span><FiAward size={15} />{experienceText}</span>}
+                </div>
               </div>
+              <div className="school-profile-preview-actions">
+                {isTerminalStatus ? (
+                  <span className={`school-summary-status-pill ${isRejected ? "school-summary-status-pill--rejected" : isHired ? "school-summary-status-pill--hired" : isWithdrawn ? "school-summary-status-pill--withdrawn" : "school-summary-status-pill--closed"}`}>
+                    {terminalStatusLabel}
+                  </span>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="school-summary-shortlist-btn"
+                      disabled={isShortlistActionDisabled}
+                      onClick={() => handleShortlistApplicant(applicant)}
+                      style={isShortlistActionDisabled ? { opacity: 0.7, cursor: "not-allowed", background: "#10b981", color: "#fff" } : {}}
+                    >
+                      {isShortlisted ? "Shortlisted" : "Shortlist Candidate"}
+                    </button>
+                    {!isShortlisted && (
+                      <button
+                        type="button"
+                        className="school-summary-reject-btn"
+                        disabled={isRejected || isTerminalStatus}
+                        onClick={() => openRejectApplicantModal(jobId, applicantId)}
+                        style={isRejected || isTerminalStatus ? { opacity: 0.7, cursor: "not-allowed" } : {}}
+                      >
+                        Reject Applicant
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </header>
+
+            <section className="school-profile-preview-section school-profile-preview-summary">
+              <h2><FiFileText /> Professional Summary</h2>
+              <p>{summary}</p>
+            </section>
+
+            <section className="school-profile-preview-section school-profile-preview-experience">
+              <h2><FiBriefcase /> Professional Experience</h2>
+              {applicantExperience.length ? (
+                <div className="school-profile-preview-list">
+                  {applicantExperience.map((experience, index) => (
+                    <article key={experience.id || `${experience.role || experience.title || "experience"}-${index}`} className="school-profile-preview-list-item">
+                      <span className="school-profile-preview-timeline-dot" />
+                      <div>
+                        <span>{experience.period || "Experience"}</span>
+                        <strong>{experience.role || experience.title || "Teaching role"}</strong>
+                        <p>{experience.school || experience.institution || "School not provided"}{experience.location ? ` · ${experience.location}` : ""}</p>
+                        {experience.description && <p className="school-profile-preview-description">{experience.description}</p>}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="school-profile-preview-empty">No teaching experience provided.</p>
+              )}
+            </section>
+
+            <div className="school-profile-preview-grid">
+              <div className="school-profile-preview-column">
+                <section className="school-profile-preview-section">
+                  <h2><FiBook /> Teaching Subjects</h2>
+                  <div className="school-profile-preview-tags">
+                    {applicantSubjects.length
+                      ? applicantSubjects.map((subject, index) => <span key={`${subject}-${index}`}>{subject}</span>)
+                      : <em>No subjects provided.</em>}
+                  </div>
+                </section>
+
+                <section className="school-profile-preview-section">
+                  <h2><FiAward /> Qualifications</h2>
+                  {applicantQualifications.length ? (
+                    applicantQualifications.map((qualification, index) => (
+                      <article key={`${qualification}-${index}`} className="school-profile-preview-education-item">
+                        <FiBook />
+                        <div><strong>{qualification}</strong></div>
+                      </article>
+                    ))
+                  ) : (
+                    <p className="school-profile-preview-empty">No qualifications provided.</p>
+                  )}
+                </section>
+              </div>
+
+              <div className="school-profile-preview-column">
+                <section className="school-profile-preview-section">
+                  <h2><FiAward /> Key Skills</h2>
+                  <div className="school-profile-preview-tags">
+                    {applicantSkills.length
+                      ? applicantSkills.map((skill, index) => <span key={`${skill}-${index}`}>{skill}</span>)
+                      : <em>No skills provided.</em>}
+                  </div>
+                </section>
+
+                <section className="school-profile-preview-section">
+                  <h2><FiFileText /> Application Details</h2>
+                  <div className="school-profile-preview-application-documents">
+                    {coverLetter ? (
+                      <button
+                        type="button"
+                        className="school-summary-cover-letter school-summary-cover-letter-trigger"
+                        onClick={() => setSelectedCoverLetter(coverLetter)}
+                        aria-label="View submitted cover letter"
+                      >
+                        <FiFileText />
+                        <span><strong>Cover letter</strong><small>Click to read the submitted letter</small></span>
+                        <FiArrowRight className="school-summary-cover-letter-arrow" />
+                      </button>
+                    ) : (
+                      <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>
+                    )}
+                    {additionalInfo && (
+                      <div className="school-summary-cover-letter school-summary-additional-info">
+                        <FiInfo />
+                        <div><strong>Additional information</strong><p>{additionalInfo}</p></div>
+                      </div>
+                    )}
+                  </div>
+                </section>
+              </div>
+            </div>
+
+            {cvUrl && (
+              <footer className="school-profile-preview-resume">
+                <span><FiFileText /> CV / Resume</span>
+                <strong>{cvFileName}</strong>
+                <div className="school-profile-preview-doc-actions">
+                  <button type="button" onClick={() => downloadAsset(cvUrl, cvFileName)}><FiDownload /> Download</button>
+                  <button type="button" onClick={() => setSelectedCvPreview({ url: cvUrl, name: cvFileName })}><FiEye /> Preview</button>
+                </div>
+              </footer>
             )}
-            <div className="school-summary-summary-content"><div className="school-summary-header-title"><FiFileText className="school-summary-icon" /><h2>Professional Summary</h2></div><p className="school-summary-text">{summary}</p></div><div className="school-summary-clearfix" />
           </section>
-          <div className="school-summary-grid-2col">
-            <section className="school-summary-section"><div className="school-summary-section-header"><FiBook className="school-summary-icon" /><h2>Teaching Subjects</h2></div>{applicantSubjects.length ? <div className="school-summary-tags">{applicantSubjects.map((subject, index) => <span key={`${subject}-${index}`} className="school-summary-tag">{subject}</span>)}</div> : <p className="school-summary-text">No subjects provided.</p>}</section>
-            <section className="school-summary-section"><div className="school-summary-section-header"><FiAward className="school-summary-icon" /><h2>Qualifications</h2></div>{applicantQualifications.length ? <div className="school-summary-qualifications">{applicantQualifications.map((qualification, index) => <div key={`${qualification}-${index}`} className="school-summary-qualification"><strong>{qualification}</strong></div>)}{(applicant.trcn_verified || applicant.trcn) && <div className="school-summary-badge-wrapper"><span className="school-summary-badge">TRCN VERIFIED</span></div>}</div> : <p className="school-summary-text">No qualifications provided.</p>}</section>
-          </div>
-          <section className="school-summary-section"><div className="school-summary-section-header"><FiBriefcase className="school-summary-icon" /><h2>Teaching Experience</h2></div>{applicantExperience.length ? <div className="school-summary-experience-timeline">{applicantExperience.map((experience, index) => <div key={experience.id || `${experience.role}-${index}`} className="school-summary-timeline-item"><div className={`school-summary-timeline-bullet ${index === 0 ? 'school-summary-timeline-bullet--active' : ''}`} /><div className="school-summary-job"><div className="school-summary-job-header"><div><strong>{experience.role || experience.title || 'Teaching role'}</strong><p className="school-summary-job-school">{experience.school || experience.institution || 'School not provided'}</p></div>{experience.period && <span className="school-summary-date">{experience.period}</span>}</div>{experience.description && <p className="school-summary-job-desc">{experience.description}</p>}</div></div>)}</div> : <p className="school-summary-text">No teaching experience provided.</p>}</section>
-          <div className="school-summary-bottom-row"><section className="school-summary-section school-summary-section--skills"><div className="school-summary-section-header"><h2>Key Skills</h2></div>{applicantSkills.length ? <div className="school-summary-skills">{applicantSkills.map((skill, index) => <span key={`${skill}-${index}`} className="school-summary-skill-tag">{skill}</span>)}</div> : <p className="school-summary-text">No skills provided.</p>}</section><div className="school-summary-documents">{cvUrl && <div className="school-summary-document"><div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf"><span>PDF</span></div><div className="school-summary-doc-info"><p className="school-summary-doc-name">{cvUrl.split('/').pop()}</p><p className="school-summary-doc-size">CV uploaded</p></div><div className="school-summary-doc-actions"><button type="button" title="View CV" className="school-summary-doc-btn" onClick={() => setSelectedCvPreview({ url: cvUrl, name: cvUrl.split('/').pop() || "Applicant CV" })}><FiEye size={18} /></button><button type="button" title="Download CV" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, '_blank', 'noopener,noreferrer')}><FiDownload size={18} /></button></div></div>}{coverLetter ? <button type="button" className="school-summary-cover-letter school-summary-cover-letter-trigger" onClick={() => setSelectedCoverLetter(coverLetter)} aria-label="View submitted cover letter"><FiFileText /><span><strong>Cover letter</strong><small>Click to read the submitted letter</small></span><FiArrowRight className="school-summary-cover-letter-arrow" /></button> : <div className="school-summary-no-cover-letter"><FiFileText /><span>No cover letter submitted</span></div>}{additionalInfo && <div className="school-summary-cover-letter school-summary-additional-info"><FiInfo /><div><strong>Additional information</strong><p>{additionalInfo}</p></div></div>}</div></div>
-        </div></div>
           <AnimatePresence>
             {selectedCoverLetter && (
               <Motion.div
@@ -3292,45 +3639,8 @@ export default function AdminDashboard() {
                 </Motion.section>
               </Motion.div>
             )}
-            {selectedCvPreview && (
-              <Motion.div
-                className="school-cv-preview-backdrop"
-                role="presentation"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => setSelectedCvPreview(null)}
-              >
-                <Motion.section
-                  className="school-cv-preview-modal"
-                  role="dialog"
-                  aria-modal="true"
-                  aria-labelledby="school-cv-preview-title"
-                  initial={{ opacity: 0, y: 18, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  exit={{ opacity: 0, y: 18, scale: 0.98 }}
-                  transition={{ duration: 0.2, ease: "easeOut" }}
-                  onClick={(event) => event.stopPropagation()}
-                >
-                  <header className="school-cover-letter-modal-header">
-                    <div>
-                      <span><FiFileText size={16} /> Applicant document</span>
-                      <h2 id="school-cv-preview-title">{selectedCvPreview.name}</h2>
-                    </div>
-                    <button type="button" aria-label="Close CV preview" onClick={() => setSelectedCvPreview(null)}>
-                      <FiX size={19} />
-                    </button>
-                  </header>
-                  <iframe
-                    className="school-cv-preview-frame"
-                    src={selectedCvPreview.url}
-                    title={`CV preview: ${selectedCvPreview.name}`}
-                  />
-                </Motion.section>
-              </Motion.div>
-            )}
           </AnimatePresence>
+          {renderCvPreviewModal("Applicant document", "school-applicant-cv-preview-title")}
       </div>
     );
 
@@ -3581,11 +3891,28 @@ export default function AdminDashboard() {
     const skillList = normalizeMultiValueList(teacher.skills || teacher.key_skills || teacher.skillset || teacher.specialties);
     const qualificationList = normalizeMultiValueList(teacher.qualifications || teacher.qualification || teacher.education || teacher.certifications);
     const experienceText = teacher.experience || teacher.experience_years ? `${teacher.experience || teacher.experience_years} Years` : "";
+    const profileRole = teacher.role_title || teacher.role || subjectList[0] || "Teacher";
+    const profileLocation = teacher.location || [teacher.city, teacher.state].filter(Boolean).join(", ") || "Location not set";
+    const avatarUrl = toAssetUrl(getTeacherAvatarPath(teacher));
+    const rawTrcnFlag = String(teacher.trcn_verified || "").trim();
+    const trcnStatus = String(
+      teacher.trcn_status
+      || teacher.trcnStatus
+      || (rawTrcnFlag && !/^(true|false|1|0)$/i.test(rawTrcnFlag) ? rawTrcnFlag : ""),
+    ).trim();
+    const isTrcnVerified = teacher.trcn_verified === true
+      || teacher.trcn_verified === 1
+      || teacher.verified === true
+      || /^(true|1)$/i.test(String(teacher.trcn_verified || teacher.verified || ""))
+      || (/verified|approved/i.test(trcnStatus) && !/not verified|unverified/i.test(trcnStatus));
+    const trcnStatusLabel = trcnStatus
+      ? `TRCN ${trcnStatus.replace(/^TRCN\s+/i, "")}`
+      : isTrcnVerified ? "TRCN Verified" : "TRCN Not Verified";
     const cvUrl = toAssetUrl(teacher.cv_url || teacher.cvUrl || teacher.cv || "");
-    const cvFileName = cvUrl ? cvUrl.split("/").pop() || "Teacher_CV.pdf" : "";
+    const cvFileName = cvUrl ? getAssetFileName(cvUrl, "Teacher_CV.pdf") : "";
 
     return (
-      <div className="school-applicant-summary-page">
+      <div className="school-applicant-summary-page school-applicant-summary-page--teacher-profile">
         <button
           type="button"
           className="school-summary-back-btn"
@@ -3594,164 +3921,129 @@ export default function AdminDashboard() {
           <FiArrowLeft /> Back
         </button>
 
-        <div className="school-summary-container">
-          <div className="school-summary-content">
-            <section className="school-summary-section school-summary-section--first">
-              <div className="school-summary-actions">
-                <div className="school-teacher-invite-anchor" ref={teacherInviteChooserRef}>
-                  <button
-                    type="button"
-                    className="school-summary-shortlist-btn"
-                    onClick={() => setIsTeacherInviteChooserOpen((open) => !open)}
-                    aria-haspopup="dialog"
-                    aria-expanded={isTeacherInviteChooserOpen}
-                  >
-                    Invite
-                  </button>
-                  {isTeacherInviteChooserOpen && renderTeacherInviteChooser()}
-                </div>
+        <section className="school-profile-preview-card">
+          <header className="school-profile-preview-hero">
+            <div className="school-profile-preview-avatar" aria-label={profileName}>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" />
+              ) : (
+                profileName.split(/\s+/).filter(Boolean).map((part) => part[0]).join("").slice(0, 2).toUpperCase()
+              )}
+            </div>
+            <div className="school-profile-preview-hero-copy">
+              <div className="school-profile-preview-name-row">
+                <h2>{profileName}</h2>
+                <span className={`school-profile-preview-verified${isTrcnVerified ? "" : " is-muted"}`}>
+                  <FiCheckCircle size={12} /> {trcnStatusLabel}
+                </span>
+              </div>
+              <p>{profileRole}</p>
+              <div className="school-profile-preview-meta">
+                <span><FiMapPin size={15} />{profileLocation}</span>
+                {experienceText && <span><FiAward size={15} />{experienceText}</span>}
+              </div>
+            </div>
+            <div className="school-profile-preview-actions">
+              <div className="school-teacher-invite-anchor" ref={teacherInviteChooserRef}>
                 <button
                   type="button"
-                  className="school-summary-reject-btn"
-                  onClick={() => handleToggleSavedTeacher(teacher)}
+                  className="school-summary-shortlist-btn"
+                  onClick={() => setIsTeacherInviteChooserOpen((open) => !open)}
+                  aria-haspopup="dialog"
+                  aria-expanded={isTeacherInviteChooserOpen}
                 >
-                  {savedTeacherIds.includes(String(teacher.user_id || '')) ? 'Saved' : 'Save Teacher'}
+                  Invite
                 </button>
+                {isTeacherInviteChooserOpen && renderTeacherInviteChooser()}
               </div>
+              <button
+                type="button"
+                className="school-summary-reject-btn"
+                onClick={() => handleToggleSavedTeacher(teacher)}
+              >
+                {savedTeacherIds.includes(String(teacher.user_id || "")) ? "Saved" : "Save Teacher"}
+              </button>
+            </div>
+          </header>
 
-              <div className="school-summary-summary-content">
-                <div className="school-summary-header-title">
-                  <FiFileText className="school-summary-icon" />
-                  <h2>Professional Summary</h2>
-                </div>
+          <section className="school-profile-preview-section school-profile-preview-summary">
+            <h2><FiFileText /> Professional Summary</h2>
+            <p>{summary || `${profileName} has not added a professional summary yet.`}</p>
+          </section>
 
-                <p className="school-summary-text">
-                  {summary || `${profileName} has not added a professional summary yet.`}
-                </p>
+          <section className="school-profile-preview-section school-profile-preview-experience">
+            <h2><FiBriefcase /> Teaching Experience</h2>
+            {Array.isArray(teacher.experience_items) && teacher.experience_items.length ? (
+              <div className="school-profile-preview-list">
+                {teacher.experience_items.map((item, index) => (
+                  <article key={`${item.title || "experience"}-${index}`} className="school-profile-preview-list-item">
+                    <span className="school-profile-preview-timeline-dot" />
+                    <div>
+                      <span>{item.period || experienceText || "Experience"}</span>
+                      <strong>{item.title || "Teacher"}</strong>
+                      <p>{item.school || "School not set"}</p>
+                      {item.description && <p className="school-profile-preview-description">{item.description}</p>}
+                    </div>
+                  </article>
+                ))}
               </div>
+            ) : (
+              <p className="school-profile-preview-empty">
+                {experienceText ? `Experience: ${experienceText}` : "No teaching experience added yet."}
+              </p>
+            )}
+          </section>
 
-              <div className="school-summary-clearfix" />
-            </section>
-
-            <div className="school-summary-grid-2col">
-              <section className="school-summary-section">
-                <div className="school-summary-section-header">
-                  <FiBook className="school-summary-icon" />
-                  <h2>Teaching Subjects</h2>
+          <div className="school-profile-preview-grid">
+            <div className="school-profile-preview-column">
+              <section className="school-profile-preview-section">
+                <h2><FiBook /> Teaching Subjects</h2>
+                <div className="school-profile-preview-tags">
+                  {subjectList.length
+                    ? subjectList.map((subject, index) => <span key={`${subject}-${index}`}>{subject}</span>)
+                    : <em>No subjects listed.</em>}
                 </div>
-
-                {subjectList.length ? (
-                  <div className="school-summary-tags">
-                    {subjectList.filter(Boolean).map((subject, idx) => (
-                      <span key={`${subject}-${idx}`} className="school-summary-tag">
-                        {subject}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="school-summary-text">No subjects listed.</p>
-                )}
               </section>
 
-              <section className="school-summary-section">
-                <div className="school-summary-section-header">
-                  <FiAward className="school-summary-icon" />
-                  <h2>Qualifications</h2>
-                </div>
-
+              <section className="school-profile-preview-section">
+                <h2><FiAward /> Qualifications</h2>
                 {qualificationList.length ? (
-                  <div className="school-summary-qualifications">
-                    {qualificationList.filter(Boolean).slice(0, 3).map((qualification, idx) => (
-                      <div key={`${qualification}-${idx}`} className="school-summary-qualification">
-                        <strong>{qualification}</strong>
-                        <span className="school-summary-qual-year">{teacher.location || "Location not set"}</span>
-                      </div>
-                    ))}
-
-                    {teacher.trcn_verified || teacher.trcn ? (
-                      <div className="school-summary-badge-wrapper">
-                        <span className="school-summary-badge">{teacher.trcn_verified || teacher.trcn}</span>
-                      </div>
-                    ) : null}
-                  </div>
+                  qualificationList.slice(0, 3).map((qualification, index) => (
+                    <article key={`${qualification}-${index}`} className="school-profile-preview-education-item">
+                      <FiBook />
+                      <div><strong>{qualification}</strong></div>
+                    </article>
+                  ))
                 ) : (
-                  <p className="school-summary-text">No qualifications listed.</p>
+                  <p className="school-profile-preview-empty">No qualifications listed.</p>
                 )}
               </section>
             </div>
 
-            <section className="school-summary-section">
-              <div className="school-summary-section-header">
-                <FiBriefcase className="school-summary-icon" />
-                <h2>Teaching Experience</h2>
-              </div>
-
-              {Array.isArray(teacher.experience_items) && teacher.experience_items.length ? (
-                <div className="school-summary-experience-timeline">
-                  {teacher.experience_items.map((item, idx) => (
-                    <div key={`${item.title || 'experience'}-${idx}`} className="school-summary-timeline-item">
-                      <div className="school-summary-timeline-bullet school-summary-timeline-bullet--active" />
-                      <div className="school-summary-job">
-                        <div className="school-summary-job-header">
-                          <div>
-                            <strong>{item.title || "Teacher"}</strong>
-                            <p className="school-summary-job-school">{item.school || "School not set"}</p>
-                          </div>
-                          <span className="school-summary-date school-summary-date--current">
-                            {item.period || experienceText || "Not provided"}
-                          </span>
-                        </div>
-                        <p className="school-summary-job-desc">{item.description || summary || "No experience details provided."}</p>
-                      </div>
-                    </div>
-                  ))}
+            <div className="school-profile-preview-column">
+              <section className="school-profile-preview-section">
+                <h2><FiAward /> Key Skills</h2>
+                <div className="school-profile-preview-tags">
+                  {skillList.length
+                    ? skillList.map((skill, index) => <span key={`${skill}-${index}`}>{skill}</span>)
+                    : <em>No skills listed.</em>}
                 </div>
-              ) : (
-                <p className="school-summary-text">
-                  {experienceText ? `Experience: ${experienceText}` : "No teaching experience added yet."}
-                </p>
-              )}
-            </section>
-
-            <div className="school-summary-bottom-row">
-              <section className="school-summary-section school-summary-section--skills">
-                <div className="school-summary-section-header">
-                  <h2>Key Skills</h2>
-                </div>
-
-                {skillList.length ? (
-                  <div className="school-summary-skills">
-                    {skillList.filter(Boolean).map((skill, idx) => (
-                      <span key={`${skill}-${idx}`} className="school-summary-skill-tag">
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="school-summary-text">No skills listed.</p>
-                )}
               </section>
-
-              {cvUrl ? (
-                <div className="school-summary-documents">
-                  <div className="school-summary-document">
-                    <div className="school-summary-doc-icon-box school-summary-doc-icon-box--pdf">
-                      <span>PDF</span>
-                    </div>
-                    <div className="school-summary-doc-info">
-                      <p className="school-summary-doc-name">{cvFileName}</p>
-                      <p className="school-summary-doc-size">CV uploaded</p>
-                    </div>
-                    <div className="school-summary-doc-actions">
-                      <button type="button" title="View" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiEye size={18} /></button>
-                      <button type="button" title="Download" className="school-summary-doc-btn" onClick={() => window.open(cvUrl, "_blank", "noopener,noreferrer")}><FiDownload size={18} /></button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
             </div>
           </div>
-        </div>
+
+          {cvUrl && (
+            <footer className="school-profile-preview-resume">
+              <span><FiFileText /> CV / Resume</span>
+              <strong>{cvFileName}</strong>
+              <div className="school-profile-preview-doc-actions">
+                <button type="button" onClick={() => downloadAsset(cvUrl, cvFileName)}><FiDownload /> Download</button>
+                <button type="button" onClick={() => setSelectedCvPreview({ url: cvUrl, name: cvFileName })}><FiEye /> Preview</button>
+              </div>
+            </footer>
+          )}
+        </section>
+        {renderCvPreviewModal("Teacher document", "school-teacher-cv-preview-title")}
       </div>
     );
   };
@@ -4505,12 +4797,16 @@ export default function AdminDashboard() {
       const detail = Array.isArray(payload)
         ? payload[0] ?? teacher
         : payload?.teacher ?? payload?.profile ?? payload?.user ?? payload ?? teacher;
+      const avatarPath = getTeacherAvatarPath(detail)
+        || getTeacherAvatarPath(payload)
+        || getTeacherAvatarPath(teacher);
 
       const merged = {
         ...teacher,
         ...detail,
         ...(detail?.user || {}),
         ...(detail?.profile || {}),
+        ...(avatarPath ? { avatar_url: avatarPath, profile_photo: avatarPath } : {}),
         name:
           teacher?.name ||
           detail?.full_name ||
@@ -5641,6 +5937,7 @@ export default function AdminDashboard() {
       .filter((userEntry) => String(userEntry?.role || "").toLowerCase() === "teacher")
       .map((userEntry, index) => ({
         user_id: userEntry?.user_id || "",
+        avatar_url: getTeacherAvatarPath(userEntry),
         name: userEntry?.full_name || userEntry?.email || `Teacher ${index + 1}`,
         role: userEntry?.role_title || userEntry?.subject || "Teacher",
         location: userEntry?.location || userEntry?.state || "Nigeria",
@@ -5677,6 +5974,7 @@ export default function AdminDashboard() {
 
           return {
             user_id: app.teacher_id || "",
+            avatar_url: getTeacherAvatarPath(app),
             name,
             role: matchedJob?.title || matchedJob?.role_type || "Teaching Professional",
             location: matchedJob?.location || app.location || "Nigeria",
@@ -6097,7 +6395,7 @@ export default function AdminDashboard() {
               {pageTeachers.map((teacher, index) => (
                 <div
                   className={`school-teacher-card ${index === 0 ? "school-teacher-card--first" : ""} ${index === pageTeachers.length - 1 ? "school-teacher-card--last" : ""}`}
-                  key={`${teacher.name}-${index}`}
+                  key={`${teacher.user_id || teacher.name}-${index}`}
                 >
                   <button
                     type="button"
@@ -6127,18 +6425,7 @@ export default function AdminDashboard() {
                             }
                           }}
                         >
-                          <div
-                            className="school-teacher-avatar"
-                            style={{ background: teacher.accent }}
-                            aria-hidden="true"
-                          >
-                            {teacher.name
-                              .split(" ")
-                              .map((part) => part[0])
-                              .join("")
-                              .slice(0, 2)
-                              .toUpperCase()}
-                          </div>
+                          <SchoolTeacherAvatar teacher={teacher} toAssetUrl={toAssetUrl} />
 
                           <div className="school-teacher-name-content">
                             <span className="school-teacher-name">{teacher.name}</span>
@@ -12253,12 +12540,21 @@ export default function AdminDashboard() {
           place-items: center;
           width: 38px;
           height: 38px;
+          aspect-ratio: 1 / 1;
+          overflow: hidden;
           border-radius: 50%;
           color: #1d2f2c;
           font-size: 12px;
           font-weight: 800;
           box-shadow: inset 0 0 0 1px rgba(15, 35, 50, 0.04);
           flex-shrink: 0;
+        }
+        .school-teacher-avatar img {
+          width: 100%;
+          height: 100%;
+          aspect-ratio: 1 / 1;
+          border-radius: inherit;
+          object-fit: cover;
         }
         .school-teacher-name-row {
           display: flex;
@@ -13486,6 +13782,124 @@ export default function AdminDashboard() {
 
 
 
+      .school-profile-preview-card {
+        overflow: visible;
+        padding: 0 30px 28px;
+        border: 1px solid #e7ebef;
+        border-radius: 9px;
+        background: #fff;
+        box-shadow: 0 4px 18px rgba(15, 23, 42, .06);
+        color: #253044;
+      }
+      .school-profile-preview-hero {
+        display: flex;
+        align-items: center;
+        gap: 22px;
+        min-height: 154px;
+        padding: 27px 0;
+      }
+      .school-profile-preview-avatar {
+        display: grid;
+        flex: 0 0 88px;
+        place-items: center;
+        width: 88px;
+        height: 88px;
+        overflow: hidden;
+        border: 3px solid #e7ecef;
+        border-radius: 50%;
+        background: #e5f0ec;
+        color: #08755d;
+        font-size: 26px;
+        font-weight: 700;
+      }
+      .school-profile-preview-avatar img { width: 100%; height: 100%; aspect-ratio: 1 / 1; object-fit: cover; }
+      .school-profile-preview-hero-copy { min-width: 0; flex: 1; }
+      .school-profile-preview-name-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+      .school-profile-preview-name-row h2 { color: #1f2c3d; font-size: 22px; line-height: 1.2; font-weight: 700; }
+      .school-profile-preview-verified { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: #e5f5ee; color: #168263; font-size: 10px; font-weight: 700; }
+      .school-profile-preview-verified.is-muted { background: #f1f3f5; color: #64748b; }
+      .school-profile-preview-hero-copy > p { margin-top: 5px; color: #4e5c6e; font-size: 14px; }
+      .school-profile-preview-meta { display: flex; flex-wrap: wrap; gap: 17px; margin-top: 11px; color: #6b7789; font-size: 12px; }
+      .school-profile-preview-meta span { display: inline-flex; align-items: center; gap: 6px; }
+      .school-profile-preview-meta svg { color: #08755d; }
+      .school-profile-preview-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; }
+      .school-applicant-summary-page--api .school-profile-preview-actions { flex-wrap: wrap; justify-content: flex-end; }
+      .school-applicant-summary-page--teacher-profile .school-teacher-invite-anchor { width: auto; }
+      .school-applicant-summary-page--teacher-profile .school-profile-preview-actions .school-summary-shortlist-btn,
+      .school-applicant-summary-page--teacher-profile .school-profile-preview-actions .school-summary-reject-btn,
+      .school-applicant-summary-page--api .school-profile-preview-actions .school-summary-shortlist-btn,
+      .school-applicant-summary-page--api .school-profile-preview-actions .school-summary-reject-btn {
+        width: auto;
+        min-height: 34px;
+        padding: 0 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .school-applicant-summary-page--teacher-profile .school-profile-preview-actions .school-summary-reject-btn {
+        border-color: #cfd6df;
+        color: #475569;
+      }
+      .school-applicant-summary-page--teacher-profile .school-profile-preview-actions .school-summary-reject-btn:hover {
+        border-color: #9ab8ad;
+        background: #f7faf9;
+        color: #08755d;
+      }
+      .school-profile-preview-section { min-width: 0; padding: 20px 0; }
+      .school-profile-preview-section h2 { display: flex; align-items: center; gap: 9px; color: #263447; font-size: 15px; font-weight: 700; }
+      .school-profile-preview-section h2 svg { flex: 0 0 auto; color: #08755d; }
+      .school-profile-preview-summary > p { margin-top: 12px; color: #5d6878; font-size: 12px; line-height: 1.75; white-space: pre-line; }
+      .school-profile-preview-list { display: grid; gap: 16px; margin-top: 17px; }
+      .school-profile-preview-list-item { position: relative; display: flex; gap: 13px; padding-left: 2px; }
+      .school-profile-preview-timeline-dot { width: 11px; height: 11px; flex: 0 0 11px; margin-top: 3px; border: 2px solid #128064; border-radius: 50%; background: #fff; }
+      .school-profile-preview-list-item > div { min-width: 0; }
+      .school-profile-preview-list-item span { display: block; color: #718093; font-size: 10px; font-weight: 600; }
+      .school-profile-preview-list-item strong,
+      .school-profile-preview-education-item strong { display: block; margin-top: 4px; color: #273449; font-size: 13px; line-height: 1.35; }
+      .school-profile-preview-list-item p { margin-top: 3px; color: #718096; font-size: 11px; line-height: 1.5; }
+      .school-profile-preview-list-item .school-profile-preview-description { margin-top: 7px; color: #566274; white-space: pre-line; }
+      .school-profile-preview-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 36px; }
+      .school-profile-preview-column { min-width: 0; }
+      .school-profile-preview-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+      .school-profile-preview-tags span { padding: 6px 10px; border-radius: 5px; background: #f1f6f4; color: #40594f; font-size: 10px; }
+      .school-profile-preview-tags em,
+      .school-profile-preview-empty { color: #718096; font-size: 11px; font-style: normal; }
+      .school-profile-preview-empty { margin-top: 12px; }
+      .school-profile-preview-education-item { display: flex; align-items: flex-start; gap: 11px; margin-top: 14px; }
+      .school-profile-preview-education-item > svg { width: 29px; height: 29px; flex: 0 0 29px; padding: 7px; border-radius: 5px; background: #eff5f3; color: #08755d; }
+      .school-profile-preview-application-documents { display: grid; gap: 9px; margin-top: 12px; }
+      .school-profile-preview-resume { display: flex; align-items: center; flex-wrap: wrap; gap: 13px; padding-top: 19px; }
+      .school-profile-preview-resume > span { display: inline-flex; align-items: center; gap: 6px; color: #344256; font-size: 12px; font-weight: 700; }
+      .school-profile-preview-resume > span svg { color: #08755d; }
+      .school-profile-preview-resume > strong { color: #718096; font-size: 11px; font-weight: 500; }
+      .school-profile-preview-doc-actions { display: flex; gap: 7px; margin-left: auto; }
+      .school-profile-preview-doc-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 0 9px; border: 1px solid #cfd6df; border-radius: 5px; background: #fff; color: #475569; font-size: 10px; font-weight: 600; cursor: pointer; }
+      .school-profile-preview-doc-actions button:hover { background: #f8fafc; }
+      @media (max-width: 900px) {
+        .school-profile-preview-hero { flex-wrap: wrap; }
+        .school-profile-preview-actions { margin-left: 110px; }
+      }
+      @media (max-width: 720px) {
+        .school-profile-preview-card { padding: 0 18px 22px; }
+        .school-profile-preview-hero { align-items: flex-start; gap: 14px; min-height: unset; padding: 22px 0; }
+        .school-profile-preview-avatar { width: 62px; height: 62px; flex-basis: 62px; font-size: 19px; }
+        .school-profile-preview-name-row h2 { font-size: 18px; }
+        .school-profile-preview-meta { gap: 8px 14px; }
+        .school-profile-preview-actions { width: 100%; margin-left: 76px; }
+        .school-profile-preview-grid { grid-template-columns: 1fr; gap: 0; }
+        .school-profile-preview-doc-actions { margin-left: 0; }
+      }
+      @media (max-width: 420px) {
+        .school-profile-preview-actions { margin-left: 0; }
+        .school-profile-preview-actions .school-teacher-invite-anchor { flex: 1; }
+        .school-applicant-summary-page--teacher-profile .school-profile-preview-actions .school-summary-shortlist-btn,
+        .school-applicant-summary-page--teacher-profile .school-profile-preview-actions .school-summary-reject-btn,
+        .school-applicant-summary-page--api .school-profile-preview-actions .school-summary-shortlist-btn,
+        .school-applicant-summary-page--api .school-profile-preview-actions .school-summary-reject-btn { flex: 1 1 140px; width: auto; }
+        .school-profile-preview-resume { align-items: flex-start; flex-direction: column; }
+      }
+
       /* ============================================================
    APPLICANT SUMMARY PAGE
    Fully scoped to .school-applicant-summary-page
@@ -13875,6 +14289,36 @@ export default function AdminDashboard() {
   border: 0;
   background: #f1f4f2;
 }
+
+.school-cv-preview-viewer {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  place-items: center;
+  overflow: auto;
+  background: #f1f4f2;
+}
+
+.school-cv-preview-viewer .school-cv-preview-frame { height: 100%; }
+
+.school-cv-preview-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.school-cv-preview-unsupported {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  max-width: 420px;
+  padding: 28px;
+  color: #64736a;
+  text-align: center;
+}
+
+.school-cv-preview-unsupported strong { color: #263447; font-size: 15px; }
+.school-cv-preview-unsupported span { font-size: 12px; line-height: 1.5; }
 
 .school-cover-letter-modal {
   display: flex;
