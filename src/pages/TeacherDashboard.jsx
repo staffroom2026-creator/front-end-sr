@@ -9,6 +9,7 @@ import { applicationService } from '../services/applicationService';
 import { featureService } from '../services/featureService';
 import { profileService } from '../services/profileService';
 import { accountService } from '../services/accountService';
+import { teacherInvitationService } from '../services/teacherInvitationService';
 import schoolCampusImage from '../assets/school campus.webp';
 import { TEACHER_EXPERTISE_CATEGORIES, normalizeTeacherExpertise, toTeacherExpertisePayload } from '../services/teacherExpertiseService';
 import { apiErrorMessage, API_ORIGIN } from '../services/api';
@@ -23,6 +24,7 @@ import {
 
 const COVER_LETTER_MAX_LENGTH = 3000;
 const MAX_CV_FILE_SIZE = 5 * 1024 * 1024;
+const MAX_TEACHER_DOCUMENT_SIZE = 5 * 1024 * 1024;
 const CV_FILE_EXTENSIONS = ['pdf', 'doc', 'docx'];
 const SUPPORTING_DOCUMENT_EXTENSIONS = [...CV_FILE_EXTENSIONS, 'jpg', 'jpeg', 'png'];
 
@@ -345,6 +347,15 @@ const toTeacherAssetDownloadUrl = (assetUrl) => {
     : assetUrl;
 };
 
+const normalizeTeacherDocuments = (documents = []) => documents.filter(Boolean).map((document) => ({
+  ...document,
+  id: document.document_id || document.id,
+  name: document.name || getFileNameFromUrl(document.file_url),
+  size: Number(document.file_size ?? document.size ?? 0),
+  uri: toTeacherAssetUrl(document.file_url || document.uri || ''),
+  previewUrl: toTeacherAssetUrl(document.file_url || document.previewUrl || ''),
+}));
+
 const formatMonthYear = (value) => {
   if (!/^\d{4}-\d{2}$/.test(String(value))) return '';
   return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(new Date(`${value}-01T00:00:00`));
@@ -391,9 +402,15 @@ const normalizeEducationRecords = (value) => {
     field_of_study: record.field_of_study || record.fieldOfStudy || '',
     class_of_degree: record.class_of_degree || record.degree_class || record.classOfDegree || '',
     institution: record.institution || record.school || '',
+    education_level: record.education_level || record.educationLevel || '',
     start_year: record.start_year || record.startYear || '',
+    start_month: record.start_month || record.startMonth || '',
     end_year: record.end_year || record.endYear || '',
-    period: record.period || [record.start_year || record.startYear, record.end_year || record.endYear].filter(Boolean).join(' – '),
+    end_month: record.end_month || record.endMonth || '',
+    period: record.period || [
+      [record.start_month || record.startMonth, record.start_year || record.startYear].filter(Boolean).join('/'),
+      [record.end_month || record.endMonth, record.end_year || record.endYear].filter(Boolean).join('/'),
+    ].filter(Boolean).join(' – '),
     status: record.status || 'Completed',
   }));
 };
@@ -525,14 +542,16 @@ export default function TeacherDashboard() {
   const [applications, setApplications] = useState([]);
   const [selectedTeacherInvitation, setSelectedTeacherInvitation] = useState(null);
   const [invitationResponseMessage, setInvitationResponseMessage] = useState('');
+  const [invitationDetailLoading, setInvitationDetailLoading] = useState(false);
   const [showRescheduleInterviewForm, setShowRescheduleInterviewForm] = useState(false);
   const [rescheduleInterviewDraft, setRescheduleInterviewDraft] = useState({ date: '', time: '', message: '' });
-  const [preparedInterviewResponse, setPreparedInterviewResponse] = useState(null);
   const [, setCurrentTime] = useState(() => Date.now());
   const [applicationStatusFilter, setApplicationStatusFilter] = useState('all');
   const [applicationSearch, setApplicationSearch] = useState('');
   const [applicationSort, setApplicationSort] = useState('newest');
   const [notifications, setNotifications] = useState([]);
+  const [invitationActionLoading, setInvitationActionLoading] = useState(false);
+  const [schoolProfileLoading, setSchoolProfileLoading] = useState(false);
   const [showInvitationHistory, setShowInvitationHistory] = useState(true);
   const [selectedNotification, setSelectedNotification] = useState(null);
   const [isNotificationModalOpen, setIsNotificationModalOpen] = useState(false);
@@ -584,6 +603,7 @@ export default function TeacherDashboard() {
   const [educationDocumentError, setEducationDocumentError] = useState('');
   const educationDocumentInputRef = useRef(null);
   const [sessionCertifications, setSessionCertifications] = useState([]);
+  const [savingCertification, setSavingCertification] = useState(false);
   const [editingCertificationId, setEditingCertificationId] = useState(null);
   const [showAddCertificationModal, setShowAddCertificationModal] = useState(false);
   const [certificationForm, setCertificationForm] = useState({
@@ -674,6 +694,8 @@ export default function TeacherDashboard() {
   const [loginActivityPage, setLoginActivityPage] = useState(1);
   const [loginActivityTotal, setLoginActivityTotal] = useState(0);
   const [visibilitySetting, setVisibilitySetting] = useState('schools');
+  const [visibilitySettingSaving, setVisibilitySettingSaving] = useState(false);
+  const [visibilitySettingError, setVisibilitySettingError] = useState('');
   const [personalInfoOrigin, setPersonalInfoOrigin] = useState('profile');
   const [passwordForm, setPasswordForm] = useState({
     current_password: '',
@@ -848,6 +870,8 @@ export default function TeacherDashboard() {
   const [profTeachingLevels, setProfTeachingLevels] = useState([]);
   const [skillExpertise, setSkillExpertise] = useState(() => normalizeTeacherExpertise());
   const [editingExpertiseCategory, setEditingExpertiseCategory] = useState('');
+  const [expertiseError, setExpertiseError] = useState('');
+  const [savingExpertise, setSavingExpertise] = useState(false);
   const [expertiseDraftTags, setExpertiseDraftTags] = useState([]);
   const [expertiseTagInput, setExpertiseTagInput] = useState('');
   const [showBasicProfileModal, setShowBasicProfileModal] = useState(false);
@@ -1133,10 +1157,12 @@ export default function TeacherDashboard() {
       const expired = expiryDate && !Number.isNaN(expiryDate.getTime()) && expiryDate.getTime() < Date.now();
       const invitationStatus = String(payload.invitation_status || notification.invitation_status || payload.status || '').toLowerCase();
       const isApplied = Boolean(application && !isInterview);
+      const teacherInterviewResponse = String(application?.interview?.teacher_response || '').toLowerCase();
       const isHistory = Boolean(
         expired ||
         isApplied ||
-        /expired|cancelled|canceled|declined|rejected|accepted|applied|completed|withdrawn|closed/.test(invitationStatus)
+        /expired|cancelled|canceled|declined|rejected|accepted|applied|completed|withdrawn|closed|reschedule_requested/.test(invitationStatus) ||
+        ['accepted', 'declined', 'reschedule_requested'].includes(teacherInterviewResponse)
       );
       const receivedDate = receivedAt ? new Date(receivedAt) : null;
       const daysRemaining = expiryDate && !Number.isNaN(expiryDate.getTime())
@@ -1189,7 +1215,10 @@ export default function TeacherDashboard() {
       .map((application) => {
         const interview = normalizeInterviewData(application.interview) || normalizeInterviewData(application) || {};
         const start = getInterviewStart(interview);
-        const isHistory = Boolean(start && start.getTime() < Date.now());
+        const isHistory = Boolean(
+          (start && start.getTime() < Date.now()) ||
+          ['accepted', 'declined', 'reschedule_requested'].includes(String(interview.teacher_response || '').toLowerCase())
+        );
         return {
           key: `interview-${application.id}`,
           kind: 'interview',
@@ -1220,14 +1249,116 @@ export default function TeacherDashboard() {
     });
   const previousInvitations = invitationItems.filter((invitation) => invitation.isHistory);
 
-  const openTeacherInvitation = (invitation) => {
+  const openTeacherInvitation = async (invitation) => {
     setInvitationResponseMessage('');
     setShowRescheduleInterviewForm(false);
     setRescheduleInterviewDraft({ date: '', time: '', message: '' });
-    setPreparedInterviewResponse(null);
     setSelectedTeacherInvitation(invitation);
     if (invitation?.notification && !invitation.notification.read) {
       handleMarkNotificationAsRead(invitation.notification.id);
+    }
+    if (invitation.kind !== 'interview' && invitation.invitationId) {
+      try {
+        setInvitationDetailLoading(true);
+        const response = await teacherInvitationService.get(invitation.invitationId);
+        const details = response?.data?.data?.invitation || response?.data?.invitation || response?.data?.data;
+        if (details) {
+          setSelectedTeacherInvitation((current) => current?.key === invitation.key ? ({
+            ...current,
+            invitationId: details.invitation_id || current.invitationId,
+            school: details.school?.name || current.school,
+            schoolLocation: details.school?.location || current.schoolLocation,
+            schoolDetails: details.school || current.schoolDetails,
+            role: details.job?.title || current.role,
+            jobPayload: details.job || current.jobPayload,
+            jobRecord: details.job ? normalizeJobData(details.job) : current.jobRecord,
+            status: details.status || current.status,
+            isHistory: details.status !== 'sent',
+            payload: { ...current.payload, message: details.message || '', school: details.school || {}, job: details.job || null },
+          }) : current);
+        }
+      } catch (error) {
+        setInvitationResponseMessage(profileApiErrorMessage(error, 'Unable to load invitation details.'));
+      } finally {
+        setInvitationDetailLoading(false);
+      }
+    }
+  };
+
+  const handleInvitationResponse = async (action, extra = {}) => {
+    const invitation = selectedTeacherInvitation;
+    if (!invitation || invitationActionLoading) return;
+    setInvitationActionLoading(true);
+    setInvitationResponseMessage('');
+    try {
+      if (invitation.kind === 'interview') {
+        const applicationId = invitation.application?.application_id || invitation.application?.id;
+        if (!applicationId) throw new Error('The application linked to this interview is not available.');
+        await applicationService.respondToInterview(applicationId, { action, ...extra });
+      } else {
+        if (!invitation.invitationId) throw new Error('The invitation ID is not available.');
+        await teacherInvitationService.respond(invitation.invitationId, { action });
+      }
+      const status = action === 'accept' ? 'accepted' : action === 'decline' ? 'declined' : 'reschedule_requested';
+      setSelectedTeacherInvitation((current) => current ? ({
+        ...current,
+        status,
+        isHistory: true,
+        application: current.application ? {
+          ...current.application,
+          interview: { ...(current.application.interview || {}), teacher_response: status },
+        } : current.application,
+      }) : current);
+      if (invitation.notification) {
+        setNotifications((current) => current.map((notification) => {
+          if (String(notification.id) !== String(invitation.notification.id)) return notification;
+          let previousPayload = notification.data || notification.metadata || notification.payload || {};
+          if (typeof previousPayload === 'string') {
+            try { previousPayload = JSON.parse(previousPayload); } catch { previousPayload = {}; }
+          }
+          return {
+            ...notification,
+            invitation_status: status,
+            data: { ...(previousPayload && typeof previousPayload === 'object' ? previousPayload : {}), status, invitation_status: status },
+          };
+        }));
+      }
+      if (invitation.application) {
+        const applicationId = invitation.application.application_id || invitation.application.id;
+        setApplications((current) => current.map((application) => String(application.application_id || application.id) === String(applicationId)
+          ? { ...application, interview: { ...(application.interview || {}), teacher_response: status } }
+          : application));
+      }
+      setInvitationResponseMessage(action === 'accept'
+        ? 'Your acceptance has been sent to the school.'
+        : action === 'decline'
+          ? 'Your response has been sent to the school.'
+          : 'Your request for another interview time has been sent to the school.');
+      setShowRescheduleInterviewForm(false);
+    } catch (error) {
+      setInvitationResponseMessage(profileApiErrorMessage(error, 'Unable to send your response.'));
+    } finally {
+      setInvitationActionLoading(false);
+    }
+  };
+
+  const handleLoadInvitationSchool = async (schoolId) => {
+    if (!schoolId || schoolProfileLoading) return;
+    setSchoolProfileLoading(true);
+    setInvitationResponseMessage('');
+    try {
+      const response = await profileService.getSchool(schoolId);
+      const school = response?.data?.data?.school || response?.data?.school || response?.data?.data;
+      if (!school) throw new Error('The school profile was not returned by the server.');
+      setSelectedTeacherInvitation((current) => current ? ({
+        ...current,
+        schoolDetails: { ...(current.schoolDetails || {}), ...school },
+        payload: { ...current.payload, school: { ...(current.payload?.school || {}), ...school } },
+      }) : current);
+    } catch (error) {
+      setInvitationResponseMessage(profileApiErrorMessage(error, 'Unable to load the school profile.'));
+    } finally {
+      setSchoolProfileLoading(false);
     }
   };
   const renderTeacherInvitationDetails = () => {
@@ -1387,45 +1518,36 @@ export default function TeacherDashboard() {
                 </section>
 
                 <section className="td-interview-response-card">
-                  <button type="button" className="td-interview-accept-button" disabled={!isActive} onClick={() => setInvitationResponseMessage('Accepting this interview will be available when the interview response endpoint is connected.')}>
+                  <button type="button" className="td-interview-accept-button" disabled={!isActive || invitationActionLoading || invitationDetailLoading} onClick={() => handleInvitationResponse('accept')}>
                     <FiCheckCircle size={14} /> Accept Interview
                   </button>
-                  <button type="button" className="td-interview-reschedule-button" disabled={!isActive} onClick={() => {
+                  <button type="button" className="td-interview-reschedule-button" disabled={!isActive || invitationActionLoading || invitationDetailLoading} onClick={() => {
                     setInvitationResponseMessage('');
-                    setPreparedInterviewResponse(null);
                     setShowRescheduleInterviewForm((visible) => !visible);
                   }}>
                     <FiRotateCw size={14} /> Request Another Time
                   </button>
-                  <button type="button" className="td-interview-decline-button" disabled={!isActive} onClick={() => setInvitationResponseMessage('Declining this interview will be available when the interview response endpoint is connected.')}>
+                  <button type="button" className="td-interview-decline-button" disabled={!isActive || invitationActionLoading || invitationDetailLoading} onClick={() => handleInvitationResponse('decline')}>
                     <FiX size={14} /> Decline
                   </button>
                   {showRescheduleInterviewForm && (
-                    <form className="td-interview-reschedule-form" onSubmit={(event) => {
+                    <form className="td-interview-reschedule-form" onSubmit={async (event) => {
                       event.preventDefault();
                       if (!rescheduleInterviewDraft.date || !rescheduleInterviewDraft.time) {
-                        setInvitationResponseMessage('Choose a preferred date and time to prepare your request.');
+                        setInvitationResponseMessage('Choose a preferred date and time.');
                         return;
                       }
-                      setPreparedInterviewResponse({
-                        invitation_id: invitation.invitationId || null,
-                        action: 'request_another_time',
+                      await handleInvitationResponse('request_another_time', {
                         proposed_date: rescheduleInterviewDraft.date,
                         proposed_time: rescheduleInterviewDraft.time,
                         message: rescheduleInterviewDraft.message.trim(),
                       });
-                      setInvitationResponseMessage('Your preferred time is prepared below. It has not been sent because the interview response endpoint is not connected yet.');
                     }}>
                       <h3>Suggest another interview time</h3>
                       <label>Preferred date<input type="date" value={rescheduleInterviewDraft.date} onChange={(event) => setRescheduleInterviewDraft((draft) => ({ ...draft, date: event.target.value }))} required /></label>
                       <label>Preferred time<input type="time" value={rescheduleInterviewDraft.time} onChange={(event) => setRescheduleInterviewDraft((draft) => ({ ...draft, time: event.target.value }))} required /></label>
                       <label>Message to the school<textarea rows="3" value={rescheduleInterviewDraft.message} onChange={(event) => setRescheduleInterviewDraft((draft) => ({ ...draft, message: event.target.value }))} placeholder="Add a note (optional)" /></label>
-                      <button type="submit">Prepare request</button>
-                      {preparedInterviewResponse && (
-                        <p className="td-interview-prepared-request">
-                          Prepared for {new Date(`${preparedInterviewResponse.proposed_date}T${preparedInterviewResponse.proposed_time}`).toLocaleString()}
-                        </p>
-                      )}
+                      <button type="submit" disabled={invitationActionLoading}>{invitationActionLoading ? 'Sending…' : 'Send request'}</button>
                     </form>
                   )}
                 </section>
@@ -1434,7 +1556,7 @@ export default function TeacherDashboard() {
               <aside className="td-interview-invitation-aside">
                 <section className="td-interview-school-profile-card">
                   <div className="td-interview-school-cover">
-                    <img src={school.profile_image || school.cover_image || schoolCampusImage} alt={`${invitation.school} campus`} />
+                    <img src={toTeacherAssetUrl(school.logo_url || school.profile_image || school.cover_image || '') || schoolCampusImage} alt={`${invitation.school} campus`} />
                     <span><FiMapPin size={10} /> {schoolCampus || 'Campus view'}</span>
                   </div>
                   <div className="td-interview-school-profile-body">
@@ -1444,7 +1566,9 @@ export default function TeacherDashboard() {
                       <span><small>Student Body</small><strong>{school.student_count || school.students || '—'}</strong></span>
                       <span><small>Student : Teacher</small><strong>{school.student_teacher_ratio || school.teacher_student_ratio || '—'}</strong></span>
                     </div>
-                    <button type="button" onClick={() => setInvitationResponseMessage('The full school profile will be available when school profile details are connected.')}>View full school profile <FiArrowRight size={13} /></button>
+                    <button type="button" disabled={schoolProfileLoading} onClick={() => handleLoadInvitationSchool(school.id || school.school_id || schoolId)}>
+                      {schoolProfileLoading ? 'Loading school…' : 'View full school profile'} <FiArrowRight size={13} />
+                    </button>
                   </div>
                 </section>
 
@@ -1536,15 +1660,13 @@ export default function TeacherDashboard() {
                     if (invitation.jobRecord) {
                       openApplyModal(invitation.jobRecord, { review: true });
                     } else {
-                      setInvitationResponseMessage('Applying from an invitation will be available when the invitation details endpoint provides the linked job.');
+                      setInvitationResponseMessage('This invitation does not include a linked job that can be applied to.');
                     }
-                  }} disabled={!isActive}>
+                  }} disabled={!isActive || invitationDetailLoading || invitationActionLoading}>
                     <FiCheckCircle size={15} /> Apply for this role <FiArrowRight size={15} />
                   </button>
-                  <button type="button" className="td-invitation-decline-button" onClick={() => {
-                    setInvitationResponseMessage('Declining invitations will be available when the invitation response endpoint is connected.');
-                  }} disabled={!isActive}>
-                    <FiX size={15} /> Decline invitation
+                  <button type="button" className="td-invitation-decline-button" onClick={() => handleInvitationResponse('decline')} disabled={!isActive || invitationDetailLoading || invitationActionLoading}>
+                    <FiX size={15} /> {invitationActionLoading ? 'Sending…' : 'Decline invitation'}
                   </button>
                 </div>
               </section>
@@ -1556,14 +1678,16 @@ export default function TeacherDashboard() {
                   </div>
                   <div className="td-invitation-school-about-body">
                     <h2>About {invitation.school}</h2>
-                    <p>{school.description || payload.school_description || 'School profile details will be available when the invitation details endpoint is connected.'}</p>
+                    <p>{school.description || payload.school_description || 'The school has not added a profile description.'}</p>
                     <div className="td-invitation-school-facts">
                       {(school.student_count || school.students) && <span><FiUsers size={12} /> {school.student_count || school.students} Students</span>}
                       {(school.established_year || school.year_established) && <span><FiCalendar size={12} /> Est. {school.established_year || school.year_established}</span>}
                       {school.location_type && <span><FiMapPin size={12} /> {school.location_type}</span>}
                       {school.school_type && <span><FiBook size={12} /> {school.school_type}</span>}
                     </div>
-                    {schoolId && <button type="button" onClick={() => setInvitationResponseMessage('School profile details will be available when the invitation details endpoint is connected.')}>View school profile <FiArrowRight size={13} /></button>}
+                    {schoolId && <button type="button" disabled={schoolProfileLoading} onClick={() => handleLoadInvitationSchool(schoolId)}>
+                      {schoolProfileLoading ? 'Loading school…' : 'View school profile'} <FiArrowRight size={13} />
+                    </button>}
                   </div>
                 </section>
 
@@ -1786,6 +1910,8 @@ export default function TeacherDashboard() {
   const displayedCvName = pendingCvFile?.name || cvDocumentName;
   const [cvUploadLoading, setCvUploadLoading] = useState(false);
   const [supportingDocuments, setSupportingDocuments] = useState([]);
+  const [teacherProfileDocuments, setTeacherProfileDocuments] = useState([]);
+  const [teacherDocumentsError, setTeacherDocumentsError] = useState('');
   const [supportingDocumentsDraft, setSupportingDocumentsDraft] = useState(null);
   const [savingDocuments, setSavingDocuments] = useState(false);
   const [manageDocumentsError, setManageDocumentsError] = useState('');
@@ -1961,6 +2087,11 @@ export default function TeacherDashboard() {
       setManageDocumentsError('Supporting documents must be PDF, DOC, DOCX, JPG, or PNG files.');
       return;
     }
+    const oversizedFile = selectedFiles.find((file) => file.size > MAX_TEACHER_DOCUMENT_SIZE);
+    if (oversizedFile) {
+      setManageDocumentsError('Supporting documents must not exceed 5 MB each.');
+      return;
+    }
 
     const existingDocuments = supportingDocumentsDraft || supportingDocuments;
     const newDocuments = selectedFiles
@@ -2069,6 +2200,8 @@ export default function TeacherDashboard() {
 
     setSavingDocuments(true);
     setManageDocumentsError('');
+    const draftDocuments = supportingDocumentsDraft || supportingDocuments;
+    const uploadedDocuments = [];
     try {
       if (pendingCvFile) {
         const uploaded = await handleCvUpload(pendingCvFile);
@@ -2080,17 +2213,73 @@ export default function TeacherDashboard() {
         setShowCvSuccessSnackbar(true);
       }
 
-      if (supportingDocumentsDraft) setSupportingDocuments(supportingDocumentsDraft);
+      const newDocuments = draftDocuments.filter((document) => document.file instanceof File);
+      const savedDocuments = [...draftDocuments.filter((document) => !document.file)];
+      for (const document of newDocuments) {
+        const documentForm = new FormData();
+        documentForm.append('document', document.file);
+        documentForm.append('category', 'supporting');
+        const response = await profileService.uploadTeacherDocument(documentForm);
+        const savedDocument = response?.data?.data?.document || response?.data?.document || response?.data?.data;
+        if (!savedDocument?.document_id || !savedDocument?.file_url) {
+          throw new Error(`The server did not return a saved record for ${document.name}.`);
+        }
+        uploadedDocuments.push(savedDocument);
+        savedDocuments.push(savedDocument);
+      }
+
+      const retainedIds = new Set(savedDocuments.map((document) => String(document.document_id || document.id)));
+      const removedDocuments = supportingDocuments.filter((document) => !retainedIds.has(String(document.document_id || document.id)));
+      setSupportingDocuments(normalizeTeacherDocuments(savedDocuments));
+      setTeacherProfileDocuments((documents) => [
+        ...documents.filter((document) => document.category !== 'supporting'),
+        ...normalizeTeacherDocuments(savedDocuments),
+      ]);
+      supportingDocuments.forEach((document) => {
+        if (document.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(document.previewUrl);
+      });
+      draftDocuments.forEach((document) => {
+        if (document.previewUrl?.startsWith('blob:')) URL.revokeObjectURL(document.previewUrl);
+      });
       setSupportingDocumentsDraft(null);
-      setProfileSubTab('more');
+      const deleteResults = await Promise.all(removedDocuments
+        .filter((document) => document.document_id || document.id)
+        .map((document) => profileService.deleteTeacherDocument(document.document_id || document.id)
+          .then(() => null)
+          .catch((error) => error)));
+      const failedDeletes = deleteResults.filter(Boolean);
+      if (failedDeletes.length) {
+        console.error('Some removed supporting documents could not be deleted:', failedDeletes);
+        setManageDocumentsError('Documents were saved, but one or more removed files could not be deleted. Contact support if they remain visible.');
+      } else {
+        setProfileSubTab('more');
+      }
+    } catch (error) {
+      await Promise.all(uploadedDocuments.map((document) => profileService.deleteTeacherDocument(document.document_id).catch((cleanupError) => {
+        console.error('Unable to remove a supporting document after save failed:', cleanupError);
+      })));
+      setManageDocumentsError(profileApiErrorMessage(error, 'Unable to save supporting documents.'));
     } finally {
       setSavingDocuments(false);
     }
   };
 
+  const attachEducationDocuments = (records = []) => {
+    const educationDocumentByRecord = new Map(teacherProfileDocuments
+      .filter((document) => document.category === 'education' && document.record_id)
+      .map((document) => [String(document.record_id), document]));
+    return normalizeEducationRecords(records).map((record) => ({
+      ...record,
+      document: record.document || educationDocumentByRecord.get(String(record.education_id || record.id)) || null,
+    }));
+  };
+
   const applyLoadedTeacherProfile = (profileData = {}) => {
-    const profile = profileData?.profile || profileData?.teacher_profile || profileData || {};
     const account = profileData?.user || {};
+    const profile = {
+      ...(profileData?.profile || profileData?.teacher_profile || profileData || {}),
+      profile_photo: account.profile_photo || profileData?.profile?.profile_photo || profileData?.teacher_profile?.profile_photo || '',
+    };
     const { firstName, lastName } = splitFullName(account.full_name || user?.full_name || 'Teacher');
 
     setProfileState(profile);
@@ -2098,6 +2287,9 @@ export default function TeacherDashboard() {
     setPersonalLastName(lastName);
     setPersonalPhone(account.phone || '');
     setPersonalEmail(account.email || user?.email || '');
+    const personalLocation = parseLocationParts(profile.location || '');
+    setPersonalCity(profile.city || personalLocation[0] || '');
+    setPersonalState(profile.state || personalLocation.slice(1).join(', ') || '');
     setAvailLocation(profile.preferred_location || profile.location || '');
     setAvailEmpType(profile.preferred_employment_type || 'full-time');
     setAvailSpecificDate(profile.available_from || '');
@@ -2111,10 +2303,20 @@ export default function TeacherDashboard() {
     setProfTeachMode(profile.availability || 'Open');
     setProfSubjects(getProfileSubjects(profile));
     setProfTeachingLevels(normalizeTeachingLevels(profile.teaching_levels || []));
-    setEducationList(normalizeEducationRecords(profile.education_history));
+    setEducationList(attachEducationDocuments(profile.education_history));
     setExperienceList(normalizeExperienceRecords(
       profile.teaching_experience ?? profile.work_experience ?? profile.experience_history,
     ));
+    setSessionCertifications(Array.isArray(profile.certifications) ? profile.certifications : []);
+    setSkillExpertise(normalizeTeacherExpertise(profile.expertise));
+    setAvailabilitySessionExtras({
+      employmentTypes: Array.isArray(profile.availability_preferences?.employmentTypes) ? profile.availability_preferences.employmentTypes : [],
+      workArrangements: Array.isArray(profile.availability_preferences?.workArrangements) ? profile.availability_preferences.workArrangements : [],
+      salaryRange: profile.availability_preferences?.salaryRange || '',
+      relocationPreference: profile.availability_preferences?.relocationPreference || '',
+      notes: profile.availability_preferences?.notes || '',
+    });
+    setVisibilitySetting(profile.profile_visibility === 'applying_schools' ? 'applied' : profile.profile_visibility || 'schools');
   };
 
   const handleToggleSaveJob = async (jobId) => {
@@ -2182,7 +2384,7 @@ export default function TeacherDashboard() {
 
   const refreshTeacherProfile = async () => {
     try {
-      const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes, profileViewsRes] = await Promise.all([
+      const [jobsRes, recommendedJobsRes, applicationsRes, profileRes, notificationsRes, savedRes, profileViewsRes, documentsRes] = await Promise.all([
         jobService.getJobs({ page: 1, per_page: jobsPerPage }),
         jobService.getJobs({ recommended: 1, page: 1, per_page: 10 }).catch(() => null),
         applicationService.getMyApplications().catch(() => null),
@@ -2190,6 +2392,10 @@ export default function TeacherDashboard() {
         featureService.getNotifications().catch(() => null),
         featureService.getSavedJobs().catch(() => null),
         profileService.getProfileViews({ page: 1, per_page: 10 }).catch(() => null),
+        profileService.getTeacherDocuments().catch((error) => {
+          setTeacherDocumentsError(profileApiErrorMessage(error, 'Unable to load teacher documents.'));
+          return null;
+        }),
       ]);
 
       const { jobs: jobsArray, pagination: jobsPagination } = extractJobsResponse(jobsRes);
@@ -2238,7 +2444,10 @@ export default function TeacherDashboard() {
         }
       }));
       const profileData = profileRes?.data?.data || {};
-      const profile = profileData?.profile || profileData?.teacher_profile || profileData || {};
+      const profile = {
+        ...(profileData?.profile || profileData?.teacher_profile || profileData || {}),
+        profile_photo: profileData?.user?.profile_photo || profileData?.profile?.profile_photo || '',
+      };
       const profileViewsData = profileViewsRes?.data?.data || profileViewsRes?.data || {};
       const totalViews = profileViewsData?.summary?.total_views;
       if (totalViews !== undefined && totalViews !== null) {
@@ -2291,8 +2500,8 @@ export default function TeacherDashboard() {
       setPersonalPhone(profileData?.user?.phone || '');
       setPersonalEmail(profileData?.user?.email || user?.email || '');
       const locationParts = parseLocationParts(profile.location || profile.preferred_location || '');
-      setPersonalCity(locationParts[0] || '');
-      setPersonalState(locationParts.slice(1).join(', ') || '');
+      setPersonalCity(profile.city || locationParts[0] || '');
+      setPersonalState(profile.state || locationParts.slice(1).join(', ') || '');
       setAvailLocation(profile.preferred_location || profile.location || '');
       setAvailEmpType(profile.preferred_employment_type || 'full-time');
       setAvailSpecificDate(profile.available_from || '');
@@ -2308,6 +2517,30 @@ export default function TeacherDashboard() {
       setExperienceList(normalizeExperienceRecords(
         profile.teaching_experience ?? profile.work_experience ?? profile.experience_history
       ));
+      setSessionCertifications(Array.isArray(profile.certifications) ? profile.certifications : []);
+      setSkillExpertise(normalizeTeacherExpertise(profile.expertise));
+      setAvailabilitySessionExtras({
+        employmentTypes: Array.isArray(profile.availability_preferences?.employmentTypes) ? profile.availability_preferences.employmentTypes : [],
+        workArrangements: Array.isArray(profile.availability_preferences?.workArrangements) ? profile.availability_preferences.workArrangements : [],
+        salaryRange: profile.availability_preferences?.salaryRange || '',
+        relocationPreference: profile.availability_preferences?.relocationPreference || '',
+        notes: profile.availability_preferences?.notes || '',
+      });
+      setVisibilitySetting(profile.profile_visibility === 'applying_schools' ? 'applied' : profile.profile_visibility || 'schools');
+      const teacherDocuments = documentsRes?.data?.data?.documents || documentsRes?.data?.documents;
+      if (Array.isArray(teacherDocuments)) {
+        setTeacherDocumentsError('');
+        const normalizedDocuments = normalizeTeacherDocuments(teacherDocuments);
+        setTeacherProfileDocuments(normalizedDocuments);
+        setSupportingDocuments(normalizedDocuments.filter((document) => document.category === 'supporting'));
+        const educationDocumentByRecord = new Map(normalizedDocuments
+          .filter((document) => document.category === 'education' && document.record_id)
+          .map((document) => [String(document.record_id), document]));
+        setEducationList(normalizeEducationRecords(profile.education_history).map((record) => ({
+          ...record,
+          document: educationDocumentByRecord.get(String(record.education_id || record.id)) || null,
+        })));
+      }
       const cvUrl = toTeacherAssetUrl(profile.cv_url || '');
       const resumeDisplayName = (profileData?.user?.full_name || user?.full_name || [firstName, lastName].filter(Boolean).join(' ') || 'Current User').trim();
       setActiveResume({
@@ -2421,7 +2654,10 @@ export default function TeacherDashboard() {
   });
 
   const applyCanonicalTeacherProfile = (profile) => {
-    const nextProfile = profile && typeof profile === 'object' ? profile : {};
+    const nextProfile = {
+      ...(profile && typeof profile === 'object' ? profile : {}),
+      profile_photo: profile?.profile_photo || profileState?.profile_photo || '',
+    };
     setProfileState(nextProfile);
     setProfTitle(nextProfile.role_title || 'Teacher');
     setProfSummary(nextProfile.bio || '');
@@ -2435,8 +2671,18 @@ export default function TeacherDashboard() {
     setAvailEmpType(nextProfile.preferred_employment_type || 'full-time');
     setAvailSpecificDate(nextProfile.available_from || '');
     setAvailStartOption(getAvailabilityStartOption(nextProfile));
-    setEducationList(normalizeEducationRecords(nextProfile.education_history));
+    setEducationList(attachEducationDocuments(nextProfile.education_history));
     setExperienceList(normalizeExperienceRecords(nextProfile.teaching_experience));
+    setSessionCertifications(Array.isArray(nextProfile.certifications) ? nextProfile.certifications : []);
+    setSkillExpertise(normalizeTeacherExpertise(nextProfile.expertise));
+    setAvailabilitySessionExtras({
+      employmentTypes: Array.isArray(nextProfile.availability_preferences?.employmentTypes) ? nextProfile.availability_preferences.employmentTypes : [],
+      workArrangements: Array.isArray(nextProfile.availability_preferences?.workArrangements) ? nextProfile.availability_preferences.workArrangements : [],
+      salaryRange: nextProfile.availability_preferences?.salaryRange || '',
+      relocationPreference: nextProfile.availability_preferences?.relocationPreference || '',
+      notes: nextProfile.availability_preferences?.notes || '',
+    });
+    setVisibilitySetting(nextProfile.profile_visibility === 'applying_schools' ? 'applied' : nextProfile.profile_visibility || 'schools');
     return nextProfile;
   };
 
@@ -2455,15 +2701,36 @@ export default function TeacherDashboard() {
     return updatedProfile;
   };
 
-  const toEducationPayload = (records) => records.map(({ education_id, degree, other_degree, institution, field_of_study, class_of_degree, start_year, end_year, status }) => ({
+  const handleSaveVisibility = async (visibility) => {
+    if (visibilitySettingSaving) return;
+    const previousVisibility = visibilitySetting;
+    setVisibilitySetting(visibility);
+    setVisibilitySettingSaving(true);
+    setVisibilitySettingError('');
+    try {
+      await saveUnifiedTeacherProfile({
+        profile_visibility: visibility === 'applied' ? 'applying_schools' : visibility,
+      });
+    } catch (error) {
+      setVisibilitySetting(previousVisibility);
+      setVisibilitySettingError(profileApiErrorMessage(error, 'Unable to save profile visibility.'));
+    } finally {
+      setVisibilitySettingSaving(false);
+    }
+  };
+
+  const toEducationPayload = (records) => records.map(({ education_id, degree, education_level, other_degree, institution, field_of_study, class_of_degree, start_year, start_month, end_year, end_month, status }) => ({
     education_id: education_id || null,
     degree: String(degree || '').trim(),
+    education_level: String(education_level || '').trim(),
     other_degree: String(other_degree || '').trim() || null,
     institution: String(institution || '').trim(),
     field_of_study: (field_of_study || '').trim(),
     class_of_degree: (class_of_degree || '').trim(),
     start_year: Number.parseInt(start_year, 10),
+    start_month: String(start_month || ''),
     end_year: end_year ? Number.parseInt(end_year, 10) : null,
+    end_month: String(end_month || ''),
     status,
   }));
 
@@ -2510,7 +2777,7 @@ export default function TeacherDashboard() {
     resetCertificationForm();
   };
 
-  const handleSaveCertification = (event) => {
+  const handleSaveCertification = async (event) => {
     event.preventDefault();
     const form = certificationForm;
     if (!form.name.trim() || !form.organisation.trim() || !form.issueMonth || !form.issueYear) {
@@ -2530,19 +2797,81 @@ export default function TeacherDashboard() {
       }
     }
 
+    const existingCertification = sessionCertifications.find(({ id }) => id === editingCertificationId);
+    const certificationId = editingCertificationId || `certification-${Date.now()}`;
+    let uploadedDocument;
+    let profileSaved = false;
     const savedCertification = {
-        ...form,
-        name: form.name.trim(),
-        organisation: form.organisation.trim(),
-        number: form.number.trim(),
-        notes: form.notes.trim(),
-        fileName: certificationFile?.name || sessionCertifications.find(({ id }) => id === editingCertificationId)?.fileName || '',
-        id: editingCertificationId || `session-certification-${Date.now()}`,
-      };
-    setSessionCertifications((certifications) => editingCertificationId
-      ? certifications.map((certification) => certification.id === editingCertificationId ? savedCertification : certification)
-      : [...certifications, savedCertification]);
-    closeCertificationModal();
+      ...form,
+      name: form.name.trim(),
+      organisation: form.organisation.trim(),
+      number: form.number.trim(),
+      notes: form.notes.trim(),
+      fileName: certificationFile?.name || existingCertification?.fileName || '',
+      file_url: existingCertification?.file_url || '',
+      document_id: existingCertification?.document_id || null,
+      id: certificationId,
+    };
+
+    try {
+      setSavingCertification(true);
+      setCertificationError('');
+      if (certificationFile) {
+        const documentForm = new FormData();
+        documentForm.append('document', certificationFile);
+        documentForm.append('category', 'certification');
+        documentForm.append('record_id', certificationId);
+        const response = await profileService.uploadTeacherDocument(documentForm);
+        uploadedDocument = response?.data?.data?.document || response?.data?.document || response?.data?.data;
+        if (!uploadedDocument?.file_url || !uploadedDocument?.document_id) {
+          throw new Error('The server did not return the saved certification document.');
+        }
+        savedCertification.file_url = uploadedDocument.file_url;
+        savedCertification.document_id = uploadedDocument.document_id;
+      }
+
+      const nextCertifications = editingCertificationId
+        ? sessionCertifications.map((certification) => certification.id === editingCertificationId ? savedCertification : certification)
+        : [...sessionCertifications, savedCertification];
+      await saveUnifiedTeacherProfile({ certifications: nextCertifications });
+      profileSaved = true;
+      setSessionCertifications(nextCertifications);
+      if (certificationFile && existingCertification?.document_id) {
+        await profileService.deleteTeacherDocument(existingCertification.document_id).catch((cleanupError) => {
+          console.error('Unable to remove the replaced certification document:', cleanupError);
+        });
+      }
+      closeCertificationModal();
+    } catch (error) {
+      if (!profileSaved && uploadedDocument?.document_id) {
+        try {
+          await profileService.deleteTeacherDocument(uploadedDocument.document_id);
+        } catch (cleanupError) {
+          console.error('Unable to remove the uploaded certification after profile save failed:', cleanupError);
+        }
+      }
+      setCertificationError(profileApiErrorMessage(error, 'Unable to save certification.'));
+    } finally {
+      setSavingCertification(false);
+    }
+  };
+
+  const handleDeleteCertification = async (certification) => {
+    const nextCertifications = sessionCertifications.filter((item) => item.id !== certification.id);
+    try {
+      setSavingCertification(true);
+      setCertificationError('');
+      await saveUnifiedTeacherProfile({ certifications: nextCertifications });
+      setSessionCertifications(nextCertifications);
+      if (certification.document_id) {
+        await profileService.deleteTeacherDocument(certification.document_id);
+        setTeacherProfileDocuments((documents) => documents.filter((document) => document.document_id !== certification.document_id));
+      }
+    } catch (error) {
+      setCertificationError(profileApiErrorMessage(error, 'Unable to delete certification.'));
+    } finally {
+      setSavingCertification(false);
+    }
   };
 
   const handleSaveEducation = async () => {
@@ -2576,28 +2905,64 @@ export default function TeacherDashboard() {
       return;
     }
 
+    const educationId = editingEducationId || `education-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const existingEducation = educationList.find((item) => String(item.education_id || item.id) === String(educationId));
     const educationRecord = {
-      education_id: editingEducationId || null,
+      education_id: educationId,
       degree,
       other_degree: '',
       institution: newEduForm.institution.trim(),
       field_of_study: fieldOfStudy,
+      education_level: newEduForm.educationLevel,
       class_of_degree: newEduForm.classOfDegree.trim(),
       start_year: startYear,
+      start_month: newEduForm.startMonth,
       end_year: newEduForm.currentlyStudying ? '' : endYear,
+      end_month: newEduForm.currentlyStudying ? '' : newEduForm.endMonth,
       status: newEduForm.currentlyStudying ? 'In Progress' : 'Completed',
+      document: existingEducation?.document || null,
     };
-    const nextEducationList = editingEducationId
+    let nextEducationList = editingEducationId
       ? educationList.map((item) => item.education_id === editingEducationId ? { ...item, ...educationRecord } : item)
       : [...educationList, educationRecord];
 
+    let uploadedDocument;
+    let profileSaved = false;
     try {
       setSavingEducation(true);
       setEducationError('');
+      if (educationDocumentFile) {
+        const documentForm = new FormData();
+        documentForm.append('document', educationDocumentFile);
+        documentForm.append('category', 'education');
+        documentForm.append('record_id', educationId);
+        const response = await profileService.uploadTeacherDocument(documentForm);
+        uploadedDocument = response?.data?.data?.document || response?.data?.document || response?.data?.data;
+        if (!uploadedDocument?.document_id || !uploadedDocument?.file_url) {
+          throw new Error('The server did not return the saved education document.');
+        }
+        educationRecord.document = normalizeTeacherDocuments([uploadedDocument])[0];
+        nextEducationList = nextEducationList.map((record) => String(record.education_id || record.id) === String(educationId)
+          ? { ...record, document: educationRecord.document }
+          : record);
+      }
       await saveUnifiedTeacherProfile({
         education_history: toEducationPayload(nextEducationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
+      profileSaved = true;
+      setEducationList(nextEducationList);
+      if (uploadedDocument) {
+        setTeacherProfileDocuments((documents) => [
+          ...documents.filter((document) => String(document.record_id) !== String(educationId)),
+          normalizeTeacherDocuments([uploadedDocument])[0],
+        ]);
+        if (existingEducation?.document?.document_id) {
+          await profileService.deleteTeacherDocument(existingEducation.document.document_id).catch((cleanupError) => {
+            console.error('Unable to remove the replaced education document:', cleanupError);
+          });
+        }
+      }
       setNewEduForm(createEducationForm());
       setEducationDocumentFile(null);
       setEducationDocumentError('');
@@ -2606,6 +2971,13 @@ export default function TeacherDashboard() {
       setShowAddEduModal(false);
       if (isAddingEducation) setShowPostEducationModal(true);
     } catch (err) {
+      if (!profileSaved && uploadedDocument?.document_id) {
+        try {
+          await profileService.deleteTeacherDocument(uploadedDocument.document_id);
+        } catch (cleanupError) {
+          console.error('Unable to remove the uploaded education document after profile save failed:', cleanupError);
+        }
+      }
       setEducationError(profileApiErrorMessage(err, 'Unable to save education.'));
     } finally {
       setSavingEducation(false);
@@ -2637,6 +3009,11 @@ export default function TeacherDashboard() {
         education_history: toEducationPayload(nextEducationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
+      setEducationList(nextEducationList);
+      if (education.document?.document_id) {
+        await profileService.deleteTeacherDocument(education.document.document_id);
+        setTeacherProfileDocuments((documents) => documents.filter((document) => document.document_id !== education.document.document_id));
+      }
     } catch (err) {
       setEducationError(profileApiErrorMessage(err, 'Unable to delete education.'));
     } finally {
@@ -2648,6 +3025,7 @@ export default function TeacherDashboard() {
     setEditingExpertiseCategory(category);
     setExpertiseDraftTags(skillExpertise[category] || []);
     setExpertiseTagInput('');
+    setExpertiseError('');
   };
 
   const closeExpertiseModal = () => {
@@ -2663,13 +3041,23 @@ export default function TeacherDashboard() {
     setExpertiseTagInput('');
   };
 
-  const saveExpertiseTags = (event) => {
+  const saveExpertiseTags = async (event) => {
     event.preventDefault();
-    setSkillExpertise((categories) => toTeacherExpertisePayload({
-      ...categories,
+    const expertise = toTeacherExpertisePayload({
+      ...skillExpertise,
       [editingExpertiseCategory]: expertiseDraftTags,
-    }));
-    closeExpertiseModal();
+    });
+    try {
+      setSavingExpertise(true);
+      setExpertiseError('');
+      const updatedProfile = await saveUnifiedTeacherProfile({ expertise });
+      setSkillExpertise(normalizeTeacherExpertise(updatedProfile.expertise));
+      closeExpertiseModal();
+    } catch (error) {
+      setExpertiseError(profileApiErrorMessage(error, 'Unable to save expertise.'));
+    } finally {
+      setSavingExpertise(false);
+    }
   };
 
   const activeExpertiseCategory = TEACHER_EXPERTISE_CATEGORIES.find(({ key }) => key === editingExpertiseCategory);
@@ -2913,6 +3301,13 @@ export default function TeacherDashboard() {
         preferred_location: preferredLocation,
         available_from: availableFrom,
         availability: 'Open',
+        availability_preferences: {
+          employmentTypes: availabilityDraft.employmentTypes,
+          workArrangements: availabilityDraft.workArrangements,
+          salaryRange: availabilityDraft.salaryRange,
+          relocationPreference: availabilityDraft.relocationPreference,
+          notes: availabilityDraft.notes.trim(),
+        },
         education_history: toEducationPayload(educationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
@@ -2952,6 +3347,9 @@ export default function TeacherDashboard() {
         full_name: `${firstName} ${lastName}`.trim(),
       });
       await saveUnifiedTeacherProfile({
+        city: personalCity.trim(),
+        state: personalState.trim(),
+        location: [personalCity.trim(), personalState.trim()].filter(Boolean).join(', '),
         education_history: toEducationPayload(educationList),
         teaching_experience: toExperiencePayload(experienceList),
       });
@@ -3292,6 +3690,21 @@ export default function TeacherDashboard() {
       }
 
       await applicationService.applyToJob(jobId, payload);
+      if (
+        applicationReviewMode &&
+        selectedTeacherInvitation?.kind !== 'interview' &&
+        selectedTeacherInvitation?.invitationId &&
+        normalizeJobId(selectedTeacherInvitation.jobRecord?.job_id || selectedTeacherInvitation.jobRecord?.id) === normalizeJobId(jobId)
+      ) {
+        try {
+          await teacherInvitationService.respond(selectedTeacherInvitation.invitationId, { action: 'accept' });
+          setNotifications((current) => current.map((notification) => notification.id === selectedTeacherInvitation.notification?.id
+            ? { ...notification, invitation_status: 'accepted' }
+            : notification));
+        } catch (invitationError) {
+          setAppError(`Application submitted, but the invitation response could not be saved: ${apiErrorMessage(invitationError, 'Please contact the school.')}`);
+        }
+      }
 
       try {
         await refreshApplications();
@@ -5214,7 +5627,7 @@ export default function TeacherDashboard() {
                         {/* Option 1: Schools on Staffroom */}
                         <div
                           className={`td-privacy-option-card ${visibilitySetting === 'schools' ? 'td-privacy-option-card--active' : ''}`}
-                          onClick={() => setVisibilitySetting('schools')}
+                          onClick={() => handleSaveVisibility('schools')}
                         >
                           <div className="td-privacy-option-icon">
                             <FiGlobe size={18} />
@@ -5233,7 +5646,7 @@ export default function TeacherDashboard() {
                         {/* Option 2: Only schools I apply to */}
                         <div
                           className={`td-privacy-option-card ${visibilitySetting === 'applied' ? 'td-privacy-option-card--active' : ''}`}
-                          onClick={() => setVisibilitySetting('applied')}
+                          onClick={() => handleSaveVisibility('applied')}
                         >
                           <div className="td-privacy-option-icon">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -5260,7 +5673,7 @@ export default function TeacherDashboard() {
                         {/* Option 3: Nobody */}
                         <div
                           className={`td-privacy-option-card ${visibilitySetting === 'nobody' ? 'td-privacy-option-card--active' : ''}`}
-                          onClick={() => setVisibilitySetting('nobody')}
+                          onClick={() => handleSaveVisibility('nobody')}
                         >
                           <div className="td-privacy-option-icon">
                             <FiEyeOff size={18} />
@@ -5276,6 +5689,8 @@ export default function TeacherDashboard() {
                         </div>
 
                       </div>
+                      {visibilitySettingError && <p className="td-form-error" role="alert">{visibilitySettingError}</p>}
+                      {visibilitySettingSaving && <p className="td-form-hint" role="status">Saving visibility…</p>}
                     </div>
                   </div>
 
@@ -6656,11 +7071,11 @@ export default function TeacherDashboard() {
                                 ))}
                                 {expertiseDraftTags.length === 0 && <p>No items added. Add one above.</p>}
                               </div>
-                              <p className="td-prof-skills-session-note">Changes are kept for this browser session and are not saved to your profile.</p>
+                              {expertiseError && <p className="td-form-error" role="alert">{expertiseError}</p>}
                             </div>
                             <footer className="td-prof-skills-modal-footer">
-                              <button type="button" onClick={closeExpertiseModal}>Cancel</button>
-                              <button type="submit">Save Changes</button>
+                              <button type="button" onClick={closeExpertiseModal} disabled={savingExpertise}>Cancel</button>
+                              <button type="submit" disabled={savingExpertise}>{savingExpertise ? 'Saving…' : 'Save Changes'}</button>
                             </footer>
                           </form>
                         </div>
@@ -6934,9 +7349,12 @@ export default function TeacherDashboard() {
                                           institution: edu.institution,
                                           fieldOfStudy: educationFieldOptions.includes(edu.field_of_study) ? edu.field_of_study : (edu.field_of_study ? 'Other' : ''),
                                           fieldOfStudyOther: educationFieldOptions.includes(edu.field_of_study) ? '' : (edu.field_of_study || ''),
+                                          educationLevel: edu.education_level || '',
                                           classOfDegree: edu.class_of_degree || '',
                                           startYear: String(edu.start_year || ''),
+                                          startMonth: String(edu.start_month || ''),
                                           endYear: String(edu.end_year || ''),
+                                          endMonth: String(edu.end_month || ''),
                                           currentlyStudying: edu.status === 'In Progress',
                                         });
                                         setEducationDocumentFile(null);
@@ -6956,6 +7374,11 @@ export default function TeacherDashboard() {
                                       </button>
                                     </details>
                                   </div>
+                                  {edu.document && (
+                                    <button type="button" className="td-edu-document-link" onClick={() => openDocumentPreview(edu.document)}>
+                                      <FiFileText size={13} /> {edu.document.name}
+                                    </button>
+                                  )}
                                 </article>
                               ))}
                             </div>
@@ -7016,7 +7439,14 @@ export default function TeacherDashboard() {
                                           : null}
                                       {certification.notes && <span>{certification.notes}</span>}
                                     </div>
-                                    <span className="td-edu-session-only-badge">Session only · not saved to profile</span>
+                                    {certification.file_url && (
+                                      <button type="button" className="td-edu-document-link" onClick={() => openDocumentPreview({
+                                        name: certification.fileName,
+                                        uri: toTeacherAssetUrl(certification.file_url),
+                                      })}>
+                                        <FiFileText size={13} /> {certification.fileName || 'View certificate file'}
+                                      </button>
+                                    )}
                                   </div>
                                   <div className="td-edu-certification-actions">
                                     <button
@@ -7047,7 +7477,7 @@ export default function TeacherDashboard() {
                                       <summary aria-label={`More actions for ${certification.name}`}><FiMoreVertical size={17} /></summary>
                                       <button
                                         type="button"
-                                        onClick={() => setSessionCertifications((items) => items.filter((item) => item.id !== certification.id))}
+                                        onClick={() => handleDeleteCertification(certification)}
                                       >
                                         <FiTrash2 size={13} />Delete
                                       </button>
@@ -7205,13 +7635,13 @@ export default function TeacherDashboard() {
                                 </label>
                               </div>
 
-                              <p className="td-certification-modal-notice">Certification details and documents are kept in this browser session only and are not saved to your profile.</p>
+                              <p className="td-certification-modal-notice">Certification details and any uploaded document will be saved to your profile.</p>
                               {certificationError && <p className="td-certification-form-error" role="alert">{certificationError}</p>}
                             </div>
 
                             <footer className="td-certification-modal-footer">
-                              <button type="button" className="td-certification-cancel" onClick={closeCertificationModal}>Cancel</button>
-                              <button type="submit" className="td-certification-save">Save Certification</button>
+                              <button type="button" className="td-certification-cancel" onClick={closeCertificationModal} disabled={savingCertification}>Cancel</button>
+                              <button type="submit" className="td-certification-save" disabled={savingCertification}>{savingCertification ? 'Saving…' : 'Save Certification'}</button>
                             </footer>
                           </form>
                         </div>
@@ -7348,10 +7778,13 @@ export default function TeacherDashboard() {
                                     <span>{educationDocumentFile ? <><strong>{educationDocumentFile.name}</strong><small>Selected file · Max 5 MB</small></> : <><strong>Upload certificate (PDF, JPG or PNG)</strong><small>Max 5 MB</small></>}</span>
                                   </button>
                                   {educationDocumentError && <small className="td-edu-document-error" role="alert">{educationDocumentError}</small>}
+                                  {educationList.find((record) => String(record.education_id || record.id) === String(editingEducationId))?.document && !educationDocumentFile && (
+                                    <small className="td-edu-document-current">Existing file: {educationList.find((record) => String(record.education_id || record.id) === String(editingEducationId)).document.name}</small>
+                                  )}
                                 </div>
                               </div>
 
-                              <p className="td-edu-modal-notice">Your qualification, institution, field of study, grade, years, and study status will be saved. Education level, months, and the selected document are not saved yet.</p>
+                              <p className="td-edu-modal-notice">Your qualification, institution, education level, field of study, grade, study dates, and selected document will be saved to your profile.</p>
                               {educationError && <p className="td-exp-modal-error" role="alert">{educationError}</p>}
                             </div>
 
@@ -7935,7 +8368,7 @@ export default function TeacherDashboard() {
                                     <span className={`td-manage-docs-file-icon ${iconClass}`}><FiFileText size={18} /></span>
                                     <span className="td-manage-docs-file-info">
                                       <strong>{document.name}</strong>
-                                      <small>Added this session · {formatFileSize(document.size)}</small>
+                                      <small>{document.file ? 'Ready to upload' : 'Uploaded to your profile'} · {formatFileSize(document.size)}</small>
                                     </span>
                                     <button type="button" className="td-manage-docs-view" onClick={() => openDocumentPreview({ name: document.name, uri: document.previewUrl })}>
                                       <FiEye size={14} />View
@@ -7954,7 +8387,9 @@ export default function TeacherDashboard() {
                             <FiInfo size={15} />
                             <span>Keep your documents clear and up to date. Make sure they are readable and show the correct information.</span>
                           </div>
-                          <p className="td-manage-docs-api-note">Your CV is uploaded to your profile. Supporting documents are kept in this page session only because the current API does not provide a supporting-document upload endpoint.</p>
+                          {teacherDocumentsError && <p className="td-form-error" role="alert">{teacherDocumentsError}</p>}
+                          {manageDocumentsError && <p className="td-form-error" role="alert">{manageDocumentsError}</p>}
+                          <p className="td-manage-docs-api-note">Your CV and supporting documents are uploaded to your teacher profile.</p>
                           {manageDocumentsError && <p className="td-manage-docs-error" role="alert">{manageDocumentsError}</p>}
                         </div>
 
@@ -8287,7 +8722,7 @@ export default function TeacherDashboard() {
                               <small>{availabilityDraft.notes.length}/500</small>
                             </label>
                           </section>
-                          <p className="td-avail-pref-session-note">Multiple employment selections, work arrangement, salary, relocation, and notes are kept in memory while this dashboard remains open. The profile endpoint supports only one employment type and does not support the other listed fields.</p>
+                          <p className="td-avail-pref-session-note">Your job preferences and availability details are saved to your teacher profile.</p>
                           {availabilityModalError && <p className="td-avail-pref-error" role="alert">{availabilityModalError}</p>}
                         </div>
 
@@ -19557,6 +19992,28 @@ export default function TeacherDashboard() {
           min-width: 0;
           flex-direction: column;
           gap: 3px;
+        }
+
+        .td-edu-document-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+          max-width: 100%;
+          padding: 4px 0;
+          border: 0;
+          background: transparent;
+          color: #2563eb;
+          font-size: 10px;
+          text-align: left;
+          overflow-wrap: anywhere;
+          cursor: pointer;
+        }
+
+        .td-edu-document-current {
+          display: block;
+          margin-top: 5px;
+          color: #64748b;
+          font-size: 10px;
         }
 
         .td-edu-card-details h2 {

@@ -44,4 +44,6 @@ export const applicationService = {
     api.post(`/api/applications/${applicationId}/interview`, payload),
   getInterview: (applicationId) =>
     api.get(`/api/applications/${applicationId}/interview`),
+  respondToInterview: (applicationId, payload) =>
+    api.post(`/api/applications/${applicationId}/interview/response`, payload),
 };

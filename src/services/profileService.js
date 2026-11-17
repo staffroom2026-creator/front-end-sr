@@ -2,6 +2,7 @@ import { api } from './api';
 
 export const profileService = {
   getMe: () => api.get('/api/profiles/me'),
+  getSchool: (schoolUserId) => api.get(`/api/schools/${encodeURIComponent(schoolUserId)}`),
   getProfileViews: (params = {}) => api.get('/api/profiles/teacher/profile-views', { params }),
   updateTeacher: (payload) => api.put('/api/profiles/teacher', payload),
   updateSchool: (payload) => api.put('/api/profiles/school', payload),
@@ -45,4 +46,13 @@ export const profileService = {
         'Content-Type': 'multipart/form-data',
       },
     }),
+  getTeacherDocuments: () => api.get('/api/profiles/teacher/documents'),
+  uploadTeacherDocument: (formData) =>
+    api.post('/api/profiles/teacher/documents', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    }),
+  deleteTeacherDocument: (documentId) =>
+    api.delete(`/api/profiles/teacher/documents/${encodeURIComponent(documentId)}`),
 };

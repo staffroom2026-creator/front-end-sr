@@ -1647,7 +1647,19 @@ Sends a school invitation to a teacher. Optionally provide `job_id` to attach th
 
 ### Teacher Profile Sections
 
-`PUT /profiles/teacher` accepts professional profile data including `education`, `teaching_experience`, `trcn_number`, `availability`, `available_from`, and `profile_visibility`. Visibility may be `schools`, `applying_schools`, or `nobody`; only `schools` profiles appear in the school directory.
+`PUT /profiles/teacher` accepts professional profile data including `education`, `teaching_experience`, `city`, `state`, `expertise`, `certifications`, `availability_preferences`, `availability`, `available_from`, and `profile_visibility`. Visibility may be `schools`, `applying_schools`, or `nobody`; only `schools` profiles appear in the school directory. Account profile photos are uploaded separately through `POST /account/profile-photo` and returned as `data.user.profile_photo` by `GET /profiles/me`.
+
+Teacher dashboard fields stored by the profile endpoint:
+
+- `expertise`: object keyed by expertise category, each value a string array.
+- `certifications`: array of objects containing `id`, `name`, `organisation`, `issueMonth`, and `issueYear`; notes are limited to 300 characters.
+- `availability_preferences`: object supporting `employmentTypes`, `workArrangements`, `salaryRange`, `relocationPreference`, and `notes`.
+- `city` and `state`: strings stored alongside the combined `location` value.
+- Education records support the existing fields plus `education_level`, `start_month`, and `end_month`; months use `01`–`12`.
+
+Teacher documents use `GET|POST /profiles/teacher/documents` and `DELETE /profiles/teacher/documents/{document_id}`. Uploads are multipart with a `document` file, `category` (`supporting`, `certification`, or `education`), and optional `record_id`. Files must be PDF, DOC, DOCX, JPG, or PNG and no larger than 5 MB. Document operations are restricted to the authenticated teacher's own records.
+
+The schema additions for these fields, teacher documents, and interview responses are in `staffroom_api/database/migrations/2026_11_17_teacher_dashboard_persistence.sql`; apply this migration before using the endpoints.
 
 ### `DELETE /applications/{application_id}`
 Withdraws an active application belonging to the authenticated teacher. Applications that are already accepted, rejected, hired, or withdrawn cannot be withdrawn again.
@@ -1656,7 +1668,7 @@ Withdraws an active application belonging to the authenticated teacher. Applicat
 - **Allowed Role:** `teacher`
 
 ### `GET /applications/{application_id}/interview`
-Returns interviews scheduled for an application. Only the owning school can access them.
+Returns interviews scheduled for an application. The owning teacher and school can access them.
 
 ### `POST /applications/{application_id}/interview`
 Schedules a virtual or physical interview for an owned application.
@@ -1674,6 +1686,27 @@ Schedules a virtual or physical interview for an owned application.
 ```
 
 Use `venue` instead of `meeting_link` for a `physical` interview. Scheduling updates the application to `interviewing` and notifies the teacher.
+
+### `POST /applications/{application_id}/interview/response`
+
+Teacher-only endpoint to respond to the active interview:
+
+```json
+{
+  "action": "request_another_time",
+  "proposed_date": "2026-11-25",
+  "proposed_time": "14:30",
+  "message": "I am available at this time."
+}
+```
+
+`action` may be `accept`, `decline`, or `request_another_time`. The last action requires a future `proposed_date` and `proposed_time` in `HH:MM` format. A response is recorded on the interview and a notification is sent to the school.
+
+### Direct teacher invitations
+
+- `GET /teacher-invitations/{invitation_id}` returns the invitation, linked job, and school profile for its recipient.
+- `POST /teacher-invitations/{invitation_id}/response` accepts `{ "action": "accept" }` or `{ "action": "decline" }`. A teacher can respond only to their own invitations, and each invitation can be answered once.
+- `GET /schools/{school_user_id}` returns the public school profile to authenticated teachers.
 
 ---
 
